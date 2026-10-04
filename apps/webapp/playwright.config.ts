@@ -62,6 +62,6 @@ export default defineConfig({
 		url: "http://127.0.0.1:5173/playwright/gallery/index.html",
 		reuseExistingServer: !process.env.CI,
 		cwd: __dirname,
-		timeout: 30000,
+		timeout: 60000,
 	},
 })

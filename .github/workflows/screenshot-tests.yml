@@ -38,6 +38,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The gallery imports @excited-live/i18n and @excited-live/sim, which
+      # resolve to their built dist/. Without this the Vite dev server fails
+      # dependency pre-bundling and webServer times out.
+      - name: Build workspace packages
+        run: pnpm build
+
       - name: Install Playwright Chromium with system dependencies
         run: pnpm --filter @excited-live/webapp exec playwright install --with-deps chromium
 

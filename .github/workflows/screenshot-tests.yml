@@ -8,6 +8,11 @@ on:
       - "packages/design-system/**"
       - ".github/workflows/screenshot-tests.yml"
   workflow_dispatch:
+    inputs:
+      update-snapshots:
+        description: "Re-record baselines on the CI runner instead of comparing"
+        type: boolean
+        default: false
 
 concurrency:
   group: screenshot-tests-${{ github.event.pull_request.number || github.ref }}
@@ -16,10 +21,7 @@ concurrency:
 jobs:
   verify-screenshots:
     name: Verify Component Screenshots
-    # Official Playwright image: font and text rendering match the environment
-    # the committed baselines were captured in. Bare ubuntu-latest drifts and
-    # produces false diffs, especially on transparent (omitBackground) edges.
-    runs-on: mcr.microsoft.com/playwright:v1.63.0-noble
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -36,13 +38,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Ensure Chromium matches the pinned Playwright version
-        run: pnpm --filter @excited-live/webapp exec playwright install chromium
+      - name: Install Playwright Chromium with system dependencies
+        run: pnpm --filter @excited-live/webapp exec playwright install --with-deps chromium
+
+      # Baselines are pixel-compared, so they only reproduce on the runner
+      # image they were captured on. Record them here (not on a dev machine)
+      # via "Re-record baselines on the CI runner" in the Actions tab, then
+      # commit the uploaded PNGs.
+      - name: Re-record baselines
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.update-snapshots }}
+        run: pnpm --filter @excited-live/webapp test:visual:update
+        env:
+          CI: 1
 
       - name: Run visual regression tests
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.update-snapshots) }}
         run: pnpm --filter @excited-live/webapp test:visual
         env:
           CI: 1
+
+      - name: Upload baselines (re-record run only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.update-snapshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-baselines
+          path: apps/webapp/src/components/__snapshots__/
+          retention-days: 30
 
       - name: Upload visual test report & diffs on failure
         if: failure()

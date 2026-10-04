@@ -35,11 +35,16 @@ To cover a new component: add a `.story.tsx` next to it, then a `.spec.tsx` that
 each scenario. Run `pnpm test:visual:update` to write baselines, and commit the PNGs.
 
 CI (`.github/workflows/screenshot-tests.yml`) runs these on every PR that touches
-`apps/webapp/**` or `packages/design-system/**`. It pins
-`mcr.microsoft.com/playwright:v1.63.0-noble` rather than `ubuntu-latest` on purpose —
-baselines are pixel-compared, so they only reproduce on Playwright's reference image.
-**If you bump the Playwright version, bump that image tag in the same commit** and
-re-record the baselines.
+`apps/webapp/**` or `packages/design-system/**`, uploading the HTML report and diffs on
+failure.
+
+**Baselines must be recorded on the CI runner, not on your machine.** They are
+pixel-compared, so they only reproduce on the Ubuntu image GitHub Actions uses — a dev
+laptop or a different distro renders text differently and every comparison goes red.
+Use the **"Component Screenshot Tests"** workflow in the Actions tab → **Run workflow** →
+tick **Re-record baselines on the CI runner** → download the `screenshot-baselines`
+artifact → commit the PNGs. Use `pnpm test:visual:update` locally only for iterating on a
+new story; re-record on CI before merging.
 
 ## API modes (mock vs live)
 

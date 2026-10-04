@@ -47,22 +47,6 @@ jobs:
       - name: Install Playwright Chromium with system dependencies
         run: pnpm --filter @excited-live/webapp exec playwright install --with-deps chromium
 
-      - name: DIAGNOSE gallery server
-        run: |
-          set -x
-          pnpm list vite @playwright/test --filter @excited-live/webapp --depth 0 || true
-          ls -la apps/webapp/playwright/gallery/
-          ls -la packages/i18n/dist/index.js packages/sim/dist/index.js
-          (cd apps/webapp && pnpm exec vite --config vite.config.ct.ts --port 5173 > /tmp/vite.log 2>&1 &)
-          for i in $(seq 1 40); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173/playwright/gallery/index.html || true)
-            echo "attempt $i -> $code"
-            [ "$code" = "200" ] && break
-            sleep 2
-          done
-          cat /tmp/vite.log
-          curl -sS -o /dev/null -w "final=%{http_code}\n" http://127.0.0.1:5173/playwright/gallery/index.html || true
-
       # Baselines are pixel-compared, so they only reproduce on the runner
       # image they were captured on. Record them here (not on a dev machine)
       # via "Re-record baselines on the CI runner" in the Actions tab, then

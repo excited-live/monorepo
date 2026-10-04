@@ -1,13 +1,13 @@
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build outputs
 dist/
-coverage/
-.turbo/
-.tanstack/
 .output/
-*.log
-.DS_Store
-.verify/
-.wrangler/
+.turbo/
+build/
+coverage/
 apps/webapp/.worker2/
 apps/webapp/.worker/
 apps/landingpage/.astro/
@@ -15,13 +15,20 @@ target/
 **/src-tauri/target/
 # Local SQLite database for apps/api (dev/test persistence)
 apps/api/.data/
+test-results/
+playwright-report/
+
 # Environment files: real secrets must never be committed (see .env.example)
 .env
 .env.*
 !.env.example
-# Agent, editor and MCP configurations (real tokens must never be committed)
-.cursor/
-opencode.json
-opencode.jsonc
-*mcp*.json
-.mcp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

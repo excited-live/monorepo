@@ -9,7 +9,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 3. **Pure logic in `packages/*`**: No network, DOM, framework imports, or locale/timezone dependencies.
 4. **Bilingual UI strings**: Always `{ en, th }`, English first.
 5. **Don't edit generated files**: `routeTree.gen.ts`, `pnpm-lock.yaml`, `dist/`, `.output/`.
-6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR.
+6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component under `apps/webapp/src/components`, also run `pnpm test:visual` and commit any updated `__snapshots__` PNGs.
 
 ## PR & merge pipeline
 
@@ -41,6 +41,8 @@ pnpm build      # all packages + app (turbo, cached)
 pnpm typecheck  # tsc across workspace
 pnpm lint       # eslint across repo (--max-warnings=0)
 pnpm test       # run engine tests
+pnpm test:visual        # Playwright component screenshots (needs `playwright install chromium` once)
+pnpm test:visual:update # re-record screenshot baselines — commit the PNGs with your change
 ```
 
 ## Agent execution guidelines

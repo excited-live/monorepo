@@ -64,6 +64,8 @@ export default tseslint.config(
 			"**/*.cjs",
 			"**/src-tauri/target/**",
 			"**/src-tauri/gen/android/**",
+			"**/playwright-report/**",
+			"**/test-results/**",
 		],
 	},
 	js.configs.recommended,

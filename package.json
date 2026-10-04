@@ -13,6 +13,8 @@
 		"lint": "eslint .",
 		"start": "turbo run start",
 		"test": "turbo run test",
+		"test:visual": "pnpm --filter @excited-live/webapp test:visual",
+		"test:visual:update": "pnpm --filter @excited-live/webapp test:visual:update",
 		"typecheck": "turbo run typecheck"
 	},
 	"dependencies": {

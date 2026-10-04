@@ -11,6 +11,35 @@ Run from repo root:
 - Build: `pnpm build`
 - Typecheck: `pnpm typecheck`
 - Lint: `pnpm lint`
+- Visual tests: `pnpm test:visual` (Playwright component screenshots)
+- Update visual baselines: `pnpm test:visual:update`
+
+## Visual regression tests
+
+Playwright **component** tests (native `mount` fixture, `@playwright/test` only — no
+`@playwright/experimental-ct`). Pinned to Playwright **1.63.0**.
+
+Layout under `apps/webapp`:
+
+- `playwright/gallery/index.html` + `playwright/gallery/main.tsx` — the gallery page that
+  exposes `window.mount()` / `window.unmount()` and resolves stories by id via
+  `import.meta.glob("../../src/**/*.story.{tsx,jsx}")`. A story id is the story file path
+  plus the export name, e.g. `components/Topbar/Default`.
+- `src/testing/TestScaffold.tsx` — wraps a story in the mastercard theme, the locale
+  provider, and an in-memory TanStack router.
+- `*.story.tsx` — one export per visual scenario (locale and auth variants live here).
+- `*.spec.tsx` — `await mount("components/X/Y")` then `toHaveScreenshot`.
+- `src/components/__snapshots__/` — committed baselines.
+
+To cover a new component: add a `.story.tsx` next to it, then a `.spec.tsx` that mounts
+each scenario. Run `pnpm test:visual:update` to write baselines, and commit the PNGs.
+
+CI (`.github/workflows/screenshot-tests.yml`) runs these on every PR that touches
+`apps/webapp/**` or `packages/design-system/**`. It pins
+`mcr.microsoft.com/playwright:v1.63.0-noble` rather than `ubuntu-latest` on purpose —
+baselines are pixel-compared, so they only reproduce on Playwright's reference image.
+**If you bump the Playwright version, bump that image tag in the same commit** and
+re-record the baselines.
 
 ## API modes (mock vs live)
 
@@ -51,7 +80,7 @@ below are a quick summary.
 
 - Work on a branch, open a PR. Never push straight to main.
 - Before starting a task: `git pull --ff-only` on main, branch from it.
-- Verify your work: `pnpm build`, `pnpm typecheck`, and `pnpm lint` must pass before opening the PR (CI enforces lint with zero warnings).
+- Verify your work: `pnpm build`, `pnpm typecheck`, and `pnpm lint` must pass before opening the PR (CI enforces lint with zero warnings). If you touched a component in `apps/webapp/src/components`, run `pnpm test:visual` too.
 - Keep the tax engine pure (no network, no DOM) — it lives in `packages/tax` and is shared.
 - SSR: routes run server-side first; don't touch `window`/`document` at module top level.
 - New user-facing text is bilingual: `{ en, th }`, EN-first. (The web UI is EN-only today; this rule applies to everything added from now on.)

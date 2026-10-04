@@ -39,12 +39,19 @@ CI (`.github/workflows/screenshot-tests.yml`) runs these on every PR that touche
 failure.
 
 **Baselines must be recorded on the CI runner, not on your machine.** They are
-pixel-compared, so they only reproduce on the Ubuntu image GitHub Actions uses — a dev
-laptop or a different distro renders text differently and every comparison goes red.
+pixel-compared, so they only reproduce on the Ubuntu image GitHub Actions uses. Text
+metrics shift with the local font set — the Thai scenarios render ~20px wider on the runner
+than on a typical dev box, and Latin ones ~3px — so a baseline captured locally will fail
+every comparison.
+
 Use the **"Component Screenshot Tests"** workflow in the Actions tab → **Run workflow** →
 tick **Re-record baselines on the CI runner** → download the `screenshot-baselines`
-artifact → commit the PNGs. Use `pnpm test:visual:update` locally only for iterating on a
-new story; re-record on CI before merging.
+artifact → commit the PNGs.
+
+Consequence: `pnpm test:visual` on your own machine reports diffs against the committed
+baselines. That is expected, not a regression — trust the CI run to decide. Locally the
+command is still useful for checking that stories mount, for iterating on a new story with
+`pnpm test:visual:update`, and for reading `apps/webapp/playwright-report/`.
 
 ## API modes (mock vs live)
 

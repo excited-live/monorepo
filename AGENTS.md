@@ -9,7 +9,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 3. **Pure logic in `packages/*`**: No network, DOM, framework imports, or locale/timezone dependencies.
 4. **Bilingual UI strings**: Always `{ en, th }`, English first.
 5. **Don't edit generated files**: `routeTree.gen.ts`, `pnpm-lock.yaml`, `dist/`, `.output/`.
-6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component under `apps/webapp/src/components`, also run `pnpm test:visual` and commit any updated `__snapshots__` PNGs.
+6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component under `apps/webapp/src/components`, also run `pnpm test:visual` and commit any updated `__snapshots__` PNGs. Baselines must be captured on the CI runner (workflow_dispatch → "Re-record baselines on the CI runner"), never on your machine — local pixel diffs are expected and are not a failure signal.
 
 ## PR & merge pipeline
 

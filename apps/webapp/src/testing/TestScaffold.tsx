@@ -9,17 +9,21 @@ import {
 } from "@tanstack/react-router"
 import type { Locale } from "@excited-live/i18n"
 import { LocaleProvider } from "../lib/locale-context"
+import { PlanDashboardProvider } from "../hooks/usePlanDashboard"
 
 export interface TestScaffoldProps {
 	children: ReactNode
 	locale?: Locale
 	initialPath?: string
+	/** Wrap children in PlanDashboardProvider for components that consume it. */
+	withPlanDashboard?: boolean
 }
 
 export function TestScaffold({
 	children,
 	locale = "en",
 	initialPath = "/",
+	withPlanDashboard = false,
 }: TestScaffoldProps) {
 	const router = useMemo(() => {
 		const rootRoute = createRootRoute({
@@ -37,7 +41,11 @@ export function TestScaffold({
 	return (
 		<Theme theme={mastercardTheme} mode="light">
 			<LocaleProvider initialLocale={locale}>
-				<RouterProvider router={router} />
+				{withPlanDashboard ? (
+					<PlanDashboardProvider>{children}</PlanDashboardProvider>
+				) : (
+					<RouterProvider router={router} />
+				)}
 			</LocaleProvider>
 		</Theme>
 	)

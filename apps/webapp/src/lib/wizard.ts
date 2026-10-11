@@ -184,20 +184,51 @@ export function wizardAnswersFromPlan(plan: PlanInput): WizardAnswers {
 	}
 }
 
-/** True when the plan is still the untouched engine default (nothing edited yet). */
+/**
+ * True when the plan is still the untouched engine default (nothing edited yet).
+ *
+ * Compares the REAL field set — every year field included. An earlier version
+ * blanked startYear / endYear / retirementYear / targetYear before comparing,
+ * so a plan whose ONLY edit was a year still read as "untouched baseline" and a
+ * returning user was offered the first-run walkthrough again (FRO-71). Years are
+ * user data, not volatility: the wizard owns `retirementYear`, every period row
+ * carries its own start/end year and every goal carries a targetYear, so all of
+ * them must be compared rather than ignored.
+ *
+ * The comparison is structural (key-order independent), so a plan that was
+ * re-spread by an editor — which can reorder keys — is not mistaken for an edit.
+ *
+ * Residual (deliberately out of scope here; tracked by FRO-66 / PR #89): the
+ * baseline is still derived from the browser clock, so a plan seeded in a
+ * different calendar year than "now" reads as changed. Once the plan is
+ * persisted server-side the gate should compare against the stored plan instead
+ * of this local heuristic.
+ */
 export function isBaselinePlan(plan: PlanInput): boolean {
-	const baseline = wizardBaselinePlan()
-	return JSON.stringify(stripVolatile(plan)) === JSON.stringify(stripVolatile(baseline))
+	return planEquals(plan, wizardBaselinePlan())
 }
 
-/** Stable serialization for first-run comparison (no ids that embed dates). */
-function stripVolatile(plan: PlanInput): unknown {
-	return JSON.stringify(plan, (key, value) =>
-		key === "startYear" || key === "endYear" || key === "retirementYear" || key === "targetYear"
-			? typeof value === "number"
-				? "<year>"
-				: value
-			: value,
+/** Structural (key-order independent) equality over plan JSON. */
+function planEquals(a: unknown, b: unknown): boolean {
+	if (a === b) return true
+	if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
+		return false
+	}
+	if (Array.isArray(a) || Array.isArray(b)) {
+		return (
+			Array.isArray(a) &&
+			Array.isArray(b) &&
+			a.length === b.length &&
+			a.every((item, index) => planEquals(item, b[index]))
+		)
+	}
+	const left = a as Record<string, unknown>
+	const right = b as Record<string, unknown>
+	const keys = Object.keys(left)
+	if (keys.length !== Object.keys(right).length) return false
+	return keys.every(
+		(key) =>
+			Object.prototype.hasOwnProperty.call(right, key) && planEquals(left[key], right[key]),
 	)
 }
 

@@ -12,6 +12,7 @@ Motto: "(I am) excited to live". FromSukong content funnels attention to excited
 2. [PRD — MLP (Web App)](prd-mlp.md) — the Minimum Lovable Product: accounts, wizard, life-story chart, sliders, scenario toggles, AI/MCP.
 3. [PRD — Post-MLP](prd-post-mlp.md) — trigger-based backlog: mobile, white-label, US tax, exit-tax realism, corporate tax, per-goal wallets, public API for your own AI.
 4. [Pricing](pricing.md) — $109/year subscription (whole app gated, AI unlimited, 7-day free trial); Advisor tier $599/yr or $59/mo (5 client seats + unlimited 30-day trial clients, AI via BYOK or credits).
+5. [PRD — Flows (all apps)](prd-flows.md) — flow-first specs for every app: what the user sees and does, screen by screen, with Mobbin reference links per flow. Features live in the phase files; flows live here.
 
 ## Principles shared by every phase
 

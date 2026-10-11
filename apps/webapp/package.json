@@ -1,15 +1,16 @@
 {
 	"name": "@excited-live/webapp",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "VITE_API_MODE=mock vite dev",
-		"dev:api": "VITE_API_MODE=live vite dev",
+		"dev": "vite",
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"lint": "eslint .",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test:visual": "playwright test",
+		"test:visual:update": "playwright test --update-snapshots"
 	},
 	"dependencies": {
 		"@astryxdesign/core": "catalog:",
@@ -18,8 +19,8 @@
 		"@excited-live/i18n": "workspace:*",
 		"@excited-live/sim": "workspace:*",
 		"@excited-live/tax": "workspace:*",
-		"@tanstack/react-router": "catalog:",
-		"@tanstack/react-start": "catalog:",
+		"@tanstack/react-router": "^1.161.0",
+		"@tanstack/react-start": "^1.161.0",
 		"@workos-inc/node": "^10.13.0",
 		"@workos/authkit-tanstack-react-start": "^0.11.0",
 		"echarts": "6.1.0",
@@ -27,6 +28,7 @@
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.63.0",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",

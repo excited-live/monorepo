@@ -1,0 +1,84 @@
+name: Component Screenshot Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "apps/webapp/**"
+      - "packages/design-system/**"
+      - ".github/workflows/screenshot-tests.yml"
+  workflow_dispatch:
+    inputs:
+      update-snapshots:
+        description: "Re-record baselines on the CI runner instead of comparing"
+        type: boolean
+        default: false
+
+concurrency:
+  group: screenshot-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-screenshots:
+    name: Verify Component Screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The gallery imports @excited-live/i18n and @excited-live/sim, which
+      # resolve to their built dist/. Without this the Vite dev server fails
+      # dependency pre-bundling and webServer times out.
+      - name: Build workspace packages
+        run: pnpm build
+
+      - name: Install Playwright Chromium with system dependencies
+        run: pnpm --filter @excited-live/webapp exec playwright install --with-deps chromium
+
+      # Baselines are pixel-compared, so they only reproduce on the runner
+      # image they were captured on. Record them here (not on a dev machine)
+      # via "Re-record baselines on the CI runner" in the Actions tab, then
+      # commit the uploaded PNGs.
+      - name: Re-record baselines
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.update-snapshots }}
+        run: pnpm --filter @excited-live/webapp test:visual:update
+        env:
+          CI: 1
+
+      - name: Run visual regression tests
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.update-snapshots) }}
+        run: pnpm --filter @excited-live/webapp test:visual
+        env:
+          CI: 1
+
+      - name: Upload baselines (re-record run only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.update-snapshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-baselines
+          path: |
+            apps/webapp/src/components/__snapshots__/
+            apps/webapp/src/pages/**/__snapshots__/
+          retention-days: 30
+
+      - name: Upload visual test report & diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/webapp/playwright-report/
+            apps/webapp/test-results/
+          retention-days: 7

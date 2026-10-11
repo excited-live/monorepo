@@ -1,5 +1,6 @@
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
+import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
+import '@excited-live/design-system/mastercard-theme.css'
 
 interface RouterContext {
 	queryClient: QueryClient
@@ -11,27 +12,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
 	return (
-		<div className="mobile-shell">
-			<header className="mobile-header">
-				<div className="mobile-title">excited.live Tax Mobile</div>
-				<nav className="mobile-nav">
-					<Link
-						to="/"
-						className="nav-link"
-						activeProps={{ className: 'nav-link active' }}
-					>
-						Calculator
-					</Link>
-					<Link
-						to="/about"
-						className="nav-link"
-						activeProps={{ className: 'nav-link active' }}
-					>
-						About
-					</Link>
-				</nav>
-			</header>
-
+		<div className="mobile-shell" data-astryx-theme="mastercard">
 			<main className="mobile-main">
 				<Outlet />
 			</main>

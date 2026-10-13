@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
 	type CapitalTransfer,
+	calculateCurrentTreasury,
 	type EntityAccount,
 	type HardwareAsset,
 	type LiabilityStream,
@@ -36,16 +37,17 @@ interface BizContextType {
 	transfers: CapitalTransfer[];
 	activeEntityId: string;
 	activeTab: "home" | "capital" | "settings";
-	activeCapitalSubTab: "income" | "expense" | "assets" | "liability";
+	activeCapitalSubTab: "capital" | "income" | "expense" | "assets" | "liability";
 	selectedMonth: string; // "YYYY-MM"
 	lang: "en" | "th";
 	userSession: UserSession;
 	signInWithEmail: (email: string, password: string) => Promise<void>;
+	signInWithGoogle: (idToken: string) => Promise<void>;
 	signOut: () => Promise<void>;
 	updateUserProfile: (profile: Partial<UserSession>) => void;
 	setActiveEntityId: (id: string) => void;
 	setActiveTab: (tab: "home" | "capital" | "settings") => void;
-	setActiveCapitalSubTab: (tab: "income" | "expense" | "assets" | "liability") => void;
+	setActiveCapitalSubTab: (tab: "capital" | "income" | "expense" | "assets" | "liability") => void;
 	setSelectedMonth: (month: string) => void;
 	setLang: (lang: "en" | "th") => void;
 	injectCapital: (fromEntityId: string, toEntityId: string, amount: number, note: string) => void;
@@ -63,8 +65,8 @@ interface BizContextType {
 	deleteLiability: (id: string) => void;
 	setCareerIncome: (entityId: string, salary: number, paydayDayOfMonth?: number, title?: string, company?: string, imageUrl?: string) => void;
 	updateCashReserve: (entityId: string, newAmount: number) => void;
-	addBusiness: (name: string, initialCash: number, imageUrl?: string) => string;
-	updateBusiness: (id: string, name: string, cashReserve: number, imageUrl?: string) => void;
+	addBusiness: (name: string, imageUrl?: string) => string;
+	updateBusiness: (id: string, name: string, imageUrl?: string) => void;
 	deleteBusiness: (id: string) => void;
 	resetToBaseline: () => void;
 }
@@ -75,7 +77,7 @@ const DEFAULT_SESSION: UserSession = {
 	id: "usr_guest",
 	email: "",
 	name: "Guest Solopreneur",
-	orgName: "My Local Venture",
+	orgName: "My Local Business",
 	isAuthenticated: false,
 	avatarUrl: DEFAULT_PROFILE_AVATAR,
 };
@@ -160,7 +162,7 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 	const [activeEntityId, setActiveEntityId] = useState<string>("acc_personal");
 	const [activeTab, setActiveTab] = useState<"home" | "capital" | "settings">("home");
-	const [activeCapitalSubTab, setActiveCapitalSubTab] = useState<"income" | "expense" | "assets" | "liability">("income");
+	const [activeCapitalSubTab, setActiveCapitalSubTab] = useState<"capital" | "income" | "expense" | "assets" | "liability">("income");
 	const [selectedMonth, setSelectedMonth] = useState<string>("2026-10");
 	const [lang, setLang] = useState<"en" | "th">("en");
 
@@ -211,6 +213,28 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		localStorage.setItem(`${STORAGE_KEY}_tx`, JSON.stringify(transfers));
 	}, [transfers]);
 
+	// Every entity's cash on hand is derived: cash assets + net capital
+	// transfers (see calculateCurrentTreasury). Views layer the month's
+	// income/expenses on top for the end-of-month figure. Syncing cashReserve
+	// here keeps hero, home, ledger and runway reading the same derived number;
+	// nothing sets a treasury by hand.
+	useEffect(() => {
+		setAccounts((prev) => {
+			let changed = false;
+			const next = prev.map((acc) => {
+				const derived = calculateCurrentTreasury({
+					account: acc,
+					hardware,
+					transfers,
+				});
+				if (derived === acc.cashReserve) return acc;
+				changed = true;
+				return { ...acc, cashReserve: derived };
+			});
+			return changed ? next : prev;
+		});
+	}, [accounts, hardware, transfers]);
+
 	useEffect(() => {
 		localStorage.setItem(`${STORAGE_KEY}_session`, JSON.stringify(userSession));
 	}, [userSession]);
@@ -218,8 +242,7 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 	// In-app sign-in: email + password against the Better Auth tokens mount.
 	// No system browser and no deep link — the session token comes back in the
 	// sign-in response and only the token (never PII) is persisted.
-	const signInWithEmail = async (email: string, password: string) => {
-		const { token, user } = await authApi.signIn(email, password);
+	const applySession = (token: string, user: { id: string; email: string; name: string }) => {
 		setBearerToken(token);
 		setUserSession({
 			id: user.id,
@@ -229,6 +252,19 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 			isAuthenticated: true,
 			token,
 		});
+	};
+
+	const signInWithEmail = async (email: string, password: string) => {
+		const { token, user } = await authApi.signIn(email, password);
+		applySession(token, user);
+	};
+
+	// Google sign-in: the native Google Sign-In SDK returns an ID token for the
+	// Google web client ID and Better Auth verifies it server-side (idToken
+	// branch of sign-in/social) — still fully in-app, still a bearer token.
+	const signInWithGoogle = async (idToken: string) => {
+		const { token, user } = await authApi.signInWithGoogleIdToken(idToken);
+		applySession(token, user);
 	};
 
 	const signOut = async () => {
@@ -257,19 +293,8 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		};
 
 		setTransfers((prev) => [newTx, ...prev]);
-
-		// Adjust account cash reserves
-		setAccounts((prev) =>
-			prev.map((acc) => {
-				if (acc.id === fromEntityId) {
-					return { ...acc, cashReserve: Math.max(0, acc.cashReserve - amount) };
-				}
-				if (acc.id === toEntityId) {
-					return { ...acc, cashReserve: acc.cashReserve + amount };
-				}
-				return acc;
-			}),
-		);
+		// No manual cash adjustment: every treasury is derived, so the transfer
+		// record alone moves the source and target balances.
 	};
 
 	const addSubscription = (sub: Omit<RecurringSubscription, "id">) => {
@@ -366,13 +391,15 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		);
 	};
 
-	const addBusiness = (name: string, initialCash: number, imageUrl?: string): string => {
+	const addBusiness = (name: string, imageUrl?: string): string => {
 		const newId = `acc_${Date.now()}`;
 		const newBiz: EntityAccount = {
 			id: newId,
 			name,
 			type: "business",
-			cashReserve: initialCash,
+			// Placeholder: the sync effect derives the real treasury from the
+			// entity's cash assets and monthly flows.
+			cashReserve: 0,
 			currency: "THB",
 			createdAt: new Date().toISOString().slice(0, 10),
 			imageUrl,
@@ -382,9 +409,10 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		return newId;
 	};
 
-	const updateBusiness = (id: string, name: string, cashReserve: number, imageUrl?: string) => {
+	const updateBusiness = (id: string, name: string, imageUrl?: string) => {
+		// Never writes a balance: treasuries are always derived.
 		setAccounts((prev) =>
-			prev.map((acc) => (acc.id === id ? { ...acc, name, cashReserve, imageUrl: imageUrl ?? acc.imageUrl } : acc)),
+			prev.map((acc) => (acc.id === id ? { ...acc, name, imageUrl: imageUrl ?? acc.imageUrl } : acc)),
 		);
 	};
 
@@ -428,6 +456,7 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 				lang,
 				userSession,
 				signInWithEmail,
+				signInWithGoogle,
 				signOut,
 				updateUserProfile,
 				setActiveEntityId,

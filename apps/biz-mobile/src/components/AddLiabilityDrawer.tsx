@@ -95,6 +95,22 @@ export const AddLiabilityDrawer: React.FC<{
 
 				<form id="liability-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
+						<label className="form-label">Type</label>
+						<select
+							className="form-select"
+							value={category}
+							onChange={(e) => setCategory(e.target.value as typeof category)}
+							autoFocus={!isEditMode}
+						>
+							<option value="business_loan">Business Loan</option>
+							<option value="equipment_loan">Equipment Loan</option>
+							<option value="credit_line">Credit Line Repayment</option>
+							<option value="lease">Lease / Rental Agreement</option>
+							<option value="other">Other Recurring Debt</option>
+						</select>
+					</div>
+
+					<div className="form-group">
 						<label className="form-label">Liability Name</label>
 						<input
 							className="form-input"
@@ -113,21 +129,6 @@ export const AddLiabilityDrawer: React.FC<{
 							onChange={setAmount}
 							required
 						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Type</label>
-						<select
-							className="form-select"
-							value={category}
-							onChange={(e) => setCategory(e.target.value as typeof category)}
-						>
-							<option value="business_loan">Business Loan</option>
-							<option value="equipment_loan">Equipment Loan</option>
-							<option value="credit_line">Credit Line Repayment</option>
-							<option value="lease">Lease / Rental Agreement</option>
-							<option value="other">Other Recurring Debt</option>
-						</select>
 					</div>
 
 					<div className="form-group">

@@ -5,6 +5,7 @@ import {
 	generateMonthlyLedger,
 	type EntityAccount,
 	type HardwareAsset,
+	isCashAsset,
 	type LiabilityStream,
 	type RecurringSubscription,
 	type RevenueStream,
@@ -110,7 +111,18 @@ export const CapitalView: React.FC = () => {
 		),
 	);
 
+	// Business ventures get the extra Capital tab (first). Personal accounts
+	// fall back to Income if it was left selected from a venture.
+	const activeSubTab =
+		activeCapitalSubTab === "capital" && activeAccount.type !== "business"
+			? "income"
+			: activeCapitalSubTab;
 
+	// Capital records: every transfer deployed into this venture, newest first.
+	const capitalTransfers = transfers
+		.filter((t) => t.toEntityId === activeAccount.id)
+		.sort((a, b) => b.date.localeCompare(a.date));
+	const totalCapitalIn = round2(capitalTransfers.reduce((acc, t) => acc + t.amount, 0));
 
 	return (
 		<div className="capital-page-layout">
@@ -178,20 +190,27 @@ export const CapitalView: React.FC = () => {
 				<>
 
 
-					{/* Detail Mode Switcher */}
+					{/* Detail Mode Switcher — ventures get Capital as the first tab */}
 					<div className="sub-tab-switcher">
-						{(
-							[
-								["income", "Income"],
-								["expense", "Expense"],
-								["assets", "Assets"],
-								["liability", "Liability"],
-							] as const
+						{(activeAccount.type === "business"
+							? ([
+									["capital", "Capital"],
+									["income", "Income"],
+									["expense", "Expense"],
+									["assets", "Assets"],
+									["liability", "Liability"],
+								] as const)
+							: ([
+									["income", "Income"],
+									["expense", "Expense"],
+									["assets", "Assets"],
+									["liability", "Liability"],
+								] as const)
 						).map(([id, label]) => (
 							<button
 								key={id}
 								type="button"
-								className={`sub-tab-btn ${activeCapitalSubTab === id ? "active" : ""}`}
+								className={`sub-tab-btn ${activeSubTab === id ? "active" : ""}`}
 								onClick={() => setActiveCapitalSubTab(id)}
 							>
 								{label}
@@ -199,8 +218,48 @@ export const CapitalView: React.FC = () => {
 						))}
 					</div>
 
+					{/* Detail — Capital (business ventures only) */}
+					{activeSubTab === "capital" && (
+						<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+							<div className="section-header">
+								<div>
+									<span className="section-title">Capital</span>
+									<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
+										Total capital in: ฿{formatMoney(totalCapitalIn)}
+									</div>
+								</div>
+							</div>
+
+							{capitalTransfers.length === 0 ? (
+								<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
+									No capital recorded for this business yet.
+								</div>
+							) : (
+								<div className="item-list">
+									{capitalTransfers.map((t) => (
+										<div key={t.id} className="list-item-card">
+											<div className="item-thumb-wrapper">
+												<div className="item-thumb-fallback">CI</div>
+											</div>
+											<div className="item-info">
+												<span className="item-name">{t.note || "Capital inflow"}</span>
+												<span className="item-sub">Capital inflow • {t.date}</span>
+											</div>
+											<div className="item-amount-col">
+												<span className="item-amount positive">+฿{formatMoney(t.amount)}</span>
+												<span className="item-badge" style={{ backgroundColor: "rgba(207, 69, 0, 0.08)", color: "var(--signal-orange)" }}>
+													CAPITAL
+												</span>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					)}
+
 					{/* Detail — Income */}
-					{activeCapitalSubTab === "income" && (
+					{activeSubTab === "income" && (
 						<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
 							<div className="section-header">
 								<div>
@@ -247,12 +306,7 @@ export const CapitalView: React.FC = () => {
 												)}
 											</div>
 											<div className="item-info">
-												<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-													<span className="item-name">{rev.name}</span>
-													<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.05)", color: "var(--slate-gray)" }}>
-														Tap to Edit
-													</span>
-												</div>
+												<span className="item-name">{rev.name}</span>
 												<span className="item-sub">
 													{rev.source.replace(/_/g, " ")} • {rev.frequency}
 												</span>
@@ -273,7 +327,7 @@ export const CapitalView: React.FC = () => {
 					)}
 
 					{/* Detail — Expense */}
-					{activeCapitalSubTab === "expense" && (
+					{activeSubTab === "expense" && (
 						<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
 							<div className="section-header">
 								<div>
@@ -320,12 +374,7 @@ export const CapitalView: React.FC = () => {
 												)}
 											</div>
 											<div className="item-info">
-												<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-													<span className="item-name">{sub.name}</span>
-													<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.05)", color: "var(--slate-gray)" }}>
-														Tap to Edit
-													</span>
-												</div>
+												<span className="item-name">{sub.name}</span>
 												<span className="item-sub">
 													Billed {sub.cycle} • Due day {sub.nextRenewalDate?.slice(8) || "01"} • {sub.category}
 												</span>
@@ -346,11 +395,11 @@ export const CapitalView: React.FC = () => {
 					)}
 
 					{/* Detail — Assets */}
-					{activeCapitalSubTab === "assets" && (
+					{activeSubTab === "assets" && (
 						<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
 							<div className="section-header">
 								<div>
-									<span className="section-title">Hardware & CapEx Assets</span>
+									<span className="section-title">Assets & Cash</span>
 									<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
 										Book Value: ฿{formatMoney(totalBookValue)} • Dep: -฿{formatMoney(totalDepreciation)}/mo
 									</div>
@@ -370,12 +419,13 @@ export const CapitalView: React.FC = () => {
 
 							{entityHw.length === 0 ? (
 								<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
-									No hardware or equipment registered for this entity.
+									No assets registered for this entity.
 								</div>
 							) : (
 								<div className="item-list">
 									{entityHw.map((hw) => {
 										const dep = calculateAssetDepreciation(hw, "2026-10");
+										const isCash = isCashAsset(hw);
 										const pctRemaining = hw.cost > 0 ? (dep.remainingBookValue / hw.cost) * 100 : 0;
 
 										return (
@@ -397,25 +447,28 @@ export const CapitalView: React.FC = () => {
 													)}
 												</div>
 												<div className="item-info">
-													<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-														<span className="item-name">{hw.name}</span>
-														<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.05)", color: "var(--slate-gray)" }}>
-															Tap to Edit
-														</span>
-													</div>
+													<span className="item-name">{hw.name}</span>
 													<span className="item-sub">
-														Bought {hw.purchaseDate} • Cost: ฿{formatMoney(hw.cost)}
+														{isCash
+															? `Cash • Tracked ${hw.purchaseDate}`
+															: `Bought ${hw.purchaseDate} • Cost: ฿${formatMoney(hw.cost)}`}
 													</span>
-													<div className="dep-progress-bar">
-														<div className="dep-progress-fill" style={{ width: `${pctRemaining}%` }} />
-													</div>
-													<span style={{ fontSize: "11px", color: "var(--slate-gray)" }}>
-														{dep.monthsRemaining} mos remaining • Depreciates -฿{formatMoney(dep.monthlyRate)}/mo
-													</span>
+													{!isCash && (
+														<>
+															<div className="dep-progress-bar">
+																<div className="dep-progress-fill" style={{ width: `${pctRemaining}%` }} />
+															</div>
+															<span style={{ fontSize: "11px", color: "var(--slate-gray)" }}>
+																{dep.monthsRemaining} mos remaining • Depreciates -฿{formatMoney(dep.monthlyRate)}/mo
+															</span>
+														</>
+													)}
 												</div>
 												<div className="item-amount-col">
 													<span className="item-amount">฿{formatMoney(dep.remainingBookValue)}</span>
-													<span style={{ fontSize: "11px", color: "var(--slate-gray)" }}>Book Value</span>
+													<span style={{ fontSize: "11px", color: "var(--slate-gray)" }}>
+														{isCash ? "Cash · full value" : "Book Value"}
+													</span>
 												</div>
 											</div>
 										);
@@ -426,7 +479,7 @@ export const CapitalView: React.FC = () => {
 					)}
 
 					{/* Detail — Liability */}
-					{activeCapitalSubTab === "liability" && (
+					{activeSubTab === "liability" && (
 						<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
 							<div className="section-header">
 								<div>
@@ -473,12 +526,7 @@ export const CapitalView: React.FC = () => {
 												)}
 											</div>
 											<div className="item-info">
-												<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-													<span className="item-name">{liab.name}</span>
-													<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.05)", color: "var(--slate-gray)" }}>
-														Tap to Edit
-													</span>
-												</div>
+												<span className="item-name">{liab.name}</span>
 												<span className="item-sub">
 													{liab.category.replace(/_/g, " ")}{liab.notes ? ` • ${liab.notes}` : ""}
 												</span>

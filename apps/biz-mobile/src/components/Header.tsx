@@ -111,7 +111,7 @@ export const Header: React.FC = () => {
 													</div>
 													<div className="entity-name-col">
 														<span className="entity-name">{acc.name}</span>
-														<span className="entity-type-badge">{acc.type === "business" ? "Venture" : "Personal"}</span>
+														<span className="entity-type-badge">{acc.type === "business" ? "Business" : "Personal"}</span>
 													</div>
 													<div className="entity-balance-col">
 													<span className="entity-balance">฿{formatMoney(acc.cashReserve)}</span>

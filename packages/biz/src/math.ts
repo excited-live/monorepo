@@ -32,10 +32,30 @@ export function calculateMonthlyEquivalent(amount: number, cycle: BillingCycle):
 	}
 }
 
+/**
+ * Cash & equivalents (`category: "cash"`) are assets that never depreciate:
+ * they hold their full value. A zero/absent lifespan is treated the same way.
+ */
+export function isCashAsset(asset: HardwareAsset): boolean {
+	return asset.category === "cash" || asset.lifespanMonths <= 0;
+}
+
 export function calculateAssetDepreciation(
 	asset: HardwareAsset,
 	asOfYearMonth: string = "2026-10",
 ): DepreciationCalculation {
+	if (isCashAsset(asset)) {
+		return {
+			monthlyRate: 0,
+			elapsedMonths: 0,
+			remainingMonths: 0,
+			monthsRemaining: 0,
+			remainingBookValue: round2(asset.cost),
+			isFullyDepreciated: false,
+			completionDate: "N/A",
+		};
+	}
+
 	const salvage = asset.salvageValue ?? 0;
 	const depreciableAmount = Math.max(0, asset.cost - salvage);
 	const baseMonthlyRate = depreciableAmount / asset.lifespanMonths;

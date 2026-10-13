@@ -75,6 +75,34 @@ export const authApi = {
 		return { token, user };
 	},
 
+	/**
+	 * Google sign-in for native builds: the Google Sign-In SDK (via the Tauri
+	 * plugin) returns an ID token for the web client ID, which Better Auth
+	 * verifies server-side through the `sign-in/social` idToken branch. The
+	 * bearer() plugin then issues the same session token as email sign-in.
+	 */
+	async signInWithGoogleIdToken(idToken: string): Promise<{ token: string; user: AuthUser }> {
+		const res = await fetch(`${API_ROOT}/auth/sign-in/social`, {
+			method: "POST",
+			headers: { "content-type": "application/json", Authorization: "Bearer" },
+			body: JSON.stringify({ provider: "google", idToken: { token: idToken } }),
+		});
+		if (!res.ok) {
+			throw new Error((await authErrorMessage(res)) || "Google sign-in failed");
+		}
+		const data = (await res.json().catch(() => null)) as { token?: string } | null;
+		const token = data?.token ?? res.headers.get("set-auth-token");
+		if (!token) {
+			throw new Error("Google sign-in did not return a session token");
+		}
+		setBearerToken(token);
+		const user = await authApi.me();
+		if (!user) {
+			throw new Error("Google sign-in succeeded but the session could not be resolved");
+		}
+		return { token, user };
+	},
+
 	/** Resolve the profile for the current bearer token; null when invalid/expired. */
 	async me(): Promise<AuthUser | null> {
 		if (!bearerToken) return null;

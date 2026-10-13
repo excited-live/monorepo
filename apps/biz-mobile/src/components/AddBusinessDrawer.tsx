@@ -1,4 +1,3 @@
-import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { EntityAccount } from "@excited-live/biz";
@@ -21,17 +20,14 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 	const { dismiss } = useModalBack(isOpen, onClose);
 
 	const [name, setName] = useState("");
-	const [initialCash, setInitialCash] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
 
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
-			setInitialCash(String(initialData.cashReserve));
 			setImageUrl(initialData.imageUrl || "");
 		} else {
 			setName("");
-			setInitialCash("");
 			setImageUrl("");
 		}
 	}, [initialData, isOpen]);
@@ -42,12 +38,10 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 		e.preventDefault();
 		if (!name.trim()) return;
 
-		const cash = Number(initialCash) || 0;
-
 		if (initialData) {
-			updateBusiness(initialData.id, name.trim(), cash, imageUrl || undefined);
+			updateBusiness(initialData.id, name.trim(), imageUrl || undefined);
 		} else {
-			addBusiness(name.trim(), cash, imageUrl || undefined);
+			addBusiness(name.trim(), imageUrl || undefined);
 		}
 
 		dismiss();
@@ -55,7 +49,7 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 
 	const handleDelete = () => {
 		if (!initialData) return;
-		if (confirm(`Are you sure you want to delete venture "${initialData.name}"? All associated hardware, subscriptions, and revenue will also be removed.`)) {
+		if (confirm(`Are you sure you want to delete business "${initialData.name}"? All associated hardware, subscriptions, and revenue will also be removed.`)) {
 			deleteBusiness(initialData.id);
 			dismiss();
 		}
@@ -69,7 +63,7 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 			{/* Top Bar with Title on Left, ✕ on Top-Right */}
 			<div className="modal-page-nav">
 				<span className="modal-nav-title">
-					{isEditMode ? "Edit Venture Entity" : "Add Business Venture"}
+					{isEditMode ? "Edit Business" : "Add Business"}
 				</span>
 				<button
 					type="button"
@@ -98,15 +92,9 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 						/>
 					</div>
 
-					<div className="form-group">
-						<label className="form-label">
-							{isEditMode ? "Treasury Balance (THB)" : "Initial Treasury (THB)"}
-						</label>
-						<CurrencyInput
-							placeholder="0.00"
-							value={initialCash}
-							onChange={setInitialCash}
-						/>
+					<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "-6px", lineHeight: 1.45 }}>
+						Cash is tracked as a Cash asset in the Assets tab — its treasury is
+						always the leftover: cash assets + income − expenses.
 					</div>
 
 					{/* Image Cover for Organization / Hero Background */}
@@ -122,7 +110,7 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 					disabled={!canSubmit}
 					style={{ opacity: canSubmit ? 1 : 0.4 }}
 				>
-					{isEditMode ? "Save Venture" : "Create Venture"}
+					{isEditMode ? "Save Business" : "Create Business"}
 				</button>
 
 				{isEditMode && (
@@ -131,7 +119,7 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 						className="delete-btn"
 						onClick={handleDelete}
 					>
-						Delete Venture
+						Delete Business
 					</button>
 				)}
 			</div>

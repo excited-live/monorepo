@@ -105,6 +105,8 @@ export const AddRevenueDrawer: React.FC<{
 
 	const canSubmit = name.trim().length > 0 && Number(amount) > 0;
 	const isEditMode = Boolean(initialData);
+	// A personal salary stream IS the career (title/company/payday live on the account).
+	const isCareer = isPersonal && source === "salary";
 
 	const sourceOptions = isPersonal
 		? [
@@ -124,7 +126,9 @@ export const AddRevenueDrawer: React.FC<{
 	return createPortal(
 		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
 			<div className="modal-page-nav">
-				<span className="modal-nav-title">{isEditMode ? "Edit Revenue Stream" : "Log Inflow / Revenue"}</span>
+				<span className="modal-nav-title">
+					{isCareer ? (isEditMode ? "Edit Career" : "Log Career Income") : isEditMode ? "Edit Revenue Stream" : "Log Inflow / Revenue"}
+				</span>
 				<button
 					type="button"
 					className="modal-nav-close"
@@ -139,6 +143,22 @@ export const AddRevenueDrawer: React.FC<{
 				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
 				<form id="revenue-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+					<div className="form-group">
+						<label className="form-label">Source Channel</label>
+						<select
+							className="form-select"
+							value={source}
+							onChange={(e) => setSource(e.target.value as typeof source)}
+							autoFocus={!isEditMode}
+						>
+							{sourceOptions.map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
+						</select>
+					</div>
+
 					<div className="form-group">
 						<label className="form-label">Stream / Client Name</label>
 						<input
@@ -173,23 +193,8 @@ export const AddRevenueDrawer: React.FC<{
 						</select>
 					</div>
 
-					<div className="form-group">
-						<label className="form-label">Source Channel</label>
-						<select
-							className="form-select"
-							value={source}
-							onChange={(e) => setSource(e.target.value as typeof source)}
-						>
-							{sourceOptions.map(([value, label]) => (
-								<option key={value} value={value}>
-									{label}
-								</option>
-							))}
-						</select>
-					</div>
-
-					<div style={{ display: "flex", gap: "10px" }}>
-						<div className="form-group" style={{ flex: 1 }}>
+					<div className="form-row">
+						<div className="form-group">
 							<label className="form-label">Start Month</label>
 							<input
 								className="form-input"
@@ -198,7 +203,7 @@ export const AddRevenueDrawer: React.FC<{
 								onChange={(e) => setStartMonth(e.target.value)}
 							/>
 						</div>
-						<div className="form-group" style={{ flex: 1 }}>
+						<div className="form-group">
 							<label className="form-label">End Month</label>
 							<input
 								className="form-input"

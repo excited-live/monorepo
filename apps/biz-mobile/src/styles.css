@@ -62,21 +62,13 @@
 	line-height: 1.18;
 }
 
-.signin-subtitle {
-	font-size: 14px;
-	color: var(--slate-gray);
-	margin-top: 10px;
-	max-width: 320px;
-	line-height: 1.45;
-}
-
 .signin-actions {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 	width: 100%;
 	max-width: 320px;
-	margin-top: 36px;
+	margin: 36px auto 0;
 }
 
 .signin-btn-primary {
@@ -122,6 +114,63 @@
 
 .signin-btn-guest:active {
 	background: rgba(20, 20, 19, 0.05);
+}
+
+.signin-btn-google {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: 100%;
+	height: 48px;
+	background: #ffffff;
+	color: var(--ink-black);
+	border: 1px solid rgba(20, 20, 19, 0.14);
+	border-radius: var(--radius-pill);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	-webkit-tap-highlight-color: transparent;
+}
+
+.signin-btn-google:active {
+	background: rgba(20, 20, 19, 0.04);
+}
+
+.signin-btn-primary:disabled,
+.signin-btn-google:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.signin-btn-primary:disabled:active,
+.signin-btn-google:disabled:active {
+	transform: none;
+}
+
+.signin-terms {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	font-size: 12.5px;
+	line-height: 1.4;
+	color: var(--slate-gray);
+}
+
+.signin-terms-checkbox {
+	width: 16px;
+	height: 16px;
+	margin: 1px 0 0;
+	accent-color: var(--signal-orange, #cf4500);
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.signin-terms-link {
+	color: var(--signal-orange, #cf4500);
+	font-weight: 600;
+	text-decoration: none;
 }
 
 .signin-footer {
@@ -509,10 +558,21 @@
 /* ==========================================================================
    Full-Width Hero Background & App Section (Google Pay Layout)
    ========================================================================== */
+/* Route container fills the main column so sheet layouts below can stretch to
+   the bottom of the screen (see .home-app-section / .capital-app-sheet). */
+.tab-view-container {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
 .home-page-layout {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	min-height: 0;
 	position: relative;
 }
 
@@ -521,8 +581,15 @@
 	width: calc(100% + 32px);
 	margin-left: -16px;
 	margin-right: -16px;
-	margin-top: -56px; /* Sits naturally behind the header bar, respecting safe area top */
-	height: 275px;
+	/* Reaches the screen top (behind the sticky header) so the status-bar strip
+	   is painted with the image's top-edge colour instead of the page canvas.
+	   The image itself keeps its fixed height and is bottom-aligned: it respects
+	   the safe area and its crop never changes between devices. */
+	margin-top: calc(-1 * (56px + max(0px, env(safe-area-inset-top) - 14px)));
+	height: calc(275px + max(0px, env(safe-area-inset-top)));
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
 	overflow: hidden;
 	background: #ece1d1; /* Blends seamlessly with top edge of hero image */
 	flex-shrink: 0;
@@ -530,7 +597,8 @@
 
 .home-hero-bg-image {
 	width: 100%;
-	height: 100%;
+	height: 275px; /* Fixed: never scales or shifts with the safe area */
+	flex-shrink: 0;
 	object-fit: cover;
 	object-position: center 38%;
 	display: block;
@@ -561,7 +629,12 @@
 	background: var(--lifted-cream, #fcfbfa);
 	border-top: 1px solid var(--border-subtle);
 	box-shadow: 0 -12px 32px -4px rgba(20, 20, 19, 0.08);
-	padding: 16px 16px 40px 16px;
+	/* Fills the shell's content box, then pulls its bottom edge through the
+	   shell's dock clearance (negative margin) so the sheet reaches the screen
+	   bottom; the matching bottom padding keeps the content above the dock. */
+	flex: 1;
+	padding: 16px 16px calc(40px + max(96px, calc(env(safe-area-inset-bottom) + 84px)));
+	margin-bottom: calc(-1 * max(96px, calc(env(safe-area-inset-bottom) + 84px)));
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
@@ -664,6 +737,8 @@
 	width: 100%;
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	min-height: 0;
 	position: relative;
 }
 
@@ -721,7 +796,11 @@
 	background: var(--lifted-cream, #fcfbfa);
 	border-top: 1px solid var(--border-subtle);
 	box-shadow: 0 -12px 32px -4px rgba(20, 20, 19, 0.08);
-	padding: 110px 16px 40px 16px; /* Clearance for floating hero card */
+	/* Same as the home sheet: fills the shell content box and extends through the
+	   dock clearance so the sheet reaches the screen bottom. */
+	flex: 1;
+	padding: 130px 16px calc(40px + max(96px, calc(env(safe-area-inset-bottom) + 84px))); /* Top clearance: floating hero card + pager */
+	margin-bottom: calc(-1 * max(96px, calc(env(safe-area-inset-bottom) + 84px)));
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -882,4 +961,173 @@
 
 .top-header.tone-dark:not(.scrolled) .header-account-caret {
 	color: rgba(252, 251, 250, 0.7);
+}
+
+/* ==========================================================================
+   Drawer forms & entity switcher
+   ========================================================================== */
+/* Two-column form rows shrink/wrap on small screens instead of overflowing:
+   native month inputs carry an intrinsic minimum width. */
+.form-group {
+	min-width: 0;
+}
+
+.form-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.form-row > .form-group {
+	flex: 1 1 150px;
+	min-width: 0;
+}
+
+/* Keep the entity name anchored next to its thumbnail: the name column takes
+   the free space so a wider balance never shifts it. */
+.entity-name-col {
+	flex: 1;
+}
+
+/* Home entity cards: an optional nested sub-card (current career) inside the
+   entity card; the main row keeps the thumb → name → badge layout. */
+.list-item-card.has-subcard {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 10px;
+}
+
+.entity-card-main {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	min-width: 0;
+}
+
+.career-subcard {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 10px;
+	border-radius: 16px;
+	background: rgba(207, 69, 0, 0.05);
+	border: 1px solid rgba(207, 69, 0, 0.12);
+	font-family: var(--font-family);
+	color: var(--ink-black);
+	text-align: left;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.career-subcard:active {
+	background: rgba(207, 69, 0, 0.09);
+}
+
+.career-subcard-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	width: 100%;
+}
+
+.career-subcard-image {
+	width: 44px;
+	height: 44px;
+	border-radius: 12px;
+	object-fit: cover;
+	flex-shrink: 0;
+	display: block;
+}
+
+.career-subcard-image-fallback {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(207, 69, 0, 0.1);
+	color: var(--signal-orange, #cf4500);
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.career-subcard-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+
+.career-subcard-eyebrow {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--signal-orange, #cf4500);
+}
+
+.career-subcard-payday {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--slate-gray);
+	white-space: nowrap;
+}
+
+.career-subcard-title {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--ink-black);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.career-subcard-company {
+	font-size: 12px;
+	color: var(--slate-gray);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.career-subcard-income {
+	font-size: 12px;
+	font-weight: 700;
+	color: #059669;
+}
+
+/* Hero eyebrow column: label plus the "( ) = end of month value" legend */
+.hero-eyebrow-col {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 0;
+}
+
+.hero-eom-hint {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--hero-muted);
+	white-space: nowrap;
+}
+
+/* "current number (end of month …)" annotations for the big balances */
+.hero-balance-eom {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0;
+	color: var(--hero-muted);
+	margin-left: 6px;
+}
+
+.home-hero-eom {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--slate-gray);
+	margin-left: 6px;
 }

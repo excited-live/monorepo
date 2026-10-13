@@ -1,8 +1,10 @@
 import React from "react";
 import {
 	calculateAssetDepreciation,
+	calculateDerivedTreasury,
 	calculateMonthlyEquivalent,
 	type EntityAccount,
+	isCashAsset,
 	round2,
 } from "@excited-live/biz";
 import { TuneIcon, UserIcon } from "@excited-live/design-system";
@@ -23,21 +25,38 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	onPersonalSettings,
 	onTap,
 }) => {
-	const { revenues, subscriptions, liabilities, hardware } = useBiz();
+	const { revenues, subscriptions, liabilities, hardware, transfers } = useBiz();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-	const bookValue = round2(
-		hardware
-			.filter((h) => h.entityId === account.id)
-			.reduce(
-				(acc, h) => acc + calculateAssetDepreciation(h, "2026-10").remainingBookValue,
-				0,
-			),
+	// The derived treasury already contains the entity's cash assets, so the
+	// liquid figure is just the treasury; only depreciating gear is added on top.
+	const entityAssets = hardware.filter((h) => h.entityId === account.id);
+	const cashAssetsValue = round2(
+		entityAssets.filter((h) => isCashAsset(h)).reduce((acc, h) => acc + h.cost, 0),
 	);
-
-	const totalWealth = round2(account.cashReserve + bookValue);
-	const totalCapital = totalWealth;
-	const liquidPct = totalCapital > 0 ? Math.round((account.cashReserve / totalCapital) * 100) : 0;
+	const gearAssets = entityAssets.filter((h) => !isCashAsset(h));
+	const bookValue = round2(
+		gearAssets.reduce(
+			(acc, h) => acc + calculateAssetDepreciation(h, "2026-10").remainingBookValue,
+			0,
+		),
+	);
+	const totalAssetsValue = round2(bookValue + cashAssetsValue);
+	// cashReserve is cash on hand today; the month's income/expenses on top of
+	// it give the end-of-month position (shown alongside so mid-month checks
+	// don't look like a mismatch).
+	const currentLiquid = account.cashReserve;
+	const eomLiquid = calculateDerivedTreasury({
+		account,
+		subscriptions,
+		revenues,
+		liabilities,
+		hardware,
+		transfers,
+	});
+	const currentWealth = round2(currentLiquid + bookValue);
+	const eomWealth = round2(eomLiquid + bookValue);
+	const liquidPct = currentWealth > 0 ? Math.round((currentLiquid / currentWealth) * 100) : 0;
 	const gearPct = 100 - liquidPct;
 
 	const entityRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
@@ -73,7 +92,10 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	return (
 		<HeroShell account={account} variant="capital" onClick={onTap}>
 			<div className="hero-top-row">
-				<div className="hero-eyebrow">Cash & Liquidity</div>
+				<div className="hero-eyebrow-col">
+					<div className="hero-eyebrow">{account.type === "personal" ? "Wealth" : "Book Value"}</div>
+					<div className="hero-eom-hint">( ) = end of month value</div>
+				</div>
 				<div className="hero-top-right">
 					<span
 						className="hero-flip-hint"
@@ -122,8 +144,11 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 			</div>
 
 			<div className="hero-balance">
-				฿ {formatMoney(totalWealth)}
-				<span className="hero-balance-sub">Liquid ฿ {formatMoney(account.cashReserve)}</span>
+				฿ {formatMoney(currentWealth)}
+				<span className="hero-balance-eom">(฿{formatMoney(eomWealth)})</span>
+				<span className="hero-balance-sub">
+					Liquid ฿ {formatMoney(currentLiquid)} (฿{formatMoney(eomLiquid)})
+				</span>
 			</div>
 
 
@@ -161,7 +186,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 			</div>
 			<div className="hero-meta-row secondary">
 				<span className="hero-meta-label">Total Asset</span>
-				<span className="hero-meta-value">฿ {formatMoney(bookValue)}</span>
+				<span className="hero-meta-value">฿ {formatMoney(totalAssetsValue)}</span>
 			</div>
 			<div className="hero-meta-row secondary">
 				<span className="hero-meta-label">Liability</span>

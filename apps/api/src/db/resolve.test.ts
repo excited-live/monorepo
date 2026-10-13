@@ -29,7 +29,7 @@ describe("database resolution", () => {
 		const db = await resolveDb({ DB: stub.binding }, { EXCITED_API_DB_PATH: "not-used.sqlite" })
 
 		expect(db.mode).toBe("d1")
-		expect(db.migrations).toEqual(["0001_init.sql"])
+		expect(db.migrations).toEqual(["0001_init.sql", "0003_auth.sql"])
 		// The migrator goes through prepare/bind/run, not a local file handle.
 		expect(stub.calls.some((call) => call.startsWith("prepare INSERT INTO d1_migrations"))).toBe(true)
 

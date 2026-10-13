@@ -1,4 +1,4 @@
-# Excited.Biz Mobile — PRD, Mobile Architecture & UI Specification
+# excited.live Mobile — PRD, Mobile Architecture & UI Specification
 
 > **Status**: Approved for Day One Full Mobile App (updated 2026-10-13)  
 > **Target Package**: [`apps/biz-mobile`](file:///home/prame/Project/excited.live/apps/biz-mobile)  
@@ -10,13 +10,13 @@
 
 ## 1. Executive Summary & Product Vision
 
-**Excited.Biz Mobile** is a luxury, privacy-first mobile spend, revenue, and asset depreciation companion designed for solopreneurs, side-hustlers, and solo operators managing both personal finances and multiple ventures.
+**excited.live Mobile** is a luxury, privacy-first mobile spend, revenue, and asset depreciation companion designed for solopreneurs, side-hustlers, and solo operators managing both personal finances and multiple ventures.
 
 ### The Problem
 Traditional accounting software (FlowAccount, ERPNext, QuickBooks) is bloated with compliance overhead (tax invoices, VAT filing, WHT certificates, general ledgers) that personal creators and solo founders do not need for day-to-day burn awareness. On the other hand, Google Sheets is clunky on mobile, brittle to maintain, and requires constant manual formula adjustments.
 
 ### The Solution: Multi-Entity Solopreneur Engine
-Instead of starting with a web app and migrating later, **Excited.Biz launches directly as a native mobile application from Day One** (`apps/biz-mobile` powered by Tauri v2 and React 19). It models 3 distinct solopreneur account types:
+Instead of starting with a web app and migrating later, **excited.live launches directly as a native mobile application from Day One** (`apps/biz-mobile` powered by Tauri v2 and React 19). It models 3 distinct solopreneur account types:
 1. **Personal**: Core living cash reserve, subscriptions, hardware register, and burn runway.
 2. **Fulltime Job**: Salary/cashflow stream with an **"UNTIL"** countdown metric (until next payday, or until solopreneur runway target) instead of a burn runway.
 3. **Business (Multi-Business Support)**: Multiple independent side-hustles/ventures (e.g. `FromSukong`), each with its own cash reserve, revenue stream (fixed or Stripe-ready), SaaS subscriptions, hardware register, and independent runway.
@@ -128,7 +128,7 @@ graph TD
 **Description:** As an independent creator, I want to separate my personal living expenses, my day job salary, and multiple businesses/side-hustles without having to manage separate apps.  
 **Acceptance Criteria:**
 - [ ] Support 3 distinct entity types: `personal`, `fulltime_job`, and `business`.
-- [ ] Users can create multiple business accounts (e.g. `FromSukong`, `Excited.Biz`).
+- [ ] Users can create multiple business accounts (e.g. `FromSukong`, `excited.live`).
 - [ ] Top bar switcher switches between entities seamlessly with an option to `+ Add Business`.
 
 ### US-BIZ-005: Capital Transfer / Seed Injections
@@ -156,7 +156,7 @@ graph TD
 - [ ] Python independent validation script [`scripts/recompute-biz.py`](file:///home/prame/Project/excited.live/scripts/recompute-biz.py) calculates identical outputs to 2 decimal places.
 
 ### US-BIZ-008: First-Run Onboarding Journey
-**Description:** As a new user opening Excited.Biz for the first time, I want to replace the example data with my own in under three minutes so the hero card shows my cash and my runway, not someone else's numbers. Flows: F-50 to F-55 in [prd-flows.md](prd-flows.md).  
+**Description:** As a new user opening excited.live for the first time, I want to replace the example data with my own in under three minutes so the hero card shows my cash and my runway, not someone else's numbers. Flows: F-50 to F-55 in [prd-flows.md](prd-flows.md).  
 **Acceptance Criteria:**
 - [ ] Fresh install opens with labeled example data and a start affordance; the example state is never presented as the user's own data.
 - [ ] One screen picks the first entity: personal, fulltime job, or business, with starting cash (or salary + payday for fulltime job).

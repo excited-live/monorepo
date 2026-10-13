@@ -51,6 +51,8 @@ export {
 	WalletIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
+	TuneIcon,
+	UserIcon,
 	LedgerIcon,
 	PresentationIcon,
 	SettingsIcon,

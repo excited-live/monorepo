@@ -42,10 +42,18 @@ export function generateMonthlyLedger(params: {
 		});
 	}
 
-	// Inflows from revenue streams
-	const activeRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
+	// Inflows from revenue streams (respects start/end month window)
+	const activeRevenues = revenues.filter(
+		(r) =>
+			r.entityId === account.id &&
+			r.active &&
+			(!r.startMonth || yearMonth >= r.startMonth) &&
+			(!r.endMonth || yearMonth <= r.endMonth),
+	);
 	for (const r of activeRevenues) {
-		totalInflow += r.amount;
+		const monthlyAmount =
+			r.frequency === "yearly" ? round2(r.amount / 12) : r.amount;
+		totalInflow += monthlyAmount;
 		actions.push({
 			id: `action_rev_${r.id}`,
 			entityId: account.id,
@@ -54,12 +62,12 @@ export function generateMonthlyLedger(params: {
 			type: "inflow",
 			category: "revenue",
 			reference: r.id,
-			amount: r.amount,
+			amount: monthlyAmount,
 		});
 	}
 
-	// Inflows from fulltime job salary
-	if (account.type === "fulltime_job" && account.salary) {
+	// Inflows from career salary (personal or business payroll)
+	if (account.salary) {
 		const payday = account.paydayDayOfMonth ?? 28;
 		const dateStr = `${yearMonth}-${String(payday).padStart(2, "0")}`;
 		totalInflow += account.salary;
@@ -144,7 +152,7 @@ export function generateMonthlyLedger(params: {
 
 	const startingTreasury = account.cashReserve;
 	const endingTreasury = round2(startingTreasury + netCashFlow);
-	const runwayMonths = account.type === "fulltime_job" ? null : calculateRunway(endingTreasury, netBurn);
+	const runwayMonths = calculateRunway(endingTreasury, netBurn);
 	const isDefaultAlive = netBurn <= 0;
 
 	const summary: MonthlySummary = {

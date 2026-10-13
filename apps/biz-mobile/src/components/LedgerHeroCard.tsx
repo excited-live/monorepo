@@ -79,7 +79,8 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 	const max = rawMax + span * 0.1;
 
 	const W = 300;
-	const x = (i: number) => (i / (offsets.length - 1)) * W;
+	const PLOT_LEFT = 44;
+	const x = (i: number) => PLOT_LEFT + (i / (offsets.length - 1)) * (W - PLOT_LEFT - 4);
 	const y = (value: number) => 8 + (1 - (value - min) / (max - min)) * (CHART_H - 16);
 
 	const nowIndex = PAST_MONTHS;
@@ -100,9 +101,15 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 
 	return (
 		<HeroShell>
-			<div className="hero-eyebrow">Runway Projection · {account.name}</div>
+			<div className="hero-eyebrow">Cashflow Projection · {account.name}</div>
 
 			<div className="hero-chart">
+				<span className="hero-chart-ylabel" style={{ top: `${(y(max) / CHART_H) * 100}%` }}>
+					฿{formatMoney(Math.round(max / 100) / 10, 1)}k
+				</span>
+				<span className="hero-chart-ylabel" style={{ top: `${(y(min) / CHART_H) * 100}%` }}>
+					฿{formatMoney(Math.round(min / 100) / 10, 1)}k
+				</span>
 				<svg viewBox={`0 0 ${W} ${CHART_H}`} preserveAspectRatio="none" aria-hidden="true">
 					<line
 						x1={0}

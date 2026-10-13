@@ -297,7 +297,7 @@ describe("api/v1/biz", () => {
 			{ headers: { "x-user-id": "user-biz-2" } },
 		)
 		const subs = await getRes.json()
-		expect(subs.some((s: any) => s.id === "sub_test_1")).toBe(true)
+		expect(subs.some((s: { id: string }) => s.id === "sub_test_1")).toBe(true)
 
 		const ledgerRes = await app.request(
 			"/api/v1/biz/ledger/2026-10?entityId=acc_personal",

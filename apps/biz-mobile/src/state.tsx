@@ -13,6 +13,7 @@ import {
 	SEED_SUBSCRIPTIONS,
 	SEED_TRANSFERS,
 } from "@excited-live/biz";
+import { authApi, setBearerToken } from "./lib/api-client";
 
 export interface UserSession {
 	id: string;
@@ -32,16 +33,16 @@ interface BizContextType {
 	liabilities: LiabilityStream[];
 	transfers: CapitalTransfer[];
 	activeEntityId: string;
-	activeTab: "home" | "capital" | "ledger" | "settings";
+	activeTab: "home" | "capital" | "settings";
 	activeCapitalSubTab: "income" | "expense" | "assets" | "liability";
 	selectedMonth: string; // "YYYY-MM"
 	lang: "en" | "th";
 	userSession: UserSession;
-	loginWithWorkOS: () => Promise<void>;
-	signOut: () => void;
+	signInWithEmail: (email: string, password: string) => Promise<void>;
+	signOut: () => Promise<void>;
 	updateUserProfile: (profile: Partial<UserSession>) => void;
 	setActiveEntityId: (id: string) => void;
-	setActiveTab: (tab: "home" | "capital" | "ledger" | "settings") => void;
+	setActiveTab: (tab: "home" | "capital" | "settings") => void;
 	setActiveCapitalSubTab: (tab: "income" | "expense" | "assets" | "liability") => void;
 	setSelectedMonth: (month: string) => void;
 	setLang: (lang: "en" | "th") => void;
@@ -58,6 +59,7 @@ interface BizContextType {
 	addLiability: (liab: Omit<LiabilityStream, "id">) => void;
 	updateLiability: (liab: LiabilityStream) => void;
 	deleteLiability: (id: string) => void;
+	setCareerIncome: (entityId: string, salary: number, paydayDayOfMonth: number) => void;
 	updateCashReserve: (entityId: string, newAmount: number) => void;
 	addBusiness: (name: string, initialCash: number, imageUrl?: string) => string;
 	updateBusiness: (id: string, name: string, cashReserve: number, imageUrl?: string) => void;
@@ -65,7 +67,7 @@ interface BizContextType {
 	resetToBaseline: () => void;
 }
 
-const STORAGE_KEY = "excited_biz_mobile_data_v1";
+const STORAGE_KEY = "excited_live_mobile_data_v1";
 
 const DEFAULT_SESSION: UserSession = {
 	id: "usr_guest",
@@ -114,34 +116,31 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 	});
 
 	const [activeEntityId, setActiveEntityId] = useState<string>("acc_personal");
-	const [activeTab, setActiveTab] = useState<"home" | "capital" | "ledger" | "settings">("home");
+	const [activeTab, setActiveTab] = useState<"home" | "capital" | "settings">("home");
 	const [activeCapitalSubTab, setActiveCapitalSubTab] = useState<"income" | "expense" | "assets" | "liability">("income");
 	const [selectedMonth, setSelectedMonth] = useState<string>("2026-10");
 	const [lang, setLang] = useState<"en" | "th">("en");
 
-	// Intercept deep link callback tokens on launch
+	// Restore a saved bearer session: validate the token against the API and
+	// sign out locally when it is stale (expired or revoked server-side).
 	useEffect(() => {
-		const urlParams = new URLSearchParams(window.location.search);
-		const token = urlParams.get("token");
-		const userId = urlParams.get("userId");
-		const email = urlParams.get("email");
-		const name = urlParams.get("name");
-
-		if (token && userId) {
-			const cleanName = name || email?.split("@")[0] || "Founder";
-			const session: UserSession = {
-				id: userId,
-				email: email || "founder@excited.live",
-				name: cleanName,
-				orgName: `${cleanName}'s Studio`,
-				isAuthenticated: true,
-				token,
-			};
-			setUserSession(session);
-
-			// Clean up query string from URL
-			window.history.replaceState({}, document.title, window.location.pathname);
-		}
+		const token = userSession.token;
+		if (!userSession.isAuthenticated || !token) return;
+		setBearerToken(token);
+		authApi
+			.me()
+			.then((user) => {
+				if (!user) {
+					setUserSession(DEFAULT_SESSION);
+					setBearerToken(null);
+					return;
+				}
+				setUserSession((prev) => ({ ...prev, id: user.id, email: user.email, name: user.name }));
+			})
+			.catch(() => {
+				// Network unavailable: keep the locally cached session and retry next launch.
+			});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	// Persist changes to localStorage
@@ -173,25 +172,25 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		localStorage.setItem(`${STORAGE_KEY}_session`, JSON.stringify(userSession));
 	}, [userSession]);
 
-	const loginWithWorkOS = async () => {
-		// Production WorkOS hosted authorization URL
-		const workosUrl =
-			"https://api.workos.com/user_management/authorize?client_id=client_01M1SKN5FJGT7094PS8BS2ECCB&provider=authkit&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fauth%2Fcallback&response_type=code";
-
-		// 1. If on native Android device, launch in external system browser
-		const nativeBridge = (window as any).AndroidNative;
-		if (nativeBridge && typeof nativeBridge.openBrowser === "function") {
-			nativeBridge.openBrowser(workosUrl);
-			return;
-		}
-
-		// 2. Fallback to window navigation
-		if (typeof window !== "undefined") {
-			window.open(workosUrl, "_blank") || (window.location.href = workosUrl);
-		}
+	// In-app sign-in: email + password against the Better Auth tokens mount.
+	// No system browser and no deep link — the session token comes back in the
+	// sign-in response and only the token (never PII) is persisted.
+	const signInWithEmail = async (email: string, password: string) => {
+		const { token, user } = await authApi.signIn(email, password);
+		setBearerToken(token);
+		setUserSession({
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			orgName: user.name,
+			isAuthenticated: true,
+			token,
+		});
 	};
 
-	const signOut = () => {
+	const signOut = async () => {
+		await authApi.signOut();
+		setBearerToken(null);
 		setUserSession(DEFAULT_SESSION);
 	};
 
@@ -294,6 +293,12 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		setLiabilities((prev) => prev.filter((l) => l.id !== id));
 	};
 
+	const setCareerIncome = (entityId: string, salary: number, paydayDayOfMonth: number) => {
+		setAccounts((prev) =>
+			prev.map((acc) => (acc.id === entityId ? { ...acc, salary, paydayDayOfMonth } : acc)),
+		);
+	};
+
 	const updateCashReserve = (entityId: string, newAmount: number) => {
 		setAccounts((prev) =>
 			prev.map((acc) => (acc.id === entityId ? { ...acc, cashReserve: newAmount } : acc)),
@@ -361,7 +366,7 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 				selectedMonth,
 				lang,
 				userSession,
-				loginWithWorkOS,
+				signInWithEmail,
 				signOut,
 				updateUserProfile,
 				setActiveEntityId,
@@ -382,6 +387,7 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 				addLiability,
 				updateLiability,
 				deleteLiability,
+				setCareerIncome,
 				updateCashReserve,
 				addBusiness,
 				updateBusiness,

@@ -7,10 +7,10 @@ plugins {
 }
 
 android {
-    namespace = "live.excited.biz"
+    namespace = "live.excited.mobile"
     compileSdk = 36
     defaultConfig {
-        applicationId = "live.excited.biz"
+        applicationId = "live.excited.mobile"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

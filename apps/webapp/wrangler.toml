@@ -2,3 +2,14 @@ name = "excited-live"
 compatibility_date = "2026-08-30"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist/client"
+
+# D1 binding for Better Auth sessions (the cookies mount of packages/auth).
+# Must point at the SAME database as apps/api/wrangler.toml so user/session
+# rows are shared between the webapp (cookies) and api (tokens) mounts.
+# Provisioning (future task, needs Prame's go):
+#   npx wrangler d1 create excited-live-api
+#   -> paste the printed database_id in BOTH wrangler.toml files
+[[d1_databases]]
+binding = "DB"
+database_name = "excited-live-api"
+database_id = "REPLACE_WITH_DATABASE_ID"

@@ -4,15 +4,23 @@ import {
 	type EntityAccount,
 	round2,
 } from "@excited-live/biz";
+import { TuneIcon, UserIcon } from "@excited-live/design-system";
 import { HeroShell } from "./HeroShell";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
 
 interface CapitalHeroCardProps {
 	account: EntityAccount;
+	onConfigure?: () => void;
+	onPersonalSettings?: () => void;
 }
 
-export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({ account }) => {
+export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
+	account,
+	onConfigure,
+	onPersonalSettings,
+}) => {
+	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 	const { transfers, hardware } = useBiz();
 
 	const incomingTotal = round2(
@@ -41,7 +49,43 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({ account }) => 
 
 	return (
 		<HeroShell account={account} variant="capital">
-			<div className="hero-eyebrow">Cash & Liquidity</div>
+			<div className="hero-top-row">
+				<div className="hero-eyebrow">Cash & Liquidity</div>
+				<span className="hero-flip-hint">Tap to flip</span>
+				{account.type === "business" ? (
+					<button
+						type="button"
+						className="hero-config-btn"
+						aria-label="Configure this business"
+						title="Update business details"
+						onPointerDown={stop}
+						onPointerMove={stop}
+						onPointerUp={stop}
+						onClick={(e) => {
+							e.stopPropagation();
+							onConfigure?.();
+						}}
+					>
+						<TuneIcon className="hero-config-icon" aria-hidden="true" />
+					</button>
+				) : (
+					<button
+						type="button"
+						className="hero-config-btn"
+						aria-label="Personal settings"
+						title="Personal settings"
+						onPointerDown={stop}
+						onPointerMove={stop}
+						onPointerUp={stop}
+						onClick={(e) => {
+							e.stopPropagation();
+							onPersonalSettings?.();
+						}}
+					>
+						<UserIcon className="hero-config-icon" aria-hidden="true" />
+					</button>
+				)}
+			</div>
 			<div className="hero-balance">
 				฿ {formatMoney(account.cashReserve)}
 			</div>

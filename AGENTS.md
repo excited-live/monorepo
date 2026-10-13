@@ -30,7 +30,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
   - `simulation_engine` — only when touching `packages/sim`, plan math, or plan-service.
   - `i18n_platform` — only when touching locale resolution, dictionaries, or en/th strings.
   - `landing_seo` — only when touching `apps/landingpage`, its meta/SEO layer, or its content pipeline.
-  - `auth_workos` — only when touching authentication, the middleware chain, or auth routes.
+  - `auth_better` — only when touching authentication, the middleware chain, or auth routes.
 
 ## Setup & commands
 

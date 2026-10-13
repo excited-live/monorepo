@@ -3,11 +3,13 @@ import type { EntityAccount } from "@excited-live/biz";
 import { ChevronLeftIcon, ChevronRightIcon } from "@excited-live/design-system";
 
 const SWIPE_THRESHOLD = 48;
+const TAP_THRESHOLD = 8;
 
 interface HeroCarouselProps {
 	accounts: EntityAccount[];
 	activeEntityId: string;
 	onSelectEntity: (entityId: string) => void;
+	onTap?: () => void;
 	renderCard: (account: EntityAccount) => React.ReactNode;
 }
 
@@ -15,6 +17,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 	accounts,
 	activeEntityId,
 	onSelectEntity,
+	onTap,
 	renderCard,
 }) => {
 	const [dragOffset, setDragOffset] = useState(0);
@@ -56,7 +59,9 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 		dragOffsetRef.current = 0;
 		setIsDragging(false);
 		setDragOffset(0);
-		if (Math.abs(delta) > SWIPE_THRESHOLD) {
+		if (Math.abs(delta) < TAP_THRESHOLD) {
+			onTap?.();
+		} else if (Math.abs(delta) > SWIPE_THRESHOLD) {
 			goToAccount(activeIndex + (delta < 0 ? 1 : -1));
 		}
 	};

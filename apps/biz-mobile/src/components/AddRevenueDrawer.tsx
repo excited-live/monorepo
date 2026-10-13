@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { RevenueStream } from "@excited-live/biz";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
-
-const REVENUE_IMAGE_PRESETS = [
-	{ label: "Client Retainer", url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=200&q=80" },
-	{ label: "Product Sales", url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=200&q=80" },
-	{ label: "Consulting", url: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=200&q=80" },
-];
 
 export const AddRevenueDrawer: React.FC<{
 	isOpen: boolean;
@@ -17,13 +11,19 @@ export const AddRevenueDrawer: React.FC<{
 }> = ({ isOpen, onClose, initialData }) => {
 	const { activeEntityId, addRevenue, updateRevenue, deleteRevenue, accounts } = useBiz();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
+	const isPersonal = activeAccount.type === "personal";
 
 	const { dismiss } = useModalBack(isOpen, onClose);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const [name, setName] = useState("");
 	const [amount, setAmount] = useState("");
-	const [frequency, setFrequency] = useState<"monthly" | "one_time">("monthly");
-	const [source, setSource] = useState<"stripe" | "bank_transfer" | "cash">("stripe");
+	const [frequency, setFrequency] = useState<"monthly" | "yearly" | "one_time">("monthly");
+	const [source, setSource] = useState<"stripe" | "bank_transfer" | "cash" | "freelance" | "other">(
+		isPersonal ? "freelance" : "stripe",
+	);
+	const [startMonth, setStartMonth] = useState("");
+	const [endMonth, setEndMonth] = useState("");
 	const [notes, setNotes] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
 
@@ -33,17 +33,21 @@ export const AddRevenueDrawer: React.FC<{
 			setAmount(String(initialData.amount));
 			setFrequency(initialData.frequency);
 			setSource(initialData.source);
+			setStartMonth(initialData.startMonth || "");
+			setEndMonth(initialData.endMonth || "");
 			setNotes(initialData.notes || "");
 			setImageUrl(initialData.imageUrl || "");
 		} else {
 			setName("");
 			setAmount("");
 			setFrequency("monthly");
-			setSource("stripe");
+			setSource(isPersonal ? "freelance" : "stripe");
+			setStartMonth("");
+			setEndMonth("");
 			setNotes("");
 			setImageUrl("");
 		}
-	}, [initialData, isOpen]);
+	}, [initialData, isOpen, isPersonal]);
 
 	if (!isOpen) return null;
 
@@ -58,6 +62,7 @@ export const AddRevenueDrawer: React.FC<{
 			};
 			reader.readAsDataURL(file);
 		}
+		e.target.value = "";
 	};
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -65,26 +70,24 @@ export const AddRevenueDrawer: React.FC<{
 		const num = Number(amount);
 		if (!name.trim() || !num) return;
 
+		const payload = {
+			name: name.trim(),
+			amount: num,
+			frequency,
+			source,
+			startMonth: startMonth || undefined,
+			endMonth: endMonth || undefined,
+			notes: notes.trim() || undefined,
+			imageUrl: imageUrl || undefined,
+		};
+
 		if (initialData) {
-			updateRevenue({
-				...initialData,
-				name: name.trim(),
-				amount: num,
-				frequency,
-				source,
-				notes: notes.trim() || undefined,
-				imageUrl: imageUrl || undefined,
-			});
+			updateRevenue({ ...initialData, ...payload });
 		} else {
 			addRevenue({
 				entityId: activeEntityId,
-				name: name.trim(),
-				amount: num,
-				frequency,
-				source,
+				...payload,
 				active: true,
-				notes: notes.trim() || undefined,
-				imageUrl: imageUrl || undefined,
 			});
 		}
 
@@ -102,9 +105,22 @@ export const AddRevenueDrawer: React.FC<{
 	const canSubmit = name.trim().length > 0 && Number(amount) > 0;
 	const isEditMode = Boolean(initialData);
 
+	const sourceOptions = isPersonal
+		? [
+				["freelance", "Freelance / Side Income"],
+				["bank_transfer", "Bank Transfer"],
+				["cash", "Cash"],
+				["other", "Other"],
+			]
+		: [
+				["stripe", "Stripe Payments"],
+				["bank_transfer", "B2B Direct Bank Invoice"],
+				["cash", "Manual Cash"],
+				["other", "Other"],
+			];
+
 	return createPortal(
 		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-			{/* Top Bar with Title on Left, ✕ on Top-Right */}
 			<div className="modal-page-nav">
 				<span className="modal-nav-title">{isEditMode ? "Edit Revenue Stream" : "Log Inflow / Revenue"}</span>
 				<button
@@ -117,24 +133,44 @@ export const AddRevenueDrawer: React.FC<{
 				</button>
 			</div>
 
-			{/* Full-Screen Scrollable Content */}
 			<div className="modal-page-content">
-				{/* Image Header Preview if set */}
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept="image/*"
+					onChange={handleFileUpload}
+					style={{ display: "none" }}
+				/>
+
 				{imageUrl ? (
 					<div className="modal-image-preview-container">
 						<img src={imageUrl} alt="Revenue Icon" className="modal-image-preview" />
-						<button
-							type="button"
-							className="modal-image-remove-btn"
-							onClick={() => setImageUrl("")}
-						>
-							Remove Image
-						</button>
+						<div className="modal-image-actions">
+							<button
+								type="button"
+								className="modal-image-btn primary"
+								onClick={() => fileInputRef.current?.click()}
+							>
+								Change Image
+							</button>
+							<button
+								type="button"
+								className="modal-image-btn"
+								onClick={() => setImageUrl("")}
+							>
+								Remove
+							</button>
+						</div>
 					</div>
 				) : (
-					<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-						Income stream credited directly to <strong>{activeAccount.name}</strong>.
-					</div>
+					<button
+						type="button"
+						className="modal-image-empty"
+						onClick={() => fileInputRef.current?.click()}
+					>
+						<span className="modal-image-empty-icon">＋</span>
+						<span>Add Image</span>
+					</button>
 				)}
 
 				<form id="revenue-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -142,11 +178,10 @@ export const AddRevenueDrawer: React.FC<{
 						<label className="form-label">Stream / Client Name</label>
 						<input
 							className="form-input"
-							placeholder="e.g. Acme Corp Retainer, Stripe MRR"
+							placeholder={isPersonal ? "e.g. Freelance Project, Side Income" : "e.g. Acme Corp Retainer, Stripe MRR"}
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
-							autoFocus={!isEditMode}
 						/>
 					</div>
 
@@ -164,48 +199,15 @@ export const AddRevenueDrawer: React.FC<{
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Client Logo / Photo</label>
-						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-							<input
-								className="form-input"
-								placeholder="Image URL"
-								value={imageUrl}
-								onChange={(e) => setImageUrl(e.target.value)}
-								style={{ flex: 1 }}
-							/>
-							<label className="upload-pill-btn">
-								Upload
-								<input
-									type="file"
-									accept="image/*"
-									onChange={handleFileUpload}
-									style={{ display: "none" }}
-								/>
-							</label>
-						</div>
-						<div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-							{REVENUE_IMAGE_PRESETS.map((p) => (
-								<button
-									key={p.label}
-									type="button"
-									className="preset-chip-btn"
-									onClick={() => setImageUrl(p.url)}
-								>
-									{p.label}
-								</button>
-							))}
-						</div>
-					</div>
-
-					<div className="form-group">
 						<label className="form-label">Frequency</label>
 						<select
 							className="form-select"
 							value={frequency}
-							onChange={(e) => setFrequency(e.target.value as "monthly" | "one_time")}
+							onChange={(e) => setFrequency(e.target.value as typeof frequency)}
 						>
-							<option value="monthly">Monthly Recurring MRR</option>
-							<option value="one_time">One-Time Inflow / Deposit</option>
+							<option value="monthly">Monthly</option>
+							<option value="yearly">Yearly</option>
+							<option value="one_time">One-time</option>
 						</select>
 					</div>
 
@@ -214,19 +216,42 @@ export const AddRevenueDrawer: React.FC<{
 						<select
 							className="form-select"
 							value={source}
-							onChange={(e) => setSource(e.target.value as "stripe" | "bank_transfer" | "cash")}
+							onChange={(e) => setSource(e.target.value as typeof source)}
 						>
-							<option value="stripe">Stripe Payments</option>
-							<option value="bank_transfer">B2B Direct Bank Invoice</option>
-							<option value="cash">Manual Cash / Founder Injection</option>
+							{sourceOptions.map(([value, label]) => (
+								<option key={value} value={value}>
+									{label}
+								</option>
+							))}
 						</select>
 					</div>
 
+					<div style={{ display: "flex", gap: "10px" }}>
+						<div className="form-group" style={{ flex: 1 }}>
+							<label className="form-label">Start Month</label>
+							<input
+								className="form-input"
+								type="month"
+								value={startMonth}
+								onChange={(e) => setStartMonth(e.target.value)}
+							/>
+						</div>
+						<div className="form-group" style={{ flex: 1 }}>
+							<label className="form-label">End Month</label>
+							<input
+								className="form-input"
+								type="month"
+								value={endMonth}
+								onChange={(e) => setEndMonth(e.target.value)}
+							/>
+						</div>
+					</div>
+
 					<div className="form-group">
-						<label className="form-label">Contract / Notes (Optional)</label>
+						<label className="form-label">{isPersonal ? "Note (Optional)" : "Contract / Notes (Optional)"}</label>
 						<input
 							className="form-input"
-							placeholder="e.g. Net-30 terms, milestone 1 of 3"
+							placeholder={isPersonal ? "e.g. Monthly side income" : "e.g. Net-30 terms, milestone 1 of 3"}
 							value={notes}
 							onChange={(e) => setNotes(e.target.value)}
 						/>
@@ -234,7 +259,6 @@ export const AddRevenueDrawer: React.FC<{
 				</form>
 			</div>
 
-			{/* Sticky Bottom Action Bar */}
 			<div className="modal-sticky-footer">
 				<button
 					type="submit"

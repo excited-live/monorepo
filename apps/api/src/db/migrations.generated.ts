@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
 	},
 	{
 		name: "0002_biz_store.sql",
-		sql: `-- 0002_biz_store.sql — Excited.Biz solopreneur data store
+		sql: `-- 0002_biz_store.sql — excited.live solopreneur data store
 
 CREATE TABLE IF NOT EXISTS biz_snapshots (
 	user_id TEXT PRIMARY KEY,

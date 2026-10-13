@@ -1,4 +1,4 @@
-package live.excited.biz
+package live.excited.mobile
 
 import android.content.Intent
 import android.graphics.Color

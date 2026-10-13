@@ -15,14 +15,13 @@
 	"dependencies": {
 		"@astryxdesign/core": "catalog:",
 		"@astryxdesign/theme-neutral": "catalog:",
+		"@excited-live/auth": "workspace:*",
 		"@excited-live/design-system": "workspace:*",
 		"@excited-live/i18n": "workspace:*",
 		"@excited-live/sim": "workspace:*",
 		"@excited-live/tax": "workspace:*",
 		"@tanstack/react-router": "^1.161.0",
 		"@tanstack/react-start": "^1.161.0",
-		"@workos-inc/node": "^10.13.0",
-		"@workos/authkit-tanstack-react-start": "^0.11.0",
 		"echarts": "6.1.0",
 		"react": "catalog:",
 		"react-dom": "catalog:"

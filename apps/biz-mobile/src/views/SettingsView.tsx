@@ -12,10 +12,12 @@ export const SettingsView: React.FC = () => {
 		lang,
 		setLang,
 		userSession,
-		loginWithWorkOS,
 		signOut,
 		resetToBaseline,
 	} = useBiz();
+
+	const verifiedLabel = lang === "th" ? "ยืนยันบัญชีแล้ว" : "Account verified";
+	const localLabel = lang === "th" ? "อุปกรณ์นี้" : "Local device";
 
 	// Cloud Sync state
 	const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced">("idle");
@@ -34,7 +36,7 @@ export const SettingsView: React.FC = () => {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = `excited-biz-backup-${new Date().toISOString().slice(0, 10)}.json`;
+		a.download = `excited-live-backup-${new Date().toISOString().slice(0, 10)}.json`;
 		a.click();
 	};
 
@@ -72,7 +74,7 @@ export const SettingsView: React.FC = () => {
 				</div>
 			</div>
 
-			{/* User Profile & WorkOS Cloud Account */}
+				{/* User Profile & Cloud Account */}
 			<div className="card">
 				<div className="section-header">
 					<span className="section-title">Solopreneur Profile & Sync</span>
@@ -85,7 +87,7 @@ export const SettingsView: React.FC = () => {
 							color: userSession.isAuthenticated ? "#059669" : "var(--granite)",
 						}}
 					>
-						{userSession.isAuthenticated ? "● WorkOS Verified" : "○ Local Device"}
+						{userSession.isAuthenticated ? `● ${verifiedLabel}` : `○ ${localLabel}`}
 					</span>
 				</div>
 
@@ -129,39 +131,28 @@ export const SettingsView: React.FC = () => {
 				</div>
 
 				<div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-					{!userSession.isAuthenticated ? (
-						<button
-							type="button"
-							className="action-pill-btn primary"
-							style={{ flex: 1, justifyContent: "center" }}
-							onClick={loginWithWorkOS}
-						>
-							Sign In with WorkOS AuthKit
-						</button>
-					) : (
-						<>
-							<button
-								type="button"
-								className="action-pill-btn"
-								style={{ flex: 1.2, justifyContent: "center" }}
-								onClick={handleCloudSync}
-							>
-								{syncStatus === "syncing"
-									? "Syncing Cloud..."
-									: syncStatus === "synced"
-										? "✓ Synced with Cloud"
-										: "Sync with Cloud BFF"}
-							</button>
-							<button
-								type="button"
-								className="action-pill-btn"
-								style={{ flex: 0.8, justifyContent: "center", color: "var(--signal-orange)", borderColor: "rgba(207, 69, 0, 0.2)" }}
-								onClick={signOut}
-							>
-								Sign Out
-							</button>
-						</>
-					)}
+					{/* This view only renders inside the signed-in shell (the sign-in
+					    gate lives on the root route); always show account actions. */}
+					<button
+						type="button"
+						className="action-pill-btn"
+						style={{ flex: 1.2, justifyContent: "center" }}
+						onClick={handleCloudSync}
+					>
+						{syncStatus === "syncing"
+							? "Syncing Cloud..."
+							: syncStatus === "synced"
+								? "✓ Synced with Cloud"
+								: "Sync with Cloud BFF"}
+					</button>
+					<button
+						type="button"
+						className="action-pill-btn"
+						style={{ flex: 0.8, justifyContent: "center", color: "var(--signal-orange)", borderColor: "rgba(207, 69, 0, 0.2)" }}
+						onClick={signOut}
+					>
+						Sign Out
+					</button>
 				</div>
 			</div>
 

@@ -79,6 +79,20 @@ export const WalletIcon = rawIcon(
 );
 export const ChevronLeftIcon = rawIcon(<path d="M14.5 5.5 8 12l6.5 6.5" />);
 export const ChevronRightIcon = rawIcon(<path d="M9.5 5.5 16 12l-6.5 6.5" />);
+export const TuneIcon = rawIcon(
+	<>
+		<path d="M4 7.5h9M17.5 7.5H20" />
+		<circle cx="15" cy="7.5" r="2.2" />
+		<path d="M4 16.5h3M11.5 16.5H20" />
+		<circle cx="9" cy="16.5" r="2.2" />
+	</>,
+);
+export const UserIcon = rawIcon(
+	<>
+		<circle cx="12" cy="8" r="3.6" />
+		<path d="M5.5 19.5c.8-3.2 3.4-4.9 6.5-4.9s5.7 1.7 6.5 4.9" />
+	</>,
+);
 export const LedgerIcon = rawIcon(
 	<>
 		<path d="M5.2 5.2a1.7 1.7 0 0 1 1.7-1.7h10.2a1.6 1.6 0 0 1 1.6 1.6v15.4H7.2a2 2 0 0 1-2-2V5.2Z" />
@@ -125,7 +139,7 @@ export interface BizOrbitMarkProps {
 }
 
 /**
- * Excited.Biz Bold 'b' Official Mark — outline edition.
+ * excited.live Bold 'b' Official Mark — outline edition.
  * Stroked union contour of capsule stem + circular bowl, orange core dot.
  * No fills: transparent inside and out, reads clean on any surface.
  * - default: Ink Black stroke + Signal Orange core (for cream/light backgrounds)

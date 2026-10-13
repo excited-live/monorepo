@@ -1,4 +1,4 @@
-import type { BillingCycle, DepreciationCalculation, HardwareAsset, MonthlySummary } from "./types";
+import type { BillingCycle, DepreciationCalculation, HardwareAsset } from "./types";
 
 export function round2(num: number): number {
 	return Math.round((num + Number.EPSILON) * 100) / 100;

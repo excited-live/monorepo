@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useBiz } from "../state";
 import { HomeView } from "../views/HomeView";
 import { CapitalView } from "../views/CapitalView";
-import { LedgerView } from "../views/LedgerView";
 import { SettingsView } from "../views/SettingsView";
 import { SignInView } from "../views/SignInView";
 
@@ -24,8 +23,6 @@ function IndexComponent() {
 				return <HomeView />;
 			case "capital":
 				return <CapitalView />;
-			case "ledger":
-				return <LedgerView />;
 			case "settings":
 				return <SettingsView />;
 			default:

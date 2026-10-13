@@ -36,7 +36,7 @@ export function useModalBack(isOpen: boolean, onClose: () => void) {
 		const stateKey = `modal_${Date.now()}`;
 		window.history.pushState({ [stateKey]: true, isModal: true }, "");
 
-		const handlePopState = (e: PopStateEvent) => {
+		const handlePopState = () => {
 			onCloseRef.current();
 		};
 

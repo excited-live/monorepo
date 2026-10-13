@@ -14,7 +14,7 @@ One directory per skill, `snake_case`, each with a `SKILL.md`:
 - `simulation_engine/`: the plan projection engine in `packages/sim`, the plan-service boundary, Monte Carlo, the optimizer.
 - `i18n_platform/`: the packages/i18n engine, SSR locale wiring in the webapp, dictionary conventions.
 - `landing_seo/`: the Astro marketing site, meta/OG/JSON-LD layer, waitlist flow, blog and docs pipeline.
-- `auth_workos/`: WorkOS AuthKit in the webapp, the middleware chain, the opt-in page gate.
+- `auth_better/`: Better Auth (packages/auth) — webapp cookies mount, api tokens mount, the middleware chain, the opt-in page gate.
 
 ## Conventions
 

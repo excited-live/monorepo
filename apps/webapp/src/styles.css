@@ -1087,3 +1087,23 @@ button {
 }
 
 
+
+/* Sign-in page (Better Auth — routes/sign-in.tsx) */
+.signin-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--color-background-body);
+  color: var(--copy);
+}
+
+.signin-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.signin-error {
+  color: var(--signal-orange, #cf4500);
+}

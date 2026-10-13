@@ -10,17 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
-import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
-import { Route as ApiAuthSignInRouteImport } from './routes/api/auth/sign-in'
-import { Route as ApiAuthSignOutRouteImport } from './routes/api/auth/sign-out'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiV1PlanRouteImport } from './routes/api/v1/plan'
 import { Route as ApiV1SettingsRouteImport } from './routes/api/v1/settings'
 import { Route as ApiV1SimMonteCarloRouteImport } from './routes/api/v1/sim/monte-carlo'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
@@ -33,19 +37,9 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
-const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
-  id: '/api/auth/callback',
-  path: '/api/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSignInRoute = ApiAuthSignInRouteImport.update({
-  id: '/api/auth/sign-in',
-  path: '/api/auth/sign-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSignOutRoute = ApiAuthSignOutRouteImport.update({
-  id: '/api/auth/sign-out',
-  path: '/api/auth/sign-out',
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1PlanRoute = ApiV1PlanRouteImport.update({
@@ -66,20 +60,18 @@ const ApiV1SimMonteCarloRoute = ApiV1SimMonteCarloRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
+  '/sign-in': typeof SignInRoute
   '/settings': typeof LayoutSettingsRoute
-  '/api/auth/callback': typeof ApiAuthCallbackRoute
-  '/api/auth/sign-in': typeof ApiAuthSignInRoute
-  '/api/auth/sign-out': typeof ApiAuthSignOutRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v1/plan': typeof ApiV1PlanRoute
   '/api/v1/settings': typeof ApiV1SettingsRoute
   '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
 }
 export interface FileRoutesByTo {
+  '/sign-in': typeof SignInRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
-  '/api/auth/callback': typeof ApiAuthCallbackRoute
-  '/api/auth/sign-in': typeof ApiAuthSignInRoute
-  '/api/auth/sign-out': typeof ApiAuthSignOutRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v1/plan': typeof ApiV1PlanRoute
   '/api/v1/settings': typeof ApiV1SettingsRoute
   '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
@@ -87,11 +79,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
+  '/sign-in': typeof SignInRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
-  '/api/auth/callback': typeof ApiAuthCallbackRoute
-  '/api/auth/sign-in': typeof ApiAuthSignInRoute
-  '/api/auth/sign-out': typeof ApiAuthSignOutRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v1/plan': typeof ApiV1PlanRoute
   '/api/v1/settings': typeof ApiV1SettingsRoute
   '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
@@ -100,31 +91,28 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/sign-in'
     | '/settings'
-    | '/api/auth/callback'
-    | '/api/auth/sign-in'
-    | '/api/auth/sign-out'
+    | '/api/auth/$'
     | '/api/v1/plan'
     | '/api/v1/settings'
     | '/api/v1/sim/monte-carlo'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/sign-in'
     | '/settings'
     | '/'
-    | '/api/auth/callback'
-    | '/api/auth/sign-in'
-    | '/api/auth/sign-out'
+    | '/api/auth/$'
     | '/api/v1/plan'
     | '/api/v1/settings'
     | '/api/v1/sim/monte-carlo'
   id:
     | '__root__'
     | '/_layout'
+    | '/sign-in'
     | '/_layout/settings'
     | '/_layout/'
-    | '/api/auth/callback'
-    | '/api/auth/sign-in'
-    | '/api/auth/sign-out'
+    | '/api/auth/$'
     | '/api/v1/plan'
     | '/api/v1/settings'
     | '/api/v1/sim/monte-carlo'
@@ -132,9 +120,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
-  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
-  ApiAuthSignInRoute: typeof ApiAuthSignInRoute
-  ApiAuthSignOutRoute: typeof ApiAuthSignOutRoute
+  SignInRoute: typeof SignInRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV1PlanRoute: typeof ApiV1PlanRoute
   ApiV1SettingsRoute: typeof ApiV1SettingsRoute
   ApiV1SimMonteCarloRoute: typeof ApiV1SimMonteCarloRoute
@@ -147,6 +134,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/': {
@@ -163,25 +157,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/api/auth/callback': {
-      id: '/api/auth/callback'
-      path: '/api/auth/callback'
-      fullPath: '/api/auth/callback'
-      preLoaderRoute: typeof ApiAuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/sign-in': {
-      id: '/api/auth/sign-in'
-      path: '/api/auth/sign-in'
-      fullPath: '/api/auth/sign-in'
-      preLoaderRoute: typeof ApiAuthSignInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/sign-out': {
-      id: '/api/auth/sign-out'
-      path: '/api/auth/sign-out'
-      fullPath: '/api/auth/sign-out'
-      preLoaderRoute: typeof ApiAuthSignOutRouteImport
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/plan': {
@@ -223,9 +203,8 @@ const LayoutRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
-  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
-  ApiAuthSignInRoute: ApiAuthSignInRoute,
-  ApiAuthSignOutRoute: ApiAuthSignOutRoute,
+  SignInRoute: SignInRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV1PlanRoute: ApiV1PlanRoute,
   ApiV1SettingsRoute: ApiV1SettingsRoute,
   ApiV1SimMonteCarloRoute: ApiV1SimMonteCarloRoute,

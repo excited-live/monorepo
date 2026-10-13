@@ -1,8 +1,8 @@
 {
 	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "excited Biz",
+	"productName": "excited.live",
 	"version": "0.0.1",
-	"identifier": "live.excited.biz",
+	"identifier": "live.excited.mobile",
 	"build": {
 		"beforeDevCommand": "pnpm dev",
 		"devUrl": "http://localhost:1430",
@@ -12,7 +12,7 @@
 	"app": {
 		"windows": [
 			{
-				"title": "excited Biz",
+				"title": "excited.live",
 				"width": 420,
 				"height": 840,
 				"resizable": true,

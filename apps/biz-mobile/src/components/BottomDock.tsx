@@ -1,7 +1,7 @@
 import React from "react";
 import {
 	HomeIcon,
-	LedgerIcon,
+
 	SettingsIcon,
 	WalletIcon,
 	type IconProps,
@@ -9,13 +9,12 @@ import {
 import { useBiz } from "../state";
 
 const TABS: Array<{
-	id: "home" | "capital" | "ledger" | "settings";
+	id: "home" | "capital" | "settings";
 	label: string;
 	Icon: React.ComponentType<IconProps>;
 }> = [
 	{ id: "home", label: "Home", Icon: HomeIcon },
-	{ id: "capital", label: "Capital", Icon: WalletIcon },
-	{ id: "ledger", label: "Ledger", Icon: LedgerIcon },
+	{ id: "capital", label: "Business Detail", Icon: WalletIcon },
 	{ id: "settings", label: "Settings", Icon: SettingsIcon },
 ];
 

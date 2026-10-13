@@ -1,4 +1,4 @@
-# Excited.Biz Mobile — Wireframe Design Specification (Global Entity Context & Monthly Ledger)
+# excited.live Mobile — Wireframe Design Specification (Global Entity Context & Monthly Ledger)
 
 ## 1. Unified Mental Model: Strict Global Entity Context
 
@@ -298,7 +298,7 @@ Instead of vague forecast charts or repeating runway, Tab 3 provides a **precise
 │ │ 🔄 Restore Verified Baseline (฿3,114.73)   │ │
 │ └──────────────────────────────────────────┘ │
 │                                              │
-│ Excited.Biz v0.1.0 • Luxury Privacy Engine   │
+│ excited.live v0.1.0 • Luxury Privacy Engine   │
 └──────────────────────────────────────────────┘
 ```
 

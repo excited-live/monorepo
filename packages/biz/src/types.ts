@@ -1,4 +1,4 @@
-export type EntityType = "personal" | "fulltime_job" | "business";
+export type EntityType = "personal" | "business";
 
 export type BillingCycle = "weekly" | "monthly" | "quarterly" | "semi-annual" | "yearly";
 
@@ -57,9 +57,11 @@ export interface RevenueStream {
 	entityId: string;
 	name: string;
 	amount: number;
-	frequency: "monthly" | "one_time";
-	source: "stripe" | "bank_transfer" | "cash";
+	frequency: "monthly" | "yearly" | "one_time";
+	source: "stripe" | "bank_transfer" | "cash" | "freelance" | "other";
 	active: boolean;
+	startMonth?: string;
+	endMonth?: string;
 	notes?: string;
 	imageUrl?: string;
 }

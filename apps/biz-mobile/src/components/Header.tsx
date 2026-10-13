@@ -22,33 +22,20 @@ export const Header: React.FC = () => {
 
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 
-	const formatAccountType = (type: string) => {
-		switch (type) {
-			case "personal":
-				return "Personal";
-			case "fulltime_job":
-				return "Fulltime";
-			case "business":
-				return "Venture";
-			default:
-				return "Entity";
-		}
-	};
-
 	return (
 		<>
 			<header className={`top-header ${isScrolled ? "scrolled" : ""}`}>
 				<div className="header-primary-row">
-					<div className="header-brand-left" aria-label="excited.biz logo" title="excited.biz">
+					<div className="header-brand-left" aria-label="excited.live logo" title="excited.live">
 						<BizOrbitMark size={24} />
 						<div className="header-brand-title">
 							<span className="brand-root">excited</span>
 							<span className="brand-dot">.</span>
-							<span className="brand-tld">biz</span>
+							<span className="brand-tld">live</span>
 						</div>
 					</div>
 
-					{(activeTab === "capital" || activeTab === "ledger") && (
+					{activeTab === "capital" && (
 						<button
 							type="button"
 							className="header-account-btn"
@@ -101,16 +88,12 @@ export const Header: React.FC = () => {
 												<div className="entity-card-row">
 													<div className="entity-name-col">
 														<span className="entity-name">{acc.name}</span>
-														<span className="entity-type-badge">{formatAccountType(acc.type)}</span>
+														<span className="entity-type-badge">{acc.type === "business" ? "Venture" : "Personal"}</span>
 													</div>
-													<div className="entity-balance-col">
-														{acc.type === "fulltime_job" ? (
-															<span className="entity-balance">฿{formatMoney(acc.salary || 0)}/mo</span>
-														) : (
-															<span className="entity-balance">฿{formatMoney(acc.cashReserve)}</span>
-														)}
-														<span className="entity-currency">THB</span>
-													</div>
+												<div className="entity-balance-col">
+													<span className="entity-balance">฿{formatMoney(acc.cashReserve)}</span>
+													<span className="entity-currency">THB</span>
+												</div>
 												</div>
 											</button>
 										);

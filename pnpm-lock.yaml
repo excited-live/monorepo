@@ -87,6 +87,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@excited-live/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@excited-live/biz':
         specifier: workspace:*
         version: link:../../packages/biz
@@ -99,9 +102,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.8
         version: 1.19.17(hono@4.13.13)
-      '@workos-inc/node':
-        specifier: ^10.13.0
-        version: 10.13.0
       hono:
         specifier: ^4.7.4
         version: 4.13.13
@@ -356,6 +356,9 @@ importers:
       '@astryxdesign/theme-neutral':
         specifier: 'catalog:'
         version: 0.5.0(@astryxdesign/core@0.5.0(@stylexjs/stylex@0.19.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+      '@excited-live/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@excited-live/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
@@ -374,12 +377,6 @@ importers:
       '@tanstack/react-start':
         specifier: ^1.161.0
         version: 1.168.49(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
-      '@workos-inc/node':
-        specifier: ^10.13.0
-        version: 10.13.0
-      '@workos/authkit-tanstack-react-start':
-        specifier: ^0.11.0
-        version: 0.11.0(@tanstack/react-router@1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@tanstack/react-start@1.168.49(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(@workos-inc/node@10.13.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
       echarts:
         specifier: 6.1.0
         version: 6.1.0
@@ -2962,26 +2959,6 @@ packages:
   '@vscode/l10n@0.0.18':
     resolution: {integrity: sha512-KYSIHVmslkaCDyw013pphY+d7x1qV8IZupYfeIfzNA+nsaWHbn5uPuQRvdRFsa9zFzGeudPuoGoZ1Op4jrJXIQ==}
 
-  '@workos-inc/node@10.13.0':
-    resolution: {integrity: sha512-xPtcziTjN1irPiZ4niTaulYvRMs6D+Fz5E54GGHVOxNi0PV2/Ws1g/cx3q9oMvMhnINkva5iZ2T5aS6yLzdCWA==}
-    engines: {node: '>=22.11.0'}
-
-  '@workos/authkit-session@0.7.1':
-    resolution: {integrity: sha512-3C8anDS67ITE6tvtlTo0sjOzNRhRXvzRHmrQ11kPBAKdLyxIspTBt+BzU/r2vUHJgCAeMlc2wNwqytkAexQhfw==}
-    engines: {node: '>=20.0.0'}
-    peerDependencies:
-      '@workos-inc/node': ^8.0.0 || ^9.0.0 || ^10.0.0
-
-  '@workos/authkit-tanstack-react-start@0.11.0':
-    resolution: {integrity: sha512-m+0kfFSQH/nd7OuRjkZ8hZcEO16mcIgvstbC/gl5LvQN+1p/5GFfGvF6ME1u0uv2mlJRD1C4ybfjpMUKlonZYg==}
-    engines: {node: '>=22.11.0'}
-    peerDependencies:
-      '@tanstack/react-router': '>=1.0.0'
-      '@tanstack/react-start': '>=1.168.25'
-      '@workos-inc/node': ^10.7.0
-      react: ^18.0 || ^19.0
-      react-dom: ^18.0 || ^19.0
-
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
@@ -4104,9 +4081,6 @@ packages:
 
   iron-webcrypto@1.2.1:
     resolution: {integrity: sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg==}
-
-  iron-webcrypto@2.0.0:
-    resolution: {integrity: sha512-rtffZKDUHciZElM8mjFCufBC7nVhCxHYyWHESqs89OioEDz4parOofd8/uhrejh/INhQFfYQfByS22LlezR9sQ==}
 
   is-alphabetical@2.0.1:
     resolution: {integrity: sha512-FWyyY60MeTNyeSRpkM2Iry0G9hpr7/9kD40mD/cGQEuilcZYS4okz8SN2Q6rLCJ8gbCt6fN+rC+6tMGS99LaxQ==}
@@ -5653,10 +5627,6 @@ packages:
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
-  uint8array-extras@1.5.0:
-    resolution: {integrity: sha512-rvKSBiC5zqCCiDZ9kAOszZcDvdAHwwIKJG33Ykj43OKcWsnmcBRL09YTU4nOeHZ8Y2a7l1MgTd08SBe9A8Qj6A==}
-    engines: {node: '>=18'}
-
   ultrahtml@1.7.0:
     resolution: {integrity: sha512-2xRd0VHoAQE4M+vF/DvFFB7pUV0ZxTW1TLi7lHQWnF/Sb5TPeEUV/l+hxcNnGO00ZXGnR0voCMmYRKQf+rvJ2g==}
 
@@ -5838,14 +5808,6 @@ packages:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  valibot@1.4.2:
-    resolution: {integrity: sha512-gjdCvJ6d3RyHAneqxMYMW9QMCwYMb3jpOO0IyHZV1bnRHFBHrX3VkIILt5XYR0WhwHiH7Mty8ovuPZ/O3gamrg==}
-    peerDependencies:
-      typescript: '>=5'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   vfile-location@5.0.3:
     resolution: {integrity: sha512-5yXvWDEgqeiYiBe1lbxYF7UMAIm/IcopxMHrMQDq3nvKcjPKIhZklUKL+AE7J7uApI4kwe2snsK+eI6UTj9EHg==}
@@ -8549,28 +8511,6 @@ snapshots:
 
   '@vscode/l10n@0.0.18': {}
 
-  '@workos-inc/node@10.13.0': {}
-
-  '@workos/authkit-session@0.7.1(@workos-inc/node@10.13.0)(typescript@5.9.3)':
-    dependencies:
-      '@workos-inc/node': 10.13.0
-      iron-webcrypto: 2.0.0
-      jose: 6.2.12
-      valibot: 1.4.2(typescript@5.9.3)
-    transitivePeerDependencies:
-      - typescript
-
-  '@workos/authkit-tanstack-react-start@0.11.0(@tanstack/react-router@1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@tanstack/react-start@1.168.49(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)))(@workos-inc/node@10.13.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3)':
-    dependencies:
-      '@tanstack/react-router': 1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@tanstack/react-start': 1.168.49(esbuild@0.28.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))
-      '@workos-inc/node': 10.13.0
-      '@workos/authkit-session': 0.7.1(@workos-inc/node@10.13.0)(typescript@5.9.3)
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-    transitivePeerDependencies:
-      - typescript
-
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:
       acorn: 8.18.0
@@ -9976,10 +9916,6 @@ snapshots:
       loose-envify: 1.4.0
 
   iron-webcrypto@1.2.1: {}
-
-  iron-webcrypto@2.0.0:
-    dependencies:
-      uint8array-extras: 1.5.0
 
   is-alphabetical@2.0.1: {}
 
@@ -11995,8 +11931,6 @@ snapshots:
 
   ufo@1.6.4: {}
 
-  uint8array-extras@1.5.0: {}
-
   ultrahtml@1.7.0: {}
 
   unbox-primitive@1.1.0:
@@ -12124,10 +12058,6 @@ snapshots:
   use-sync-external-store@1.6.0(react@19.2.8):
     dependencies:
       react: 19.2.8
-
-  valibot@1.4.2(typescript@5.9.3):
-    optionalDependencies:
-      typescript: 5.9.3
 
   vfile-location@5.0.3:
     dependencies:

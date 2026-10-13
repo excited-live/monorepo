@@ -1102,17 +1102,16 @@
 
 /* "current number (end of month …)" annotations for the big balances */
 .hero-balance-eom {
-	display: block;
 	font-size: 13px;
 	font-weight: 600;
 	letter-spacing: 0;
 	color: var(--hero-muted);
-	margin-top: 2px;
+	margin-left: 6px;
 }
 
 .home-hero-eom {
 	font-size: 13px;
 	font-weight: 600;
 	color: var(--slate-gray);
-	margin-top: 2px;
+	margin-left: 6px;
 }

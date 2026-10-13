@@ -88,13 +88,15 @@ export const HomeView: React.FC = () => {
 				<div className="home-treasury-panel">
 					<div className="home-hero-eyebrow">
 						<span className="hero-eyebrow-dot">•</span>
-						<span>Consolidated Treasury</span>
+						<span>Consolidated Wealth</span>
 					</div>
 					<div className="home-hero-balance">
 						<span className="home-hero-currency">฿</span>
 						<span>{formatMoney(totalTreasury)}</span>
+						<span className="home-hero-eom">
+							(end of month ฿{formatMoney(totalEomTreasury)})
+						</span>
 					</div>
-					<div className="home-hero-eom">(end of month ฿{formatMoney(totalEomTreasury)})</div>
 					<div className="home-hero-meta-row">
 						<div className="home-hero-chip">
 							<span className="chip-label">Personal:</span>
@@ -150,8 +152,7 @@ export const HomeView: React.FC = () => {
 										<div className="item-info">
 											<span className="item-name">{acc.name}</span>
 											<span className="item-sub">
-												Treasury: ฿{formatMoney(acc.cashReserve)} (end of month ฿
-												{formatMoney(eomTreasury(acc))})
+												Treasury: ฿{formatMoney(acc.cashReserve)} (฿{formatMoney(eomTreasury(acc))})
 											</span>
 										</div>
 										<div className="item-amount-col">

@@ -30,13 +30,18 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 
 	// The derived treasury already contains the entity's cash assets, so the
 	// liquid figure is just the treasury; only depreciating gear is added on top.
-	const gearAssets = hardware.filter((h) => h.entityId === account.id && !isCashAsset(h));
+	const entityAssets = hardware.filter((h) => h.entityId === account.id);
+	const cashAssetsValue = round2(
+		entityAssets.filter((h) => isCashAsset(h)).reduce((acc, h) => acc + h.cost, 0),
+	);
+	const gearAssets = entityAssets.filter((h) => !isCashAsset(h));
 	const bookValue = round2(
 		gearAssets.reduce(
 			(acc, h) => acc + calculateAssetDepreciation(h, "2026-10").remainingBookValue,
 			0,
 		),
 	);
+	const totalAssetsValue = round2(bookValue + cashAssetsValue);
 	// cashReserve is cash on hand today; the month's income/expenses on top of
 	// it give the end-of-month position (shown alongside so mid-month checks
 	// don't look like a mismatch).
@@ -87,7 +92,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	return (
 		<HeroShell account={account} variant="capital" onClick={onTap}>
 			<div className="hero-top-row">
-				<div className="hero-eyebrow">Cash & Liquidity</div>
+				<div className="hero-eyebrow">{account.type === "personal" ? "Wealth" : "Book Value"}</div>
 				<div className="hero-top-right">
 					<span
 						className="hero-flip-hint"
@@ -137,11 +142,9 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 
 			<div className="hero-balance">
 				฿ {formatMoney(currentWealth)}
-				<span className="hero-balance-eom">
-					(end of month ฿{formatMoney(eomWealth)})
-				</span>
+				<span className="hero-balance-eom">(฿{formatMoney(eomWealth)})</span>
 				<span className="hero-balance-sub">
-					Liquid ฿ {formatMoney(currentLiquid)} (end of month ฿{formatMoney(eomLiquid)})
+					Liquid ฿ {formatMoney(currentLiquid)} (฿{formatMoney(eomLiquid)})
 				</span>
 			</div>
 
@@ -180,7 +183,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 			</div>
 			<div className="hero-meta-row secondary">
 				<span className="hero-meta-label">Total Asset</span>
-				<span className="hero-meta-value">฿ {formatMoney(bookValue)}</span>
+				<span className="hero-meta-value">฿ {formatMoney(totalAssetsValue)}</span>
 			</div>
 			<div className="hero-meta-row secondary">
 				<span className="hero-meta-label">Liability</span>

@@ -4,6 +4,8 @@ import { logger } from "hono/logger"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
+import { createAuthRouter } from "./routes/auth"
+import { createBizRouter } from "./routes/biz"
 import { createPlanRouter } from "./routes/plan"
 import { createSettingsRouter } from "./routes/settings"
 import { simRouter } from "./routes/sim"
@@ -63,6 +65,8 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	})
 
 	const apiV1 = new Hono<ApiEnv>()
+	apiV1.route("/auth", createAuthRouter())
+	apiV1.route("/biz", createBizRouter())
 	apiV1.route("/plan", createPlanRouter())
 	apiV1.route("/settings", createSettingsRouter())
 	apiV1.route("/sim", simRouter)

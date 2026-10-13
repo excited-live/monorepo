@@ -67,6 +67,25 @@ export const ChartIcon = rawIcon(
 		<path d="m7 15 3-3 2.2 1.7 4.8-6.2" />
 	</>,
 );
+export const HomeIcon = rawIcon(
+	<path d="M4.5 10.3 12 4.4l7.5 5.9v8.4a1.4 1.4 0 0 1-1.4 1.4h-3.9v-5.4H9.8v5.4H5.9a1.4 1.4 0 0 1-1.4-1.4v-8.4Z" />,
+);
+export const WalletIcon = rawIcon(
+	<>
+		<rect x="3.4" y="6" width="17.2" height="12.4" rx="2.6" />
+		<path d="M3.4 9.8h17.2" />
+		<path d="M7 14.4h3.2" />
+	</>,
+);
+export const ChevronLeftIcon = rawIcon(<path d="M14.5 5.5 8 12l6.5 6.5" />);
+export const ChevronRightIcon = rawIcon(<path d="M9.5 5.5 16 12l-6.5 6.5" />);
+export const LedgerIcon = rawIcon(
+	<>
+		<path d="M5.2 5.2a1.7 1.7 0 0 1 1.7-1.7h10.2a1.6 1.6 0 0 1 1.6 1.6v15.4H7.2a2 2 0 0 1-2-2V5.2Z" />
+		<path d="M5.2 17.1a2 2 0 0 1 2-2h11.5" />
+		<path d="M9.2 8h5.8M9.2 11h4" />
+	</>,
+);
 export const PresentationIcon = rawIcon(
 	<>
 		<rect x="4" y="4" width="16" height="11.5" rx="1.6" />
@@ -95,6 +114,67 @@ export function FeyMark({ size = 24 }: { size?: number }) {
 			<path d="M16.74 2.76c1.46 1.46 1.46 3.82 0 5.28l-6.9 6.9-2.32-2.32 6.9-6.9a3.73 3.73 0 0 1 2.32-1.09Z" />
 			<path d="M17.38 8.88c1.18 1.18 1.18 3.1 0 4.28l-5.82 5.82-2.32-2.32 5.82-5.82a3.02 3.02 0 0 1 2.32-1.96Z" />
 			<path d="M14.34 15.62c.92.92.92 2.41 0 3.33l-2.29 2.29-2.32-2.32 2.29-2.29c.64-.64 1.68-.99 2.32-1.01Z" />
+		</svg>
+	);
+}
+
+export interface BizOrbitMarkProps {
+	size?: number;
+	variant?: "default" | "inverted" | "monochrome" | "reversed";
+	className?: string;
+}
+
+/**
+ * Excited.Biz Bold 'b' Official Mark — outline edition.
+ * Stroked union contour of capsule stem + circular bowl, orange core dot.
+ * No fills: transparent inside and out, reads clean on any surface.
+ * - default: Ink Black stroke + Signal Orange core (for cream/light backgrounds)
+ * - reversed: Signal Orange stroke + Ink Black core
+ * - inverted: Lifted Cream stroke + Luminous Orange core (for ink/dark backgrounds)
+ * - monochrome: All currentColor
+ */
+export function BizOrbitMark({
+	size = 24,
+	variant = "default",
+	className,
+}: BizOrbitMarkProps) {
+	const isDark = variant === "inverted";
+	const isReversed = variant === "reversed";
+	const isMono = variant === "monochrome";
+
+	const strokeColor = isReversed
+		? "var(--signal-orange, #CF4500)"
+		: isDark
+			? "#FCFBFA"
+			: "var(--ink-black, #141413)";
+
+	const coreColor = isReversed
+		? "var(--ink-black, #141413)"
+		: isDark
+			? "#F37338"
+			: "var(--signal-orange, #CF4500)";
+
+	return (
+		<svg
+			aria-hidden="true"
+			width={size}
+			height={size}
+			viewBox="0 0 1024 1024"
+			fill="none"
+			className={className}
+		>
+			<path
+				d="M288.96 308.64 A70.52 70.52 0 0 1 430 308.64 L430 380.28 A213.2 213.2 0 1 1 401.76 748.85 A70.52 70.52 0 0 1 288.96 692.4 Z"
+				stroke={isMono ? "currentColor" : strokeColor}
+				strokeWidth="72"
+				strokeLinejoin="round"
+			/>
+			<circle
+				cx="521.84"
+				cy="572.68"
+				r="101.68"
+				fill={isMono ? "currentColor" : coreColor}
+			/>
 		</svg>
 	);
 }

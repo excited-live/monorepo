@@ -21,7 +21,10 @@ export interface AuthUser {
 	name: string;
 }
 
-const API_ROOT = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+// Same-origin by default: vite dev/preview proxy /api to the API server (see
+// vite.config.ts) — this keeps auth headers on a single origin locally. For
+// device builds set VITE_API_URL to the absolute API origin instead.
+const API_ROOT = import.meta.env.VITE_API_URL || "/api/v1";
 const BIZ_BASE = `${API_ROOT}/biz`;
 
 /**
@@ -56,7 +59,11 @@ export const authApi = {
 		if (!res.ok) {
 			throw new Error((await authErrorMessage(res)) || "Sign-in failed");
 		}
-		const token = res.headers.get("set-auth-token");
+		const data = (await res.json().catch(() => null)) as { token?: string } | null;
+		// The token comes in the response body; the set-auth-token header is the
+		// bearer() plugin's alternative — body-first because some environments
+		// strip non-safelisted response headers cross-origin.
+		const token = data?.token ?? res.headers.get("set-auth-token");
 		if (!token) {
 			throw new Error("Sign-in did not return a session token");
 		}

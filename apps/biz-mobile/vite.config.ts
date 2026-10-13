@@ -23,6 +23,13 @@ export default defineConfig({
 		port: 1430,
 		strictPort: true,
 		host: host || false,
+		proxy: {
+			// Same-origin API path for local dev: auth headers never cross origins.
+			"/api": {
+				target: "http://localhost:8000",
+				changeOrigin: true,
+			},
+		},
 		hmr: host
 			? {
 					protocol: "ws",
@@ -32,6 +39,16 @@ export default defineConfig({
 			: undefined,
 		watch: {
 			ignored: ["**/src-tauri/**"],
+		},
+	},
+	preview: {
+		port: 1431,
+		strictPort: true,
+		proxy: {
+			"/api": {
+				target: "http://localhost:8000",
+				changeOrigin: true,
+			},
 		},
 	},
 });

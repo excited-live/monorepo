@@ -1,8 +1,8 @@
 # PRD - Flows (all apps)
 
-Status: Revision 2, 2026-10-13. Companion to [PRD.md](PRD.md). Where the phase files specify features, this file specifies flows: what a person sees and does, screen by screen, in every app of the repo. Mobbin references are linked per flow as study pointers. Revision 2 adds the biz-mobile onboarding journey (F-50 to F-55).
+Status: Revision 3, 2026-10-13. Companion to [PRD.md](PRD.md). Where the phase files specify features, this file specifies flows: what a person sees and does, screen by screen, in every app of the repo. Mobbin references are linked per flow as study pointers. Revision 3 reworks the biz-mobile onboarding (F-50 to F-55) to a checklist-first journey on the homepage with no example data and no dedicated onboarding page; revision 2 added the journey.
 
-Shipped-state baseline: `main` @ `904a5f3`. Flows that exist in code carry `[shipped]`; flows in an open PR carry `[in review]`; everything else is `[planned]` and traces to a user story.
+Shipped-state baseline: `main` @ `35dc011`. Flows that exist in code carry `[shipped]`; flows in an open PR carry `[in review]`; everything else is `[planned]` and traces to a user story.
 
 ## 0. How to read this doc
 
@@ -443,36 +443,38 @@ References:
 
 ## 5. biz-mobile
 
-excited.live, the solopreneur spend, revenue, and depreciation companion ([prd-biz-mobile.md](prd-biz-mobile.md), [wireframe-biz-mobile.md](wireframe-biz-mobile.md)). Tauri v2, Android first. Today a fresh install opens straight onto the dev seed (Prame's own numbers, `SEED_ACCOUNTS` in `state.tsx`), which is correct for v0.5 and wrong for v1 users. The onboarding journey below replaces that seed with the user's own numbers in under three minutes. Nothing here is in code yet, so every flow is `[planned]` and traces to a new user story, US-BIZ-008 in [prd-biz-mobile.md](prd-biz-mobile.md).
+Excited.Biz, the solopreneur spend, revenue, and depreciation companion ([prd-biz-mobile.md](prd-biz-mobile.md), [wireframe-biz-mobile.md](wireframe-biz-mobile.md)). Tauri v2, Android first. Today a fresh install opens straight onto the dev seed (Prame's own numbers, `SEED_ACCOUNTS` in `state.tsx`), which is correct for v0.5 and wrong for v1 users. The onboarding journey below replaces that seed with the user's own numbers in under three minutes.
 
-### F-50 First launch, example first `[planned]` (US-BIZ-008)
+Revision 3 decision (Prame, 2026-10-13): no dedicated onboarding page and no example data. The homepage carries an onboarding checklist section from first launch, and the guided flow runs over the homepage as an overlay. The dev seed stays dev-only and never ships as a user-facing example. Nothing here is in code yet, so every flow is `[planned]` and traces to a new user story, US-BIZ-008 in [prd-biz-mobile.md](prd-biz-mobile.md).
 
-Goal: a fresh install opens on a working app with example data clearly labeled, never a zero screen, and one way to start entering real numbers.
-Entry: first launch, no saved state (`excited_live_mobile_data_v1` keys absent).
+### F-50 First launch, checklist first `[planned]` (US-BIZ-008)
+
+Goal: a fresh install opens on the homepage with the onboarding checklist as the main content, honest zeros behind it, and one obvious first tap.
+Entry: first launch, no saved state (`excited_biz_mobile_data_v1` keys absent).
 Steps:
-1. Splash, then HomeView with the example plan loaded (the dev seed, labeled).
-2. An example badge marks the data as example. The user is never left to think the numbers are theirs.
-3. A start card offers one action: start with my numbers, which begins the journey at F-51.
-4. The user can also explore the example app freely. The start card stays until used or dismissed.
-States: empty, not applicable, the example state is the empty state. loading, the splash holds until the store hydrates. error, a corrupt store resets to the example state with a note.
-Exit: F-51, or continued exploration in example mode.
-Route / screen: `/` (`index.tsx`, `HomeView`, `HeroShell`).
+1. Splash, then HomeView empty. The hero renders honest zeros (cash ฿0, burn ฿0) with its labels still visible.
+2. The onboarding checklist sits above the hero. Four rows: start with my numbers (guided), add monthly bills, add a device, sign in.
+3. The guided row is the primary action. Tapping it begins the journey at F-51.
+4. The other rows are tappable too. Bills and gear open their steps directly; sign in goes to F-55. Nothing is gated: the checklist orders, it never blocks.
+States: empty, the checklist is the empty state. loading, the splash holds until the store hydrates. error, a corrupt store resets to the empty checklist state with a note.
+Exit: F-51 via the guided row, or any row directly.
+Route / screen: `/` (`index.tsx`, `HomeView`).
 References:
-- [Cash App: Taxes](https://mobbin.com/flows/bc295407-7f31-420e-b70f-1acd7e7fd8c0). Borrow the opens-straight-into-a-working-tool posture with example input; the same pattern tax-mobile F-30 already uses.
-- Copy note: badge `{ en: "Example data", th: "ข้อมูลตัวอย่าง" }`, start `{ en: "Start with my numbers", th: "เริ่มจากตัวเลขของคุณ" }`.
+- [Monarch: Dashboard](https://mobbin.com/flows/38ad0506-1509-44dc-86c2-b8c0904cac81). Borrow the get-started checklist card; here it is promoted from a post-journey card to the whole first screen.
+- Copy note: title `{ en: "Finish setting up", th: "ตั้งค่าให้ครบ" }`, guided start `{ en: "Start with my numbers", th: "เริ่มจากตัวเลขของคุณ" }`.
 
 ### F-51 First entity `[planned]` (US-BIZ-008, US-BIZ-004)
 
 Goal: the user names what this app is for first, personal, job, or a business, so every later screen has a context.
-Entry: the start card in F-50.
+Entry: the guided row in the F-50 checklist.
 Steps:
-1. One screen: the EN / TH language choice (persists) and the question of what we track first.
+1. One overlay over the homepage: the EN / TH language choice (persists) and the question of what we track first.
 2. Three choices: personal, fulltime job, or a business. The choice maps to the entity types in the PRD (`personal`, `fulltime_job`, `business`).
 3. Personal or business asks a name (optional, defaults) and starting cash. Fulltime job asks salary and next payday.
-4. The choice creates the first entity and selects it. Nothing else is asked on this screen.
+4. The choice creates the first entity and selects it. Nothing else is asked on this screen. The hero behind the overlay fills in as soon as the entity lands.
 States: empty, the name defaults to the entity type's label. loading, the entity writes to local storage before advancing. error, a failed write keeps the screen with a retry.
 Exit: F-52.
-Route / screen: `/`, planned onboarding step over the existing store actions (`addBusiness`, `updateCashReserve`).
+Route / screen: `/`, an overlay over `HomeView`, reusing the existing store actions (`addBusiness`, `updateCashReserve`).
 References:
 - [Monarch: Creating a goal](https://mobbin.com/flows/c2c27887-236b-4311-a244-da4362691839). Borrow the pick-then-fill shape: choose the type first, fill a minimum, land somewhere real.
 - Copy note: question `{ en: "What are we tracking first?", th: "เริ่มจากอะไรก่อน" }`, choices `{ en: "Personal", th: "ส่วนตัว" }`, `{ en: "Fulltime job", th: "งานประจำ" }`, `{ en: "A business", th: "ธุรกิจ" }`.
@@ -480,7 +482,7 @@ References:
 ### F-52 First recurring bills `[planned]` (US-BIZ-008, US-BIZ-001)
 
 Goal: the user enters the handful of bills that make the burn number real, in about a minute.
-Entry: the end of F-51.
+Entry: the end of F-51, or the add monthly bills row in the checklist.
 Steps:
 1. Up to six quick rows prefilled with common TH recurring items (internet, mobile, transit, rent, streaming, plus one custom slot).
 2. Each row is one amount field. The monthly equivalent computes live (US-BIZ-001).
@@ -488,7 +490,7 @@ Steps:
 4. Each kept row gets a cycle (default monthly) and the normalized monthly cost shows under it.
 States: empty, all rows empty is valid and skips cleanly. loading, rows write optimistically. error, a half-typed amount blocks that row, not the screen.
 Exit: F-53.
-Route / screen: `/`, planned step reusing the Add Expense drawer field patterns.
+Route / screen: `/`, an overlay step over `HomeView`, reusing the Add Expense drawer field patterns.
 References:
 - [Rocket Money: Setting up budgeting](https://mobbin.com/flows/d4cc0f80-7fe5-4bcb-b0d7-64617e591927). Borrow the income-and-expenses setup shape, capped: ours is six quick rows, theirs is a budget build.
 - [YNAB: Adding an expected income](https://mobbin.com/flows/05580d79-3fd8-4765-83cd-5623a6cc232d). Borrow the income-row pattern; it mirrors Thai recurring-bill complexity.
@@ -498,39 +500,39 @@ References:
 ### F-53 First gear, optional `[planned]` (US-BIZ-008, US-BIZ-002)
 
 Goal: the user optionally logs one owned device so depreciation is real from day one, or skips it without guilt.
-Entry: the end of F-52.
+Entry: the end of F-52, or the add a device row in the checklist.
 Steps:
 1. One optional screen: own gear that loses value? Add one device.
 2. Name, purchase price, and a lifespan choice of three or five years. The monthly baht figure shows live (US-BIZ-002).
 3. Add another keeps the drawer open for a second device. Skip closes and moves on.
 States: empty, skipping leaves the hardware register empty with its add affordance. loading, the write is optimistic. error, an invalid amount blocks the row, not the screen.
 Exit: F-54.
-Route / screen: `/`, planned step reusing the Add Gear drawer field patterns.
+Route / screen: `/`, an overlay step over `HomeView`, reusing the Add Gear drawer field patterns.
 References:
 - [Quicken: Setting a custom amount](https://mobbin.com/flows/09202d2f-5c1d-407f-b9f9-36d302b8d802). Borrow the one-field, one-confirm amount step.
 - No reference in the set covers an optional equipment step. Stated, not forced. Apple Wallet's add-item sheet informs the drawer feel.
 - Copy note: title `{ en: "Own any gear?", th: "มีอุปกรณ์ที่ต้องดูแลไหม" }`, add `{ en: "Add a device", th: "เพิ่มอุปกรณ์" }`.
 
-### F-54 Landing on the hero `[planned]` (US-BIZ-008, US-BIZ-003)
+### F-54 Landing on your own hero `[planned]` (US-BIZ-008, US-BIZ-003)
 
-Goal: the journey ends on the user's own hero card, with the burn number real and anything skipped still findable.
-Entry: the last kept step of the journey, or F-51 straight if everything after was skipped.
+Goal: after the guided flow the homepage shows the user's own numbers, and whatever was skipped stays visible as checklist rows.
+Entry: the last kept step of the guided flow, or F-51 straight if everything after was skipped.
 Steps:
-1. The example state is replaced by the user's data. The example badge is gone.
-2. Home renders the chosen entity context: personal or business shows cash and runway, fulltime job shows salary and the UNTIL countdown.
-3. A get-started checklist card lists what was skipped: add gear, add a business, sign in. Each row links to its action.
-4. The checklist updates as items complete and dismisses when done.
-States: empty, not applicable post-journey. loading, the hero computes from the pure engine synchronously. error, a corrupt write falls back to the example state with a note.
+1. The overlay closes. The hero renders the chosen entity context: personal or business shows cash and runway, fulltime job shows salary and the UNTIL countdown.
+2. Checklist rows tick off as their item completes: the guided row, then bills, then gear.
+3. Rows the user skipped stay listed: add monthly bills, add a device, sign in. Each row links to its action.
+4. The checklist updates as items complete and collapses when everything is done.
+States: empty, not applicable post-journey, the checklist state is only pre-journey. loading, the hero computes from the pure engine synchronously. error, a corrupt write resets to the empty checklist state with a note.
 Exit: the everyday app loop, adding more data or signing in (F-55).
 Route / screen: `/` (`HomeView`, `HeroCard`, `HeroCarousel`).
 References:
-- [Monarch: Dashboard](https://mobbin.com/flows/38ad0506-1509-44dc-86c2-b8c0904cac81). Borrow the get-started checklist card that turns skipped steps into a visible, finite list.
+- [Monarch: Dashboard](https://mobbin.com/flows/38ad0506-1509-44dc-86c2-b8c0904cac81). Borrow the checklist that turns skipped steps into a visible, finite list; ours has been on screen since F-50, so this flow only closes the loop.
 - Copy note: checklist `{ en: "Finish setting up", th: "ตั้งค่าให้ครบ" }`.
 
 ### F-55 Sign in, last `[planned]` (US-BIZ-008)
 
 Goal: the account is offered after the value is on screen, never before it, and never blocks the local-first path.
-Entry: the checklist card in F-54, the settings tab, or any moment the user chooses.
+Entry: the checklist rows in F-50 or F-54, the settings tab, or any moment the user chooses.
 Steps:
 1. Sign-in leaves the app to the hosted provider (WorkOS AuthKit, same pattern as F-01) and returns.
 2. Signed out, everything keeps working on the device. The privacy-first posture holds with no account.
@@ -600,7 +602,7 @@ Per flow:
 | F-42 | ISO Meet (ref08), Threads |
 | F-43 | none in set (stated) |
 | F-44 | Mailchimp pricing, Framer pricing, Revolut pricing |
-| F-50 | Cash App Taxes |
+| F-50 | Monarch Dashboard |
 | F-51 | Monarch Creating a goal |
 | F-52 | Rocket Money Setting up budgeting, YNAB Adding an expected income, Monarch Customizing categories |
 | F-53 | Quicken Setting a custom amount, Apple Wallet add-item sheet (stated, no link in set) |
@@ -617,7 +619,7 @@ Notable picks: Semrush for the trial-to-subscription flow (ref05) is the closest
 - Copy: ours stays short, spoken, and calm. No hype, no em-dashes in EN, no AI-isms.
 - Honesty: estimates are labeled as estimates. Placeholder jurisdictions carry a visible placeholder banner. No reference's "bigger number" framing overrides our honest-estimate posture.
 - Per-flow conflicts worth an audit line: F-10 borrows Semrush's trial-with-skip but we capture no card at launch (manual PromptPay, [pricing.md](pricing.md)). F-02 borrows YNAB's long setup for pacing only; ours stays 4 steps, not 20. F-08 borrows Quicken's assumptions panel, but the sheet stays the reference for our numbers. F-40 borrows the ISO Meet waitlist shape but drops its free-access claim for the 7-day trial framing ([pricing.md](pricing.md)).
-- F-50 opens on example data, but the data is labeled as example and replaced the moment the user starts. Example numbers and real numbers never mix on the same screen.
+- F-50 opens with no example data at all (Prame, 2026-10-13): the onboarding checklist is the empty state and the hero shows honest zeros until real numbers land. The dev seed stays dev-only, never shipped as a user-facing example. There is no dedicated onboarding page; the journey lives on the homepage as a checklist with a guided overlay.
 - F-52 borrows Rocket Money's budgeting setup but caps it at six quick rows; everything else waits for the full app. F-53 is one optional screen, never a required gate before the hero.
 
 ## 10. Open questions for Prame
@@ -628,5 +630,4 @@ These do not block the flows; they are decisions the flows currently assume.
 2. F-05 and F-06 entry point. Scenario toggles and sliders could live above the chart, beside it, or in the left column. Confirm the placement so the chart stays the hero.
 3. F-24 cross-app handoff. Carry tax-webapp inputs into the webapp first-run, or keep the two apps fully separate.
 4. F-51 first-entity default. The plan proposes personal first in the chip order. Confirm the order, and whether fulltime job should be hidden for users who only want a business.
-5. F-50 example data. Ship the dev seed as the labeled example, or author a smaller, clearly fictional example set so the example can never be confused with a real person's setup.
-6. F-55 sign-in timing. Confirm sign-in stays optional at v1 and that cross-device sync waits for the v1 backend story rather than being implied by the sign-in copy.
+5. F-55 sign-in timing. Confirm sign-in stays optional at v1 and that cross-device sync waits for the v1 backend story rather than being implied by the sign-in copy.

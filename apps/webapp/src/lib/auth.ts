@@ -1,5 +1,6 @@
 import { createAuth, type Auth, type AuthD1DatabaseLike, type AuthDatabase } from "@excited-live/auth"
 import { authEnv, betterAuthConfigured, googleProviderConfig } from "./auth-config"
+import path from "node:path"
 
 /**
  * The webapp Better Auth instance (the `cookies` mount of packages/auth).
@@ -30,10 +31,13 @@ function isD1Binding(value: unknown): value is AuthD1DatabaseLike {
 async function resolveAuthDatabase(): Promise<AuthDatabase> {
 	const binding = (globalThis as { process?: { env?: Record<string, unknown> } }).process?.env?.DB
 	if (isD1Binding(binding)) return { kind: "d1", database: binding }
-	// Literal dynamic import: rolldown (vite) externalizes node builtins. The
+	// Literal dynamic imports: rolldown (vite) externalizes node builtins. The
 	// computed-specifier workaround in apps/api is esbuild-specific.
+	const { mkdirSync } = (await import("node:fs")) as typeof import("node:fs")
+	const file = process.env.EXCITED_WEBAPP_AUTH_DB || DEFAULT_DB_FILE
+	mkdirSync(path.dirname(file), { recursive: true })
 	const { DatabaseSync: SqliteDatabase } = (await import("node:sqlite")) as typeof import("node:sqlite")
-	return { kind: "node-sqlite", database: new SqliteDatabase(process.env.EXCITED_WEBAPP_AUTH_DB || DEFAULT_DB_FILE) }
+	return { kind: "node-sqlite", database: new SqliteDatabase(file) }
 }
 
 export async function getAuth(): Promise<Auth> {

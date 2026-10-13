@@ -129,6 +129,29 @@ export const SEED_SUBSCRIPTIONS: RecurringSubscription[] = [
 ];
 
 export const SEED_HARDWARE: HardwareAsset[] = [
+	// Cash & equivalents: the treasury base. Cash assets hold full value, so the
+	// derived treasury = cash assets + net transfers + income − expenses (see
+	// calculateDerivedTreasury) reproduces the demo balances:
+	//   personal:  72,130 + 75,000 − 2,130 − 20,000 = 125,000
+	//   FromSukong: 24,447.50 + 20,000 + 5,000 − 4,447.50 = 45,000
+	{
+		id: "hw_cash_personal",
+		entityId: "acc_personal",
+		name: "KBank Savings",
+		cost: 72130,
+		lifespanMonths: 0,
+		purchaseDate: "2026-01",
+		category: "cash",
+	},
+	{
+		id: "hw_cash_fromsukong",
+		entityId: "acc_fromsukong",
+		name: "FromSukong Bank Account",
+		cost: 24447.5,
+		lifespanMonths: 0,
+		purchaseDate: "2026-01",
+		category: "cash",
+	},
 	{
 		id: "hw_pc",
 		entityId: "acc_personal",

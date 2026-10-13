@@ -43,11 +43,14 @@ export const AddGearDrawer: React.FC<{
 
 	if (!isOpen) return null;
 
+	const isCash = category === "cash";
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		const numCost = Number(cost);
-		const numLife = Number(lifespanMonths);
-		if (!name.trim() || !numCost || !numLife) return;
+		const numLife = isCash ? 0 : Number(lifespanMonths);
+		if (!name.trim() || !numCost) return;
+		if (!isCash && !numLife) return;
 
 		if (initialData) {
 			updateHardware({
@@ -87,12 +90,13 @@ export const AddGearDrawer: React.FC<{
 	const monthlyRate = Math.round(numCost / numLife);
 	const canSubmit = name.trim().length > 0 && numCost > 0;
 	const isEditMode = Boolean(initialData);
+	const assetNoun = isCash ? "Cash Asset" : "Hardware Asset";
 
 	return createPortal(
 		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
 			{/* Top Bar with Title on Left, ✕ on Top-Right */}
 			<div className="modal-page-nav">
-				<span className="modal-nav-title">{isEditMode ? "Edit Hardware Asset" : "Add Hardware Asset"}</span>
+				<span className="modal-nav-title">{isEditMode ? `Edit ${assetNoun}` : `Add ${assetNoun}`}</span>
 				<button
 					type="button"
 					className="modal-nav-close"
@@ -109,6 +113,33 @@ export const AddGearDrawer: React.FC<{
 
 				<form id="gear-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
+						<label className="form-label">Asset Type</label>
+						<select
+							className="form-select"
+							value={category}
+							onChange={(e) => {
+								const next = e.target.value;
+								setCategory(next);
+								if (next !== "cash" && (Number(lifespanMonths) || 0) <= 0) {
+									setLifespanMonths("36");
+								}
+							}}
+							autoFocus={!isEditMode}
+						>
+							<optgroup label="Depreciating assets">
+								<option value="workstation">Workstation / Computing</option>
+								<option value="camera">Camera & Optics</option>
+								<option value="audio">Audio Equipment</option>
+								<option value="peripherals">Peripherals & Monitors</option>
+								<option value="office">Office & Studio Fitout</option>
+							</optgroup>
+							<optgroup label="Cash & equivalents">
+								<option value="cash">Cash / Bank Balance</option>
+							</optgroup>
+						</select>
+					</div>
+
+					<div className="form-group">
 						<label className="form-label">Asset Name</label>
 						<input
 							className="form-input"
@@ -116,7 +147,6 @@ export const AddGearDrawer: React.FC<{
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
-							autoFocus={!isEditMode}
 						/>
 					</div>
 
@@ -131,22 +161,7 @@ export const AddGearDrawer: React.FC<{
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Category</label>
-						<select
-							className="form-select"
-							value={category}
-							onChange={(e) => setCategory(e.target.value)}
-						>
-							<option value="workstation">Workstation / Computing</option>
-							<option value="camera">Camera & Optics</option>
-							<option value="audio">Audio Equipment</option>
-							<option value="peripherals">Peripherals & Monitors</option>
-							<option value="office">Office & Studio Fitout</option>
-						</select>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Purchase Date (Month)</label>
+						<label className="form-label">{isCash ? "As-of Date (Month)" : "Purchase Date (Month)"}</label>
 						<input
 							className="form-input"
 							type="month"
@@ -156,32 +171,46 @@ export const AddGearDrawer: React.FC<{
 						/>
 					</div>
 
-					<div className="form-group">
-						<label className="form-label">Useful Lifespan (Months)</label>
-						<select
-							className="form-select"
-							value={lifespanMonths}
-							onChange={(e) => setLifespanMonths(e.target.value)}
-						>
-							<option value="12">1 Year (12 mos - Consumable gear)</option>
-							<option value="24">2 Years (24 mos - Rapid refresh)</option>
-							<option value="36">3 Years (36 mos - Standard IT equipment)</option>
-							<option value="60">5 Years (60 mos - Studio infrastructure)</option>
-						</select>
-					</div>
+					{!isCash && (
+						<div className="form-group">
+							<label className="form-label">Useful Lifespan (Months)</label>
+							<select
+								className="form-select"
+								value={lifespanMonths}
+								onChange={(e) => setLifespanMonths(e.target.value)}
+							>
+								<option value="12">1 Year (12 mos - Consumable gear)</option>
+								<option value="24">2 Years (24 mos - Rapid refresh)</option>
+								<option value="36">3 Years (36 mos - Standard IT equipment)</option>
+								<option value="60">5 Years (60 mos - Studio infrastructure)</option>
+							</select>
+						</div>
+					)}
 
-					{/* Depreciation Preview Card */}
-					<div className="card" style={{ backgroundColor: "rgba(20, 20, 19, 0.03)" }}>
-						<span className="section-title">
-							Estimated Monthly Non-Cash Charge
-						</span>
-						<div style={{ fontSize: "20px", fontWeight: 700, marginTop: "4px" }}>
-							-฿ {formatMoney(monthlyRate)} / month
+					{/* Depreciation Preview Card — cash holds full value instead */}
+					{isCash ? (
+						<div className="card" style={{ backgroundColor: "rgba(5, 150, 105, 0.08)" }}>
+							<span className="section-title">Cash & Equivalents</span>
+							<div style={{ fontSize: "20px", fontWeight: 700, marginTop: "4px" }}>
+								฿ {formatMoney(numCost)}
+							</div>
+							<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
+								Held at full value — no depreciation. Counts as liquid in the hero balance.
+							</div>
 						</div>
-						<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
-							Depreciated straight-line over {lifespanMonths} months.
+					) : (
+						<div className="card" style={{ backgroundColor: "rgba(20, 20, 19, 0.03)" }}>
+							<span className="section-title">
+								Estimated Monthly Non-Cash Charge
+							</span>
+							<div style={{ fontSize: "20px", fontWeight: 700, marginTop: "4px" }}>
+								-฿ {formatMoney(monthlyRate)} / month
+							</div>
+							<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
+								Depreciated straight-line over {lifespanMonths} months.
+							</div>
 						</div>
-					</div>
+					)}
 				</form>
 			</div>
 
@@ -194,7 +223,7 @@ export const AddGearDrawer: React.FC<{
 					disabled={!canSubmit}
 					style={{ opacity: canSubmit ? 1 : 0.4 }}
 				>
-					{isEditMode ? "Save Changes" : "Log Hardware Asset"}
+					{isEditMode ? "Save Changes" : isCash ? "Log Cash Asset" : "Log Hardware Asset"}
 				</button>
 
 				{isEditMode && (

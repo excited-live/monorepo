@@ -81,7 +81,7 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 			{/* Full-Screen Scrollable Content */}
 			<div className="modal-page-content">
 				<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-					Deploy seed funds from Personal reserve into venture treasury.
+					Deploy seed funds from Personal reserve into business treasury.
 				</div>
 
 				<form id="capital-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -96,7 +96,7 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Target Venture</label>
+						<label className="form-label">Target Business</label>
 						<select
 							className="form-select"
 							value={targetBizId}
@@ -104,7 +104,7 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 						>
 							{businessAccounts.map((b) => (
 								<option key={b.id} value={b.id}>
-									{b.name} (Treasury: ฿${formatMoney(b.cashReserve)})
+									{b.name} (Treasury: ฿{formatMoney(b.cashReserve)})
 								</option>
 							))}
 						</select>

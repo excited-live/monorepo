@@ -14,11 +14,13 @@
 	},
 	"dependencies": {
 		"@astryxdesign/core": "catalog:",
+		"@choochmeque/tauri-plugin-google-auth-api": "0.5.1",
 		"@excited-live/biz": "workspace:*",
 		"@excited-live/design-system": "workspace:*",
 		"@tanstack/react-query": "catalog:",
 		"@tanstack/react-router": "catalog:",
 		"@tauri-apps/api": "^2.3.0",
+		"@tauri-apps/plugin-opener": "^2.7.1",
 		"react": "catalog:",
 		"react-dom": "catalog:"
 	},

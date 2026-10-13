@@ -153,6 +153,15 @@ Page-level gate; registered per section 1. Behavior:
   `/api/v1/auth/sign-in/email` with an `Authorization: Bearer` header → the
   session token comes back in the `set-auth-token` response header (bearer()
   plugin). No browser, no deep link. Token (never PII) is persisted client-side.
+- Google sign-in on the same tokens mount uses the ID-token branch of
+  `/api/v1/auth/sign-in/social` (`{ provider: "google", idToken: { token } }`),
+  NOT the OAuth redirect: the Tauri app (tauri-plugin-google-auth, native
+  Android/iOS Credential Manager flow) returns a Google ID token for the web
+  client ID, better-auth verifies it server-side and the response body carries
+  `token` (plus `set-auth-token` on the header). Requires
+  `BETTER_AUTH_GOOGLE_CLIENT_ID`/`_SECRET` on the API and `VITE_GOOGLE_CLIENT_ID`
+  (same web client ID) in apps/biz-mobile; Google Cloud needs an Android OAuth
+  client for `live.excited.mobile` + the debug/release SHA-1.
 
 ## 8. UI (`apps/webapp/src/components/TopbarAuth.tsx` + Topbar.tsx)
 

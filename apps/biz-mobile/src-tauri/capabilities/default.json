@@ -1,0 +1,11 @@
+{
+	"$schema": "../gen/schemas/mobile-schema.json",
+	"identifier": "default",
+	"description": "Default capability for the mobile shell: core defaults plus Google sign-in and opening external links.",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"opener:default",
+		"google-auth:default"
+	]
+}

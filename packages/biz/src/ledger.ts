@@ -1,4 +1,4 @@
-import { calculateAssetDepreciation, calculateMonthlyEquivalent, calculateRunway, round2 } from "./math";
+import { calculateAssetDepreciation, calculateMonthlyEquivalent, calculateRunway, isCashAsset, round2 } from "./math";
 import type {
 	CapitalTransfer,
 	EntityAccount,
@@ -9,6 +9,74 @@ import type {
 	RecurringSubscription,
 	RevenueStream,
 } from "./types";
+
+/**
+ * Cash on hand today: cash assets plus net capital transfers. No monthly flows
+ * are applied, so this is the number you can check against a bank balance
+ * mid-month (before this month's income/expenses have happened).
+ */
+export function calculateCurrentTreasury(params: {
+	account: EntityAccount;
+	hardware: HardwareAsset[];
+	transfers: CapitalTransfer[];
+}): number {
+	const { account, hardware, transfers } = params;
+
+	const cashAssets = hardware
+		.filter((h) => h.entityId === account.id && isCashAsset(h))
+		.reduce((acc, h) => acc + h.cost, 0);
+	const capitalIn = transfers
+		.filter((t) => t.toEntityId === account.id)
+		.reduce((acc, t) => acc + t.amount, 0);
+	const capitalOut = transfers
+		.filter((t) => t.fromEntityId === account.id)
+		.reduce((acc, t) => acc + t.amount, 0);
+
+	return round2(cashAssets + capitalIn - capitalOut);
+}
+
+/**
+ * End-of-month treasury = current treasury + income − expenses:
+ *
+ *   treasury = cash assets + net capital transfers + income − expenses
+ *
+ * where cash assets are the `category: "cash"` entries recorded in the Assets
+ * tab, income is the active monthly run-rate (yearly revenues amortised,
+ * one-time streams excluded) and expenses are active monthly subscriptions
+ * plus active debt service. Pure and deterministic: no clock, no locale.
+ */
+export function calculateDerivedTreasury(params: {
+	account: EntityAccount;
+	subscriptions: RecurringSubscription[];
+	revenues: RevenueStream[];
+	transfers: CapitalTransfer[];
+	hardware: HardwareAsset[];
+	liabilities?: LiabilityStream[];
+}): number {
+	const { account, subscriptions, revenues, transfers, hardware, liabilities = [] } = params;
+
+	const current = calculateCurrentTreasury({ account, hardware, transfers });
+
+	const activeRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
+	const hasSalaryStream = activeRevenues.some((r) => r.source === "salary");
+	const legacySalary = hasSalaryStream ? 0 : (account.salary ?? 0);
+	const income = activeRevenues.reduce(
+		(acc, r) =>
+			acc +
+			(r.frequency === "monthly" ? r.amount : r.frequency === "yearly" ? round2(r.amount / 12) : 0),
+		legacySalary,
+	);
+
+	const expenses =
+		subscriptions
+			.filter((s) => s.entityId === account.id && s.active)
+			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
+		liabilities
+			.filter((l) => l.entityId === account.id && l.active)
+			.reduce((acc, l) => acc + l.amount, 0);
+
+	return round2(current + income - expenses);
+}
 
 export function generateMonthlyLedger(params: {
 	account: EntityAccount;

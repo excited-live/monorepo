@@ -95,6 +95,8 @@ export const AddExpenseDrawer: React.FC<{
 
 	const canSubmit = name.trim().length > 0 && Number(amount) > 0;
 	const isEditMode = Boolean(initialData);
+	// Capital can only be deployed into ventures, never into the personal bucket.
+	const businessAccounts = accounts.filter((acc) => acc.type === "business");
 
 	return createPortal(
 		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
@@ -116,6 +118,42 @@ export const AddExpenseDrawer: React.FC<{
 				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
 				<form id="expense-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+					<div className="form-group">
+						<label className="form-label">Category</label>
+						<select
+							className="form-select"
+							value={category}
+							onChange={(e) => setCategory(e.target.value)}
+							autoFocus={!isEditMode}
+						>
+							<option value="dev_tool">Developer Tools & APIs</option>
+							<option value="saas">SaaS & Productivity</option>
+							<option value="infrastructure">Hosting & Domains</option>
+							<option value="transit">Transit & Transport</option>
+							<option value="connectivity">Internet & Mobile</option>
+							<option value="office">Office & Workspace</option>
+							<option value="capital">Capital Deployment</option>
+							<option value="other">Other Outflow</option>
+						</select>
+
+						{category === "capital" && (
+							<div className="form-group" style={{ marginTop: "10px" }}>
+								<label className="form-label">Target Organization</label>
+								<select
+									className="form-select"
+									value={targetEntityId}
+									onChange={(e) => setTargetEntityId(e.target.value)}
+								>
+									{businessAccounts.map((acc) => (
+										<option key={acc.id} value={acc.id}>
+											{acc.name}
+										</option>
+									))}
+								</select>
+							</div>
+						)}
+					</div>
+
 					<div className="form-group">
 						<label className="form-label">Service / Vendor Name</label>
 						<input
@@ -149,41 +187,6 @@ export const AddExpenseDrawer: React.FC<{
 							<option value="quarterly">Quarterly</option>
 							<option value="weekly">Weekly</option>
 						</select>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Category</label>
-						<select
-							className="form-select"
-							value={category}
-							onChange={(e) => setCategory(e.target.value)}
-						>
-							<option value="dev_tool">Developer Tools & APIs</option>
-							<option value="saas">SaaS & Productivity</option>
-							<option value="infrastructure">Hosting & Domains</option>
-							<option value="transit">Transit & Transport</option>
-							<option value="connectivity">Internet & Mobile</option>
-							<option value="office">Office & Workspace</option>
-							<option value="capital">Capital Deployment</option>
-							<option value="other">Other Outflow</option>
-						</select>
-
-						{category === "capital" && (
-							<div className="form-group" style={{ marginTop: "10px" }}>
-								<label className="form-label">Target Organization</label>
-								<select
-									className="form-select"
-									value={targetEntityId}
-									onChange={(e) => setTargetEntityId(e.target.value)}
-								>
-									{accounts.map((acc) => (
-										<option key={acc.id} value={acc.id}>
-											{acc.name}
-										</option>
-									))}
-								</select>
-							</div>
-						)}
 					</div>
 
 					<div className="form-group">

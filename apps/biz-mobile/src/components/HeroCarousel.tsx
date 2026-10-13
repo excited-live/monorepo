@@ -59,10 +59,10 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 		dragOffsetRef.current = 0;
 		setIsDragging(false);
 		setDragOffset(0);
-		if (Math.abs(delta) < TAP_THRESHOLD) {
-			onTap?.();
-		} else if (Math.abs(delta) > SWIPE_THRESHOLD) {
+		if (Math.abs(delta) > SWIPE_THRESHOLD) {
 			goToAccount(activeIndex + (delta < 0 ? 1 : -1));
+		} else if (Math.abs(delta) < TAP_THRESHOLD) {
+			onTap?.();
 		}
 	};
 
@@ -107,7 +107,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 			</div>
 
 			{accounts.length > 1 && (
-				<div className="hero-pager">
+				<div className="hero-pager" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
 					<button
 						type="button"
 						className="hero-pager-btn"

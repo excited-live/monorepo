@@ -1,3 +1,4 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useModalBack } from "../hooks/useModalBack";
@@ -54,16 +55,11 @@ export const AdjustCashModal: React.FC<{ isOpen: boolean; onClose: () => void }>
 				<form id="adjust-cash-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
 						<label className="form-label">Available Cash (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							placeholder="0.00"
 							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
+							onChange={setAmount}
 							required
-							min="0"
-							step="any"
 							autoFocus
 						/>
 					</div>

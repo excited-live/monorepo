@@ -99,25 +99,40 @@ export const SettingsView: React.FC = () => {
 						marginTop: "4px",
 					}}
 				>
-					<div
-						style={{
-							width: "48px",
-							height: "48px",
-							borderRadius: "50%",
-							backgroundColor: "var(--ink-black)",
-							color: "var(--canvas-cream)",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							fontWeight: 700,
-							fontSize: "16px",
-							flexShrink: 0,
-						}}
-					>
-						{userSession.isAuthenticated
-							? userSession.name.slice(0, 2).toUpperCase()
-							: "GU"}
-					</div>
+					{userSession.avatarUrl ? (
+						<img
+							src={userSession.avatarUrl}
+							alt={userSession.name}
+							style={{
+								width: "48px",
+								height: "48px",
+								borderRadius: "50%",
+								objectFit: "cover",
+								flexShrink: 0,
+								border: "1px solid var(--border-subtle)",
+							}}
+						/>
+					) : (
+						<div
+							style={{
+								width: "48px",
+								height: "48px",
+								borderRadius: "50%",
+								backgroundColor: "var(--ink-black)",
+								color: "var(--canvas-cream)",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								fontWeight: 700,
+								fontSize: "16px",
+								flexShrink: 0,
+							}}
+						>
+							{userSession.isAuthenticated
+								? userSession.name.slice(0, 2).toUpperCase()
+								: "GU"}
+						</div>
+					)}
 					<div style={{ flex: 1, minWidth: 0 }}>
 						<div style={{ fontSize: "15px", fontWeight: 700, color: "var(--ink-black)" }}>
 							{userSession.isAuthenticated ? userSession.name : "Guest Solopreneur"}

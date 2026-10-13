@@ -38,6 +38,7 @@ export const CapitalView: React.FC = () => {
 		activeCapitalSubTab,
 		setActiveCapitalSubTab,
 		selectedMonth,
+		userSession,
 	} = useBiz();
 
 	const [flipped, setFlipped] = useState(false);
@@ -68,6 +69,7 @@ export const CapitalView: React.FC = () => {
 		hardware,
 		revenues,
 		transfers,
+		liabilities,
 	}).actions;
 
 	// Run-rate inputs for the active entity
@@ -76,7 +78,10 @@ export const CapitalView: React.FC = () => {
 	const entityRev = revenues.filter((r) => r.entityId === activeAccount.id && r.active);
 	const entityLiab = liabilities.filter((l) => l.entityId === activeAccount.id && l.active);
 
+	const hasSalaryStream = entityRev.some((r) => r.source === "salary");
+	const legacySalary = !hasSalaryStream && activeAccount.type === "personal" ? (activeAccount.salary ?? 0) : 0;
 	const totalMrr = round2(
+		legacySalary +
 		entityRev.reduce(
 			(acc, r) => acc + (r.frequency === "yearly" ? round2(r.amount / 12) : r.frequency === "monthly" ? r.amount : 0),
 			0,
@@ -105,35 +110,31 @@ export const CapitalView: React.FC = () => {
 		),
 	);
 
-	const subTabLabel =
-		activeCapitalSubTab === "income"
-			? "Add Income"
-			: activeCapitalSubTab === "expense"
-				? "Add Expense"
-				: activeCapitalSubTab === "assets"
-					? "Add Asset"
-					: "Add Liability";
 
-	const openActiveAdd = () => {
-		if (activeCapitalSubTab === "income") {
-			setSelectedRev(null);
-			setIsRevenueOpen(true);
-		} else if (activeCapitalSubTab === "expense") {
-			setSelectedSub(null);
-			setIsExpenseOpen(true);
-		} else if (activeCapitalSubTab === "assets") {
-			setSelectedHw(null);
-			setIsGearOpen(true);
-		} else {
-			setSelectedLiab(null);
-			setIsLiabilityOpen(true);
-		}
-	};
 
 	return (
-		<div className="screen-content">
-			{/* Flippable hero: front = business detail · back = runway projection */}
-			<div className={`hero-flip ${flipped ? "flipped" : ""}`}>
+		<div className="capital-page-layout">
+			{/* Full-width background image: (first current career image if existing) or default to profile image */}
+			{(() => {
+				const bgImg = activeAccount.type === "personal"
+					? (activeAccount.careerImageUrl || activeAccount.imageUrl || userSession.avatarUrl)
+					: activeAccount.imageUrl;
+				if (!bgImg) return null;
+				return (
+					<div className="capital-hero-bg-wrapper">
+						<img
+							src={bgImg}
+							alt={activeAccount.name}
+							className="capital-hero-bg-image"
+						/>
+						<div className="capital-hero-bg-scrim" />
+					</div>
+				);
+			})()}
+
+			{/* Floating Hero Card: upper 80% over org background, lower 20% over app sheet */}
+			<div className="capital-hero-card-container">
+				<div className={`hero-flip ${flipped ? "flipped" : ""}`}>
 				<div className="hero-flip-inner">
 					<div className="hero-flip-face front">
 						<HeroCarousel
@@ -151,6 +152,7 @@ export const CapitalView: React.FC = () => {
 										}
 									}}
 									onPersonalSettings={() => setActiveTab("settings")}
+									onTap={() => setFlipped(true)}
 								/>
 							)}
 						/>
@@ -162,36 +164,19 @@ export const CapitalView: React.FC = () => {
 							activeEntityId={activeEntityId}
 							onSelectEntity={setActiveEntityId}
 							onTap={() => setFlipped(false)}
-							renderCard={(account) => <LedgerHeroCard account={account} yearMonth={selectedMonth} />}
+							renderCard={(account) => <LedgerHeroCard account={account} yearMonth={selectedMonth} onTap={() => setFlipped(false)} />}
 						/>
 					</div>
 				</div>
 			</div>
+			</div>
+
+			{/* Main App Section (Sheet) starting at the lower 20% of the hero card */}
+			<div className="capital-app-sheet">
 
 			{!flipped ? (
 				<>
-					{/* Front — Action Buttons */}
-					<div className="quick-action-bar">
-						<button
-							type="button"
-							className="action-pill-btn"
-							onClick={() => setIsAdjustCashOpen(true)}
-						>
-							Adjust Cash
-						</button>
 
-						<button
-							type="button"
-							className="action-pill-btn"
-							onClick={() => setIsCapitalOpen(true)}
-						>
-							Deploy Capital
-						</button>
-
-						<button type="button" className="action-pill-btn" onClick={openActiveAdd}>
-							{subTabLabel}
-						</button>
-					</div>
 
 					{/* Detail Mode Switcher */}
 					<div className="sub-tab-switcher">
@@ -224,6 +209,17 @@ export const CapitalView: React.FC = () => {
 										Total MRR: ฿{formatMoney(totalMrr)}/mo
 									</div>
 								</div>
+								<button
+									type="button"
+									className="action-pill-btn"
+									style={{ padding: "4px 12px", fontSize: "12px" }}
+									onClick={() => {
+										setSelectedRev(null);
+										setIsRevenueOpen(true);
+									}}
+								>
+									+ Add Income
+								</button>
 							</div>
 
 							{entityRev.length === 0 ? (
@@ -286,6 +282,17 @@ export const CapitalView: React.FC = () => {
 										Total Monthly Run-rate: ฿{formatMoney(totalMonthlyExpenses)}/mo
 									</div>
 								</div>
+								<button
+									type="button"
+									className="action-pill-btn"
+									style={{ padding: "4px 12px", fontSize: "12px" }}
+									onClick={() => {
+										setSelectedSub(null);
+										setIsExpenseOpen(true);
+									}}
+								>
+									+ Add Expense
+								</button>
 							</div>
 
 							{entitySubs.length === 0 ? (
@@ -348,6 +355,17 @@ export const CapitalView: React.FC = () => {
 										Book Value: ฿{formatMoney(totalBookValue)} • Dep: -฿{formatMoney(totalDepreciation)}/mo
 									</div>
 								</div>
+								<button
+									type="button"
+									className="action-pill-btn"
+									style={{ padding: "4px 12px", fontSize: "12px" }}
+									onClick={() => {
+										setSelectedHw(null);
+										setIsGearOpen(true);
+									}}
+								>
+									+ Add Asset
+								</button>
 							</div>
 
 							{entityHw.length === 0 ? (
@@ -417,6 +435,17 @@ export const CapitalView: React.FC = () => {
 										Total Monthly Payments: ฿{formatMoney(totalMonthlyLiabilities)}/mo
 									</div>
 								</div>
+								<button
+									type="button"
+									className="action-pill-btn"
+									style={{ padding: "4px 12px", fontSize: "12px" }}
+									onClick={() => {
+										setSelectedLiab(null);
+										setIsLiabilityOpen(true);
+									}}
+								>
+									+ Add Liability
+								</button>
 							</div>
 
 							{entityLiab.length === 0 ? (
@@ -535,6 +564,7 @@ export const CapitalView: React.FC = () => {
 					</div>
 				</>
 			)}
+			</div>
 
 			{/* Drawers & Modals */}
 			<CapitalDrawer isOpen={isCapitalOpen} onClose={() => setIsCapitalOpen(false)} />

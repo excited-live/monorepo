@@ -15,6 +15,9 @@ export interface EntityAccount {
 	active?: boolean;
 	notes?: string;
 	imageUrl?: string;
+	careerTitle?: string;
+	careerCompany?: string;
+	careerImageUrl?: string;
 }
 
 export interface CapitalTransfer {
@@ -58,7 +61,7 @@ export interface RevenueStream {
 	name: string;
 	amount: number;
 	frequency: "monthly" | "yearly" | "one_time";
-	source: "stripe" | "bank_transfer" | "cash" | "freelance" | "other";
+	source: "stripe" | "bank_transfer" | "cash" | "freelance" | "salary" | "other";
 	active: boolean;
 	startMonth?: string;
 	endMonth?: string;

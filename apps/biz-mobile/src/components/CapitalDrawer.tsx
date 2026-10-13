@@ -1,3 +1,4 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { calculateAssetDepreciation, calculateMonthlyEquivalent, round2, simulateCapitalTransfer } from "@excited-live/biz";
@@ -111,15 +112,10 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 
 					<div className="form-group">
 						<label className="form-label">Transfer Amount (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
+							onChange={setAmount}
 							required
-							min="100"
-							step="100"
 							autoFocus
 						/>
 					</div>

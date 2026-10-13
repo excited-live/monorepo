@@ -1,3 +1,4 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { LiabilityStream } from "@excited-live/biz";
@@ -106,13 +107,10 @@ export const AddLiabilityDrawer: React.FC<{
 
 					<div className="form-group">
 						<label className="form-label">Monthly Payment (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							placeholder="0.00"
 							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
+							onChange={setAmount}
 							required
 						/>
 					</div>

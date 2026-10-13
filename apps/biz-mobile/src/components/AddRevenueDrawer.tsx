@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import { CurrencyInput } from "./CurrencyInput";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { RevenueStream } from "@excited-live/biz";
+import { ModalImageSection } from "./ModalImageSection";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
 
@@ -9,17 +11,16 @@ export const AddRevenueDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: RevenueStream | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { activeEntityId, addRevenue, updateRevenue, deleteRevenue, accounts } = useBiz();
+	const { activeEntityId, addRevenue, updateRevenue, deleteRevenue, accounts, setCareerIncome } = useBiz();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 
 	const { dismiss } = useModalBack(isOpen, onClose);
-	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const [name, setName] = useState("");
 	const [amount, setAmount] = useState("");
 	const [frequency, setFrequency] = useState<"monthly" | "yearly" | "one_time">("monthly");
-	const [source, setSource] = useState<"stripe" | "bank_transfer" | "cash" | "freelance" | "other">(
+	const [source, setSource] = useState<"stripe" | "bank_transfer" | "cash" | "freelance" | "salary" | "other">(
 		isPersonal ? "freelance" : "stripe",
 	);
 	const [startMonth, setStartMonth] = useState("");
@@ -51,20 +52,6 @@ export const AddRevenueDrawer: React.FC<{
 
 	if (!isOpen) return null;
 
-	const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				if (typeof reader.result === "string") {
-					setImageUrl(reader.result);
-				}
-			};
-			reader.readAsDataURL(file);
-		}
-		e.target.value = "";
-	};
-
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		const num = Number(amount);
@@ -91,6 +78,17 @@ export const AddRevenueDrawer: React.FC<{
 			});
 		}
 
+		if (source === "salary" && isPersonal) {
+			setCareerIncome(
+				activeEntityId,
+				num,
+				28,
+				name.trim(),
+				notes.trim() || undefined,
+				imageUrl || undefined,
+			);
+		}
+
 		dismiss();
 	};
 
@@ -98,6 +96,9 @@ export const AddRevenueDrawer: React.FC<{
 		if (!initialData) return;
 		if (confirm(`Remove revenue stream "${initialData.name}"?`)) {
 			deleteRevenue(initialData.id);
+			if (initialData.source === "salary" && isPersonal) {
+				setCareerIncome(activeEntityId, 0, 28);
+			}
 			dismiss();
 		}
 	};
@@ -107,6 +108,7 @@ export const AddRevenueDrawer: React.FC<{
 
 	const sourceOptions = isPersonal
 		? [
+				["salary", "Career / Salary"],
 				["freelance", "Freelance / Side Income"],
 				["bank_transfer", "Bank Transfer"],
 				["cash", "Cash"],
@@ -134,44 +136,7 @@ export const AddRevenueDrawer: React.FC<{
 			</div>
 
 			<div className="modal-page-content">
-				<input
-					ref={fileInputRef}
-					type="file"
-					accept="image/*"
-					onChange={handleFileUpload}
-					style={{ display: "none" }}
-				/>
-
-				{imageUrl ? (
-					<div className="modal-image-preview-container">
-						<img src={imageUrl} alt="Revenue Icon" className="modal-image-preview" />
-						<div className="modal-image-actions">
-							<button
-								type="button"
-								className="modal-image-btn primary"
-								onClick={() => fileInputRef.current?.click()}
-							>
-								Change Image
-							</button>
-							<button
-								type="button"
-								className="modal-image-btn"
-								onClick={() => setImageUrl("")}
-							>
-								Remove
-							</button>
-						</div>
-					</div>
-				) : (
-					<button
-						type="button"
-						className="modal-image-empty"
-						onClick={() => fileInputRef.current?.click()}
-					>
-						<span className="modal-image-empty-icon">＋</span>
-						<span>Add Image</span>
-					</button>
-				)}
+				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
 				<form id="revenue-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
@@ -187,13 +152,10 @@ export const AddRevenueDrawer: React.FC<{
 
 					<div className="form-group">
 						<label className="form-label">Amount (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							placeholder="0.00"
 							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
+							onChange={setAmount}
 							required
 						/>
 					</div>

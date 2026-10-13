@@ -4,6 +4,7 @@ import type {
 	EntityAccount,
 	HardwareAsset,
 	LedgerActionItem,
+	LiabilityStream,
 	MonthlySummary,
 	RecurringSubscription,
 	RevenueStream,
@@ -16,8 +17,9 @@ export function generateMonthlyLedger(params: {
 	hardware: HardwareAsset[];
 	revenues: RevenueStream[];
 	transfers: CapitalTransfer[];
+	liabilities?: LiabilityStream[];
 }): { summary: MonthlySummary; actions: LedgerActionItem[] } {
-	const { account, yearMonth, subscriptions, hardware, revenues, transfers } = params;
+	const { account, yearMonth, subscriptions, hardware, revenues, transfers, liabilities = [] } = params;
 
 	const actions: LedgerActionItem[] = [];
 
@@ -67,7 +69,9 @@ export function generateMonthlyLedger(params: {
 	}
 
 	// Inflows from career salary (personal or business payroll)
-	if (account.salary) {
+	// If already tracked as a revenue stream with source 'salary', avoid double-counting
+	const hasSalaryInRevenues = activeRevenues.some((r) => r.source === "salary");
+	if (account.salary && !hasSalaryInRevenues) {
 		const payday = account.paydayDayOfMonth ?? 28;
 		const dateStr = `${yearMonth}-${String(payday).padStart(2, "0")}`;
 		totalInflow += account.salary;
@@ -118,6 +122,22 @@ export function generateMonthlyLedger(params: {
 			category: s.category,
 			reference: s.id,
 			amount: -monthlyCost,
+		});
+	}
+
+	// Outflows from liabilities & debt service
+	const entityLiab = liabilities.filter((l) => l.entityId === account.id && l.active);
+	for (const l of entityLiab) {
+		totalCashOutflow += l.amount;
+		actions.push({
+			id: `action_liab_${l.id}`,
+			entityId: account.id,
+			date: `${yearMonth}-10`,
+			title: `Debt Service: ${l.name}`,
+			type: "outflow",
+			category: "liability",
+			reference: l.id,
+			amount: -l.amount,
 		});
 	}
 

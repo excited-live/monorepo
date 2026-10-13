@@ -1,6 +1,8 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { EntityAccount } from "@excited-live/biz";
+import { ModalImageSection } from "./ModalImageSection";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
 
@@ -9,13 +11,6 @@ interface AddBusinessDrawerProps {
 	onClose: () => void;
 	initialData?: EntityAccount | null;
 }
-
-const ORG_IMAGE_PRESETS = [
-	{ label: "Modern Architecture", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80" },
-	{ label: "Minimalist Loft", url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80" },
-	{ label: "High-Tech Glass", url: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80" },
-	{ label: "Creative Studio", url: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80" },
-];
 
 export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 	isOpen,
@@ -42,19 +37,6 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 	}, [initialData, isOpen]);
 
 	if (!isOpen) return null;
-
-	const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				if (typeof reader.result === "string") {
-					setImageUrl(reader.result);
-				}
-			};
-			reader.readAsDataURL(file);
-		}
-	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -101,25 +83,7 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 
 			{/* Full-Screen Scrollable Content */}
 			<div className="modal-page-content">
-				{/* Image Banner Preview if exists */}
-				{imageUrl ? (
-					<div className="modal-image-preview-container">
-						<img src={imageUrl} alt="Org Cover Preview" className="modal-image-preview" />
-						<button
-							type="button"
-							className="modal-image-remove-btn"
-							onClick={() => setImageUrl("")}
-						>
-							Remove Image
-						</button>
-					</div>
-				) : (
-					<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-						{isEditMode
-							? `Update profile, cover backdrop, and treasury for ${initialData?.name}.`
-							: "Create a separate legal or operational entity to track independent runway, MRR, and hardware."}
-					</div>
-				)}
+				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
 				<form id="business-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
@@ -138,52 +102,14 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 						<label className="form-label">
 							{isEditMode ? "Treasury Balance (THB)" : "Initial Treasury (THB)"}
 						</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							placeholder="0.00"
 							value={initialCash}
-							onChange={(e) => setInitialCash(e.target.value)}
+							onChange={setInitialCash}
 						/>
 					</div>
 
 					{/* Image Cover for Organization / Hero Background */}
-					<div className="form-group">
-						<label className="form-label">Backdrop Cover Image</label>
-						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-							<input
-								className="form-input"
-								placeholder="Image URL (https://...)"
-								value={imageUrl}
-								onChange={(e) => setImageUrl(e.target.value)}
-								style={{ flex: 1 }}
-							/>
-							<label className="upload-pill-btn">
-								Upload
-								<input
-									type="file"
-									accept="image/*"
-									onChange={handleFileUpload}
-									style={{ display: "none" }}
-								/>
-							</label>
-						</div>
-
-						{/* Presets */}
-						<div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-							{ORG_IMAGE_PRESETS.map((p) => (
-								<button
-									key={p.label}
-									type="button"
-									className="preset-chip-btn"
-									onClick={() => setImageUrl(p.url)}
-								>
-									{p.label}
-								</button>
-							))}
-						</div>
-					</div>
 				</form>
 			</div>
 

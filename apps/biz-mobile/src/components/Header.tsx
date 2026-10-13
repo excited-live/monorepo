@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { BizOrbitMark } from "@excited-live/design-system";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
@@ -21,13 +20,29 @@ export const Header: React.FC = () => {
 	const { dismiss } = useModalBack(isOpen, () => setIsOpen(false));
 
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
+	const isSettings = activeTab === "settings";
+	const isHome = activeTab === "home";
+	const isCapital = activeTab === "capital";
+	const isCentered = isHome || isSettings;
+	const isDarkBg = isCapital && activeAccount.type === "business";
 
 	return (
 		<>
-			<header className={`top-header ${isScrolled ? "scrolled" : ""}`}>
-				<div className="header-primary-row">
+			<header
+				className={`top-header ${isScrolled ? "scrolled" : ""} ${isSettings ? "settings-header" : ""} ${isHome ? "home-header" : ""} ${isDarkBg ? "tone-dark" : ""}`}
+			>
+				<div className={`header-primary-row ${isCentered ? "header-centered" : ""}`}>
 					<div className="header-brand-left" aria-label="excited.live logo" title="excited.live">
-						<BizOrbitMark size={24} />
+						<img
+							src="/logo-mark.png"
+							alt=""
+							style={{
+								width: "28px",
+								height: "24px",
+								objectFit: "contain",
+								display: "block",
+							}}
+						/>
 						<div className="header-brand-title">
 							<span className="brand-root">excited</span>
 							<span className="brand-dot">.</span>
@@ -47,7 +62,6 @@ export const Header: React.FC = () => {
 						</button>
 					)}
 				</div>
-
 			</header>
 
 			{/* Entity Switcher Sheet */}
@@ -86,11 +100,20 @@ export const Header: React.FC = () => {
 												}}
 											>
 												<div className="entity-card-row">
+													<div className="item-thumb-wrapper" style={{ width: "40px", height: "40px", minWidth: "40px", borderRadius: "10px" }}>
+														{acc.imageUrl ? (
+															<img src={acc.imageUrl} alt={acc.name} className="item-thumb" />
+														) : (
+															<div className="item-thumb-fallback">
+																{acc.name.slice(0, 2).toUpperCase()}
+															</div>
+														)}
+													</div>
 													<div className="entity-name-col">
 														<span className="entity-name">{acc.name}</span>
 														<span className="entity-type-badge">{acc.type === "business" ? "Venture" : "Personal"}</span>
 													</div>
-												<div className="entity-balance-col">
+													<div className="entity-balance-col">
 													<span className="entity-balance">฿{formatMoney(acc.cashReserve)}</span>
 													<span className="entity-currency">THB</span>
 												</div>

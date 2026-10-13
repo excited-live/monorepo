@@ -1,3 +1,4 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useModalBack } from "../hooks/useModalBack";
@@ -57,13 +58,10 @@ export const CareerDrawer: React.FC<{
 				<form id="career-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
 						<label className="form-label">Monthly Salary (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
-							placeholder="e.g. 75000"
+						<CurrencyInput
+							placeholder="0.00"
 							value={salary}
-							onChange={(e) => setSalary(e.target.value)}
+							onChange={setSalary}
 							required
 						/>
 					</div>

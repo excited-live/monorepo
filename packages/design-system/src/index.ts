@@ -37,8 +37,6 @@ export {
 export {
 	SvgIcon,
 	FeyMark,
-	BizOrbitMark,
-	type BizOrbitMarkProps,
 	ChatIcon,
 	MoonIcon,
 	SunIcon,

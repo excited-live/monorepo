@@ -1,16 +1,11 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { HardwareAsset } from "@excited-live/biz";
+import { ModalImageSection } from "./ModalImageSection";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
-
-const GEAR_IMAGE_PRESETS = [
-	{ label: "Camera Rig", url: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=200&q=80" },
-	{ label: "Workstation", url: "https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=200&q=80" },
-	{ label: "iPad / Tablet", url: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=200&q=80" },
-	{ label: "MacBook", url: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=200&q=80" },
-];
 
 export const AddGearDrawer: React.FC<{
 	isOpen: boolean;
@@ -47,19 +42,6 @@ export const AddGearDrawer: React.FC<{
 	}, [initialData, isOpen]);
 
 	if (!isOpen) return null;
-
-	const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				if (typeof reader.result === "string") {
-					setImageUrl(reader.result);
-				}
-			};
-			reader.readAsDataURL(file);
-		}
-	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -123,25 +105,7 @@ export const AddGearDrawer: React.FC<{
 
 			{/* Full-Screen Scrollable Content */}
 			<div className="modal-page-content">
-				{/* Image Header Preview if set */}
-				{imageUrl ? (
-					<div className="modal-image-preview-container">
-						<img src={imageUrl} alt="Hardware Preview" className="modal-image-preview" />
-						<button
-							type="button"
-							className="modal-image-remove-btn"
-							onClick={() => setImageUrl("")}
-						>
-							Remove Image
-						</button>
-					</div>
-				) : (
-					<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-						{isEditMode
-							? "Update depreciation schedule and cost basis for this asset."
-							: "Register capital hardware and track its monthly non-cash depreciation schedule."}
-					</div>
-				)}
+				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
 				<form id="gear-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
@@ -158,49 +122,12 @@ export const AddGearDrawer: React.FC<{
 
 					<div className="form-group">
 						<label className="form-label">Purchase Cost (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							placeholder="0.00"
 							value={cost}
-							onChange={(e) => setCost(e.target.value)}
+							onChange={setCost}
 							required
 						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Asset Photo / Icon</label>
-						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-							<input
-								className="form-input"
-								placeholder="Image URL"
-								value={imageUrl}
-								onChange={(e) => setImageUrl(e.target.value)}
-								style={{ flex: 1 }}
-							/>
-							<label className="upload-pill-btn">
-								Upload
-								<input
-									type="file"
-									accept="image/*"
-									onChange={handleFileUpload}
-									style={{ display: "none" }}
-								/>
-							</label>
-						</div>
-						<div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-							{GEAR_IMAGE_PRESETS.map((p) => (
-								<button
-									key={p.label}
-									type="button"
-									className="preset-chip-btn"
-									onClick={() => setImageUrl(p.url)}
-								>
-									{p.label}
-								</button>
-							))}
-						</div>
 					</div>
 
 					<div className="form-group">

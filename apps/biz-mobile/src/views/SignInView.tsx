@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { BizOrbitMark, FeyMark } from "@excited-live/design-system";
 import { useBiz } from "../state";
 
 /**
@@ -57,14 +56,22 @@ export const SignInView: React.FC = () => {
 	return (
 		<div className="signin-container">
 			<div className="signin-hero">
-				<div className="signin-medallion">
-					<BizOrbitMark size={56} />
-				</div>
+				<img
+					src="/logo-mark.png"
+					alt="excited.live"
+					style={{
+						width: "66px",
+						height: "56px",
+						objectFit: "contain",
+						display: "block",
+						marginBottom: "24px",
+					}}
+				/>
 
 				<div className="header-brand-title" style={{ fontSize: "22px", marginBottom: "8px" }}>
 					<span className="brand-root">excited</span>
 					<span className="brand-dot">.</span>
-					<span className="brand-tld">biz</span>
+					<span className="brand-tld">live</span>
 				</div>
 
 				<h1 className="signin-title">{label("title", lang)}</h1>
@@ -132,16 +139,6 @@ export const SignInView: React.FC = () => {
 					</div>
 				</form>
 			</div>
-
-			<footer className="signin-footer">
-				<div className="signin-footer-brand">
-					<FeyMark size={16} />
-					<span>Powered by <strong>excited.live</strong></span>
-				</div>
-				<p className="signin-footer-sub">
-					Connects seamlessly with the excited.live ecosystem
-				</p>
-			</footer>
 		</div>
 	);
 };

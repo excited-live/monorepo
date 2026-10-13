@@ -1,15 +1,10 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { BillingCycle, RecurringSubscription } from "@excited-live/biz";
+import { ModalImageSection } from "./ModalImageSection";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
-
-const EXPENSE_IMAGE_PRESETS = [
-	{ label: "AI Dev", url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=200&q=80" },
-	{ label: "Transit", url: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=200&q=80" },
-	{ label: "Fiber Net", url: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=200&q=80" },
-	{ label: "Automation", url: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=200&q=80" },
-];
 
 export const AddExpenseDrawer: React.FC<{
 	isOpen: boolean;
@@ -17,8 +12,6 @@ export const AddExpenseDrawer: React.FC<{
 	initialData?: RecurringSubscription | null;
 }> = ({ isOpen, onClose, initialData }) => {
 	const { activeEntityId, addSubscription, updateSubscription, deleteSubscription, accounts } = useBiz();
-	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
-
 	const { dismiss } = useModalBack(isOpen, onClose);
 
 	const [name, setName] = useState("");
@@ -27,6 +20,7 @@ export const AddExpenseDrawer: React.FC<{
 	const [category, setCategory] = useState("dev_tool");
 	const [renewalDate, setRenewalDate] = useState("2026-11-01");
 	const [notes, setNotes] = useState("");
+	const [targetEntityId, setTargetEntityId] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
 
 	useEffect(() => {
@@ -46,28 +40,22 @@ export const AddExpenseDrawer: React.FC<{
 			setRenewalDate("2026-11-01");
 			setNotes("");
 			setImageUrl("");
+			setTargetEntityId("");
 		}
 	}, [initialData, isOpen]);
 
 	if (!isOpen) return null;
 
-	const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				if (typeof reader.result === "string") {
-					setImageUrl(reader.result);
-				}
-			};
-			reader.readAsDataURL(file);
-		}
-	};
-
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		const num = Number(amount);
 		if (!name.trim() || !num) return;
+
+		const targetName = accounts.find((a) => a.id === targetEntityId)?.name;
+		const finalNotes =
+			category === "capital" && targetName
+				? [notes.trim(), `Deploy to ${targetName}`].filter(Boolean).join(" • ")
+				: notes.trim() || undefined;
 
 		if (initialData) {
 			updateSubscription({
@@ -77,7 +65,7 @@ export const AddExpenseDrawer: React.FC<{
 				cycle,
 				category,
 				nextRenewalDate: renewalDate,
-				notes: notes.trim() || undefined,
+				notes: finalNotes,
 				imageUrl: imageUrl || undefined,
 			});
 		} else {
@@ -89,7 +77,7 @@ export const AddExpenseDrawer: React.FC<{
 				category,
 				nextRenewalDate: renewalDate,
 				active: true,
-				notes: notes.trim() || undefined,
+				notes: finalNotes,
 				imageUrl: imageUrl || undefined,
 			});
 		}
@@ -125,23 +113,7 @@ export const AddExpenseDrawer: React.FC<{
 
 			{/* Full-Screen Scrollable Content */}
 			<div className="modal-page-content">
-				{/* Image Header Preview if set */}
-				{imageUrl ? (
-					<div className="modal-image-preview-container">
-						<img src={imageUrl} alt="Expense Icon" className="modal-image-preview" />
-						<button
-							type="button"
-							className="modal-image-remove-btn"
-							onClick={() => setImageUrl("")}
-						>
-							Remove Image
-						</button>
-					</div>
-				) : (
-					<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-						Recurring fixed cost logged against <strong>{activeAccount.name}</strong>.
-					</div>
-				)}
+				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
 				<form id="expense-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
@@ -157,49 +129,12 @@ export const AddExpenseDrawer: React.FC<{
 
 					<div className="form-group">
 						<label className="form-label">Amount (THB)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="decimal"
+						<CurrencyInput
 							placeholder="0.00"
 							value={amount}
-							onChange={(e) => setAmount(e.target.value)}
+							onChange={setAmount}
 							required
 						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Item Icon / Image</label>
-						<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-							<input
-								className="form-input"
-								placeholder="Image URL"
-								value={imageUrl}
-								onChange={(e) => setImageUrl(e.target.value)}
-								style={{ flex: 1 }}
-							/>
-							<label className="upload-pill-btn">
-								Upload
-								<input
-									type="file"
-									accept="image/*"
-									onChange={handleFileUpload}
-									style={{ display: "none" }}
-								/>
-							</label>
-						</div>
-						<div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
-							{EXPENSE_IMAGE_PRESETS.map((p) => (
-								<button
-									key={p.label}
-									type="button"
-									className="preset-chip-btn"
-									onClick={() => setImageUrl(p.url)}
-								>
-									{p.label}
-								</button>
-							))}
-						</div>
 					</div>
 
 					<div className="form-group">
@@ -229,8 +164,26 @@ export const AddExpenseDrawer: React.FC<{
 							<option value="transit">Transit & Transport</option>
 							<option value="connectivity">Internet & Mobile</option>
 							<option value="office">Office & Workspace</option>
+							<option value="capital">Capital Deployment</option>
 							<option value="other">Other Outflow</option>
 						</select>
+
+						{category === "capital" && (
+							<div className="form-group" style={{ marginTop: "10px" }}>
+								<label className="form-label">Target Organization</label>
+								<select
+									className="form-select"
+									value={targetEntityId}
+									onChange={(e) => setTargetEntityId(e.target.value)}
+								>
+									{accounts.map((acc) => (
+										<option key={acc.id} value={acc.id}>
+											{acc.name}
+										</option>
+									))}
+								</select>
+							</div>
+						)}
 					</div>
 
 					<div className="form-group">

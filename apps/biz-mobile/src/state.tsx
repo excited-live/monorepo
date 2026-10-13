@@ -15,6 +15,8 @@ import {
 } from "@excited-live/biz";
 import { authApi, setBearerToken } from "./lib/api-client";
 
+export const DEFAULT_PROFILE_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
+
 export interface UserSession {
 	id: string;
 	email: string;
@@ -59,7 +61,7 @@ interface BizContextType {
 	addLiability: (liab: Omit<LiabilityStream, "id">) => void;
 	updateLiability: (liab: LiabilityStream) => void;
 	deleteLiability: (id: string) => void;
-	setCareerIncome: (entityId: string, salary: number, paydayDayOfMonth: number) => void;
+	setCareerIncome: (entityId: string, salary: number, paydayDayOfMonth?: number, title?: string, company?: string, imageUrl?: string) => void;
 	updateCashReserve: (entityId: string, newAmount: number) => void;
 	addBusiness: (name: string, initialCash: number, imageUrl?: string) => string;
 	updateBusiness: (id: string, name: string, cashReserve: number, imageUrl?: string) => void;
@@ -75,6 +77,7 @@ const DEFAULT_SESSION: UserSession = {
 	name: "Guest Solopreneur",
 	orgName: "My Local Venture",
 	isAuthenticated: false,
+	avatarUrl: DEFAULT_PROFILE_AVATAR,
 };
 
 const BizContext = createContext<BizContextType | null>(null);
@@ -82,7 +85,24 @@ const BizContext = createContext<BizContextType | null>(null);
 export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [accounts, setAccounts] = useState<EntityAccount[]>(() => {
 		const saved = localStorage.getItem(`${STORAGE_KEY}_accounts`);
-		return saved ? JSON.parse(saved) : SEED_ACCOUNTS;
+		if (!saved) return SEED_ACCOUNTS;
+		try {
+			const parsed = JSON.parse(saved) as EntityAccount[];
+			return parsed.map((acc) => {
+				if (acc.id === "acc_personal") {
+					return {
+						...acc,
+						imageUrl: DEFAULT_PROFILE_AVATAR,
+						careerTitle: acc.careerTitle || "Lead Product Designer & Engineer",
+						careerCompany: acc.careerCompany || "Design Engineering Practice",
+						careerImageUrl: acc.careerImageUrl || "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80",
+					};
+				}
+				return acc;
+			});
+		} catch {
+			return SEED_ACCOUNTS;
+		}
 	});
 
 	const [subscriptions, setSubscriptions] = useState<RecurringSubscription[]>(() => {
@@ -97,7 +117,18 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 	const [revenues, setRevenues] = useState<RevenueStream[]>(() => {
 		const saved = localStorage.getItem(`${STORAGE_KEY}_rev`);
-		return saved ? JSON.parse(saved) : SEED_REVENUES;
+		if (!saved) return SEED_REVENUES;
+		try {
+			const parsed = JSON.parse(saved) as RevenueStream[];
+			const hasCareerRev = parsed.some((r) => r.source === "salary" || r.id === "rev_career_prame");
+			if (!hasCareerRev) {
+				const careerSeed = SEED_REVENUES.find((r) => r.id === "rev_career_prame");
+				return careerSeed ? [careerSeed, ...parsed] : parsed;
+			}
+			return parsed;
+		} catch {
+			return SEED_REVENUES;
+		}
 	});
 
 	const [liabilities, setLiabilities] = useState<LiabilityStream[]>(() => {
@@ -112,7 +143,19 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 	const [userSession, setUserSession] = useState<UserSession>(() => {
 		const saved = localStorage.getItem(`${STORAGE_KEY}_session`);
-		return saved ? JSON.parse(saved) : DEFAULT_SESSION;
+		if (saved) {
+			try {
+				const parsed = JSON.parse(saved);
+				return {
+					...DEFAULT_SESSION,
+					...parsed,
+					avatarUrl: parsed.avatarUrl || DEFAULT_PROFILE_AVATAR,
+				};
+			} catch {
+				return DEFAULT_SESSION;
+			}
+		}
+		return DEFAULT_SESSION;
 	});
 
 	const [activeEntityId, setActiveEntityId] = useState<string>("acc_personal");
@@ -293,9 +336,27 @@ export const BizProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		setLiabilities((prev) => prev.filter((l) => l.id !== id));
 	};
 
-	const setCareerIncome = (entityId: string, salary: number, paydayDayOfMonth: number) => {
+	const setCareerIncome = (
+		entityId: string,
+		salary: number,
+		paydayDayOfMonth: number = 28,
+		title?: string,
+		company?: string,
+		imageUrl?: string,
+	) => {
 		setAccounts((prev) =>
-			prev.map((acc) => (acc.id === entityId ? { ...acc, salary, paydayDayOfMonth } : acc)),
+			prev.map((acc) =>
+				acc.id === entityId
+					? {
+							...acc,
+							salary,
+							paydayDayOfMonth,
+							...(title ? { careerTitle: title } : {}),
+							...(company ? { careerCompany: company } : {}),
+							...(imageUrl ? { careerImageUrl: imageUrl } : {}),
+						}
+					: acc,
+			),
 		);
 	};
 

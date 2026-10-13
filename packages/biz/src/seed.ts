@@ -18,7 +18,10 @@ export const SEED_ACCOUNTS: EntityAccount[] = [
 		paydayDayOfMonth: 28,
 		active: true,
 		notes: "Personal living expenses, career income & hardware",
-		imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
+		imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+		careerTitle: "Lead Product Designer & Engineer",
+		careerCompany: "Design Engineering Practice",
+		careerImageUrl: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80",
 	},
 	{
 		id: "acc_fromsukong",
@@ -189,6 +192,17 @@ export const SEED_HARDWARE: HardwareAsset[] = [
 ];
 
 export const SEED_REVENUES: RevenueStream[] = [
+	{
+		id: "rev_career_prame",
+		entityId: "acc_personal",
+		name: "Lead Product Designer & Engineer",
+		amount: 75000,
+		frequency: "monthly",
+		source: "salary",
+		active: true,
+		notes: "Design Engineering Practice",
+		imageUrl: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80",
+	},
 	{
 		id: "rev_client_retainer",
 		entityId: "acc_fromsukong",

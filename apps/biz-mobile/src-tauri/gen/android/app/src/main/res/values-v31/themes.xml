@@ -9,6 +9,6 @@
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
         <!-- Android 12+ system splash screen -->
         <item name="android:windowSplashScreenBackground">@color/canvas_cream</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
     </style>
 </resources>

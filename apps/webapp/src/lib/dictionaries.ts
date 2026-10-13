@@ -20,6 +20,23 @@ export const strings: Dictionary = {
 	"locale.th": { en: "ไทย", th: "ไทย" },
 	"auth.signIn": { en: "Sign in", th: "เข้าสู่ระบบ" },
 	"auth.signOut": { en: "Sign out", th: "ออกจากระบบ" },
+	"auth.signInTitle": { en: "Sign in to excited.live", th: "เข้าสู่ระบบ excited.live" },
+	"auth.signInSubtitle": {
+		en: "Welcome back. Sign in to continue to your plan.",
+		th: "ยินดีต้อนรับกลับ เข้าสู่ระบบเพื่อไปที่แผนของคุณ",
+	},
+	"auth.email": { en: "Email", th: "อีเมล" },
+	"auth.password": { en: "Password", th: "รหัสผ่าน" },
+	"auth.continueWithGoogle": { en: "Continue with Google", th: "ดำเนินการต่อด้วย Google" },
+	"auth.error.invalidCredentials": {
+		en: "Sign-in failed. Check your email and password.",
+		th: "เข้าสู่ระบบไม่สำเร็จ ตรวจสอบอีเมลและรหัสผ่านอีกครั้ง",
+	},
+	"auth.error.generic": { en: "Something went wrong. Please try again.", th: "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง" },
+	"auth.notConfigured": {
+		en: "Sign-in is not available in this environment.",
+		th: "การเข้าสู่ระบบไม่พร้อมใช้งานในสภาพแวดล้อมนี้",
+	},
 	"metric.netWorth": { en: "Net worth", th: "มูลค่าสุทธิ" },
 	"metric.cashFlow": { en: "Cash flow", th: "กระแสเงินสด" },
 	"period.all": { en: "All", th: "ทั้งหมด" },

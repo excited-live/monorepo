@@ -255,3 +255,59 @@ describe("unchanged endpoints", () => {
 		db.driver.close()
 	})
 })
+
+describe("api/v1/biz", () => {
+	it("returns default seed snapshot for an unknown user", async () => {
+		const { app, db } = await openApi(tempDbFile())
+
+		const res = await app.request("/api/v1/biz", { headers: { "x-user-id": "user-biz-1" } })
+		expect(res.status).toBe(200)
+		const data = await res.json()
+		expect(data.accounts.length).toBeGreaterThan(0)
+		expect(data.subscriptions.length).toBeGreaterThan(0)
+		expect(data.hardware.length).toBeGreaterThan(0)
+
+		db.driver.close()
+	})
+
+	it("round-trips custom entities and subscriptions via PUT snapshot and single POST", async () => {
+		const { app, db } = await openApi(tempDbFile())
+
+		const newSub = {
+			id: "sub_test_1",
+			entityId: "acc_personal",
+			name: "Figma Pro",
+			amount: 540,
+			cycle: "monthly",
+			category: "Design",
+			nextRenewalDate: "2026-10-25",
+			billingDay: 25,
+			active: true,
+			imageUrl: "https://images.unsplash.com/photo-figma",
+		}
+
+		const postRes = await app.request(
+			"/api/v1/biz/subscriptions",
+			jsonRequest("POST", "user-biz-2", newSub),
+		)
+		expect(postRes.status).toBe(201)
+
+		const getRes = await app.request(
+			"/api/v1/biz/subscriptions",
+			{ headers: { "x-user-id": "user-biz-2" } },
+		)
+		const subs = await getRes.json()
+		expect(subs.some((s: { id: string }) => s.id === "sub_test_1")).toBe(true)
+
+		const ledgerRes = await app.request(
+			"/api/v1/biz/ledger/2026-10?entityId=acc_personal",
+			{ headers: { "x-user-id": "user-biz-2" } },
+		)
+		expect(ledgerRes.status).toBe(200)
+		const ledger = await ledgerRes.json()
+		expect(ledger.summary).toBeDefined()
+		expect(ledger.actions).toBeDefined()
+
+		db.driver.close()
+	})
+})

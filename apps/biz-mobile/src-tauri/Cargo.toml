@@ -1,0 +1,17 @@
+[package]
+name = "biz-mobile"
+version = "0.0.1"
+description = "excited.live Biz Mobile Application"
+edition = "2021"
+
+[lib]
+name = "biz_mobile_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

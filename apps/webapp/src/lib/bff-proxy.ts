@@ -1,5 +1,5 @@
-import { getAuth } from "@workos/authkit-tanstack-react-start"
-import { authkitConfigured } from "./auth-config"
+import { betterAuthConfigured } from "./auth-config"
+import { getAuth } from "./auth"
 
 const BACKEND_URL = process.env.BACKEND_API_URL || "http://localhost:8000"
 
@@ -21,13 +21,18 @@ export async function forwardToBackend(request: Request, path: string): Promise<
 		}
 	})
 
-	// BFF session injection: attach user identity from WorkOS AuthKit
-	if (authkitConfigured()) {
+	// BFF session injection: attach user identity from the Better Auth session.
+	// The session token also goes as a Bearer token so the api (which trusts
+	// only verified tokens when auth is configured) can pin the same identity.
+	if (betterAuthConfigured()) {
 		try {
-			const { user } = await getAuth()
-			if (user) {
-				headers.set("x-user-id", user.id)
-				headers.set("x-user-email", user.email)
+			const session = await (await getAuth()).api.getSession({ headers: request.headers })
+			if (session?.user) {
+				headers.set("x-user-id", session.user.id)
+				headers.set("x-user-email", session.user.email)
+				if (session.session?.token) {
+					headers.set("authorization", `Bearer ${session.session.token}`)
+				}
 			}
 		} catch {
 			// Unauthenticated session, continue with guest/default

@@ -4,6 +4,8 @@ import { logger } from "hono/logger"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
+import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
+import { createBizRouter } from "./routes/biz"
 import { createPlanRouter } from "./routes/plan"
 import { createSettingsRouter } from "./routes/settings"
 import { simRouter } from "./routes/sim"
@@ -62,7 +64,14 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		await next()
 	})
 
+	// Resolve identity from a Bearer session (Better Auth tokens mount); 401s
+	// unauthenticated calls while auth is configured, x-user-id passthrough
+	// otherwise. Runs before the routers so biz/plan/settings see the pinned id.
+	app.use("/api/v1/*", createIdentityMiddleware())
+
 	const apiV1 = new Hono<ApiEnv>()
+	apiV1.route("/auth", createAuthRouter())
+	apiV1.route("/biz", createBizRouter())
 	apiV1.route("/plan", createPlanRouter())
 	apiV1.route("/settings", createSettingsRouter())
 	apiV1.route("/sim", simRouter)

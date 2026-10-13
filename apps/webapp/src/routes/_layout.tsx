@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { Suspense } from "react"
 import { createServerFn } from "@tanstack/react-start"
-import { getAuth } from "@workos/authkit-tanstack-react-start"
+import { getRequestHeaders } from "@tanstack/react-start/server"
 import {
 	Card,
 	Grid,
@@ -13,19 +13,21 @@ import {
 } from "@excited-live/design-system"
 import { AssistantRail } from "../components/AssistantRail"
 import { Topbar } from "../components/Topbar"
-import { authkitConfigured } from "../lib/auth-config"
+import { betterAuthConfigured } from "../lib/auth-config"
+import { getAuth } from "../lib/auth"
 import {
 	PlanDashboardProvider,
 	usePlanDashboardContext,
 } from "../hooks/usePlanDashboard"
 
-/** Auth state for the topbar — resolves server-side; reports configured:false without WORKOS_* env. */
+/** Auth state for the topbar — resolves server-side; reports configured:false without BETTER_AUTH_SECRET. */
 const getAuthState = createServerFn({ method: "GET" }).handler(async () => {
-	if (!authkitConfigured()) return { configured: false as const, user: null }
-	const { user } = await getAuth()
+	if (!betterAuthConfigured()) return { configured: false as const, user: null }
+	const session = await (await getAuth()).api.getSession({ headers: getRequestHeaders() })
+	const user = session?.user ?? null
 	return {
 		configured: true as const,
-		user: user ? { firstName: user.firstName ?? null, email: user.email } : null,
+		user: user ? { firstName: user.name || null, email: user.email } : null,
 	}
 })
 

@@ -18,6 +18,8 @@
 		"node": ">=22.13.0"
 	},
 	"dependencies": {
+		"@excited-live/auth": "workspace:*",
+		"@excited-live/biz": "workspace:*",
 		"@excited-live/sim": "workspace:*",
 		"@excited-live/tax": "workspace:*",
 		"@hono/node-server": "^1.13.8",

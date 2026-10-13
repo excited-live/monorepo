@@ -20,7 +20,7 @@ App map:
 | `apps/webapp` | Core product. Plan, chart, inputs, assistant. | `/_layout` |
 | `apps/tax-webapp` | Standalone TH/US income-tax calculator. | `/` |
 | `apps/tax-mobile` | Tauri v2 Android scaffold. View/summarize first. | `/`, `/about` |
-| `apps/biz-mobile` | Excited.Biz. Solopreneur spend, revenue, depreciation, runway (Tauri v2). | `/` |
+| `apps/biz-mobile` | excited.live. Solopreneur spend, revenue, depreciation, runway (Tauri v2). | `/` |
 | `apps/landingpage` | Marketing, waitlist, blog, docs. | `/` |
 | `apps/api` | BFF. Not user-facing, specced as the boundary in section 6. | `/api/v1` |
 
@@ -443,12 +443,12 @@ References:
 
 ## 5. biz-mobile
 
-Excited.Biz, the solopreneur spend, revenue, and depreciation companion ([prd-biz-mobile.md](prd-biz-mobile.md), [wireframe-biz-mobile.md](wireframe-biz-mobile.md)). Tauri v2, Android first. Today a fresh install opens straight onto the dev seed (Prame's own numbers, `SEED_ACCOUNTS` in `state.tsx`), which is correct for v0.5 and wrong for v1 users. The onboarding journey below replaces that seed with the user's own numbers in under three minutes. Nothing here is in code yet, so every flow is `[planned]` and traces to a new user story, US-BIZ-008 in [prd-biz-mobile.md](prd-biz-mobile.md).
+excited.live, the solopreneur spend, revenue, and depreciation companion ([prd-biz-mobile.md](prd-biz-mobile.md), [wireframe-biz-mobile.md](wireframe-biz-mobile.md)). Tauri v2, Android first. Today a fresh install opens straight onto the dev seed (Prame's own numbers, `SEED_ACCOUNTS` in `state.tsx`), which is correct for v0.5 and wrong for v1 users. The onboarding journey below replaces that seed with the user's own numbers in under three minutes. Nothing here is in code yet, so every flow is `[planned]` and traces to a new user story, US-BIZ-008 in [prd-biz-mobile.md](prd-biz-mobile.md).
 
 ### F-50 First launch, example first `[planned]` (US-BIZ-008)
 
 Goal: a fresh install opens on a working app with example data clearly labeled, never a zero screen, and one way to start entering real numbers.
-Entry: first launch, no saved state (`excited_biz_mobile_data_v1` keys absent).
+Entry: first launch, no saved state (`excited_live_mobile_data_v1` keys absent).
 Steps:
 1. Splash, then HomeView with the example plan loaded (the dev seed, labeled).
 2. An example badge marks the data as example. The user is never left to think the numbers are theirs.

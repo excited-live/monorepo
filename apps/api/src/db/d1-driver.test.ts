@@ -59,8 +59,8 @@ describe("D1 exec() fidelity", () => {
 		const driver = createD1Driver(stub.binding)
 
 		const report = await applyMigrations(driver)
+		expect(report.applied).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql"])
 
-		expect(report.applied).toEqual(["0001_init.sql", "0003_auth.sql"])
 		// The positive side of the fix: every statement, DDL included, went
 		// through prepare() — D1 never saw anything it would split.
 		expect(stub.calls.some((call) => call.startsWith("prepare CREATE TABLE IF NOT EXISTS d1_migrations"))).toBe(

@@ -42,6 +42,21 @@ CREATE TABLE IF NOT EXISTS user_settings (
 `,
 	},
 	{
+		name: "0002_biz_store.sql",
+		sql: `-- 0002_biz_store.sql — excited.live solopreneur data store
+
+CREATE TABLE IF NOT EXISTS biz_snapshots (
+	user_id TEXT PRIMARY KEY,
+	accounts_json TEXT NOT NULL,
+	subscriptions_json TEXT NOT NULL,
+	hardware_json TEXT NOT NULL,
+	revenues_json TEXT NOT NULL,
+	transfers_json TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
+`,
+	},
+	{
 		name: "0003_auth.sql",
 		sql: `-- 0003_auth.sql — Better Auth schema (generated, do not edit).
 --

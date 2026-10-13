@@ -2,3 +2,21 @@ name = "excited-live"
 compatibility_date = "2026-08-30"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist/client"
+
+# D1 binding for Better Auth sessions (the cookies mount of packages/auth) —
+# NOT wired yet: a placeholder database_id fails the Pages deploy with
+# "Invalid database UUID". Add the block below when provisioning happens
+# (needs Prame's go); it must point at the SAME database as
+# apps/api/wrangler.toml so user/session rows are shared between the webapp
+# (cookies) and api (tokens) mounts:
+#
+#   npx wrangler d1 create excited-live-api
+#   -> paste the printed database_id in BOTH wrangler.toml files
+#
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "excited-live-api"
+# database_id = "<real-database-id>"
+#
+# Until then, no DB binding is visible on process.env and betterAuthConfigured()
+# is false without BETTER_AUTH_SECRET, so previews render signed out.

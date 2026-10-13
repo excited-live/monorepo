@@ -92,7 +92,10 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	return (
 		<HeroShell account={account} variant="capital" onClick={onTap}>
 			<div className="hero-top-row">
-				<div className="hero-eyebrow">{account.type === "personal" ? "Wealth" : "Book Value"}</div>
+				<div className="hero-eyebrow-col">
+					<div className="hero-eyebrow">{account.type === "personal" ? "Wealth" : "Book Value"}</div>
+					<div className="hero-eom-hint">( ) = end of month value</div>
+				</div>
 				<div className="hero-top-right">
 					<span
 						className="hero-flip-hint"

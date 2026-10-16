@@ -1,16 +1,37 @@
 import { CurrencyInput } from "./CurrencyInput";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { calculateAssetDepreciation, calculateMonthlyEquivalent, round2, simulateCapitalTransfer } from "@excited-live/biz";
+import {
+	calculateAssetDepreciation,
+	calculateMonthlyEquivalent,
+	type CapitalTransfer,
+	round2,
+	simulateCapitalTransfer,
+} from "@excited-live/biz";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
 
-export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
+export const CapitalDrawer: React.FC<{
+	isOpen: boolean;
+	onClose: () => void;
+	initialData?: CapitalTransfer | null;
+}> = ({
 	isOpen,
 	onClose,
+	initialData,
 }) => {
-	const { accounts, subscriptions, hardware, revenues, injectCapital, activeEntityId } = useBiz();
+	const {
+		accounts,
+		subscriptions,
+		hardware,
+		revenues,
+		injectCapital,
+		updateCapitalTransfer,
+		deleteCapitalTransfer,
+		activeEntityId,
+		selectedMonth,
+	} = useBiz();
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -18,9 +39,21 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 	const businessAccounts = accounts.filter((a) => a.type === "business");
 
 	const defaultTarget = businessAccounts.find((b) => b.id === activeEntityId) || businessAccounts[0] || personalAccount;
-	const [targetBizId, setTargetBizId] = useState(defaultTarget.id);
-	const [amount, setAmount] = useState<string>("20000");
-	const [note, setNote] = useState<string>("Founder seed capital");
+	const [targetBizId, setTargetBizId] = useState(initialData?.toEntityId || defaultTarget.id);
+	const [amount, setAmount] = useState<string>(initialData ? String(initialData.amount) : "20000");
+	const [note, setNote] = useState<string>(initialData?.note ?? "Founder seed capital");
+
+	useEffect(() => {
+		if (initialData) {
+			setTargetBizId(initialData.toEntityId);
+			setAmount(String(initialData.amount));
+			setNote(initialData.note);
+		} else {
+			setTargetBizId(defaultTarget.id);
+			setAmount("20000");
+			setNote("Founder seed capital");
+		}
+	}, [initialData, defaultTarget.id]);
 
 	if (!isOpen) return null;
 
@@ -32,7 +65,7 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 	const personalHw = hardware.filter((h) => h.entityId === personalAccount.id);
 	const personalBurn = round2(
 		personalSubs.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
-			personalHw.reduce((acc, h) => acc + calculateAssetDepreciation(h, "2026-10").monthlyRate, 0),
+			personalHw.reduce((acc, h) => acc + calculateAssetDepreciation(h, selectedMonth).monthlyRate, 0),
 	);
 
 	// Calculate target biz net burn
@@ -41,10 +74,14 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 	const bizRev = revenues.filter((r) => r.entityId === targetBiz.id && r.active);
 	const bizOutflow = round2(
 		bizSubs.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
-			bizHw.reduce((acc, h) => acc + calculateAssetDepreciation(h, "2026-10").monthlyRate, 0),
+			bizHw.reduce((acc, h) => acc + calculateAssetDepreciation(h, selectedMonth).monthlyRate, 0),
 	);
 	const bizInflow = round2(bizRev.reduce((acc, r) => acc + r.amount, 0));
 	const bizNetBurn = Math.max(1, bizOutflow - bizInflow);
+
+	const availablePersonalCash = initialData
+		? personalAccount.cashReserve + initialData.amount
+		: personalAccount.cashReserve;
 
 	const simulation = simulateCapitalTransfer(
 		personalAccount.cashReserve,
@@ -57,17 +94,37 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (transferAmount <= 0) return;
-		injectCapital(personalAccount.id, targetBiz.id, transferAmount, note);
+		if (initialData) {
+			updateCapitalTransfer({
+				...initialData,
+				fromEntityId: personalAccount.id,
+				toEntityId: targetBiz.id,
+				amount: transferAmount,
+				note: note || "Capital transfer",
+			});
+		} else {
+			injectCapital(personalAccount.id, targetBiz.id, transferAmount, note);
+		}
 		dismiss();
 	};
 
-	const canSubmit = transferAmount > 0 && transferAmount <= personalAccount.cashReserve;
+	const handleDelete = () => {
+		if (!initialData) return;
+		deleteCapitalTransfer(initialData.id);
+		dismiss();
+	};
+
+	const canSubmit = transferAmount > 0 && transferAmount <= availablePersonalCash;
+	const formatRunway = (mos: number | null | undefined) =>
+		mos !== null && mos !== undefined ? `${mos} mos` : "∞ (Default Alive)";
 
 	return createPortal(
 		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
 			{/* Top Bar with Title on Left, ✕ on Top-Right */}
 			<div className="modal-page-nav">
-				<span className="modal-nav-title">Transfer Capital</span>
+				<span className="modal-nav-title">
+					{initialData ? "Edit Capital Transfer" : "Transfer Capital"}
+				</span>
 				<button
 					type="button"
 					className="modal-nav-close"
@@ -89,7 +146,7 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 						<label className="form-label">Source Reserve</label>
 						<input
 							className="form-input"
-							value={`Personal (Available: ฿${formatMoney(personalAccount.cashReserve)})`}
+							value={`Personal (Available: ฿${formatMoney(availablePersonalCash)})`}
 							disabled
 							style={{ opacity: 0.8 }}
 						/>
@@ -139,14 +196,14 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 							<span style={{ color: "var(--slate-gray)" }}>Personal Runway</span>
 							<span style={{ fontWeight: 600 }}>
 								{personalBurn > 0 ? round2(personalAccount.cashReserve / personalBurn) : "∞"} mos →{" "}
-								<span style={{ color: "var(--signal-orange)" }}>{simulation.fromNewRunway} mos</span>
+								<span style={{ color: "var(--signal-orange)" }}>{formatRunway(simulation.fromNewRunway)}</span>
 							</span>
 						</div>
 						<div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
 							<span style={{ color: "var(--slate-gray)" }}>{targetBiz.name} Runway</span>
 							<span style={{ fontWeight: 600 }}>
 								{bizNetBurn > 0 ? round2(targetBiz.cashReserve / bizNetBurn) : "∞"} mos →{" "}
-								<span style={{ color: "#059669" }}>{simulation.toNewRunway} mos</span>
+								<span style={{ color: "#059669" }}>{formatRunway(simulation.toNewRunway)}</span>
 							</span>
 						</div>
 					</div>
@@ -154,15 +211,25 @@ export const CapitalDrawer: React.FC<{ isOpen: boolean; onClose: () => void }> =
 			</div>
 
 			{/* Sticky Bottom Action Bar */}
-			<div className="modal-sticky-footer">
+			<div className="modal-sticky-footer" style={{ display: "flex", gap: "8px" }}>
+				{initialData && (
+					<button
+						type="button"
+						className="delete-btn"
+						style={{ flex: 1 }}
+						onClick={handleDelete}
+					>
+						Delete
+					</button>
+				)}
 				<button
 					type="submit"
 					form="capital-form"
 					className="submit-btn"
 					disabled={!canSubmit}
-					style={{ opacity: canSubmit ? 1 : 0.4 }}
+					style={{ flex: initialData ? 2 : 1, opacity: canSubmit ? 1 : 0.4 }}
 				>
-					Confirm Transfer (฿{formatMoney(transferAmount)})
+					{initialData ? "Save Changes" : `Confirm Transfer (฿${formatMoney(transferAmount)})`}
 				</button>
 			</div>
 		</div>,

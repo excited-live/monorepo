@@ -4,6 +4,7 @@ export const formatCurrencyString = (val: string | number | undefined | null): s
 	if (val === undefined || val === null || val === "") return "";
 	const s = String(val).replace(/,/g, "");
 	if (s === "") return "";
+	if (s === "-") return "-";
 
 	const isNegative = s.startsWith("-");
 	const clean = isNegative ? s.slice(1) : s;
@@ -30,11 +31,13 @@ export interface CurrencyInputProps
 	extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
 	value: string | number;
 	onChange: (cleanValue: string) => void;
+	allowNegative?: boolean;
 }
 
 export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 	value,
 	onChange,
+	allowNegative = false,
 	className = "form-input",
 	placeholder = "0.00",
 	...props
@@ -57,15 +60,16 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 		const rawInput = inputEl.value;
 		const selStart = inputEl.selectionStart ?? rawInput.length;
 
-		// Calculate how many digits/dots were before the cursor before reformating
+		// Calculate how many digits/dots were before the cursor before reformatting
 		const substrBeforeCursor = rawInput.slice(0, selStart);
 		const meaningfulCharsBefore = substrBeforeCursor.replace(/,/g, "");
 
 		// Strip commas to get raw value
 		const clean = rawInput.replace(/,/g, "");
 
-		// Only allow valid number format (digits and at most one decimal point)
-		if (clean !== "" && !/^\d*\.?\d*$/.test(clean)) {
+		// Support negative sign if enabled
+		const regex = allowNegative ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/;
+		if (clean !== "" && clean !== "-" && !regex.test(clean)) {
 			return;
 		}
 

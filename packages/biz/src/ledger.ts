@@ -42,8 +42,8 @@ export function calculateCurrentTreasury(params: {
  *
  * where cash assets are the `category: "cash"` entries recorded in the Assets
  * tab, income is the active monthly run-rate (yearly revenues amortised,
- * one-time streams excluded) and expenses are active monthly subscriptions
- * plus active debt service. Pure and deterministic: no clock, no locale.
+ * one-time streams counted in their starting month) and expenses are active
+ * monthly subscriptions plus active debt service. Pure and deterministic.
  */
 export function calculateDerivedTreasury(params: {
 	account: EntityAccount;
@@ -52,8 +52,17 @@ export function calculateDerivedTreasury(params: {
 	transfers: CapitalTransfer[];
 	hardware: HardwareAsset[];
 	liabilities?: LiabilityStream[];
+	yearMonth?: string;
 }): number {
-	const { account, subscriptions, revenues, transfers, hardware, liabilities = [] } = params;
+	const {
+		account,
+		subscriptions,
+		revenues,
+		transfers,
+		hardware,
+		liabilities = [],
+		yearMonth,
+	} = params;
 
 	const current = calculateCurrentTreasury({ account, hardware, transfers });
 
@@ -61,9 +70,17 @@ export function calculateDerivedTreasury(params: {
 	const hasSalaryStream = activeRevenues.some((r) => r.source === "salary");
 	const legacySalary = hasSalaryStream ? 0 : (account.salary ?? 0);
 	const income = activeRevenues.reduce(
-		(acc, r) =>
-			acc +
-			(r.frequency === "monthly" ? r.amount : r.frequency === "yearly" ? round2(r.amount / 12) : 0),
+		(acc, r) => {
+			if (r.frequency === "monthly") return acc + r.amount;
+			if (r.frequency === "yearly") return acc + round2(r.amount / 12);
+			if (r.frequency === "one_time") {
+				if (yearMonth) {
+					return r.startMonth === yearMonth ? acc + r.amount : acc;
+				}
+				return acc;
+			}
+			return acc;
+		},
 		legacySalary,
 	);
 
@@ -112,12 +129,12 @@ export function generateMonthlyLedger(params: {
 		});
 	}
 
-	// Inflows from revenue streams (respects start/end month window)
+	// Inflows from revenue streams (respects start/end month window and one-time specificity)
 	const activeRevenues = revenues.filter(
 		(r) =>
 			r.entityId === account.id &&
 			r.active &&
-			(!r.startMonth || yearMonth >= r.startMonth) &&
+			(!r.startMonth || (r.frequency === "one_time" ? yearMonth === r.startMonth : yearMonth >= r.startMonth)) &&
 			(!r.endMonth || yearMonth <= r.endMonth),
 	);
 	for (const r of activeRevenues) {

@@ -4,6 +4,7 @@ import { TuneIcon, UserIcon } from "@excited-live/design-system";
 import { calculateEntityWealthMetrics } from "../domain/selectors";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
+import { t } from "../utils/i18n";
 import { HeroShell } from "./HeroShell";
 
 interface CapitalHeroCardProps {
@@ -19,7 +20,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	onPersonalSettings,
 	onTap,
 }) => {
-	const { revenues, subscriptions, liabilities, hardware, transfers } = useBiz();
+	const { revenues, subscriptions, liabilities, hardware, transfers, selectedMonth, lang } = useBiz();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const metrics = calculateEntityWealthMetrics({
@@ -29,7 +30,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 		revenues,
 		liabilities,
 		transfers,
-		yearMonth: "2026-10",
+		yearMonth: selectedMonth,
 	});
 
 	const {
@@ -44,6 +45,8 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 		totalExpense,
 		liabilityMonthly,
 		liabPct,
+		runwayMonths,
+		isDefaultAlive,
 	} = metrics;
 
 	return (
@@ -51,9 +54,9 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 			<div className="hero-top-row">
 				<div className="hero-eyebrow-col">
 					<div className="hero-eyebrow">
-						{account.type === "personal" ? "Wealth" : "Book Value"}
+						{account.type === "personal" ? t("hero.wealth", lang) : t("hero.bookValue", lang)}
 					</div>
-					<div className="hero-eom-hint">( ) = end of month value</div>
+					<div className="hero-eom-hint">{t("hero.eomHint", lang)}</div>
 				</div>
 				<div className="hero-top-right">
 					<span
@@ -64,7 +67,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 							onTap?.();
 						}}
 					>
-						Tap to flip
+						{t("hero.tapToFlip", lang)}
 					</span>
 					{account.type === "business" ? (
 						<button
@@ -106,8 +109,18 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 				฿ {formatMoney(currentWealth)}
 				<span className="hero-balance-eom">(฿{formatMoney(eomWealth)})</span>
 				<span className="hero-balance-sub">
-					Liquid ฿ {formatMoney(currentLiquid)} (฿{formatMoney(eomLiquid)})
+					{t("hero.liquid", lang)} ฿ {formatMoney(currentLiquid)} (฿{formatMoney(eomLiquid)})
 				</span>
+			</div>
+
+			<div className="hero-badge-row">
+				{isDefaultAlive ? (
+					<span className="hero-status-pill alive">{t("hero.defaultAlive", lang)}</span>
+				) : (
+					<span className="hero-status-pill runway">
+						🟢 {t("hero.runwayMos", lang, { count: runwayMonths ?? 0 })}
+					</span>
+				)}
 			</div>
 
 			<div className="hero-split">
@@ -115,8 +128,8 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 					<div className="hero-split-fill" style={{ width: `${liquidPct}%` }} />
 				</div>
 				<div className="hero-split-labels">
-					<span>Liquid · {liquidPct}%</span>
-					<span>Gear · {gearPct}%</span>
+					<span>{t("hero.liquid", lang)} · {liquidPct}%</span>
+					<span>{t("hero.gear", lang)} · {gearPct}%</span>
 				</div>
 
 				{liabilityMonthly > 0 && (
@@ -125,7 +138,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 							<div className="hero-split-fill liability" style={{ width: `${liabPct}%` }} />
 						</div>
 						<div className="hero-split-labels">
-							<span>Liability · ฿{formatMoney(liabilityMonthly)}/mo</span>
+							<span>{t("hero.liability", lang)} · ฿{formatMoney(liabilityMonthly)}/mo</span>
 							<span>{liabPct}% of income</span>
 						</div>
 					</>
@@ -134,19 +147,19 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 
 			<hr className="hero-divider" />
 			<div className="hero-meta-row">
-				<span className="hero-meta-label">Total Income</span>
+				<span className="hero-meta-label">{t("hero.totalIncome", lang)}</span>
 				<span className="hero-meta-value positive">+฿ {formatMoney(totalIncome)}</span>
 			</div>
 			<div className="hero-meta-row">
-				<span className="hero-meta-label">Total Expense</span>
+				<span className="hero-meta-label">{t("hero.totalExpense", lang)}</span>
 				<span className="hero-meta-value">-฿ {formatMoney(totalExpense)}</span>
 			</div>
 			<div className="hero-meta-row secondary">
-				<span className="hero-meta-label">Total Asset</span>
+				<span className="hero-meta-label">{t("hero.totalAsset", lang)}</span>
 				<span className="hero-meta-value">฿ {formatMoney(totalAssetsValue)}</span>
 			</div>
 			<div className="hero-meta-row secondary">
-				<span className="hero-meta-label">Liability</span>
+				<span className="hero-meta-label">{t("hero.liability", lang)}</span>
 				<span className="hero-meta-value">-฿ {formatMoney(liabilityMonthly)}</span>
 			</div>
 		</HeroShell>

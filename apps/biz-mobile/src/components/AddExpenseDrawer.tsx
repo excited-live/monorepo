@@ -12,15 +12,18 @@ export const AddExpenseDrawer: React.FC<{
 	initialData?: RecurringSubscription | null;
 }> = ({ isOpen, onClose, initialData }) => {
 	const { activeEntityId, addSubscription, updateSubscription, deleteSubscription, accounts } = useBiz();
+	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
+	const isPersonal = activeAccount.type === "personal";
+
 	const { dismiss } = useModalBack(isOpen, onClose);
 
+	const defaultCategory = isPersonal ? "housing" : "dev_tool";
 	const [name, setName] = useState("");
 	const [amount, setAmount] = useState("");
 	const [cycle, setCycle] = useState<BillingCycle>("monthly");
-	const [category, setCategory] = useState("dev_tool");
+	const [category, setCategory] = useState(defaultCategory);
 	const [renewalDate, setRenewalDate] = useState("2026-11-01");
 	const [notes, setNotes] = useState("");
-	const [targetEntityId, setTargetEntityId] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
 
 	useEffect(() => {
@@ -36,13 +39,12 @@ export const AddExpenseDrawer: React.FC<{
 			setName("");
 			setAmount("");
 			setCycle("monthly");
-			setCategory("dev_tool");
+			setCategory(isPersonal ? "housing" : "dev_tool");
 			setRenewalDate("2026-11-01");
 			setNotes("");
 			setImageUrl("");
-			setTargetEntityId("");
 		}
-	}, [initialData, isOpen]);
+	}, [initialData, isOpen, isPersonal]);
 
 	if (!isOpen) return null;
 
@@ -50,12 +52,6 @@ export const AddExpenseDrawer: React.FC<{
 		e.preventDefault();
 		const num = Number(amount);
 		if (!name.trim() || !num) return;
-
-		const targetName = accounts.find((a) => a.id === targetEntityId)?.name;
-		const finalNotes =
-			category === "capital" && targetName
-				? [notes.trim(), `Deploy to ${targetName}`].filter(Boolean).join(" • ")
-				: notes.trim() || undefined;
 
 		if (initialData) {
 			updateSubscription({
@@ -65,7 +61,7 @@ export const AddExpenseDrawer: React.FC<{
 				cycle,
 				category,
 				nextRenewalDate: renewalDate,
-				notes: finalNotes,
+				notes: notes.trim() || undefined,
 				imageUrl: imageUrl || undefined,
 			});
 		} else {
@@ -77,7 +73,7 @@ export const AddExpenseDrawer: React.FC<{
 				category,
 				nextRenewalDate: renewalDate,
 				active: true,
-				notes: finalNotes,
+				notes: notes.trim() || undefined,
 				imageUrl: imageUrl || undefined,
 			});
 		}
@@ -95,8 +91,6 @@ export const AddExpenseDrawer: React.FC<{
 
 	const canSubmit = name.trim().length > 0 && Number(amount) > 0;
 	const isEditMode = Boolean(initialData);
-	// Capital can only be deployed into ventures, never into the personal bucket.
-	const businessAccounts = accounts.filter((acc) => acc.type === "business");
 
 	return createPortal(
 		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
@@ -126,39 +120,42 @@ export const AddExpenseDrawer: React.FC<{
 							onChange={(e) => setCategory(e.target.value)}
 							autoFocus={!isEditMode}
 						>
-							<option value="dev_tool">Developer Tools & APIs</option>
-							<option value="saas">SaaS & Productivity</option>
-							<option value="infrastructure">Hosting & Domains</option>
-							<option value="transit">Transit & Transport</option>
-							<option value="connectivity">Internet & Mobile</option>
-							<option value="office">Office & Workspace</option>
-							<option value="capital">Capital Deployment</option>
-							<option value="other">Other Outflow</option>
+							{isPersonal ? (
+								<>
+									<option value="housing">Housing & Rent</option>
+									<option value="food">Food & Dining</option>
+									<option value="groceries">Groceries & Household</option>
+									<option value="transit">Transit & Transport</option>
+									<option value="healthcare">Healthcare & Wellness</option>
+									<option value="entertainment">Subscriptions & Living</option>
+									<option value="connectivity">Internet & Mobile</option>
+									<option value="family">Family & Personal</option>
+									<option value="other">Other Personal Outflow</option>
+								</>
+							) : (
+								<>
+									<option value="dev_tool">Developer Tools & APIs</option>
+									<option value="saas">SaaS & Productivity</option>
+									<option value="infrastructure">Hosting & Infrastructure</option>
+									<option value="transit">Transit & Transport</option>
+									<option value="connectivity">Internet & Mobile</option>
+									<option value="office">Office & Workspace</option>
+									<option value="marketing">Marketing & Sales</option>
+									<option value="other">Other Business Outflow</option>
+								</>
+							)}
 						</select>
-
-						{category === "capital" && (
-							<div className="form-group" style={{ marginTop: "10px" }}>
-								<label className="form-label">Target Organization</label>
-								<select
-									className="form-select"
-									value={targetEntityId}
-									onChange={(e) => setTargetEntityId(e.target.value)}
-								>
-									{businessAccounts.map((acc) => (
-										<option key={acc.id} value={acc.id}>
-											{acc.name}
-										</option>
-									))}
-								</select>
-							</div>
-						)}
 					</div>
 
 					<div className="form-group">
 						<label className="form-label">Service / Vendor Name</label>
 						<input
 							className="form-input"
-							placeholder="e.g. Figma Organization, OpenAI API"
+							placeholder={
+								isPersonal
+									? "e.g. Netflix, Apartment Rent, Gym, Groceries"
+									: "e.g. Figma Organization, OpenAI API, AWS"
+							}
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
@@ -176,21 +173,22 @@ export const AddExpenseDrawer: React.FC<{
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Billing Cycle</label>
+						<label className="form-label">Billing Frequency</label>
 						<select
 							className="form-select"
 							value={cycle}
 							onChange={(e) => setCycle(e.target.value as BillingCycle)}
 						>
 							<option value="monthly">Monthly</option>
-							<option value="yearly">Yearly (Amortised)</option>
+							<option value="yearly">Yearly</option>
 							<option value="quarterly">Quarterly</option>
+							<option value="semi-annual">Semi-Annual</option>
 							<option value="weekly">Weekly</option>
 						</select>
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Next Renewal Date</label>
+						<label className="form-label">Next Renewal / Charge Date</label>
 						<input
 							className="form-input"
 							type="date"
@@ -204,7 +202,7 @@ export const AddExpenseDrawer: React.FC<{
 						<label className="form-label">Notes (Optional)</label>
 						<input
 							className="form-input"
-							placeholder="e.g. 5 seats, auto-renews via credit card"
+							placeholder="e.g. Workspace license, tier 2"
 							value={notes}
 							onChange={(e) => setNotes(e.target.value)}
 						/>
@@ -221,7 +219,7 @@ export const AddExpenseDrawer: React.FC<{
 					disabled={!canSubmit}
 					style={{ opacity: canSubmit ? 1 : 0.4 }}
 				>
-					{isEditMode ? "Save Changes" : "Log Recurring Outflow"}
+					{isEditMode ? "Save Expense" : "Add Expense"}
 				</button>
 
 				{isEditMode && (

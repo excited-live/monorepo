@@ -12,14 +12,14 @@ export const AddGearDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: HardwareAsset | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addHardware, updateHardware, deleteHardware, activeEntityId } = useBiz();
+	const { addHardware, updateHardware, deleteHardware, activeEntityId, selectedMonth } = useBiz();
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
 	const [name, setName] = useState("");
 	const [cost, setCost] = useState("");
 	const [lifespanMonths, setLifespanMonths] = useState("36");
-	const [purchaseDate, setPurchaseDate] = useState("2026-10");
+	const [purchaseDate, setPurchaseDate] = useState(selectedMonth);
 	const [category, setCategory] = useState("workstation");
 	const [imageUrl, setImageUrl] = useState("");
 
@@ -35,11 +35,11 @@ export const AddGearDrawer: React.FC<{
 			setName("");
 			setCost("");
 			setLifespanMonths("36");
-			setPurchaseDate("2026-10");
+			setPurchaseDate(selectedMonth);
 			setCategory("workstation");
 			setImageUrl("");
 		}
-	}, [initialData, isOpen]);
+	}, [initialData, isOpen, selectedMonth]);
 
 	if (!isOpen) return null;
 
@@ -67,8 +67,8 @@ export const AddGearDrawer: React.FC<{
 				entityId: activeEntityId,
 				name: name.trim(),
 				cost: numCost,
-				purchaseDate,
 				lifespanMonths: numLife,
+				purchaseDate,
 				category,
 				imageUrl: imageUrl || undefined,
 			});
@@ -86,7 +86,7 @@ export const AddGearDrawer: React.FC<{
 	};
 
 	const numCost = Number(cost) || 0;
-	const numLife = Number(lifespanMonths) || 1;
+	const numLife = Math.max(1, Number(lifespanMonths) || 1);
 	const monthlyRate = Math.round(numCost / numLife);
 	const canSubmit = name.trim().length > 0 && numCost > 0;
 	const isEditMode = Boolean(initialData);
@@ -128,22 +128,22 @@ export const AddGearDrawer: React.FC<{
 						>
 							<optgroup label="Depreciating assets">
 								<option value="workstation">Workstation / Computing</option>
-								<option value="camera">Camera & Optics</option>
-								<option value="audio">Audio Equipment</option>
-								<option value="peripherals">Peripherals & Monitors</option>
-								<option value="office">Office & Studio Fitout</option>
+								<option value="mobile">Mobile & Tablets</option>
+								<option value="audio">Audio & Monitoring</option>
+								<option value="furniture">Ergonomics & Desk Setup</option>
+								<option value="other">Other Work Equipment</option>
 							</optgroup>
-							<optgroup label="Cash & equivalents">
-								<option value="cash">Cash / Bank Balance</option>
+							<optgroup label="Liquid reserves">
+								<option value="cash">Cash & Bank Balance (Non-depreciating)</option>
 							</optgroup>
 						</select>
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Asset Name</label>
+						<label className="form-label">{isCash ? "Account / Reserve Name" : "Asset Name"}</label>
 						<input
 							className="form-input"
-							placeholder="e.g. Sony FX3 Cinema Rig"
+							placeholder={isCash ? "e.g. Kasikorn Savings, Main Operating Account" : "e.g. MacBook Pro M3 Max, Herman Miller Chair"}
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
@@ -151,7 +151,7 @@ export const AddGearDrawer: React.FC<{
 					</div>
 
 					<div className="form-group">
-						<label className="form-label">Purchase Cost (THB)</label>
+						<label className="form-label">{isCash ? "Balance (THB)" : "Purchase Cost (THB)"}</label>
 						<CurrencyInput
 							placeholder="0.00"
 							value={cost}
@@ -174,16 +174,36 @@ export const AddGearDrawer: React.FC<{
 					{!isCash && (
 						<div className="form-group">
 							<label className="form-label">Useful Lifespan (Months)</label>
-							<select
-								className="form-select"
+							<div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+								{[12, 24, 36, 48, 60].map((m) => (
+									<button
+										key={m}
+										type="button"
+										className={`preset-chip-btn ${lifespanMonths === String(m) ? "active" : ""}`}
+										onClick={() => setLifespanMonths(String(m))}
+										style={{
+											padding: "4px 8px",
+											borderRadius: "6px",
+											border: lifespanMonths === String(m) ? "1px solid var(--signal-orange)" : "1px solid rgba(0,0,0,0.1)",
+											backgroundColor: lifespanMonths === String(m) ? "rgba(235, 0, 27, 0.08)" : "transparent",
+											fontSize: "12px",
+											cursor: "pointer",
+										}}
+									>
+										{m}m ({m / 12}y)
+									</button>
+								))}
+							</div>
+							<input
+								className="form-input"
+								type="number"
+								min={1}
+								max={240}
 								value={lifespanMonths}
 								onChange={(e) => setLifespanMonths(e.target.value)}
-							>
-								<option value="12">1 Year (12 mos - Consumable gear)</option>
-								<option value="24">2 Years (24 mos - Rapid refresh)</option>
-								<option value="36">3 Years (36 mos - Standard IT equipment)</option>
-								<option value="60">5 Years (60 mos - Studio infrastructure)</option>
-							</select>
+								placeholder="36"
+								required
+							/>
 						</div>
 					)}
 
@@ -223,7 +243,7 @@ export const AddGearDrawer: React.FC<{
 					disabled={!canSubmit}
 					style={{ opacity: canSubmit ? 1 : 0.4 }}
 				>
-					{isEditMode ? "Save Changes" : isCash ? "Log Cash Asset" : "Log Hardware Asset"}
+					{isEditMode ? "Save Asset" : "Add Asset"}
 				</button>
 
 				{isEditMode && (

@@ -23,6 +23,8 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 	const [dragOffset, setDragOffset] = useState(0);
 	const [isDragging, setIsDragging] = useState(false);
 	const dragStartX = useRef<number | null>(null);
+	const dragStartY = useRef<number | null>(null);
+	const dragDeltaYRef = useRef(0);
 	const dragOffsetRef = useRef(0);
 
 	const activeIndex = Math.max(
@@ -38,6 +40,8 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 	const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (accounts.length < 2) return;
 		dragStartX.current = e.clientX;
+		dragStartY.current = e.clientY;
+		dragDeltaYRef.current = 0;
 		setIsDragging(true);
 		e.currentTarget.setPointerCapture(e.pointerId);
 	};
@@ -45,6 +49,9 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 	const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (dragStartX.current === null) return;
 		const delta = e.clientX - dragStartX.current;
+		if (dragStartY.current !== null) {
+			dragDeltaYRef.current = Math.abs(e.clientY - dragStartY.current);
+		}
 		const atStart = activeIndex === 0 && delta > 0;
 		const atEnd = activeIndex === accounts.length - 1 && delta < 0;
 		const nextOffset = atStart || atEnd ? delta * 0.35 : delta;
@@ -55,19 +62,24 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 	const finishDrag = () => {
 		if (dragStartX.current === null) return;
 		const delta = dragOffsetRef.current;
+		const deltaY = dragDeltaYRef.current;
 		dragStartX.current = null;
+		dragStartY.current = null;
+		dragDeltaYRef.current = 0;
 		dragOffsetRef.current = 0;
 		setIsDragging(false);
 		setDragOffset(0);
 		if (Math.abs(delta) > SWIPE_THRESHOLD) {
 			goToAccount(activeIndex + (delta < 0 ? 1 : -1));
-		} else if (Math.abs(delta) < TAP_THRESHOLD) {
+		} else if (Math.abs(delta) < TAP_THRESHOLD && deltaY < TAP_THRESHOLD) {
 			onTap?.();
 		}
 	};
 
 	const handlePointerCancel = () => {
 		dragStartX.current = null;
+		dragStartY.current = null;
+		dragDeltaYRef.current = 0;
 		dragOffsetRef.current = 0;
 		setIsDragging(false);
 		setDragOffset(0);
@@ -118,15 +130,14 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 						<ChevronLeftIcon className="hero-pager-icon" aria-hidden="true" />
 					</button>
 
-					<div className="hero-pager-dots">
-						{accounts.map((account, index) => (
+					<div className="hero-dots">
+						{accounts.map((a, i) => (
 							<button
-								key={account.id}
+								key={a.id}
 								type="button"
-								className={`hero-pager-dot ${index === activeIndex ? "active" : ""}`}
-								onClick={() => goToAccount(index)}
-								aria-label={`Show ${account.name}`}
-								aria-current={index === activeIndex ? "true" : undefined}
+								className={`hero-dot ${i === activeIndex ? "active" : ""}`}
+								onClick={() => goToAccount(i)}
+								aria-label={`Go to ${a.name}`}
 							/>
 						))}
 					</div>

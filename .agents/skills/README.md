@@ -7,6 +7,7 @@ Project-local agent skills for the excited.live repo. Every agent that works her
 One directory per skill, `snake_case`, each with a `SKILL.md`:
 
 - `frontend_engineering/`: app structure, routing, component placement, i18n patterns.
+- `mobile_architecture/`: Clean Architecture, state management, UI patterns, and visual regression testing for Tauri v2 mobile apps (`apps/biz-mobile`).
 - `tax_engine/`: the pure tax engine in `packages/tax`.
 - `design_system/`: Mastercard theme pipeline, component surface, the no-raw-HTML rule.
 - `deployment_ci/`: the three deploy tiers, workflow set, CI checks, deploy pitfalls.

@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - "apps/webapp/**"
+      - "apps/biz-mobile/**"
       - "packages/design-system/**"
       - ".github/workflows/screenshot-tests.yml"
   workflow_dispatch:
@@ -38,9 +39,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The gallery imports @excited-live/i18n and @excited-live/sim, which
-      # resolve to their built dist/. Without this the Vite dev server fails
-      # dependency pre-bundling and webServer times out.
+      # The gallery imports workspace packages which resolve to their built dist/.
       - name: Build workspace packages
         run: pnpm build
 
@@ -51,15 +50,27 @@ jobs:
       # image they were captured on. Record them here (not on a dev machine)
       # via "Re-record baselines on the CI runner" in the Actions tab, then
       # commit the uploaded PNGs.
-      - name: Re-record baselines
+      - name: Re-record webapp baselines
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.update-snapshots }}
-        run: pnpm --filter @excited-live/webapp test:visual:update
+        run: pnpm test:visual:update
         env:
           CI: 1
 
-      - name: Run visual regression tests
+      - name: Run webapp visual regression tests
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.update-snapshots) }}
-        run: pnpm --filter @excited-live/webapp test:visual
+        run: pnpm test:visual
+        env:
+          CI: 1
+
+      - name: Re-record mobile baselines
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.update-snapshots }}
+        run: pnpm test:visual:mobile:update
+        env:
+          CI: 1
+
+      - name: Run mobile visual regression tests
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.update-snapshots) }}
+        run: pnpm test:visual:mobile
         env:
           CI: 1
 
@@ -71,6 +82,7 @@ jobs:
           path: |
             apps/webapp/src/components/__snapshots__/
             apps/webapp/src/pages/**/__snapshots__/
+            apps/biz-mobile/src/components/__snapshots__/
           retention-days: 30
 
       - name: Upload visual test report & diffs on failure
@@ -81,4 +93,6 @@ jobs:
           path: |
             apps/webapp/playwright-report/
             apps/webapp/test-results/
+            apps/biz-mobile/playwright-report/
+            apps/biz-mobile/test-results/
           retention-days: 7

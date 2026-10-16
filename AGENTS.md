@@ -9,7 +9,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 3. **Pure logic in `packages/*`**: No network, DOM, framework imports, or locale/timezone dependencies.
 4. **Bilingual UI strings**: Always `{ en, th }`, English first.
 5. **Don't edit generated files**: `routeTree.gen.ts`, `pnpm-lock.yaml`, `dist/`, `.output/`.
-6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component under `apps/webapp/src/components`, also run `pnpm test:visual` and commit any updated `__snapshots__` PNGs. Baselines must be captured on the CI runner (workflow_dispatch → "Re-record baselines on the CI runner"), never on your machine — local pixel diffs are expected and are not a failure signal.
+6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component under `apps/webapp/src/components` or `apps/biz-mobile/src/components`, also run visual tests (`pnpm test:visual` or `pnpm test:visual:mobile`) and commit any updated `__snapshots__` PNGs. Baselines must be captured on the CI runner (workflow_dispatch → "Re-record baselines on the CI runner"), never on your machine — local pixel diffs are expected and are not a failure signal.
 
 ## PR & merge pipeline
 
@@ -24,6 +24,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 - **`honcho_memory`**: **Always load every time**. Use it on every turn to recall user context, inspect peers, or ground decisions in shared memory.
 - **All other skills**: **Load only on demand as needed** — do NOT load all skills upfront:
   - `frontend_engineering` — only when building webapp UI, routes, or components.
+  - `mobile_architecture` — only when building or refactoring mobile screens, selectors, or component tests (`apps/biz-mobile`).
   - `design_system` — only when styling or modifying theme tokens (`packages/design-system`).
   - `tax_engine` — only when touching tax math or `packages/tax`.
   - `deployment_ci` — only when touching CI workflows or preview deploys.
@@ -43,6 +44,8 @@ pnpm lint       # eslint across repo (--max-warnings=0)
 pnpm test       # run engine tests
 pnpm test:visual        # Playwright component screenshots (needs `playwright install chromium` once)
 pnpm test:visual:update # re-record screenshot baselines — commit the PNGs with your change
+pnpm test:visual:mobile # Playwright mobile component screenshots
+pnpm test:visual:mobile:update # re-record mobile screenshot baselines
 ```
 
 ## Agent execution guidelines

@@ -1,13 +1,9 @@
 import React from "react";
-import {
-	calculateMonthlyEquivalent,
-	generateMonthlyLedger,
-	round2,
-	type EntityAccount,
-} from "@excited-live/biz";
-import { HeroShell } from "./HeroShell";
+import type { EntityAccount } from "@excited-live/biz";
+import { calculateProjectionBalances } from "../domain/selectors";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
+import { HeroShell } from "./HeroShell";
 
 interface LedgerHeroCardProps {
 	account: EntityAccount;
@@ -20,49 +16,31 @@ const FUTURE_MONTHS = 12;
 const CHART_H = 110;
 const CHART_WF_PLOT = 48;
 
-const monthShift = (ym: string, delta: number) => {
-	const [y, m] = ym.split("-").map(Number);
-	const zeroBased = (m ?? 1) - 1 + delta;
-	const nextYear = (y ?? 0) + Math.floor(zeroBased / 12);
-	const nextMonth = (((zeroBased % 12) + 12) % 12) + 1;
-	return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
-};
-
-export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMonth, onTap }) => {
+export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
+	account,
+	yearMonth,
+	onTap,
+}) => {
 	const { subscriptions, hardware, revenues, liabilities, transfers } = useBiz();
 
-	const netOf = (ym: string, acc: EntityAccount = account) =>
-		generateMonthlyLedger({
-			account: acc,
-			yearMonth: ym,
-			subscriptions,
-			hardware,
-			revenues,
-			transfers,
-			liabilities,
-		}).summary.netCashFlow;
-
-	// Steady-state projection: career income + recurring income - recurring expenses - liability payments
-	const entityRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
-	const hasSalaryStream = entityRevenues.some((r) => r.source === "salary");
-	const legacySalary = !hasSalaryStream && account.type === "personal" ? (account.salary ?? 0) : 0;
-	const totalIncome = round2(
-		legacySalary +
-		entityRevenues
-			.filter((r) => r.frequency === "monthly")
-			.reduce((acc, r) => acc + r.amount, 0),
-	);
-	const totalExpense = round2(
-		subscriptions
-			.filter((s) => s.entityId === account.id && s.active)
-			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0),
-	);
-	const liabilityMonthly = round2(
-		liabilities
-			.filter((l) => l.entityId === account.id && l.active)
-			.reduce((acc, l) => acc + l.amount, 0),
-	);
-	const projectedNet = round2(totalIncome - totalExpense - liabilityMonthly);
+	const {
+		offsets,
+		balances,
+		totalIncome,
+		totalExpense,
+		liabilityMonthly,
+		projectedNet,
+	} = calculateProjectionBalances({
+		account,
+		yearMonth,
+		subscriptions,
+		hardware,
+		revenues,
+		transfers,
+		liabilities,
+		pastMonths: PAST_MONTHS,
+		futureMonths: FUTURE_MONTHS,
+	});
 
 	// Monthly cashflow waterfall (projected steady-state month)
 	const waterfall = [
@@ -89,26 +67,6 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 	const wfY = (v: number) => (v - wfMin) * wfK;
 	const compact = (v: number) =>
 		Math.abs(v) >= 1000 ? `฿${(v / 1000).toFixed(1)}k` : `฿${formatMoney(Math.abs(v))}`;
-
-	const offsets: number[] = [];
-	for (let m = -PAST_MONTHS; m <= FUTURE_MONTHS; m++) offsets.push(m);
-	const monthYm = (offset: number) => monthShift(yearMonth, offset);
-
-	// Balance at END of each month. Current-month point = today's actual cash.
-	const balances = new Map<number, number>();
-	balances.set(0, account.cashReserve);
-	for (let m = -1; m >= -PAST_MONTHS; m--) {
-		// Walk back without career income: career accounting starts this month
-		balances.set(
-			m,
-			round2((balances.get(m + 1) ?? 0) - netOf(monthYm(m + 1), { ...account, salary: undefined })),
-		);
-	}
-	for (let m = 1; m <= FUTURE_MONTHS; m++) {
-		const ym = monthYm(m);
-		const ledgerNet = netOf(ym, account);
-		balances.set(m, round2((balances.get(m - 1) ?? 0) + ledgerNet));
-	}
 
 	const values = offsets.map((m) => balances.get(m) ?? 0);
 	const rawMin = Math.min(...values);
@@ -153,7 +111,6 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 			</div>
 
 			<div className="hero-chart">
-				{/* Current Value label on Y-axis aligned with the reference line passing through the Now dot */}
 				<span
 					className="hero-chart-ylabel hero-chart-now-ylabel"
 					style={{
@@ -175,7 +132,6 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 					</span>
 				)}
 				<svg viewBox={`0 0 ${W} ${CHART_H}`} preserveAspectRatio="none" aria-hidden="true">
-					{/* Reference line passing through the current value dot */}
 					<line
 						x1={0}
 						x2={W}
@@ -213,10 +169,7 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 					className="hero-chart-now-dot"
 					style={{ left: `${xFrac(nowIndex)}%`, top: `${nowYFrac}%` }}
 				/>
-				<span
-					className="hero-chart-now-label"
-					style={{ left: `${xFrac(nowIndex)}%` }}
-				>
+				<span className="hero-chart-now-label" style={{ left: `${xFrac(nowIndex)}%` }}>
 					Now
 				</span>
 			</div>
@@ -247,15 +200,11 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({ account, yearMon
 			</div>
 			<div className="hero-meta-row secondary">
 				<span className="hero-meta-label">Projected in 6 Months</span>
-				<span className="hero-meta-value">
-					฿ {formatMoney(balances.get(6) ?? 0)}
-				</span>
+				<span className="hero-meta-value">฿ {formatMoney(balances.get(6) ?? 0)}</span>
 			</div>
 			<div className="hero-meta-row secondary">
 				<span className="hero-meta-label">Projected in 12 Months</span>
-				<span className="hero-meta-value">
-					฿ {formatMoney(balances.get(12) ?? 0)}
-				</span>
+				<span className="hero-meta-value">฿ {formatMoney(balances.get(12) ?? 0)}</span>
 			</div>
 		</HeroShell>
 	);

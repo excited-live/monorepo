@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import { calculateDerivedTreasury, type EntityAccount, type RevenueStream } from "@excited-live/biz";
 import { AddBusinessDrawer } from "../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../components/AddRevenueDrawer";
+import {
+	calculateConsolidatedWealth,
+	calculatePaydayCountdown,
+} from "../domain/selectors";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
 
@@ -14,19 +18,6 @@ const formatType = (t: string) => {
 		default:
 			return t;
 	}
-};
-
-/** "Payday in N days" for the current month, from the account's payday. */
-const paydayLabel = (dayOfMonth?: number): string | null => {
-	if (!dayOfMonth) return null;
-	const now = new Date();
-	const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-	const today = now.getDate();
-	let daysUntil = dayOfMonth - today;
-	if (daysUntil < 0) daysUntil = daysInMonth - today + dayOfMonth;
-	if (daysUntil === 0) return "Payday today";
-	if (daysUntil === 1) return "Payday tomorrow";
-	return `Payday in ${daysUntil} days`;
 };
 
 export const HomeView: React.FC = () => {
@@ -49,16 +40,26 @@ export const HomeView: React.FC = () => {
 	const personal = accounts.find((a) => a.type === "personal");
 	const needsCareer = personal ? !personal.salary : false;
 
-	/** End-of-month treasury: cash on hand plus this month's income/expenses. */
-	const eomTreasury = (acc: EntityAccount) =>
-		calculateDerivedTreasury({ account: acc, subscriptions, revenues, liabilities, hardware, transfers });
+	const { totalTreasury, totalEomTreasury, personalCash, businessCash } =
+		calculateConsolidatedWealth({
+			accounts,
+			hardware,
+			subscriptions,
+			revenues,
+			liabilities,
+			transfers,
+		});
 
-	const totalTreasury = accounts.reduce((acc, a) => acc + a.cashReserve, 0);
-	const totalEomTreasury = accounts.reduce((acc, a) => acc + eomTreasury(a), 0);
-	const personalCash = personal?.cashReserve ?? 0;
-	const businessCash = accounts
-		.filter((a) => a.type === "business")
-		.reduce((acc, a) => acc + a.cashReserve, 0);
+	/** End-of-month treasury for a single account */
+	const eomTreasury = (acc: EntityAccount) =>
+		calculateDerivedTreasury({
+			account: acc,
+			subscriptions,
+			revenues,
+			liabilities,
+			hardware,
+			transfers,
+		});
 
 	const openCareerEdit = (acc: EntityAccount) => {
 		setActiveEntityId(acc.id);
@@ -130,6 +131,7 @@ export const HomeView: React.FC = () => {
 						{accounts.map((acc) => {
 							const hasCareer =
 								acc.type === "personal" && Boolean(acc.careerTitle || acc.careerCompany || acc.salary);
+							const countdown = calculatePaydayCountdown(acc.paydayDayOfMonth);
 							return (
 								<div
 									key={acc.id}
@@ -156,14 +158,19 @@ export const HomeView: React.FC = () => {
 											</span>
 										</div>
 										<div className="item-amount-col">
-											<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.06)", color: "var(--granite)" }}>
+											<span
+												className="item-badge"
+												style={{
+													backgroundColor: "rgba(20, 20, 19, 0.06)",
+													color: "var(--granite)",
+												}}
+											>
 												{formatType(acc.type)}
 											</span>
 										</div>
 									</div>
 
-									{/* Career sub-card: the personal account's current career.
-									    Tap opens the career edit (salary stream). */}
+									{/* Career sub-card */}
 									{hasCareer && (
 										<button
 											type="button"
@@ -187,10 +194,8 @@ export const HomeView: React.FC = () => {
 											<div className="career-subcard-info">
 												<div className="career-subcard-head">
 													<span className="career-subcard-eyebrow">Current Career</span>
-													{paydayLabel(acc.paydayDayOfMonth) && (
-														<span className="career-subcard-payday">
-															{paydayLabel(acc.paydayDayOfMonth)}
-														</span>
+													{countdown && (
+														<span className="career-subcard-payday">{countdown}</span>
 													)}
 												</div>
 												<span className="career-subcard-title">

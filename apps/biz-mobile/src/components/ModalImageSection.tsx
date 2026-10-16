@@ -6,6 +6,41 @@ interface ModalImageSectionProps {
 	emptyLabel?: string;
 }
 
+const compressImage = (file: File, maxWidth = 480, maxHeight = 480, quality = 0.75): Promise<string> => {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			const img = new Image();
+			img.onload = () => {
+				const canvas = document.createElement("canvas");
+				let { width, height } = img;
+				if (width > maxWidth || height > maxHeight) {
+					if (width > height) {
+						height = Math.round((height * maxWidth) / width);
+						width = maxWidth;
+					} else {
+						width = Math.round((width * maxHeight) / height);
+						height = maxHeight;
+					}
+				}
+				canvas.width = width;
+				canvas.height = height;
+				const ctx = canvas.getContext("2d");
+				if (!ctx) {
+					resolve(reader.result as string);
+					return;
+				}
+				ctx.drawImage(img, 0, 0, width, height);
+				resolve(canvas.toDataURL("image/jpeg", quality));
+			};
+			img.onerror = reject;
+			img.src = e.target?.result as string;
+		};
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
+};
+
 export const ModalImageSection: React.FC<ModalImageSectionProps> = ({
 	value,
 	onChange,
@@ -13,16 +48,21 @@ export const ModalImageSection: React.FC<ModalImageSectionProps> = ({
 }) => {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (file) {
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				if (typeof reader.result === "string") {
-					onChange(reader.result);
-				}
-			};
-			reader.readAsDataURL(file);
+			try {
+				const compressed = await compressImage(file);
+				onChange(compressed);
+			} catch {
+				const reader = new FileReader();
+				reader.onloadend = () => {
+					if (typeof reader.result === "string") {
+						onChange(reader.result);
+					}
+				};
+				reader.readAsDataURL(file);
+			}
 		}
 		e.target.value = "";
 	};

@@ -30,7 +30,7 @@ export interface UserSession {
 }
 
 export type MobileTab = "home" | "capital" | "settings";
-export type CapitalSubTab = "capital" | "income" | "expense" | "assets" | "liability";
+export type CapitalSubTab = "capital" | "income" | "expense" | "assets" | "liability" | "ledger";
 export type MobileLocale = "en" | "th";
 
 export interface EntityWealthMetrics {
@@ -47,6 +47,8 @@ export interface EntityWealthMetrics {
 	totalExpense: number;
 	liabilityMonthly: number;
 	liabPct: number;
+	runwayMonths: number | null;
+	isDefaultAlive: boolean;
 }
 
 export interface ConsolidatedWealthMetrics {

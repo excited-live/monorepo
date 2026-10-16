@@ -69,12 +69,24 @@ export interface RevenueStream {
 	imageUrl?: string;
 }
 
+export type LiabilityCategory =
+	| "mortgage"
+	| "car_loan"
+	| "student_loan"
+	| "credit_card"
+	| "business_loan"
+	| "equipment_loan"
+	| "credit_line"
+	| "lease"
+	| "other"
+	| (string & {});
+
 export interface LiabilityStream {
 	id: string;
 	entityId: string;
 	name: string;
 	amount: number;
-	category: "business_loan" | "equipment_loan" | "credit_line" | "lease" | "other";
+	category: LiabilityCategory;
 	active: boolean;
 	notes?: string;
 	imageUrl?: string;

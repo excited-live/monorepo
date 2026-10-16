@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { bizApi } from "../lib/api-client";
+import React, { useRef, useState } from "react";
 import { useBiz } from "../state";
+import { t } from "../utils/i18n";
+import { SignInView } from "./SignInView";
 
 export const SettingsView: React.FC = () => {
 	const {
@@ -13,14 +14,13 @@ export const SettingsView: React.FC = () => {
 		setLang,
 		userSession,
 		signOut,
-		resetToBaseline,
+		restoreBackup,
 	} = useBiz();
 
-	const verifiedLabel = lang === "th" ? "ยืนยันบัญชีแล้ว" : "Account verified";
-	const localLabel = lang === "th" ? "อุปกรณ์นี้" : "Local device";
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [isSignInOpen, setIsSignInOpen] = useState(false);
 
-	// Cloud Sync state
-	const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced">("idle");
+	const isCloudAccount = userSession.isAuthenticated && Boolean(userSession.email);
 
 	const handleExportJSON = () => {
 		const payload = {
@@ -40,54 +40,50 @@ export const SettingsView: React.FC = () => {
 		a.click();
 	};
 
-	const handleCloudSync = async () => {
-		setSyncStatus("syncing");
-		try {
-			await bizApi.syncSnapshot(
-				{
-					accounts,
-					subscriptions,
-					hardware,
-					revenues,
-					transfers,
-				},
-				userSession.isAuthenticated ? userSession.id : "default",
-			);
-			setSyncStatus("synced");
-			setTimeout(() => setSyncStatus("idle"), 2500);
-		} catch {
-			setTimeout(() => {
-				setSyncStatus("synced");
-				setTimeout(() => setSyncStatus("idle"), 2500);
-			}, 700);
-		}
+	const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		const reader = new FileReader();
+		reader.onload = (event) => {
+			try {
+				const data = JSON.parse(event.target?.result as string);
+				if (data && typeof data === "object") {
+					restoreBackup(data);
+					alert(lang === "th" ? "กู้คืนข้อมูลสำเร็จเรียบร้อย" : "Backup restored successfully!");
+				}
+			} catch {
+				alert(lang === "th" ? "ไฟล์ JSON ไม่ถูกต้อง" : "Invalid JSON backup file format.");
+			}
+		};
+		reader.readAsText(file);
+		e.target.value = "";
 	};
 
 	return (
 		<div className="screen-content">
 			<div className="section-header">
 				<div>
-					<h2 style={{ fontSize: "20px", fontWeight: 700 }}>Settings & Configuration</h2>
+					<h2 style={{ fontSize: "20px", fontWeight: 700 }}>{t("settings.title", lang)}</h2>
 					<p style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
 						Multi-entity isolation, profile, and system synchronization.
 					</p>
 				</div>
 			</div>
 
-				{/* User Profile & Cloud Account */}
+			{/* User Profile & Cloud Account */}
 			<div className="card">
 				<div className="section-header">
-					<span className="section-title">Solopreneur Profile & Sync</span>
+					<span className="section-title">{t("settings.profile", lang)}</span>
 					<span
 						className="item-badge"
 						style={{
-							backgroundColor: userSession.isAuthenticated
+							backgroundColor: isCloudAccount
 								? "rgba(5, 150, 105, 0.12)"
 								: "rgba(20, 20, 19, 0.06)",
-							color: userSession.isAuthenticated ? "#059669" : "var(--granite)",
+							color: isCloudAccount ? "#059669" : "var(--granite)",
 						}}
 					>
-						{userSession.isAuthenticated ? `● ${verifiedLabel}` : `○ ${localLabel}`}
+						{isCloudAccount ? `● ${t("settings.verified", lang)}` : `● Cloud Agent Active`}
 					</span>
 				</div>
 
@@ -128,53 +124,48 @@ export const SettingsView: React.FC = () => {
 								flexShrink: 0,
 							}}
 						>
-							{userSession.isAuthenticated
-								? userSession.name.slice(0, 2).toUpperCase()
-								: "GU"}
+							{userSession.name.slice(0, 2).toUpperCase()}
 						</div>
 					)}
 					<div style={{ flex: 1, minWidth: 0 }}>
 						<div style={{ fontSize: "15px", fontWeight: 700, color: "var(--ink-black)" }}>
-							{userSession.isAuthenticated ? userSession.name : "Guest Solopreneur"}
+							{userSession.name}
 						</div>
 						<div style={{ fontSize: "12px", color: "var(--slate-gray)" }}>
-							{userSession.isAuthenticated
+							{isCloudAccount
 								? `${userSession.orgName} • ${userSession.email}`
-								: "Offline local device storage"}
+								: "Connected to Excited Cloud"}
 						</div>
 					</div>
 				</div>
 
 				<div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-					{/* This view only renders inside the signed-in shell (the sign-in
-					    gate lives on the root route); always show account actions. */}
-					<button
-						type="button"
-						className="action-pill-btn"
-						style={{ flex: 1.2, justifyContent: "center" }}
-						onClick={handleCloudSync}
-					>
-						{syncStatus === "syncing"
-							? "Syncing Cloud..."
-							: syncStatus === "synced"
-								? "✓ Synced with Cloud"
-								: "Sync with Cloud BFF"}
-					</button>
-					<button
-						type="button"
-						className="action-pill-btn"
-						style={{ flex: 0.8, justifyContent: "center", color: "var(--signal-orange)", borderColor: "rgba(207, 69, 0, 0.2)" }}
-						onClick={signOut}
-					>
-						Sign Out
-					</button>
+					{isCloudAccount ? (
+						<button
+							type="button"
+							className="action-pill-btn"
+							style={{ flex: 1, justifyContent: "center", color: "var(--signal-orange)", borderColor: "rgba(207, 69, 0, 0.2)" }}
+							onClick={signOut}
+						>
+							{t("settings.signOut", lang)}
+						</button>
+					) : (
+						<button
+							type="button"
+							className="action-pill-btn"
+							style={{ flex: 1, justifyContent: "center" }}
+							onClick={() => setIsSignInOpen(true)}
+						>
+							{t("settings.signIn", lang)}
+						</button>
+					)}
 				</div>
 			</div>
 
 			{/* Language Switcher */}
 			<div className="card">
 				<div className="section-header">
-					<span className="section-title">Language / ภาษา</span>
+					<span className="section-title">{t("settings.language", lang)}</span>
 					<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.06)", color: "var(--granite)" }}>
 						{lang.toUpperCase()}
 					</span>
@@ -199,35 +190,57 @@ export const SettingsView: React.FC = () => {
 				</div>
 			</div>
 
-			{/* Data Backup & Reset */}
+			{/* Data Backup & Portability */}
 			<div className="card">
-				<div className="section-title">Data Backup & Portability</div>
+				<div className="section-title">{t("settings.dataPortability", lang)}</div>
 				<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-					All solopreneur entities, expenses, and depreciation tables are stored locally on your device with optional cloud sync.
+					All solopreneur entities, expenses, and depreciation tables are synchronized with your Excited Cloud account and accessible by native AI agents.
 				</div>
-				<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept="application/json,.json"
+					onChange={handleImportJSON}
+					style={{ display: "none" }}
+				/>
+
+				<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
 					<button
 						type="button"
 						className="action-pill-btn"
 						onClick={handleExportJSON}
 					>
-						Export Data to JSON
+						{t("settings.exportJson", lang)}
 					</button>
+
 					<button
 						type="button"
 						className="action-pill-btn"
-						style={{ color: "var(--signal-orange)", borderColor: "rgba(207, 69, 0, 0.2)" }}
-						onClick={() => {
-							if (window.confirm("Reset all entities, expenses, and assets back to default seed? This cannot be undone.")) {
-								resetToBaseline();
-							}
-						}}
+						onClick={() => fileInputRef.current?.click()}
 					>
-						Reset All to Seed Baseline
+						{t("settings.importJson", lang)}
 					</button>
 				</div>
 			</div>
 
+			{/* Sign In Sheet if requested */}
+			{isSignInOpen && (
+				<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
+					<div className="modal-page-nav">
+						<span className="modal-nav-title">{t("settings.signIn", lang)}</span>
+						<button
+							type="button"
+							className="modal-nav-close"
+							onClick={() => setIsSignInOpen(false)}
+							aria-label="Close"
+						>
+							✕
+						</button>
+					</div>
+					<SignInView onSignedIn={() => setIsSignInOpen(false)} />
+				</div>
+			)}
 		</div>
 	);
 };

@@ -47,7 +47,9 @@ export interface BizContextType {
 	setActiveCapitalSubTab: (tab: CapitalSubTab) => void;
 	setSelectedMonth: (month: string) => void;
 	setLang: (lang: MobileLocale) => void;
-	injectCapital: (fromEntityId: string, toEntityId: string, amount: number, note: string) => void;
+	injectCapital: (fromEntityId: string, toEntityId: string, amount: number, note?: string) => void;
+	updateCapitalTransfer: (transfer: CapitalTransfer) => void;
+	deleteCapitalTransfer: (id: string) => void;
 	addSubscription: (sub: Omit<RecurringSubscription, "id">) => void;
 	updateSubscription: (sub: RecurringSubscription) => void;
 	deleteSubscription: (id: string) => void;
@@ -68,20 +70,39 @@ export interface BizContextType {
 		company?: string,
 		imageUrl?: string,
 	) => void;
+	updateCareer: (
+		entityId: string,
+		career: {
+			careerTitle?: string;
+			careerCompany?: string;
+			careerImageUrl?: string;
+			salary?: number;
+			paydayDayOfMonth?: number;
+		},
+	) => void;
 	updateCashReserve: (entityId: string, newAmount: number) => void;
-	addBusiness: (name: string, imageUrl?: string) => string;
+	addBusiness: (name: string, imageUrl?: string, startingTreasury?: number) => string;
 	updateBusiness: (id: string, name: string, imageUrl?: string) => void;
 	deleteBusiness: (id: string) => void;
 	resetToBaseline: () => void;
+	restoreBackup: (data: {
+		accounts?: EntityAccount[];
+		subscriptions?: RecurringSubscription[];
+		hardware?: HardwareAsset[];
+		revenues?: RevenueStream[];
+		liabilities?: LiabilityStream[];
+		transfers?: CapitalTransfer[];
+		user?: UserSession;
+	}) => void;
 }
 
 const STORAGE_PREFIX = "excited_live_mobile_data_v1";
 
-const DEFAULT_SESSION: UserSession = {
+export const DEFAULT_SESSION: UserSession = {
 	id: "usr_guest",
 	email: "",
 	name: "Guest Solopreneur",
-	orgName: "My Local Business",
+	orgName: "My Business",
 	isAuthenticated: false,
 	avatarUrl: DEFAULT_PROFILE_AVATAR,
 };
@@ -111,71 +132,47 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	initialLiabilities,
 	initialTransfers,
 }) => {
+	// Raw entity accounts from storage or seed (before derived treasury)
 	const [rawAccounts, setRawAccounts] = useState<EntityAccount[]>(() => {
 		if (initialAccounts) return initialAccounts;
-		const saved = storage.getItem<EntityAccount[] | null>(`${STORAGE_PREFIX}_accounts`, null);
-		if (!saved) return SEED_ACCOUNTS;
-		return saved.map((acc) => {
-			if (acc.id === "acc_personal") {
-				return {
-					...acc,
-					imageUrl: DEFAULT_PROFILE_AVATAR,
-					careerTitle: acc.careerTitle || "Lead Product Designer & Engineer",
-					careerCompany: acc.careerCompany || "Design Engineering Practice",
-					careerImageUrl:
-						acc.careerImageUrl ||
-						"https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80",
-				};
-			}
-			return acc;
-		});
+		const saved = storage.getItem<EntityAccount[]>(`${STORAGE_PREFIX}_accounts`, SEED_ACCOUNTS);
+		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_ACCOUNTS;
 	});
 
 	const [subscriptions, setSubscriptions] = useState<RecurringSubscription[]>(() => {
 		if (initialSubscriptions) return initialSubscriptions;
-		return storage.getItem<RecurringSubscription[]>(`${STORAGE_PREFIX}_subs`, SEED_SUBSCRIPTIONS);
+		const saved = storage.getItem<RecurringSubscription[]>(`${STORAGE_PREFIX}_subs`, SEED_SUBSCRIPTIONS);
+		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_SUBSCRIPTIONS;
 	});
 
 	const [hardware, setHardware] = useState<HardwareAsset[]>(() => {
 		if (initialHardware) return initialHardware;
-		return storage.getItem<HardwareAsset[]>(`${STORAGE_PREFIX}_hw`, SEED_HARDWARE);
+		const saved = storage.getItem<HardwareAsset[]>(`${STORAGE_PREFIX}_hw`, SEED_HARDWARE);
+		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_HARDWARE;
 	});
 
 	const [revenues, setRevenues] = useState<RevenueStream[]>(() => {
 		if (initialRevenues) return initialRevenues;
-		const saved = storage.getItem<RevenueStream[] | null>(`${STORAGE_PREFIX}_rev`, null);
-		if (!saved) return SEED_REVENUES;
-		const hasCareerRev = saved.some(
-			(r) => r.source === "salary" || r.id === "rev_career_prame",
-		);
-		if (!hasCareerRev) {
-			const careerSeed = SEED_REVENUES.find((r) => r.id === "rev_career_prame");
-			return careerSeed ? [careerSeed, ...saved] : saved;
-		}
-		return saved;
+		const saved = storage.getItem<RevenueStream[]>(`${STORAGE_PREFIX}_rev`, SEED_REVENUES);
+		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_REVENUES;
 	});
 
 	const [liabilities, setLiabilities] = useState<LiabilityStream[]>(() => {
 		if (initialLiabilities) return initialLiabilities;
-		return storage.getItem<LiabilityStream[]>(`${STORAGE_PREFIX}_liab`, SEED_LIABILITIES);
+		const saved = storage.getItem<LiabilityStream[]>(`${STORAGE_PREFIX}_liab`, SEED_LIABILITIES);
+		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_LIABILITIES;
 	});
 
 	const [transfers, setTransfers] = useState<CapitalTransfer[]>(() => {
 		if (initialTransfers) return initialTransfers;
-		return storage.getItem<CapitalTransfer[]>(`${STORAGE_PREFIX}_tx`, SEED_TRANSFERS);
+		const saved = storage.getItem<CapitalTransfer[]>(`${STORAGE_PREFIX}_tx`, SEED_TRANSFERS);
+		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_TRANSFERS;
 	});
 
 	const [userSession, setUserSession] = useState<UserSession>(() => {
 		if (initialSession) return initialSession;
-		const saved = storage.getItem<Partial<UserSession> | null>(`${STORAGE_PREFIX}_session`, null);
-		if (saved) {
-			return {
-				...DEFAULT_SESSION,
-				...saved,
-				avatarUrl: saved.avatarUrl || DEFAULT_PROFILE_AVATAR,
-			};
-		}
-		return DEFAULT_SESSION;
+		const saved = storage.getItem<UserSession>(`${STORAGE_PREFIX}_session`, DEFAULT_SESSION);
+		return saved && typeof saved === "object" ? saved : DEFAULT_SESSION;
 	});
 
 	const [activeEntityId, setActiveEntityId] = useState<string>("acc_personal");
@@ -197,7 +194,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 					setBearerToken(null);
 					return;
 				}
-				setUserSession((prev) => ({ ...prev, id: user.id, email: user.email, name: user.name }));
+				setUserSession((prev: UserSession) => ({ ...prev, id: user.id, email: user.email, name: user.name }));
 			})
 			.catch(() => {
 				// Offline or network unavailable: keep cached session
@@ -258,104 +255,102 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	};
 
 	const signInWithEmail = async (email: string, password: string) => {
-		const { token, user } = await authApi.signIn(email, password);
-		applySession(token, user);
+		const res = await authApi.signIn(email, password);
+		applySession(res.token, res.user);
 	};
 
 	const signInWithGoogle = async (idToken: string) => {
-		const { token, user } = await authApi.signInWithGoogleIdToken(idToken);
-		applySession(token, user);
+		const res = await authApi.signInWithGoogleIdToken(idToken);
+		applySession(res.token, res.user);
 	};
 
 	const signOut = async () => {
-		await authApi.signOut();
+		try {
+			await authApi.signOut();
+		} catch {
+			// Best-effort remote sign out
+		}
 		setBearerToken(null);
 		setUserSession(DEFAULT_SESSION);
 	};
 
 	const updateUserProfile = (profile: Partial<UserSession>) => {
-		setUserSession((prev) => ({ ...prev, ...profile }));
+		setUserSession((prev: UserSession) => ({ ...prev, ...profile }));
 	};
 
 	const injectCapital = (
 		fromEntityId: string,
 		toEntityId: string,
 		amount: number,
-		note: string,
+		note?: string,
 	) => {
 		const newTx: CapitalTransfer = {
 			id: `tx_${Date.now()}`,
 			fromEntityId,
 			toEntityId,
 			amount,
-			date: new Date().toISOString().slice(0, 10),
-			note,
+			date: selectedMonth,
+			note: note || "Capital transfer",
 		};
 		setTransfers((prev) => [newTx, ...prev]);
 	};
 
-	const addSubscription = (sub: Omit<RecurringSubscription, "id">) => {
-		const newSub: RecurringSubscription = {
-			...sub,
-			id: `sub_${Date.now()}`,
+	const updateCapitalTransfer = (transfer: CapitalTransfer) => {
+		setTransfers((prev) => prev.map((t) => (t.id === transfer.id ? transfer : t)));
+	};
+
+	const deleteCapitalTransfer = (id: string) => {
+		setTransfers((prev) => prev.filter((t) => t.id !== id));
+	};
+
+	const addBusiness = (name: string, imageUrl?: string, startingTreasury?: number): string => {
+		const newId = `acc_biz_${Date.now()}`;
+		const newBiz: EntityAccount = {
+			id: newId,
+			name,
+			type: "business",
+			cashReserve: 0,
+			currency: "THB",
+			imageUrl,
 		};
-		setSubscriptions((prev) => [newSub, ...prev]);
+		setRawAccounts((prev) => [...prev, newBiz]);
+		setActiveEntityId(newId);
+
+		// When starting treasury is entered, record it as a regular CapitalTransfer from personal
+		// so it pops up in the Capital subtab and is editable and manageable just like any other capital transfer!
+		if (startingTreasury && startingTreasury > 0) {
+			const initialTransfer: CapitalTransfer = {
+				id: `tx_${Date.now()}`,
+				fromEntityId: "acc_personal",
+				toEntityId: newId,
+				amount: startingTreasury,
+				date: selectedMonth,
+				note: `${name} Initial Capital`,
+			};
+			setTransfers((prev) => [initialTransfer, ...prev]);
+		}
+		return newId;
 	};
 
-	const updateSubscription = (sub: RecurringSubscription) => {
-		setSubscriptions((prev) => prev.map((s) => (s.id === sub.id ? sub : s)));
+	const updateBusiness = (id: string, name: string, imageUrl?: string) => {
+		setRawAccounts((prev) =>
+			prev.map((acc) => (acc.id === id ? { ...acc, name, imageUrl } : acc)),
+		);
 	};
 
-	const deleteSubscription = (id: string) => {
-		setSubscriptions((prev) => prev.filter((s) => s.id !== id));
-	};
-
-	const addHardware = (hw: Omit<HardwareAsset, "id">) => {
-		const newHw: HardwareAsset = {
-			...hw,
-			id: `hw_${Date.now()}`,
-		};
-		setHardware((prev) => [newHw, ...prev]);
-	};
-
-	const updateHardware = (hw: HardwareAsset) => {
-		setHardware((prev) => prev.map((h) => (h.id === hw.id ? hw : h)));
-	};
-
-	const deleteHardware = (id: string) => {
-		setHardware((prev) => prev.filter((h) => h.id !== id));
-	};
-
-	const addRevenue = (rev: Omit<RevenueStream, "id">) => {
-		const newRev: RevenueStream = {
-			...rev,
-			id: `rev_${Date.now()}`,
-		};
-		setRevenues((prev) => [newRev, ...prev]);
-	};
-
-	const updateRevenue = (rev: RevenueStream) => {
-		setRevenues((prev) => prev.map((r) => (r.id === rev.id ? rev : r)));
-	};
-
-	const deleteRevenue = (id: string) => {
-		setRevenues((prev) => prev.filter((r) => r.id !== id));
-	};
-
-	const addLiability = (liab: Omit<LiabilityStream, "id">) => {
-		const newLiab: LiabilityStream = {
-			...liab,
-			id: `liab_${Date.now()}`,
-		};
-		setLiabilities((prev) => [newLiab, ...prev]);
-	};
-
-	const updateLiability = (liab: LiabilityStream) => {
-		setLiabilities((prev) => prev.map((l) => (l.id === liab.id ? liab : l)));
-	};
-
-	const deleteLiability = (id: string) => {
-		setLiabilities((prev) => prev.filter((l) => l.id !== id));
+	const updateCareer = (
+		entityId: string,
+		career: {
+			careerTitle?: string;
+			careerCompany?: string;
+			careerImageUrl?: string;
+			salary?: number;
+			paydayDayOfMonth?: number;
+		},
+	) => {
+		setRawAccounts((prev) =>
+			prev.map((acc) => (acc.id === entityId ? { ...acc, ...career } : acc)),
+		);
 	};
 
 	const setCareerIncome = (
@@ -366,7 +361,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		company?: string,
 		imageUrl?: string,
 	) => {
-		setRawAccounts((prev) =>
+		setRawAccounts((prev: EntityAccount[]) =>
 			prev.map((acc) =>
 				acc.id === entityId
 					? {
@@ -380,7 +375,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 					: acc,
 			),
 		);
-		setRevenues((prev) => {
+		setRevenues((prev: RevenueStream[]) => {
 			const existingIdx = prev.findIndex(
 				(r) => r.entityId === entityId && (r.source === "salary" || r.id === "rev_career_prame"),
 			);
@@ -423,31 +418,10 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			fromEntityId: delta < 0 ? entityId : "external",
 			toEntityId: delta > 0 ? entityId : "external",
 			amount: Math.abs(delta),
-			date: new Date().toISOString().slice(0, 10),
+			date: selectedMonth,
 			note: `Cash reserve manual calibration (${delta > 0 ? "+" : ""}${delta})`,
 		};
 		setTransfers((prev) => [adjustmentTx, ...prev]);
-	};
-
-	const addBusiness = (name: string, imageUrl?: string): string => {
-		const newId = `biz_${Date.now()}`;
-		const newBiz: EntityAccount = {
-			id: newId,
-			name,
-			type: "business",
-			cashReserve: 0,
-			currency: "THB",
-			imageUrl,
-		};
-		setRawAccounts((prev) => [...prev, newBiz]);
-		setActiveEntityId(newId);
-		return newId;
-	};
-
-	const updateBusiness = (id: string, name: string, imageUrl?: string) => {
-		setRawAccounts((prev) =>
-			prev.map((acc) => (acc.id === id ? { ...acc, name, ...(imageUrl ? { imageUrl } : {}) } : acc)),
-		);
 	};
 
 	const deleteBusiness = (id: string) => {
@@ -457,9 +431,71 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setRevenues((prev) => prev.filter((r) => r.entityId !== id));
 		setLiabilities((prev) => prev.filter((l) => l.entityId !== id));
 		setTransfers((prev) => prev.filter((t) => t.fromEntityId !== id && t.toEntityId !== id));
-		if (activeEntityId === id) {
-			setActiveEntityId("acc_personal");
-		}
+		setActiveEntityId("acc_personal");
+	};
+
+	const addSubscription = (sub: Omit<RecurringSubscription, "id">) => {
+		const newSub: RecurringSubscription = {
+			...sub,
+			id: `sub_${Date.now()}`,
+		};
+		setSubscriptions((prev) => [...prev, newSub]);
+	};
+
+	const updateSubscription = (sub: RecurringSubscription) => {
+		setSubscriptions((prev) => prev.map((s) => (s.id === sub.id ? sub : s)));
+	};
+
+	const deleteSubscription = (id: string) => {
+		setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+	};
+
+	const addHardware = (hw: Omit<HardwareAsset, "id">) => {
+		const newHw: HardwareAsset = {
+			...hw,
+			id: `hw_${Date.now()}`,
+		};
+		setHardware((prev) => [...prev, newHw]);
+	};
+
+	const updateHardware = (hw: HardwareAsset) => {
+		setHardware((prev) => prev.map((h) => (h.id === hw.id ? hw : h)));
+	};
+
+	const deleteHardware = (id: string) => {
+		setHardware((prev) => prev.filter((h) => h.id !== id));
+	};
+
+	const addRevenue = (rev: Omit<RevenueStream, "id">) => {
+		const newRev: RevenueStream = {
+			...rev,
+			id: `rev_${Date.now()}`,
+		};
+		setRevenues((prev) => [...prev, newRev]);
+	};
+
+	const updateRevenue = (rev: RevenueStream) => {
+		setRevenues((prev) => prev.map((r) => (r.id === rev.id ? rev : r)));
+	};
+
+	const deleteRevenue = (id: string) => {
+		setRevenues((prev) => prev.filter((r) => r.id !== id));
+	};
+
+	const addLiability = (liab: Omit<LiabilityStream, "id">) => {
+		const newLiab: LiabilityStream = {
+			...liab,
+			id: `liab_${Date.now()}`,
+		};
+		setLiabilities((prev) => [...prev, newLiab]);
+	};
+
+	const updateLiability = (liab: LiabilityStream) => {
+		setLiabilities((prev) => prev.map((l) => (l.id === liab.id ? liab : l)));
+	};
+
+	const deleteLiability = (id: string) => {
+		setLiabilities((prev) => prev.filter((l) => l.id !== id));
 	};
 
 	const resetToBaseline = () => {
@@ -469,57 +505,73 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setRevenues(SEED_REVENUES);
 		setLiabilities(SEED_LIABILITIES);
 		setTransfers(SEED_TRANSFERS);
-		setUserSession(DEFAULT_SESSION);
 		setActiveEntityId("acc_personal");
-		setSelectedMonth("2026-10");
 	};
 
-	return (
-		<BizContext.Provider
-			value={{
-				accounts,
-				subscriptions,
-				hardware,
-				revenues,
-				liabilities,
-				transfers,
-				activeEntityId,
-				activeTab,
-				activeCapitalSubTab,
-				selectedMonth,
-				lang,
-				userSession,
-				signInWithEmail,
-				signInWithGoogle,
-				signOut,
-				updateUserProfile,
-				setActiveEntityId,
-				setActiveTab,
-				setActiveCapitalSubTab,
-				setSelectedMonth,
-				setLang,
-				injectCapital,
-				addSubscription,
-				updateSubscription,
-				deleteSubscription,
-				addHardware,
-				updateHardware,
-				deleteHardware,
-				addRevenue,
-				updateRevenue,
-				deleteRevenue,
-				addLiability,
-				updateLiability,
-				deleteLiability,
-				setCareerIncome,
-				updateCashReserve,
-				addBusiness,
-				updateBusiness,
-				deleteBusiness,
-				resetToBaseline,
-			}}
-		>
-			{children}
-		</BizContext.Provider>
-	);
+	const restoreBackup = (data: {
+		accounts?: EntityAccount[];
+		subscriptions?: RecurringSubscription[];
+		hardware?: HardwareAsset[];
+		revenues?: RevenueStream[];
+		liabilities?: LiabilityStream[];
+		transfers?: CapitalTransfer[];
+		user?: UserSession;
+	}) => {
+		if (Array.isArray(data.accounts)) setRawAccounts(data.accounts);
+		if (Array.isArray(data.subscriptions)) setSubscriptions(data.subscriptions);
+		if (Array.isArray(data.hardware)) setHardware(data.hardware);
+		if (Array.isArray(data.revenues)) setRevenues(data.revenues);
+		if (Array.isArray(data.liabilities)) setLiabilities(data.liabilities);
+		if (Array.isArray(data.transfers)) setTransfers(data.transfers);
+		if (data.user && typeof data.user === "object") setUserSession(data.user);
+	};
+
+	const contextValue: BizContextType = {
+		accounts,
+		subscriptions,
+		hardware,
+		revenues,
+		liabilities,
+		transfers,
+		activeEntityId,
+		setActiveEntityId,
+		activeTab,
+		setActiveTab,
+		activeCapitalSubTab,
+		setActiveCapitalSubTab,
+		selectedMonth,
+		setSelectedMonth,
+		lang,
+		setLang,
+		userSession,
+		signInWithEmail,
+		signInWithGoogle,
+		signOut,
+		updateUserProfile,
+		injectCapital,
+		updateCapitalTransfer,
+		deleteCapitalTransfer,
+		addBusiness,
+		updateBusiness,
+		deleteBusiness,
+		updateCareer,
+		setCareerIncome,
+		updateCashReserve,
+		addSubscription,
+		updateSubscription,
+		deleteSubscription,
+		addHardware,
+		updateHardware,
+		deleteHardware,
+		addRevenue,
+		updateRevenue,
+		deleteRevenue,
+		addLiability,
+		updateLiability,
+		deleteLiability,
+		resetToBaseline,
+		restoreBackup,
+	};
+
+	return <BizContext.Provider value={contextValue}>{children}</BizContext.Provider>;
 };

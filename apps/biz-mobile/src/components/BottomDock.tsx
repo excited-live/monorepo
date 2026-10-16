@@ -1,30 +1,34 @@
 import React from "react";
 import {
 	HomeIcon,
-
 	SettingsIcon,
 	WalletIcon,
 	type IconProps,
 } from "@excited-live/design-system";
 import { useBiz } from "../state";
-
-const TABS: Array<{
-	id: "home" | "capital" | "settings";
-	label: string;
-	Icon: React.ComponentType<IconProps>;
-}> = [
-	{ id: "home", label: "Home", Icon: HomeIcon },
-	{ id: "capital", label: "Business Detail", Icon: WalletIcon },
-	{ id: "settings", label: "Settings", Icon: SettingsIcon },
-];
+import { t } from "../utils/i18n";
 
 export const BottomDock: React.FC = () => {
-	const { activeTab, setActiveTab } = useBiz();
+	const { activeTab, setActiveTab, accounts, activeEntityId, lang } = useBiz();
+	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0];
+	const isPersonal = activeAccount?.type === "personal";
+
+	const detailLabel = isPersonal ? t("tab.personalDetail", lang) : t("tab.businessDetail", lang);
+
+	const tabs: Array<{
+		id: "home" | "capital" | "settings";
+		label: string;
+		Icon: React.ComponentType<IconProps>;
+	}> = [
+		{ id: "home", label: t("tab.home", lang), Icon: HomeIcon },
+		{ id: "capital", label: detailLabel, Icon: WalletIcon },
+		{ id: "settings", label: t("tab.settings", lang), Icon: SettingsIcon },
+	];
 
 	return (
 		<div className="bottom-dock-wrapper">
 			<nav className="bottom-dock" aria-label="Main Navigation">
-				{TABS.map(({ id, label, Icon }) => {
+				{tabs.map(({ id, label, Icon }) => {
 					const isActive = activeTab === id;
 					return (
 						<button

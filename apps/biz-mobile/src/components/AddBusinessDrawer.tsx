@@ -1,3 +1,4 @@
+import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { EntityAccount } from "@excited-live/biz";
@@ -21,14 +22,17 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 
 	const [name, setName] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
+	const [startingTreasury, setStartingTreasury] = useState("");
 
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
 			setImageUrl(initialData.imageUrl || "");
+			setStartingTreasury("");
 		} else {
 			setName("");
 			setImageUrl("");
+			setStartingTreasury("");
 		}
 	}, [initialData, isOpen]);
 
@@ -41,7 +45,8 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 		if (initialData) {
 			updateBusiness(initialData.id, name.trim(), imageUrl || undefined);
 		} else {
-			addBusiness(name.trim(), imageUrl || undefined);
+			const initCash = Number(startingTreasury) || 0;
+			addBusiness(name.trim(), imageUrl || undefined, initCash > 0 ? initCash : undefined);
 		}
 
 		dismiss();
@@ -92,16 +97,27 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 						/>
 					</div>
 
-					<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "-6px", lineHeight: 1.45 }}>
-						Cash is tracked as a Cash asset in the Assets tab — its treasury is
-						always the leftover: cash assets + income − expenses.
-					</div>
+					{!isEditMode && (
+						<div className="form-group">
+							<label className="form-label">Starting Treasury / Capital (Optional)</label>
+							<CurrencyInput
+								placeholder="0.00"
+								value={startingTreasury}
+								onChange={setStartingTreasury}
+							/>
+							<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "-2px" }}>
+								Initial liquid bank balance allocated to this business.
+							</div>
+						</div>
+					)}
 
-					{/* Image Cover for Organization / Hero Background */}
+					<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "-6px", lineHeight: 1.45 }}>
+						Treasury tracks liquid capital on hand, and projects end-of-month cash = liquid cash + revenues − operational burn.
+					</div>
 				</form>
 			</div>
 
-			{/* Sticky Bottom Action Bar (Sits directly above keyboard) */}
+			{/* Sticky Bottom Action Bar */}
 			<div className="modal-sticky-footer">
 				<button
 					type="submit"

@@ -2,23 +2,14 @@ import React, { useState } from "react";
 import { calculateDerivedTreasury, type EntityAccount, type RevenueStream } from "@excited-live/biz";
 import { AddBusinessDrawer } from "../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../components/AddRevenueDrawer";
+import { CareerDrawer } from "../components/CareerDrawer";
 import {
 	calculateConsolidatedWealth,
 	calculatePaydayCountdown,
 } from "../domain/selectors";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
-
-const formatType = (t: string) => {
-	switch (t) {
-		case "personal":
-			return "Personal";
-		case "business":
-			return "Business";
-		default:
-			return t;
-	}
-};
+import { t } from "../utils/i18n";
 
 export const HomeView: React.FC = () => {
 	const {
@@ -30,11 +21,13 @@ export const HomeView: React.FC = () => {
 		transfers,
 		setActiveEntityId,
 		setActiveTab,
+		lang,
 	} = useBiz();
 
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [selectedBiz, setSelectedBiz] = useState<EntityAccount | null>(null);
 	const [isRevenueOpen, setIsRevenueOpen] = useState(false);
+	const [isCareerOpen, setIsCareerOpen] = useState(false);
 	const [careerStream, setCareerStream] = useState<RevenueStream | null>(null);
 
 	const personal = accounts.find((a) => a.type === "personal");
@@ -63,10 +56,11 @@ export const HomeView: React.FC = () => {
 
 	const openCareerEdit = (acc: EntityAccount) => {
 		setActiveEntityId(acc.id);
-		setCareerStream(
-			revenues.find((r) => r.entityId === acc.id && r.source === "salary" && r.active) ?? null,
-		);
-		setIsRevenueOpen(true);
+		setIsCareerOpen(true);
+	};
+
+	const formatType = (entityType: string) => {
+		return entityType === "personal" ? t("home.personal", lang) : t("home.businesses", lang);
 	};
 
 	return (
@@ -89,7 +83,7 @@ export const HomeView: React.FC = () => {
 				<div className="home-treasury-panel">
 					<div className="home-hero-eyebrow">
 						<span className="hero-eyebrow-dot">•</span>
-						<span>Consolidated Wealth</span>
+						<span>{t("home.consolidated", lang)}</span>
 					</div>
 					<div className="home-hero-balance">
 						<span className="home-hero-currency">฿</span>
@@ -100,11 +94,11 @@ export const HomeView: React.FC = () => {
 					</div>
 					<div className="home-hero-meta-row">
 						<div className="home-hero-chip">
-							<span className="chip-label">Personal:</span>
+							<span className="chip-label">{t("home.personal", lang)}:</span>
 							<span className="chip-value">฿{formatMoney(personalCash)}</span>
 						</div>
 						<div className="home-hero-chip">
-							<span className="chip-label">Businesses:</span>
+							<span className="chip-label">{t("home.businesses", lang)}:</span>
 							<span className="chip-value">฿{formatMoney(businessCash)}</span>
 						</div>
 					</div>
@@ -113,7 +107,7 @@ export const HomeView: React.FC = () => {
 				{/* Entities Section */}
 				<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
 					<div className="section-header">
-						<span className="section-title">Entities</span>
+						<span className="section-title">{t("section.entities", lang)}</span>
 						<button
 							type="button"
 							className="action-pill-btn"
@@ -123,7 +117,7 @@ export const HomeView: React.FC = () => {
 								setIsDrawerOpen(true);
 							}}
 						>
-							+ Add Business
+							{t("action.addBusiness", lang)}
 						</button>
 					</div>
 
@@ -136,12 +130,17 @@ export const HomeView: React.FC = () => {
 								<div
 									key={acc.id}
 									className={`list-item-card ${hasCareer ? "has-subcard" : ""}`}
-									onClick={() => {
-										setActiveEntityId(acc.id);
-										setActiveTab("capital");
-									}}
 								>
-									<div className="entity-card-main">
+									<div
+										className="entity-card-main"
+										role="button"
+										tabIndex={0}
+										style={{ cursor: "pointer" }}
+										onClick={() => {
+											setActiveEntityId(acc.id);
+											setActiveTab("capital");
+										}}
+									>
 										<div className="item-thumb-wrapper">
 											{acc.imageUrl ? (
 												<img src={acc.imageUrl} alt={acc.name} className="item-thumb" />
@@ -170,7 +169,7 @@ export const HomeView: React.FC = () => {
 										</div>
 									</div>
 
-									{/* Career sub-card */}
+									{/* Career sub-card decoupled from entity card click */}
 									{hasCareer && (
 										<button
 											type="button"
@@ -193,7 +192,7 @@ export const HomeView: React.FC = () => {
 											)}
 											<div className="career-subcard-info">
 												<div className="career-subcard-head">
-													<span className="career-subcard-eyebrow">Current Career</span>
+													<span className="career-subcard-eyebrow">{t("home.currentCareer", lang)}</span>
 													{countdown && (
 														<span className="career-subcard-payday">{countdown}</span>
 													)}
@@ -231,8 +230,7 @@ export const HomeView: React.FC = () => {
 							style={{ alignSelf: "flex-start" }}
 							onClick={() => {
 								setActiveEntityId("acc_personal");
-								setCareerStream(null);
-								setIsRevenueOpen(true);
+								setIsCareerOpen(true);
 							}}
 						>
 							Add Career
@@ -249,6 +247,10 @@ export const HomeView: React.FC = () => {
 					setSelectedBiz(null);
 				}}
 				initialData={selectedBiz}
+			/>
+			<CareerDrawer
+				isOpen={isCareerOpen}
+				onClose={() => setIsCareerOpen(false)}
 			/>
 			<AddRevenueDrawer
 				isOpen={isRevenueOpen}

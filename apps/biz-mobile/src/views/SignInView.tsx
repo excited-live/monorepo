@@ -26,10 +26,6 @@ const STRINGS = {
 } as const;
 
 const TERMS_URL = "https://excited.live/docs/terms";
-// Google *web* client ID (Google Cloud Console → OAuth client, Web application
-// type). The native Google Sign-In SDK (Tauri plugin) returns an ID token with
-// this audience; the API verifies it via BETTER_AUTH_GOOGLE_CLIENT_ID/SECRET.
-// Unset → the button reports that Google sign-in is not configured.
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
 const label = (key: keyof typeof STRINGS, lang: "en" | "th"): string => STRINGS[key][lang];
@@ -55,7 +51,7 @@ const GoogleIcon: React.FC = () => (
 	</svg>
 );
 
-export const SignInView: React.FC = () => {
+export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }) => {
 	const { signInWithEmail, signInWithGoogle, updateUserProfile, lang } = useBiz();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -71,6 +67,7 @@ export const SignInView: React.FC = () => {
 		setError(null);
 		try {
 			await signInWithEmail(email, password);
+			onSignedIn?.();
 		} catch (err) {
 			setError(
 				err instanceof Error && err.message.includes("fetch")
@@ -105,6 +102,7 @@ export const SignInView: React.FC = () => {
 				return;
 			}
 			await signInWithGoogle(tokens.idToken);
+			onSignedIn?.();
 		} catch (err) {
 			setError(
 				err instanceof Error && err.message.includes("fetch")
@@ -131,6 +129,7 @@ export const SignInView: React.FC = () => {
 			orgName: "Preview Business",
 			isAuthenticated: true,
 		});
+		onSignedIn?.();
 	};
 
 	return (
@@ -138,105 +137,109 @@ export const SignInView: React.FC = () => {
 			<div className="signin-hero">
 				<img
 					src="/logo-mark.png"
-					alt="excited.live"
-					style={{
-						width: "66px",
-						height: "56px",
-						objectFit: "contain",
-						display: "block",
-						marginBottom: "24px",
-					}}
+					alt="Excited Live"
+					className="signin-logo"
 				/>
+				<h1 className="signin-app-title">Excited Live</h1>
+				<p className="signin-app-tagline">{label("title", lang)}</p>
+			</div>
 
-				<div className="header-brand-title" style={{ fontSize: "22px", marginBottom: "8px" }}>
-					<span className="brand-root">excited</span>
-					<span className="brand-dot">.</span>
-					<span className="brand-tld">live</span>
-				</div>
-
-				<h1 className="signin-title">{label("title", lang)}</h1>
-
-				<form className="signin-form" onSubmit={handleSignIn}>
-					<label className="signin-field">
-						<span className="signin-field-label">{label("email", lang)}</span>
+			<div className="signin-card">
+				<form onSubmit={handleSignIn} className="signin-form">
+					<div className="signin-field">
+						<label htmlFor="signin-email" className="signin-label">
+							{label("email", lang)}
+						</label>
 						<input
+							id="signin-email"
 							type="email"
-							className="signin-input"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
 							autoComplete="email"
 							required
-						/>
-					</label>
-
-					<label className="signin-field">
-						<span className="signin-field-label">{label("password", lang)}</span>
-						<input
-							type="password"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
 							className="signin-input"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
+							placeholder="you@domain.com"
+							disabled={isLoading || isGoogleLoading}
+						/>
+					</div>
+
+					<div className="signin-field">
+						<label htmlFor="signin-password" className="signin-label">
+							{label("password", lang)}
+						</label>
+						<input
+							id="signin-password"
+							type="password"
 							autoComplete="current-password"
 							required
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							className="signin-input"
+							placeholder="••••••••"
+							disabled={isLoading || isGoogleLoading}
 						/>
-					</label>
+					</div>
 
-					<label className="signin-terms">
+					<label className="signin-checkbox-label">
 						<input
 							type="checkbox"
-							className="signin-terms-checkbox"
 							checked={acceptedTerms}
 							onChange={(e) => setAcceptedTerms(e.target.checked)}
-							required
+							disabled={isLoading || isGoogleLoading}
 						/>
 						<span>
-							{label("agreePrefix", lang)}{" "}
+							{label("agreePrefix", lang)}
 							<a
-								className="signin-terms-link"
 								href={TERMS_URL}
-								target="_blank"
-								rel="noopener noreferrer"
 								onClick={handleTermsClick}
+								target="_blank"
+								rel="noreferrer"
+								className="signin-link"
 							>
 								{label("termsLink", lang)}
 							</a>
 						</span>
 					</label>
 
-					{error ? (
-						<p className="signin-error" role="alert">
+					{error && (
+						<p role="alert" className="signin-error">
 							{error}
 						</p>
-					) : null}
+					)}
 
-					<div className="signin-actions">
-						<button
-							type="submit"
-							className="signin-btn-primary"
-							disabled={isLoading || !acceptedTerms}
-						>
-							{isLoading ? label("submitting", lang) : label("signInWithEmail", lang)}
-						</button>
-
-						<button
-							type="button"
-							className="signin-btn-google"
-							onClick={handleGoogleSignIn}
-							disabled={isGoogleLoading || !acceptedTerms}
-						>
-							<GoogleIcon />
-							{isGoogleLoading ? label("googleSubmitting", lang) : label("google", lang)}
-						</button>
-
-						<button
-							type="button"
-							className="signin-btn-guest"
-							onClick={handleGuestAccess}
-						>
-							{label("guest", lang)}
-						</button>
-					</div>
+					<button
+						type="submit"
+						disabled={!acceptedTerms || isLoading || isGoogleLoading}
+						className="signin-button primary"
+					>
+						{isLoading ? label("submitting", lang) : label("signInWithEmail", lang)}
+					</button>
 				</form>
+
+				<div className="signin-divider">
+					<span>or</span>
+				</div>
+
+				<button
+					type="button"
+					onClick={handleGoogleSignIn}
+					disabled={!acceptedTerms || isLoading || isGoogleLoading}
+					className="signin-button google"
+				>
+					<GoogleIcon />
+					<span>
+						{isGoogleLoading ? label("googleSubmitting", lang) : label("google", lang)}
+					</span>
+				</button>
+
+				<button
+					type="button"
+					onClick={handleGuestAccess}
+					disabled={isLoading || isGoogleLoading}
+					className="signin-button guest"
+				>
+					{label("guest", lang)}
+				</button>
 			</div>
 		</div>
 	);

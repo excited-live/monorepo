@@ -2,6 +2,7 @@ import {
 	calculateAssetDepreciation,
 	calculateDerivedTreasury,
 	calculateMonthlyEquivalent,
+	calculateRunway,
 	generateMonthlyLedger,
 	isCashAsset,
 	round2,
@@ -61,6 +62,7 @@ export function calculateEntityWealthMetrics(params: {
 		liabilities,
 		hardware,
 		transfers,
+		yearMonth,
 	});
 
 	const currentWealth = round2(currentLiquid + gearAssetsValue);
@@ -97,6 +99,10 @@ export function calculateEntityWealthMetrics(params: {
 				? 100
 				: 0;
 
+	const netBurn = Math.max(0, round2(totalExpense + liabilityMonthly - totalIncome));
+	const runwayMonths = calculateRunway(currentLiquid, netBurn);
+	const isDefaultAlive = netBurn <= 0;
+
 	return {
 		cashAssetsValue,
 		gearAssetsValue,
@@ -111,6 +117,8 @@ export function calculateEntityWealthMetrics(params: {
 		totalExpense,
 		liabilityMonthly,
 		liabPct,
+		runwayMonths,
+		isDefaultAlive,
 	};
 }
 
@@ -226,52 +234,46 @@ export function calculateProjectionBalances(params: {
 			liabilities,
 		}).summary.netCashFlow;
 
-	const entityRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
-	const hasSalaryStream = entityRevenues.some((r) => r.source === "salary");
-	const legacySalary = !hasSalaryStream && account.type === "personal" ? (account.salary ?? 0) : 0;
-	const totalIncome = round2(
-		legacySalary +
-			entityRevenues
-				.filter((r) => r.frequency === "monthly")
-				.reduce((acc, r) => acc + r.amount, 0),
-	);
-	const totalExpense = round2(
-		subscriptions
-			.filter((s) => s.entityId === account.id && s.active)
-			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0),
-	);
-	const liabilityMonthly = round2(
-		liabilities
-			.filter((l) => l.entityId === account.id && l.active)
-			.reduce((acc, l) => acc + l.amount, 0),
-	);
-	const projectedNet = round2(totalIncome - totalExpense - liabilityMonthly);
+	const baselineLedger = generateMonthlyLedger({
+		account,
+		yearMonth,
+		subscriptions,
+		hardware,
+		revenues,
+		transfers,
+		liabilities,
+	});
 
 	const offsets: number[] = [];
-	for (let m = -pastMonths; m <= futureMonths; m++) offsets.push(m);
-
-	const balances = new Map<number, number>();
-	balances.set(0, account.cashReserve);
-
-	for (let m = -1; m >= -pastMonths; m--) {
-		balances.set(
-			m,
-			round2((balances.get(m + 1) ?? 0) - netOf(shiftYearMonth(yearMonth, m + 1), { ...account, salary: undefined })),
-		);
+	for (let i = -pastMonths; i <= futureMonths; i++) {
+		offsets.push(i);
 	}
 
-	for (let m = 1; m <= futureMonths; m++) {
-		const ym = shiftYearMonth(yearMonth, m);
-		const ledgerNet = netOf(ym, account);
-		balances.set(m, round2((balances.get(m - 1) ?? 0) + ledgerNet));
+	const balances = new Map<number, number>();
+	let running = account.cashReserve;
+	balances.set(0, running);
+
+	for (let i = 1; i <= futureMonths; i++) {
+		const targetYm = shiftYearMonth(yearMonth, i);
+		running += netOf(targetYm);
+		balances.set(i, round2(running));
+	}
+
+	running = account.cashReserve;
+	for (let i = -1; i >= -pastMonths; i--) {
+		const targetYm = shiftYearMonth(yearMonth, i + 1);
+		running -= netOf(targetYm);
+		balances.set(i, round2(running));
 	}
 
 	return {
 		offsets,
 		balances,
-		totalIncome,
-		totalExpense,
-		liabilityMonthly,
-		projectedNet,
+		totalIncome: baselineLedger.summary.totalInflow,
+		totalExpense: baselineLedger.summary.totalCashOutflow,
+		liabilityMonthly: liabilities
+			.filter((l) => l.entityId === account.id && l.active)
+			.reduce((acc, l) => acc + l.amount, 0),
+		projectedNet: baselineLedger.summary.netCashFlow,
 	};
 }

@@ -9,45 +9,74 @@ description: >-
 
 # Mobile Architecture Skill
 
-This skill defines the technical standards, Clean Architecture layers, state management rules, and visual regression test patterns for native mobile applications in `excited.live` (`apps/biz-mobile`).
+This skill defines the technical standards, Clean Architecture layers, page/component folder conventions, state management rules, and visual regression test patterns for native mobile applications in `excited.live` (`apps/biz-mobile`).
+
+> **Mandatory Reference for Feature Implementation**: Before creating or modifying any page, section, drawer, or component in `apps/biz-mobile`, read [`references/page_component_structure.md`](references/page_component_structure.md).
 
 ---
 
-## 1. Clean Architecture Layers
+## 1. Clean Architecture & Page-Scoped Component Layout
 
-`apps/biz-mobile` follows a strict four-layer Clean Architecture:
+`apps/biz-mobile` follows a strict four-layer Clean Architecture with page-colocated UI components and hooks:
 
-```
+```text
 apps/biz-mobile/src/
 ├── domain/                    # DOMAIN LAYER: Pure business logic & types (ZERO React / DOM)
 │   ├── types.ts               # Core entity interfaces, session models, navigation enums
 │   └── selectors.ts           # Pure mathematical selectors (wealth, countdown, projections)
 │
-├── application/               # APPLICATION LAYER: Use cases, storage adapters, state
+├── application/               # APPLICATION LAYER: Use cases, storage adapters, state, hooks
 │   ├── storage/
 │   │   ├── storage.interface.ts   # IStorageAdapter contract
 │   │   └── local-storage.adapter.ts # LocalStorage implementation with safe JSON parsing
 │   ├── auth/                  # Authentication orchestration
-│   └── context/
-│       ├── BizContext.tsx     # Application state provider with useMemo derivation
-│       └── useBiz.ts          # Typed consumer hook
+│   ├── context/
+│   │   ├── BizContext.tsx     # Application state provider with useMemo derivation
+│   │   └── useBiz.ts          # Typed consumer hook
+│   └── hooks/                 # Domain-sliced hooks (useAccounts, useAppUI, useCashflow, etc.)
 │
-├── presentation/              # PRESENTATION LAYER: UI components, views, drawers
-│   ├── components/            # Atomic & molecular UI (Header, BottomDock, HeroCard, etc.)
-│   ├── views/                 # Top-level screen views (HomeView, CapitalView, SettingsView)
-│   ├── drawers/               # Modal sheets (AddBusiness, AddRevenue, CapitalInject)
-│   └── hooks/                 # Presentation hooks (useModalBack, useHaptics)
+├── components/                # PRESENTATION (SHARED): Components used across 2+ pages
+│   ├── Header/                # Each component has its own folder: <Name>.tsx, index.ts, <Name>.spec.tsx
+│   ├── BottomDock/
+│   ├── CurrencyInput/
+│   ├── ModalImageSection/
+│   ├── AddBusinessDrawer/
+│   └── AddRevenueDrawer/
+│
+├── pages/                     # PRESENTATION (PAGES): Top-level screens + page-specific components & hooks
+│   ├── home/
+│   │   ├── Home.tsx           # Declarative page shell composing page sections & drawers
+│   │   ├── Home.spec.tsx      # Full-page Playwright visual test
+│   │   ├── hooks/             # Page-level hook (useHome.ts)
+│   │   └── components/        # Page-scoped components (each in its own folder with .spec.tsx)
+│   ├── management/
+│   │   ├── Management.tsx
+│   │   ├── Management.spec.tsx
+│   │   ├── hooks/             # useManagement.ts
+│   │   └── components/        # ManagementHeroSection, CapitalHeroCard, LedgerHeroCard, drawers, etc.
+│   ├── settings/
+│   │   ├── Settings.tsx
+│   │   ├── Settings.spec.tsx
+│   │   ├── hooks/             # useSettings.ts
+│   │   └── components/        # SettingsProfileSection, SettingsCloudSyncSection, etc.
+│   └── signin/
+│       ├── Signin.tsx
+│       ├── Signin.spec.tsx
+│       ├── hooks/             # useSignIn.ts
+│       └── components/        # GoogleIcon, etc.
 │
 └── infrastructure/            # INFRASTRUCTURE LAYER: External APIs & Tauri bridge
     ├── lib/api-client.ts      # Better Auth & snapshot sync HTTP client
     └── src-tauri/             # Tauri v2 native Android & iOS configuration
 ```
 
-### Layer Dependency Rules
+### Layer & Component Rules
 1. **Domain** never imports from Application, Presentation, or Infrastructure.
-2. **Application** only imports from Domain and abstract Infrastructure contracts.
-3. **Presentation** consumes Domain selectors and Application hooks (`useBiz()`).
-4. **State Facade**: `src/state.tsx` re-exports Domain and Application layers to ensure clean backwards compatibility.
+2. **Application** only imports from Domain and abstract Infrastructure contracts. Prefer domain-sliced hooks (`useAccounts`, `useAppUI`, `useCashflow`, `useHardwareAssets`, `useUserData`, `useCloudSync`) over monolithic state consumption.
+3. **Dedicated Folder per Component**: Every component (both in `src/components/` and `src/pages/<page>/components/`) must live in its own folder (`<ComponentName>/<ComponentName>.tsx`, `index.ts`, `<ComponentName>.spec.tsx`).
+4. **Co-locate Page-Specific Components**: If a component or drawer is only used in one page, place it in `src/pages/<page>/components/<ComponentName>/`. Only place components in `src/components/` if they are shared across multiple pages.
+5. **Thin Pages & Page Hooks**: Pages (`Home.tsx`, `Management.tsx`, `Settings.tsx`, `Signin.tsx`) must remain thin and declarative: extract state/selector orchestration into `src/pages/<page>/hooks/use<Page>.ts` and UI sections into `src/pages/<page>/components/<SectionName>/`.
+6. **State Facade**: `src/state.tsx` re-exports Domain and Application layers to ensure clean backwards compatibility.
 
 ---
 
@@ -89,41 +118,42 @@ All financial calculations, countdowns, and projections reside in `src/domain/se
 
 ## 3. Playwright Visual Component Testing
 
-Visual regression testing in `apps/biz-mobile` uses Playwright 1.63 native component testing via an in-memory gallery server, exactly mirroring `apps/webapp`.
+Visual regression testing in `apps/biz-mobile` uses Playwright native component testing via an in-memory gallery server (`playwright/gallery/main.tsx`).
 
-### Gallery Architecture
+### Direct Component Mounting (No `.story.tsx` or `TestScaffold`)
+- **Do NOT create `.story.tsx` files or `TestScaffold.tsx` wrappers.**
 - **Gallery Server**: `vite.config.ct.ts` runs on IPv4 port `5174` (`strictPort: true`).
-- **Mount Runtime**: `playwright/gallery/main.tsx` dynamically discovers all `*.story.tsx` files via `import.meta.glob("../../src/**/*.story.{tsx,jsx}")` and binds `window.mount` and `window.unmount`.
-- **Test Scaffold**: `src/testing/TestScaffold.tsx` wraps components in:
-  - `Theme` (Mastercard design tokens)
-  - `BizProvider` (initialized with deterministic `FIXTURE_*` from `src/testing/fixtures.ts`)
-  - In-memory `RouterProvider`
-  - Mobile viewport wrapper (iPhone 14 / 390x844).
+- **Auto-Discovery & Providers**: `playwright/gallery/main.tsx` automatically globs all `*.tsx` components in `src/components/**` and `src/pages/**` (excluding `.spec.tsx`) and wraps every mounted component in `<Theme theme={mastercardTheme} mode="light">` and `<BizProvider>` initialized with deterministic fixtures (`src/testing/fixtures.ts`).
+- **Tight Component Bounding Box**: `#root` is styled with `display: inline-block; width: 100%` so screenshots capture the exact height of the mounted component without empty viewport padding.
 
-### Creating Component Visual Tests
+### Writing Component & Page Visual Tests
 
-1. Create `<Component>.story.tsx`:
+Every visual component and every page (`Home.tsx`, `Management.tsx`, `Settings.tsx`, `Signin.tsx`) has a co-located `<Name>.spec.tsx` that mounts the component directly and captures a screenshot:
+
 ```tsx
-import React from "react";
-import { Header } from "./Header";
-import { TestScaffold } from "../testing/TestScaffold";
-
-export const Default = () => (
-  <TestScaffold>
-    <Header />
-  </TestScaffold>
-);
-```
-
-2. Create `<Component>.spec.tsx`:
-```tsx
+// Component test without props (uses default props / BizProvider fixtures)
 import { test, expect } from "@playwright/test";
 
 test.describe("Header Component Visual", () => {
-  test("renders default mobile header and matches screenshot", async ({ mount }) => {
-    const component = await mount("components/Header/Default");
-    await expect(component).toHaveScreenshot("header-default.png");
-  });
+	test("renders default mobile header and matches screenshot", async ({ mount }) => {
+		const component = await mount("Header");
+		await expect(component).toHaveScreenshot("header-default.png");
+	});
+});
+```
+
+```tsx
+// Component test with explicit fixture props
+import { test, expect } from "@playwright/test";
+import { FIXTURE_ACCOUNTS } from "../../../../testing/fixtures";
+
+test.describe("CapitalHeroCard Component Visual", () => {
+	test("renders personal wealth hero card and matches screenshot", async ({ mount }) => {
+		const component = await mount("CapitalHeroCard", {
+			account: FIXTURE_ACCOUNTS[0]!,
+		});
+		await expect(component).toHaveScreenshot("capital-hero-card-personal.png");
+	});
 });
 ```
 
@@ -141,11 +171,11 @@ To maintain production reliability while maximizing feature velocity:
 
 1. **Testing Pyramid Balance**:
    - **Domain Unit Tests (Instant / 100ms)**: Test pure math and selectors (`selectors.ts`) with zero DOM dependencies.
-   - **Component Visual Tests (Fast / 10s)**: Catch visual regressions, button truncation, and responsive shifts across devices.
+   - **Component & Page Visual Tests (Fast / 10s)**: Catch visual regressions, button truncation, and responsive shifts across devices.
    - **End-to-End Smoke Tests (Targeted / 60s)**: Verify core journeys (e.g. create business, inject capital).
 
 2. **Storage Decoupling**:
-   - Always access persistence through `IStorageAdapter`. This allows unit tests and visual test scaffolds to inject `MemoryStorageAdapter` without touching `localStorage` or disk.
+   - Always access persistence through `IStorageAdapter`. This allows unit tests and visual test mounts to inject `MemoryStorageAdapter` without touching `localStorage` or disk.
 
 3. **Tauri Native Boundary Protection**:
    - Shield native plugins (`@tauri-apps/api`, `@choochmeque/tauri-plugin-google-auth-api`) behind application service boundaries so the UI can run seamlessly in browser dev mode (`pnpm dev`) and Vite component test galleries.

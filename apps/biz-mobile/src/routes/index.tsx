@@ -1,32 +1,40 @@
 import React from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useBiz } from "../state";
-import { HomeView } from "../views/HomeView";
-import { CapitalView } from "../views/CapitalView";
-import { SettingsView } from "../views/SettingsView";
-import { SignInView } from "../views/SignInView";
+import { useAppUI, useUserData } from "../state";
+import { Home } from "../pages/home/Home";
+import { Management } from "../pages/management/Management";
+import { Settings } from "../pages/settings/Settings";
+import { Signin } from "../pages/signin/Signin";
 
 export const Route = createFileRoute("/")({
 	component: IndexComponent,
 });
 
 function IndexComponent() {
-	const { activeTab, userSession } = useBiz();
+	const { activeTab, setActiveTab, setActiveEntityId } = useAppUI();
+	const { userSession } = useUserData();
 
 	if (!userSession.isAuthenticated) {
-		return <SignInView />;
+		return <Signin />;
 	}
 
 	const renderContent = () => {
 		switch (activeTab) {
 			case "home":
-				return <HomeView />;
+				return (
+					<Home
+						onSelectAccount={(accId) => {
+							setActiveEntityId(accId);
+							setActiveTab("capital");
+						}}
+					/>
+				);
 			case "capital":
-				return <CapitalView />;
+				return <Management />;
 			case "settings":
-				return <SettingsView />;
+				return <Settings />;
 			default:
-				return <HomeView />;
+				return <Home />;
 		}
 	};
 

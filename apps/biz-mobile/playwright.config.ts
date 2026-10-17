@@ -31,6 +31,7 @@ export default defineConfig({
 			testMatch: /.*(?<!\.page)\.spec\.tsx?$/,
 			use: {
 				...devices["iPhone 14"],
+				defaultBrowserType: "chromium",
 				baseURL: "http://127.0.0.1:5174/playwright/gallery/index.html",
 				serviceWorkers: "block",
 				reuseContext: true,

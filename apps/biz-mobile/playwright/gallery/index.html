@@ -14,8 +14,16 @@
       #root {
         display: block !important;
         width: 100% !important;
-        min-height: 100vh !important;
+        height: fit-content !important;
+        min-height: auto !important;
         background: transparent !important;
+      }
+      #root:has(.bottom-dock-wrapper) .bottom-dock-wrapper {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        padding: 16px !important;
       }
     </style>
   </head>

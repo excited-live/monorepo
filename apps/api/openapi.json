@@ -1,0 +1,2800 @@
+{
+	"openapi": "3.1.0",
+	"info": {
+		"title": "excited.live API",
+		"description": "REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.\n\n**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key). On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, and falls back to a shared `default` bucket.",
+		"version": "0.0.1"
+	},
+	"tags": [
+		{
+			"name": "Accounts",
+			"description": "Personal and business entities."
+		},
+		{
+			"name": "Subscriptions",
+			"description": "Recurring costs."
+		},
+		{
+			"name": "Hardware",
+			"description": "Depreciating assets."
+		},
+		{
+			"name": "Revenues",
+			"description": "Income streams."
+		},
+		{
+			"name": "Liabilities",
+			"description": "Debt payment streams."
+		},
+		{
+			"name": "Transfers",
+			"description": "Capital moved between entities."
+		},
+		{
+			"name": "Biz",
+			"description": "Whole-snapshot access and computed ledger."
+		},
+		{
+			"name": "Plan",
+			"description": "The user's financial plan document."
+		},
+		{
+			"name": "Settings",
+			"description": "Profile settings."
+		},
+		{
+			"name": "Simulation",
+			"description": "Stateless plan simulations."
+		},
+		{
+			"name": "Catalog",
+			"description": "Autofill catalog for subscriptions and hardware."
+		},
+		{
+			"name": "Auth",
+			"description": "Session check. The rest of the Better Auth surface is served under `/api/v1/auth/*`."
+		},
+		{
+			"name": "System",
+			"description": "Health and discovery."
+		}
+	],
+	"components": {
+		"securitySchemes": {
+			"bearerAuth": {
+				"type": "http",
+				"scheme": "bearer",
+				"description": "Better Auth session token or API key."
+			}
+		},
+		"schemas": {
+			"Error": {
+				"type": "object",
+				"properties": {
+					"error": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"error"
+				]
+			},
+			"BizSnapshot": {
+				"type": "object",
+				"properties": {
+					"accounts": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/EntityAccount"
+						}
+					},
+					"subscriptions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/RecurringSubscription"
+						}
+					},
+					"hardware": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/HardwareAsset"
+						}
+					},
+					"revenues": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/RevenueStream"
+						}
+					},
+					"transfers": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CapitalTransfer"
+						}
+					},
+					"liabilities": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/LiabilityStream"
+						}
+					},
+					"updatedAt": {
+						"description": "ISO timestamp of the last save.",
+						"type": "string"
+					},
+					"isDefault": {
+						"description": "`true` while the user has never saved and seed data is returned.",
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"accounts",
+					"subscriptions",
+					"hardware",
+					"revenues",
+					"transfers",
+					"liabilities"
+				],
+				"description": "Everything a user owns in the biz domain, in one document."
+			},
+			"EntityAccount": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Client-generated unique id."
+					},
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"personal",
+							"business"
+						]
+					},
+					"cashReserve": {
+						"type": "number",
+						"description": "Cash on hand, in `currency`."
+					},
+					"salary": {
+						"type": "number"
+					},
+					"paydayDayOfMonth": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 31
+					},
+					"targetSafetyBuffer": {
+						"type": "number"
+					},
+					"currency": {
+						"type": "string",
+						"description": "ISO currency code, typically `THB` or `USD`."
+					},
+					"createdAt": {
+						"type": "string"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"careerTitle": {
+						"type": "string"
+					},
+					"careerCompany": {
+						"type": "string"
+					},
+					"careerImageUrl": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"type",
+					"cashReserve",
+					"currency"
+				],
+				"description": "A personal or business entity that owns money flows."
+			},
+			"RecurringSubscription": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `EntityAccount.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"cycle": {
+						"type": "string",
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"semi-annual",
+							"yearly",
+							"one_time"
+						]
+					},
+					"category": {
+						"type": "string"
+					},
+					"nextRenewalDate": {
+						"type": "string",
+						"description": "`YYYY-MM-DD`."
+					},
+					"billingDay": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"amount",
+					"cycle",
+					"category",
+					"nextRenewalDate",
+					"active"
+				],
+				"description": "A recurring cost (SaaS, rent, insurance…)."
+			},
+			"HardwareAsset": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `EntityAccount.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"cost": {
+						"type": "number"
+					},
+					"lifespanMonths": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991
+					},
+					"purchaseDate": {
+						"type": "string",
+						"description": "`YYYY-MM-DD` or `YYYY-MM`."
+					},
+					"salvageValue": {
+						"type": "number"
+					},
+					"category": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"isDefault": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"cost",
+					"lifespanMonths",
+					"purchaseDate",
+					"category"
+				],
+				"description": "A depreciating asset."
+			},
+			"RevenueStream": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `EntityAccount.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"frequency": {
+						"type": "string",
+						"enum": [
+							"monthly",
+							"yearly",
+							"one_time"
+						]
+					},
+					"source": {
+						"type": "string",
+						"enum": [
+							"stripe",
+							"bank_transfer",
+							"cash",
+							"freelance",
+							"salary",
+							"other"
+						]
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"startMonth": {
+						"description": "`YYYY-MM`.",
+						"type": "string"
+					},
+					"endMonth": {
+						"description": "`YYYY-MM`.",
+						"type": "string"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"amount",
+					"frequency",
+					"source",
+					"active"
+				],
+				"description": "An income stream."
+			},
+			"CapitalTransfer": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"fromEntityId": {
+						"type": "string"
+					},
+					"toEntityId": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"date": {
+						"type": "string",
+						"description": "`YYYY-MM-DD` or `YYYY-MM`."
+					},
+					"note": {
+						"type": "string"
+					},
+					"targetAssetId": {
+						"type": "string"
+					},
+					"frequency": {
+						"type": "string",
+						"enum": [
+							"one_time",
+							"monthly"
+						]
+					}
+				},
+				"required": [
+					"id",
+					"fromEntityId",
+					"toEntityId",
+					"amount",
+					"date",
+					"note"
+				],
+				"description": "Money moved between two entities."
+			},
+			"LiabilityStream": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `EntityAccount.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number",
+						"description": "Monthly payment."
+					},
+					"category": {
+						"type": "string",
+						"description": "`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string."
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"amount",
+					"category",
+					"active"
+				],
+				"description": "A debt payment stream."
+			},
+			"Ok": {
+				"type": "object",
+				"properties": {
+					"ok": {
+						"type": "boolean",
+						"const": true
+					}
+				},
+				"required": [
+					"ok"
+				]
+			},
+			"MonthlyLedger": {
+				"type": "object",
+				"properties": {
+					"yearMonth": {
+						"type": "string"
+					},
+					"summary": {
+						"type": "object",
+						"properties": {
+							"entityId": {
+								"type": "string"
+							},
+							"yearMonth": {
+								"type": "string"
+							},
+							"startingTreasury": {
+								"type": "number"
+							},
+							"endingTreasury": {
+								"type": "number"
+							},
+							"totalInflow": {
+								"type": "number"
+							},
+							"totalCashOutflow": {
+								"type": "number"
+							},
+							"totalDepreciation": {
+								"type": "number"
+							},
+							"netCashFlow": {
+								"type": "number"
+							},
+							"runwayMonths": {
+								"type": [
+									"number",
+									"null"
+								]
+							},
+							"isDefaultAlive": {
+								"type": "boolean"
+							}
+						},
+						"required": [
+							"startingTreasury",
+							"endingTreasury",
+							"totalInflow",
+							"totalCashOutflow",
+							"totalDepreciation",
+							"netCashFlow"
+						]
+					},
+					"actionItems": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"entityId": {
+									"type": "string"
+								},
+								"yearMonth": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"date": {
+									"type": "string"
+								},
+								"amount": {
+									"type": "number"
+								},
+								"type": {
+									"type": "string",
+									"enum": [
+										"subscription",
+										"depreciation",
+										"revenue",
+										"capital_in",
+										"capital_out",
+										"inflow",
+										"outflow"
+									]
+								},
+								"category": {
+									"type": "string"
+								},
+								"reference": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"id",
+								"title",
+								"date",
+								"amount",
+								"type"
+							]
+						}
+					}
+				},
+				"required": [
+					"yearMonth",
+					"summary",
+					"actionItems"
+				],
+				"description": "Computed cash ledger for one entity and month."
+			},
+			"CatalogItem": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"aliases": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"subscription",
+							"hardware",
+							"career",
+							"revenue"
+						]
+					},
+					"category": {
+						"type": "string"
+					},
+					"defaultAmounts": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {
+							"type": "number"
+						},
+						"description": "Default amount per currency code."
+					},
+					"cycle": {
+						"type": "string",
+						"enum": [
+							"monthly",
+							"yearly"
+						]
+					},
+					"domain": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"coverImageUrl": {
+						"type": "string"
+					},
+					"notes": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"aliases",
+					"type",
+					"category",
+					"defaultAmounts",
+					"imageUrl"
+				],
+				"description": "A preset from the built-in subscription/hardware catalog."
+			},
+			"PlanInput": {
+				"type": "object",
+				"propertyNames": {
+					"type": "string"
+				},
+				"additionalProperties": {},
+				"description": "Plan document defined by `@excited-live/sim` (`PlanInput`). Stored and returned verbatim."
+			},
+			"UserSettings": {
+				"type": "object",
+				"properties": {
+					"profileName": {
+						"type": "string"
+					},
+					"birthday": {
+						"description": "`YYYY-MM-DD`; absent (not null) when unset.",
+						"type": "string"
+					},
+					"gender": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"profileName",
+					"gender"
+				],
+				"description": "Per-user profile settings."
+			}
+		}
+	},
+	"security": [
+		{
+			"bearerAuth": []
+		}
+	],
+	"paths": {
+		"/health": {
+			"get": {
+				"operationId": "getHealth",
+				"tags": [
+					"System"
+				],
+				"summary": "Health check",
+				"security": [],
+				"responses": {
+					"200": {
+						"description": "Service is up.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"status": {
+											"type": "string",
+											"const": "ok"
+										},
+										"service": {
+											"type": "string"
+										},
+										"timestamp": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"status",
+										"service",
+										"timestamp"
+									]
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/auth/me": {
+			"get": {
+				"operationId": "getMe",
+				"tags": [
+					"Auth"
+				],
+				"summary": "Current session",
+				"description": "Session check for native apps.",
+				"responses": {
+					"200": {
+						"description": "Authenticated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"authenticated": {
+											"type": "boolean",
+											"const": true
+										},
+										"user": {
+											"type": "object",
+											"properties": {
+												"id": {
+													"type": "string"
+												},
+												"email": {
+													"type": "string"
+												},
+												"name": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"email",
+												"name"
+											]
+										}
+									},
+									"required": [
+										"authenticated",
+										"user"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Auth is not configured in this environment.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz": {
+			"get": {
+				"operationId": "getBizSnapshot",
+				"tags": [
+					"Biz"
+				],
+				"summary": "Get the full biz snapshot",
+				"description": "Accounts, subscriptions, hardware, revenues, liabilities and transfers in one document.",
+				"responses": {
+					"200": {
+						"description": "The snapshot.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BizSnapshot"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"operationId": "replaceBizSnapshot",
+				"tags": [
+					"Biz"
+				],
+				"summary": "Replace the full biz snapshot",
+				"description": "Overwrites every collection. Used by clients to sync local state.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"accounts": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/EntityAccount"
+										}
+									},
+									"subscriptions": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/RecurringSubscription"
+										}
+									},
+									"hardware": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/HardwareAsset"
+										}
+									},
+									"revenues": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/RevenueStream"
+										}
+									},
+									"transfers": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/CapitalTransfer"
+										}
+									},
+									"liabilities": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/LiabilityStream"
+										}
+									},
+									"isDefault": {
+										"description": "`true` while the user has never saved and seed data is returned.",
+										"type": "boolean"
+									}
+								},
+								"required": [
+									"accounts",
+									"subscriptions",
+									"hardware",
+									"revenues",
+									"transfers",
+									"liabilities"
+								]
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Saved; echoes the body.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"ok": {
+											"type": "boolean",
+											"const": true
+										},
+										"data": {
+											"type": "object",
+											"properties": {
+												"accounts": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/EntityAccount"
+													}
+												},
+												"subscriptions": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/RecurringSubscription"
+													}
+												},
+												"hardware": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/HardwareAsset"
+													}
+												},
+												"revenues": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/RevenueStream"
+													}
+												},
+												"transfers": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/CapitalTransfer"
+													}
+												},
+												"liabilities": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/LiabilityStream"
+													}
+												},
+												"isDefault": {
+													"description": "`true` while the user has never saved and seed data is returned.",
+													"type": "boolean"
+												}
+											},
+											"required": [
+												"accounts",
+												"subscriptions",
+												"hardware",
+												"revenues",
+												"transfers",
+												"liabilities"
+											]
+										}
+									},
+									"required": [
+										"ok",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/accounts": {
+			"get": {
+				"operationId": "listAccounts",
+				"tags": [
+					"Accounts"
+				],
+				"summary": "List accounts",
+				"description": "Returns every account the caller owns. A user who never saved gets the seed data.",
+				"responses": {
+					"200": {
+						"description": "All accounts.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/EntityAccount"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createAccount",
+				"tags": [
+					"Accounts"
+				],
+				"summary": "Create an account",
+				"description": "The client supplies the `id`. The record is appended to the caller's snapshot.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/EntityAccount"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The created account.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/EntityAccount"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/accounts/{id}": {
+			"put": {
+				"operationId": "updateAccount",
+				"tags": [
+					"Accounts"
+				],
+				"summary": "Update an account",
+				"description": "Shallow-merges the body into the account with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The account's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Any subset of the fields.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string",
+										"description": "Client-generated unique id."
+									},
+									"name": {
+										"type": "string"
+									},
+									"type": {
+										"type": "string",
+										"enum": [
+											"personal",
+											"business"
+										]
+									},
+									"cashReserve": {
+										"type": "number",
+										"description": "Cash on hand, in `currency`."
+									},
+									"salary": {
+										"type": "number"
+									},
+									"paydayDayOfMonth": {
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 31
+									},
+									"targetSafetyBuffer": {
+										"type": "number"
+									},
+									"currency": {
+										"type": "string",
+										"description": "ISO currency code, typically `THB` or `USD`."
+									},
+									"createdAt": {
+										"type": "string"
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"careerTitle": {
+										"type": "string"
+									},
+									"careerCompany": {
+										"type": "string"
+									},
+									"careerImageUrl": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "deleteAccount",
+				"tags": [
+					"Accounts"
+				],
+				"summary": "Delete an account",
+				"description": "Removes the account with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The account's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/subscriptions": {
+			"get": {
+				"operationId": "listSubscriptions",
+				"tags": [
+					"Subscriptions"
+				],
+				"summary": "List subscriptions",
+				"description": "Returns every subscription the caller owns. A user who never saved gets the seed data.",
+				"responses": {
+					"200": {
+						"description": "All subscriptions.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/RecurringSubscription"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createSubscription",
+				"tags": [
+					"Subscriptions"
+				],
+				"summary": "Create a subscription",
+				"description": "The client supplies the `id`. The record is appended to the caller's snapshot.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RecurringSubscription"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The created subscription.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringSubscription"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/subscriptions/{id}": {
+			"put": {
+				"operationId": "updateSubscription",
+				"tags": [
+					"Subscriptions"
+				],
+				"summary": "Update a subscription",
+				"description": "Shallow-merges the body into the subscription with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The subscription's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Any subset of the fields.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number"
+									},
+									"cycle": {
+										"type": "string",
+										"enum": [
+											"weekly",
+											"monthly",
+											"quarterly",
+											"semi-annual",
+											"yearly",
+											"one_time"
+										]
+									},
+									"category": {
+										"type": "string"
+									},
+									"nextRenewalDate": {
+										"type": "string",
+										"description": "`YYYY-MM-DD`."
+									},
+									"billingDay": {
+										"type": "integer",
+										"minimum": -9007199254740991,
+										"maximum": 9007199254740991
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "deleteSubscription",
+				"tags": [
+					"Subscriptions"
+				],
+				"summary": "Delete a subscription",
+				"description": "Removes the subscription with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The subscription's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/hardware": {
+			"get": {
+				"operationId": "listHardware",
+				"tags": [
+					"Hardware"
+				],
+				"summary": "List hardware",
+				"description": "Returns every hardware asset the caller owns. A user who never saved gets the seed data.",
+				"responses": {
+					"200": {
+						"description": "All hardware.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/HardwareAsset"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createHardware",
+				"tags": [
+					"Hardware"
+				],
+				"summary": "Create a hardware asset",
+				"description": "The client supplies the `id`. The record is appended to the caller's snapshot.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/HardwareAsset"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The created hardware asset.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HardwareAsset"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/hardware/{id}": {
+			"put": {
+				"operationId": "updateHardware",
+				"tags": [
+					"Hardware"
+				],
+				"summary": "Update a hardware asset",
+				"description": "Shallow-merges the body into the hardware asset with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The hardware asset's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Any subset of the fields.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"cost": {
+										"type": "number"
+									},
+									"lifespanMonths": {
+										"type": "integer",
+										"minimum": -9007199254740991,
+										"maximum": 9007199254740991
+									},
+									"purchaseDate": {
+										"type": "string",
+										"description": "`YYYY-MM-DD` or `YYYY-MM`."
+									},
+									"salvageValue": {
+										"type": "number"
+									},
+									"category": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"isDefault": {
+										"type": "boolean"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "deleteHardware",
+				"tags": [
+					"Hardware"
+				],
+				"summary": "Delete a hardware asset",
+				"description": "Removes the hardware asset with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The hardware asset's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/revenues": {
+			"get": {
+				"operationId": "listRevenues",
+				"tags": [
+					"Revenues"
+				],
+				"summary": "List revenues",
+				"description": "Returns every revenue the caller owns. A user who never saved gets the seed data.",
+				"responses": {
+					"200": {
+						"description": "All revenues.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/RevenueStream"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createRevenue",
+				"tags": [
+					"Revenues"
+				],
+				"summary": "Create a revenue",
+				"description": "The client supplies the `id`. The record is appended to the caller's snapshot.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RevenueStream"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The created revenue.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RevenueStream"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/revenues/{id}": {
+			"put": {
+				"operationId": "updateRevenue",
+				"tags": [
+					"Revenues"
+				],
+				"summary": "Update a revenue",
+				"description": "Shallow-merges the body into the revenue with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The revenue's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Any subset of the fields.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number"
+									},
+									"frequency": {
+										"type": "string",
+										"enum": [
+											"monthly",
+											"yearly",
+											"one_time"
+										]
+									},
+									"source": {
+										"type": "string",
+										"enum": [
+											"stripe",
+											"bank_transfer",
+											"cash",
+											"freelance",
+											"salary",
+											"other"
+										]
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"startMonth": {
+										"description": "`YYYY-MM`.",
+										"type": "string"
+									},
+									"endMonth": {
+										"description": "`YYYY-MM`.",
+										"type": "string"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "deleteRevenue",
+				"tags": [
+					"Revenues"
+				],
+				"summary": "Delete a revenue",
+				"description": "Removes the revenue with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The revenue's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/liabilities": {
+			"get": {
+				"operationId": "listLiabilities",
+				"tags": [
+					"Liabilities"
+				],
+				"summary": "List liabilities",
+				"description": "Returns every liability the caller owns. A user who never saved gets the seed data.",
+				"responses": {
+					"200": {
+						"description": "All liabilities.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/LiabilityStream"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createLiability",
+				"tags": [
+					"Liabilities"
+				],
+				"summary": "Create a liability",
+				"description": "The client supplies the `id`. The record is appended to the caller's snapshot.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/LiabilityStream"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The created liability.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/LiabilityStream"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/liabilities/{id}": {
+			"put": {
+				"operationId": "updateLiability",
+				"tags": [
+					"Liabilities"
+				],
+				"summary": "Update a liability",
+				"description": "Shallow-merges the body into the liability with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The liability's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "Any subset of the fields.",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string"
+									},
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number",
+										"description": "Monthly payment."
+									},
+									"category": {
+										"type": "string",
+										"description": "`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string."
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "deleteLiability",
+				"tags": [
+					"Liabilities"
+				],
+				"summary": "Delete a liability",
+				"description": "Removes the liability with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The liability's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/transfers": {
+			"get": {
+				"operationId": "listTransfers",
+				"tags": [
+					"Transfers"
+				],
+				"summary": "List transfers",
+				"description": "Returns every transfer the caller owns. A user who never saved gets the seed data.",
+				"responses": {
+					"200": {
+						"description": "All transfers.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/CapitalTransfer"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createTransfer",
+				"tags": [
+					"Transfers"
+				],
+				"summary": "Create a transfer",
+				"description": "The client supplies the `id`. The record is appended to the caller's snapshot.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CapitalTransfer"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The created transfer.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CapitalTransfer"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/transfers/{id}": {
+			"delete": {
+				"operationId": "deleteTransfer",
+				"tags": [
+					"Transfers"
+				],
+				"summary": "Delete a transfer",
+				"description": "Removes the transfer with this id. Unknown ids are a silent no-op.",
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "The transfer's `id`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/biz/ledger/{yearMonth}": {
+			"get": {
+				"operationId": "getMonthlyLedger",
+				"tags": [
+					"Biz"
+				],
+				"summary": "Get the computed monthly ledger",
+				"description": "Cash ledger for one entity and month, derived from subscriptions, hardware, revenues and transfers.",
+				"parameters": [
+					{
+						"name": "yearMonth",
+						"in": "path",
+						"required": true,
+						"description": "`YYYY-MM`.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "entityId",
+						"in": "query",
+						"required": false,
+						"description": "Defaults to the first account.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The ledger.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MonthlyLedger"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "The user has no accounts.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/catalog/suggest": {
+			"get": {
+				"operationId": "suggestCatalog",
+				"tags": [
+					"Catalog"
+				],
+				"summary": "Search the catalog",
+				"parameters": [
+					{
+						"name": "q",
+						"in": "query",
+						"required": false,
+						"description": "Search text (name, alias or domain).",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "currency",
+						"in": "query",
+						"required": false,
+						"description": "Defaults to `THB`.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "type",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"subscription",
+								"hardware",
+								"career",
+								"revenue"
+							]
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Best match, suggestions and a favicon fallback.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"query": {
+											"type": "string"
+										},
+										"currency": {
+											"type": "string"
+										},
+										"bestMatch": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/CatalogItem"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"suggestions": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/CatalogItem"
+											}
+										},
+										"fallbackFavicon": {
+											"type": [
+												"string",
+												"null"
+											]
+										}
+									},
+									"required": [
+										"query",
+										"currency",
+										"bestMatch",
+										"suggestions",
+										"fallbackFavicon"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/catalog/resolve": {
+			"post": {
+				"operationId": "resolveCatalogAutofill",
+				"tags": [
+					"Catalog"
+				],
+				"summary": "Resolve autofill values",
+				"description": "Smart resolver that skips fields the user already touched.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"query": {
+										"type": "string"
+									},
+									"currency": {
+										"type": "string"
+									},
+									"type": {
+										"type": "string",
+										"enum": [
+											"subscription",
+											"hardware",
+											"career",
+											"revenue"
+										]
+									},
+									"touchedFields": {
+										"type": "object",
+										"properties": {
+											"amount": {
+												"type": "boolean"
+											},
+											"cycle": {
+												"type": "boolean"
+											},
+											"category": {
+												"type": "boolean"
+											},
+											"imageUrl": {
+												"type": "boolean"
+											}
+										}
+									},
+									"currentValues": {
+										"type": "object",
+										"properties": {
+											"amount": {
+												"type": [
+													"number",
+													"string"
+												]
+											},
+											"cycle": {
+												"type": "string"
+											},
+											"category": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											}
+										}
+									}
+								},
+								"required": [
+									"query"
+								]
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Autofill values.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"match": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/CatalogItem"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"suggestions": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/CatalogItem"
+											}
+										},
+										"autofill": {
+											"type": "object",
+											"properties": {
+												"name": {
+													"type": "string"
+												},
+												"amount": {
+													"type": "number"
+												},
+												"cycle": {
+													"type": "string"
+												},
+												"category": {
+													"type": "string"
+												},
+												"imageUrl": {
+													"type": "string"
+												},
+												"coverImageUrl": {
+													"type": "string"
+												}
+											}
+										},
+										"source": {
+											"type": "string",
+											"enum": [
+												"preset",
+												"dynamic_domain",
+												"none"
+											]
+										}
+									},
+									"required": [
+										"match",
+										"suggestions",
+										"autofill",
+										"source"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/plan": {
+			"get": {
+				"operationId": "getPlan",
+				"tags": [
+					"Plan"
+				],
+				"summary": "Get the plan",
+				"description": "The saved plan, or the default plan for a user who never saved.",
+				"responses": {
+					"200": {
+						"description": "The plan document.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PlanInput"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"operationId": "savePlan",
+				"tags": [
+					"Plan"
+				],
+				"summary": "Save the plan",
+				"description": "Stores the document as-is; a later GET returns it byte for byte.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PlanInput"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Saved; echoes the body.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"ok": {
+											"type": "boolean",
+											"const": true
+										},
+										"data": {
+											"$ref": "#/components/schemas/PlanInput"
+										}
+									},
+									"required": [
+										"ok",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/settings": {
+			"get": {
+				"operationId": "getSettings",
+				"tags": [
+					"Settings"
+				],
+				"summary": "Get settings",
+				"description": "Defaults (`{ profileName: \"\", gender: \"female\" }`) for a user who never saved.",
+				"responses": {
+					"200": {
+						"description": "The settings.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserSettings"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"operationId": "saveSettings",
+				"tags": [
+					"Settings"
+				],
+				"summary": "Save settings",
+				"description": "Echoes the request body; reads back normalised to the three stored columns.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UserSettings"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Saved.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"ok": {
+											"type": "boolean",
+											"const": true
+										},
+										"data": {
+											"$ref": "#/components/schemas/UserSettings"
+										}
+									},
+									"required": [
+										"ok",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/sim/monte-carlo": {
+			"post": {
+				"operationId": "runMonteCarlo",
+				"tags": [
+					"Simulation"
+				],
+				"summary": "Run a Monte Carlo simulation",
+				"description": "Stateless; nothing is stored. `config` defaults to the engine's default configuration.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"plan": {
+										"$ref": "#/components/schemas/PlanInput"
+									},
+									"config": {
+										"type": "object",
+										"propertyNames": {
+											"type": "string"
+										},
+										"additionalProperties": {}
+									}
+								},
+								"required": [
+									"plan"
+								]
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Monte Carlo result.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"propertyNames": {
+										"type": "string"
+									},
+									"additionalProperties": {},
+									"description": "Result shape is defined by `@excited-live/sim`."
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Body is not `{ plan, config? }`.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/sim/simulate": {
+			"post": {
+				"operationId": "runSimulation",
+				"tags": [
+					"Simulation"
+				],
+				"summary": "Run a deterministic simulation",
+				"description": "Stateless; nothing is stored.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"plan": {
+										"$ref": "#/components/schemas/PlanInput"
+									}
+								},
+								"required": [
+									"plan"
+								]
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Simulation result.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"propertyNames": {
+										"type": "string"
+									},
+									"additionalProperties": {},
+									"description": "Result shape is defined by `@excited-live/sim`."
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Body is not `{ plan }`.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

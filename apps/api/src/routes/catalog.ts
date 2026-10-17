@@ -7,6 +7,11 @@ import {
 	type CatalogItem,
 } from "@excited-live/biz";
 import type { ApiEnv } from "../lib/env";
+import { jsonBody, jsonResponse, route } from "../openapi/docs";
+import { CatalogItemSchema } from "../openapi/schemas";
+import { z } from "zod";
+
+const catalogType = z.enum(["subscription", "hardware", "career", "revenue"]);
 
 export interface ResolveAutofillRequest {
 	query: string;
@@ -44,7 +49,25 @@ export function createCatalogRouter(): Hono<ApiEnv> {
 	const router = new Hono<ApiEnv>();
 
 	// GET /suggest?q=opencode&currency=THB&type=subscription
-	router.get("/suggest", (c) => {
+	router.get("/suggest", route({
+		tags: ["Catalog"],
+		operationId: "suggestCatalog",
+		summary: "Search the catalog",
+		parameters: [
+			{ name: "q", in: "query", required: false, description: "Search text (name, alias or domain).", schema: { type: "string" } },
+			{ name: "currency", in: "query", required: false, description: "Defaults to `THB`.", schema: { type: "string" } },
+			{ name: "type", in: "query", required: false, schema: { type: "string", enum: catalogType.options } },
+		],
+		responses: {
+			200: jsonResponse("Best match, suggestions and a favicon fallback.", z.object({
+				query: z.string(),
+				currency: z.string(),
+				bestMatch: CatalogItemSchema.nullable(),
+				suggestions: z.array(CatalogItemSchema),
+				fallbackFavicon: z.string().nullable(),
+			})),
+		},
+	}), (c) => {
 		const q = c.req.query("q") || "";
 		const currency = c.req.query("currency") || "THB";
 		const type = c.req.query("type") as "subscription" | "hardware" | "career" | "revenue" | undefined;
@@ -78,7 +101,27 @@ export function createCatalogRouter(): Hono<ApiEnv> {
 	});
 
 	// POST /resolve — Smart resolver respecting user's touched fields
-	router.post("/resolve", async (c) => {
+	router.post("/resolve", route({
+		tags: ["Catalog"],
+		operationId: "resolveCatalogAutofill",
+		summary: "Resolve autofill values",
+		description: "Smart resolver that skips fields the user already touched.",
+		requestBody: jsonBody(z.object({
+			query: z.string(),
+			currency: z.string().optional(),
+			type: catalogType.optional(),
+			touchedFields: z.object({ amount: z.boolean(), cycle: z.boolean(), category: z.boolean(), imageUrl: z.boolean() }).partial().optional(),
+			currentValues: z.object({ amount: z.union([z.number(), z.string()]), cycle: z.string(), category: z.string(), imageUrl: z.string() }).partial().optional(),
+		})),
+		responses: {
+			200: jsonResponse("Autofill values.", z.object({
+				match: CatalogItemSchema.nullable(),
+				suggestions: z.array(CatalogItemSchema),
+				autofill: z.object({ name: z.string(), amount: z.number(), cycle: z.string(), category: z.string(), imageUrl: z.string(), coverImageUrl: z.string() }).partial(),
+				source: z.enum(["preset", "dynamic_domain", "none"]),
+			})),
+		},
+	}), async (c) => {
 		const body = await c.req.json<ResolveAutofillRequest>();
 		const query = body.query || "";
 		const currency = body.currency || "THB";

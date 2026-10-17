@@ -1,0 +1,63 @@
+---
+title: "Settings"
+description: "Profile settings."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## Get settings
+
+`GET` `/api/v1/settings`
+
+Defaults (`\{ profileName: "", gender: "female" }`) for a user who never saved.
+
+**Responses**
+
+- `200` — The settings. [UserSettings](#usersettings)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/settings" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Save settings
+
+`PUT` `/api/v1/settings`
+
+Echoes the request body; reads back normalised to the three stored columns.
+
+**Request body** (`application/json`)
+
+Type: [UserSettings](#usersettings)
+
+**Responses**
+
+- `200` — Saved. `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X PUT "$API_URL/api/v1/settings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Schemas
+
+### UserSettings
+
+Per-user profile settings.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `profileName` | `string` | yes |  |
+| `birthday` | `string` | no | `YYYY-MM-DD`; absent (not null) when unset. |
+| `gender` | `string` | yes |  |
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+

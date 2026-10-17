@@ -1,0 +1,96 @@
+---
+title: "Transfers"
+description: "Capital moved between entities."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## List transfers
+
+`GET` `/api/v1/biz/transfers`
+
+Returns every transfer the caller owns. A user who never saved gets the seed data.
+
+**Responses**
+
+- `200` — All transfers. [CapitalTransfer](#capitaltransfer)[]
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/biz/transfers" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create a transfer
+
+`POST` `/api/v1/biz/transfers`
+
+The client supplies the `id`. The record is appended to the caller's snapshot.
+
+**Request body** (`application/json`)
+
+Type: [CapitalTransfer](#capitaltransfer)
+
+**Responses**
+
+- `201` — The created transfer. [CapitalTransfer](#capitaltransfer)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/biz/transfers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Delete a transfer
+
+`DELETE` `/api/v1/biz/transfers/{id}`
+
+Removes the transfer with this id. Unknown ids are a silent no-op.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes | The transfer's `id`. |
+
+**Responses**
+
+- `200` — Deleted. [Ok](#ok)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X DELETE "$API_URL/api/v1/biz/transfers/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Schemas
+
+### CapitalTransfer
+
+Money moved between two entities.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes |  |
+| `fromEntityId` | `string` | yes |  |
+| `toEntityId` | `string` | yes |  |
+| `amount` | `number` | yes |  |
+| `date` | `string` | yes | `YYYY-MM-DD` or `YYYY-MM`. |
+| `note` | `string` | yes |  |
+| `targetAssetId` | `string` | no |  |
+| `frequency` | `"one_time"` \| `"monthly"` | no |  |
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+
+### Ok
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ok` | `true` | yes |  |
+

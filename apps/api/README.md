@@ -6,6 +6,28 @@ proxies `/api/v1/*` here and injects the authenticated user as `x-user-id`.
 Routes: `GET /health`, `GET|PUT /api/v1/plan`, `GET|PUT /api/v1/settings`,
 `POST /api/v1/sim/monte-carlo`, `POST /api/v1/sim/simulate`.
 
+## OpenAPI + docs
+
+The spec is generated from the code: each route carries a `describeRoute()`
+annotation (`src/openapi/docs.ts`, schemas in `src/openapi/schemas.ts`) and the
+app serves the result at `GET /openapi.json` (public, like `/health`).
+Annotations are documentation only — they never validate or change a request.
+Entity schemas are `satisfies`-checked against `@excited-live/biz`, so engine
+changes break typecheck instead of drifting.
+
+```bash
+pnpm --filter @excited-live/api gen:openapi   # writes openapi.json AND the docs pages
+```
+
+`openapi.json` is committed and pinned by `src/openapi/openapi.parity.test.ts`.
+The same command runs `apps/landingpage/scripts/gen-api-docs.mjs`, which renders
+`apps/landingpage/content/docs/api/*.mdx` (the `/docs/api` reference). New route?
+Add `route({...})` to it, run the command, commit all three outputs.
+
+Only the biz entities (accounts, subscriptions, hardware, revenues, liabilities,
+transfers), plan, settings, sim, catalog and `auth/me` are documented. Better
+Auth's own tables (user, session, api key…) are deliberately not exposed as CRUD.
+
 ## Persistence — Cloudflare D1
 
 Plan and settings used to live in in-memory `Map`s: every restart wiped them.

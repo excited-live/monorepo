@@ -1,0 +1,19 @@
+{
+	"title": "API reference",
+	"pages": [
+		"index",
+		"system",
+		"auth",
+		"biz",
+		"accounts",
+		"subscriptions",
+		"hardware",
+		"revenues",
+		"liabilities",
+		"transfers",
+		"catalog",
+		"plan",
+		"settings",
+		"simulation"
+	]
+}

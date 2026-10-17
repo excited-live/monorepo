@@ -12,7 +12,8 @@
 		"typecheck": "tsc --noEmit",
 		"gen:migrations": "tsx scripts/gen-migrations.ts",
 		"proof:persistence": "bash scripts/persistence-proof.sh",
-		"lint": "eslint ."
+		"lint": "eslint .",
+		"gen:openapi": "tsx scripts/gen-openapi.ts && pnpm --filter @excited-live/landingpage gen:api-docs"
 	},
 	"engines": {
 		"node": ">=22.13.0"
@@ -23,7 +24,9 @@
 		"@excited-live/sim": "workspace:*",
 		"@excited-live/tax": "workspace:*",
 		"@hono/node-server": "^1.13.8",
-		"hono": "^4.7.4"
+		"hono": "^4.7.4",
+		"hono-openapi": "^1.3.5",
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@types/node": "^24.0.0",

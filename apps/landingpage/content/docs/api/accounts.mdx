@@ -1,0 +1,151 @@
+---
+title: "Accounts"
+description: "Personal and business entities."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## List accounts
+
+`GET` `/api/v1/biz/accounts`
+
+Returns every account the caller owns. A user who never saved gets the seed data.
+
+**Responses**
+
+- `200` — All accounts. [EntityAccount](#entityaccount)[]
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/biz/accounts" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create an account
+
+`POST` `/api/v1/biz/accounts`
+
+The client supplies the `id`. The record is appended to the caller's snapshot.
+
+**Request body** (`application/json`)
+
+Type: [EntityAccount](#entityaccount)
+
+**Responses**
+
+- `201` — The created account. [EntityAccount](#entityaccount)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/biz/accounts" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Update an account
+
+`PUT` `/api/v1/biz/accounts/{id}`
+
+Shallow-merges the body into the account with this id. Unknown ids are a silent no-op.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes | The account's `id`. |
+
+**Request body** (`application/json`)
+
+Any subset of the fields.
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | no | Client-generated unique id. |
+| `name` | `string` | no |  |
+| `type` | `"personal"` \| `"business"` | no |  |
+| `cashReserve` | `number` | no | Cash on hand, in `currency`. |
+| `salary` | `number` | no |  |
+| `paydayDayOfMonth` | `integer` | no |  |
+| `targetSafetyBuffer` | `number` | no |  |
+| `currency` | `string` | no | ISO currency code, typically `THB` or `USD`. |
+| `createdAt` | `string` | no |  |
+| `active` | `boolean` | no |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `careerTitle` | `string` | no |  |
+| `careerCompany` | `string` | no |  |
+| `careerImageUrl` | `string` | no |  |
+
+**Responses**
+
+- `200` — Updated. [Ok](#ok)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X PUT "$API_URL/api/v1/biz/accounts/:id" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Delete an account
+
+`DELETE` `/api/v1/biz/accounts/{id}`
+
+Removes the account with this id. Unknown ids are a silent no-op.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes | The account's `id`. |
+
+**Responses**
+
+- `200` — Deleted. [Ok](#ok)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X DELETE "$API_URL/api/v1/biz/accounts/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Schemas
+
+### EntityAccount
+
+A personal or business entity that owns money flows.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Client-generated unique id. |
+| `name` | `string` | yes |  |
+| `type` | `"personal"` \| `"business"` | yes |  |
+| `cashReserve` | `number` | yes | Cash on hand, in `currency`. |
+| `salary` | `number` | no |  |
+| `paydayDayOfMonth` | `integer` | no |  |
+| `targetSafetyBuffer` | `number` | no |  |
+| `currency` | `string` | yes | ISO currency code, typically `THB` or `USD`. |
+| `createdAt` | `string` | no |  |
+| `active` | `boolean` | no |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `careerTitle` | `string` | no |  |
+| `careerCompany` | `string` | no |  |
+| `careerImageUrl` | `string` | no |  |
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+
+### Ok
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ok` | `true` | yes |  |
+

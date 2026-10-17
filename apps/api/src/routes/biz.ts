@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import {
 	generateMonthlyLedger,
 	type CapitalTransfer,
@@ -10,20 +11,52 @@ import {
 } from "@excited-live/biz";
 import type { ApiEnv } from "../lib/env";
 import { getUserId } from "../lib/request";
+import { crudDocs, jsonBody, jsonResponse, route } from "../openapi/docs";
+import {
+	BizSnapshotSchema,
+	CapitalTransferSchema,
+	EntityAccountSchema,
+	ErrorSchema,
+	HardwareAssetSchema,
+	LiabilityStreamSchema,
+	MonthlyLedgerSchema,
+	RecurringSubscriptionSchema,
+	RevenueStreamSchema,
+} from "../openapi/schemas";
 import { createBizStore, type BizDataSnapshot } from "../stores/biz-store";
 
 export function createBizRouter(): Hono<ApiEnv> {
 	const router = new Hono<ApiEnv>();
 
+	const accountsDocs = crudDocs({ tag: "Accounts", singular: "Account", plural: "Accounts", schema: EntityAccountSchema });
+	const subscriptionsDocs = crudDocs({ tag: "Subscriptions", singular: "Subscription", plural: "Subscriptions", schema: RecurringSubscriptionSchema });
+	const hardwareDocs = crudDocs({ tag: "Hardware", singular: "Hardware", plural: "Hardware", label: "hardware asset", schema: HardwareAssetSchema });
+	const revenuesDocs = crudDocs({ tag: "Revenues", singular: "Revenue", plural: "Revenues", schema: RevenueStreamSchema });
+	const liabilitiesDocs = crudDocs({ tag: "Liabilities", singular: "Liability", plural: "Liabilities", schema: LiabilityStreamSchema });
+	const transfersDocs = crudDocs({ tag: "Transfers", singular: "Transfer", plural: "Transfers", schema: CapitalTransferSchema });
+
 	// Get full state snapshot
-	router.get("/", async (c) => {
+	router.get("/", route({
+		tags: ["Biz"],
+		operationId: "getBizSnapshot",
+		summary: "Get the full biz snapshot",
+		description: "Accounts, subscriptions, hardware, revenues, liabilities and transfers in one document.",
+		responses: { 200: jsonResponse("The snapshot.", BizSnapshotSchema) },
+	}), async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data);
 	});
 
 	// Sync / overwrite full state snapshot
-	router.put("/", async (c) => {
+	router.put("/", route({
+		tags: ["Biz"],
+		operationId: "replaceBizSnapshot",
+		summary: "Replace the full biz snapshot",
+		description: "Overwrites every collection. Used by clients to sync local state.",
+		requestBody: jsonBody(BizSnapshotSchema.omit({ updatedAt: true })),
+		responses: { 200: jsonResponse("Saved; echoes the body.", z.object({ ok: z.literal(true), data: BizSnapshotSchema.omit({ updatedAt: true }) })) },
+	}), async (c) => {
 		const store = createBizStore(c.get("db"));
 		const body = await c.req.json<Omit<BizDataSnapshot, "updatedAt">>();
 		await store.save(getUserId(c), body);
@@ -31,13 +64,13 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// ACCOUNTS
-	router.get("/accounts", async (c) => {
+	router.get("/accounts", accountsDocs.list, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data.accounts);
 	});
 
-	router.post("/accounts", async (c) => {
+	router.post("/accounts", accountsDocs.create, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
 		const data = await store.get(userId);
@@ -50,7 +83,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json(newAccount, 201);
 	});
 
-	router.put("/accounts/:id", async (c) => {
+	router.put("/accounts/:id", accountsDocs.update, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -61,7 +94,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json({ ok: true });
 	});
 
-	router.delete("/accounts/:id", async (c) => {
+	router.delete("/accounts/:id", accountsDocs.remove, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -76,13 +109,13 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// SUBSCRIPTIONS
-	router.get("/subscriptions", async (c) => {
+	router.get("/subscriptions", subscriptionsDocs.list, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data.subscriptions);
 	});
 
-	router.post("/subscriptions", async (c) => {
+	router.post("/subscriptions", subscriptionsDocs.create, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
 		const data = await store.get(userId);
@@ -94,7 +127,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json(newSub, 201);
 	});
 
-	router.put("/subscriptions/:id", async (c) => {
+	router.put("/subscriptions/:id", subscriptionsDocs.update, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -105,7 +138,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json({ ok: true });
 	});
 
-	router.delete("/subscriptions/:id", async (c) => {
+	router.delete("/subscriptions/:id", subscriptionsDocs.remove, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -116,13 +149,13 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// HARDWARE
-	router.get("/hardware", async (c) => {
+	router.get("/hardware", hardwareDocs.list, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data.hardware);
 	});
 
-	router.post("/hardware", async (c) => {
+	router.post("/hardware", hardwareDocs.create, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
 		const data = await store.get(userId);
@@ -134,7 +167,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json(newHw, 201);
 	});
 
-	router.put("/hardware/:id", async (c) => {
+	router.put("/hardware/:id", hardwareDocs.update, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -145,7 +178,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json({ ok: true });
 	});
 
-	router.delete("/hardware/:id", async (c) => {
+	router.delete("/hardware/:id", hardwareDocs.remove, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -156,13 +189,13 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// REVENUES
-	router.get("/revenues", async (c) => {
+	router.get("/revenues", revenuesDocs.list, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data.revenues);
 	});
 
-	router.post("/revenues", async (c) => {
+	router.post("/revenues", revenuesDocs.create, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
 		const data = await store.get(userId);
@@ -174,7 +207,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json(newRev, 201);
 	});
 
-	router.put("/revenues/:id", async (c) => {
+	router.put("/revenues/:id", revenuesDocs.update, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -185,7 +218,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json({ ok: true });
 	});
 
-	router.delete("/revenues/:id", async (c) => {
+	router.delete("/revenues/:id", revenuesDocs.remove, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -196,13 +229,13 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// LIABILITIES
-	router.get("/liabilities", async (c) => {
+	router.get("/liabilities", liabilitiesDocs.list, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data.liabilities);
 	});
 
-	router.post("/liabilities", async (c) => {
+	router.post("/liabilities", liabilitiesDocs.create, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
 		const data = await store.get(userId);
@@ -214,7 +247,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json(newLiab, 201);
 	});
 
-	router.put("/liabilities/:id", async (c) => {
+	router.put("/liabilities/:id", liabilitiesDocs.update, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -225,7 +258,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json({ ok: true });
 	});
 
-	router.delete("/liabilities/:id", async (c) => {
+	router.delete("/liabilities/:id", liabilitiesDocs.remove, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -236,13 +269,13 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// TRANSFERS
-	router.get("/transfers", async (c) => {
+	router.get("/transfers", transfersDocs.list, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const data = await store.get(getUserId(c));
 		return c.json(data.transfers);
 	});
 
-	router.post("/transfers", async (c) => {
+	router.post("/transfers", transfersDocs.create, async (c) => {
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
 		const data = await store.get(userId);
@@ -254,7 +287,7 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json(newTx, 201);
 	});
 
-	router.delete("/transfers/:id", async (c) => {
+	router.delete("/transfers/:id", transfersDocs.remove, async (c) => {
 		const id = c.req.param("id");
 		const store = createBizStore(c.get("db"));
 		const userId = getUserId(c);
@@ -265,7 +298,20 @@ export function createBizRouter(): Hono<ApiEnv> {
 	});
 
 	// COMPUTED MONTHLY LEDGER
-	router.get("/ledger/:yearMonth", async (c) => {
+	router.get("/ledger/:yearMonth", route({
+		tags: ["Biz"],
+		operationId: "getMonthlyLedger",
+		summary: "Get the computed monthly ledger",
+		description: "Cash ledger for one entity and month, derived from subscriptions, hardware, revenues and transfers.",
+		parameters: [
+			{ name: "yearMonth", in: "path", required: true, description: "`YYYY-MM`.", schema: { type: "string" } },
+			{ name: "entityId", in: "query", required: false, description: "Defaults to the first account.", schema: { type: "string" } },
+		],
+		responses: {
+			200: jsonResponse("The ledger.", MonthlyLedgerSchema),
+			404: jsonResponse("The user has no accounts.", ErrorSchema),
+		},
+	}), async (c) => {
 		const yearMonth = c.req.param("yearMonth");
 		const entityId = c.req.query("entityId");
 		const store = createBizStore(c.get("db"));

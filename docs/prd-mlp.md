@@ -1,135 +1,131 @@
-# PRD — MLP (Web App)
+# PRD — Detailed Web App (`apps/webapp` MLP)
 
-Phase 2. The Minimum Lovable Product: the proven sheet, ported 1:1 and made beautiful. Trigger to start: MVP sheet validated (see prd-mvp.md).
+> **Parent**: [PRD.md](PRD.md) · **Prior phase**: [prd-mvp.md](prd-mvp.md) · **Mobile funnel entry**: [prd-biz-mobile.md](prd-biz-mobile.md) · **Next phase**: [prd-post-mlp.md](prd-post-mlp.md) · **Pricing**: [pricing.md](pricing.md)  
+> **Strategic Role**: While [`apps/biz-mobile`](prd-biz-mobile.md) and [`apps/tax-webapp`](prd-flows.md) act as the fast, free top-of-funnel consumer habits, **`apps/webapp` is the detailed 50-year life simulation studio and primary revenue engine** ($109/year subscription after a 7-day free trial).
+
+---
 
 ## 1. Overview
 
-The real product. Accounts, a 5-minute onboarding wizard, a life-story chart, instant what-if sliders, scenario toggles, and an AI surface that proposes but never applies. TH tax only, user-facing; US engine stays in code, hidden.
+Turn the proven MVP math (`packages/sim` + `packages/tax`) and the user's daily financial reality from `packages/biz` into a lovable, detailed web application where a new user has a working 50-year plan in 5 minutes (or imports their `biz-mobile` baseline in one click), sees their life story on one chart, explores scenarios with toggles and sliders, and lets **their own personal AI agent** (via MCP / API keys) inspect their plan and stage before/after proposals for human acceptance.
 
 ## 2. Goals
 
-- G1: Port the proven sheet 1:1 into the app (tax engine ↔ packages/tax, sim ↔ packages/sim).
-- G2: Lovable: wizard onboarding first, then chart polish, sliders, toggles.
-- G3: Accounts + saved plans at launch.
-- G4: TH-only user-facing tax; US engine hidden for future expansion.
-- G5: EN/TH bilingual from day one.
+- **5-minute first run (or 1-click graduation from `biz-mobile`)** — a guided wizard (income → expenses → goals → retirement wish) produces a complete plan and lands on the chart, or pre-fills directly from the user's `biz-mobile` accounts.
+- **One chart tells the life story** — net-worth / cash-flow trajectory across the full 50-year horizon with retirement year, goal milestones, shortfall years, and the Monte Carlo P10–P90 band on a single readable view.
+- **Explore without fear** — scenario toggles ("Buy a condo", "Retire 5 years earlier", "Quit fulltime job for FromSukong") and live what-if sliders overlay against the baseline without overwriting it.
+- **External Personal Agent Ready (BYOA First)** — open the plan & simulation engine via `/api/v1/*`, MCP, OpenAPI, and `llms.txt` using scoped Better Auth API keys (`compute`, `plan:read`, `plan:propose`). *Note: Built-in chat UI (`AssistantRail`) and autonomous agent workflows are deprioritized in favor of letting users connect their own AI agents first.*
+- **Propose, never silently mutate long-term plans** — any structural 50-year plan change from an external AI agent or shared link arrives as a before/after diff with chart preview; the user clicks **Accept** on the web.
+- **Bilingual EN/TH** — every label, helper, and chart annotation works in English and natural Thai.
 
 ## 3. User Stories
 
-### US-100: Accounts + saved plans
-**Description:** As a user, I create an account and my plan saves, so I can come back to it.
-**Acceptance Criteria:**
-- [ ] Sign up / log in / log out; plan persists per account
-- [ ] Loading a saved plan restores every input exactly
-- [ ] Auth method: open question (OQ-1)
+### Foundation (carries the MVP into the web app)
 
-### US-101: Onboarding wizard (ships first)
-**Description:** As a new user, I answer a 5-minute guided flow (income, expenses, goals, retirement wish) instead of facing a raw input grid.
+#### US-100: Saved plan per user `[shipped]`
+**Description:** As a returning user, I want to sign in and come back to my saved plan on any device.  
 **Acceptance Criteria:**
-- [ ] Wizard produces a complete plan; user lands on the life-story chart
-- [ ] Every wizard answer is editable later in the full inputs
-- [ ] Skippable steps with sensible TH defaults
-- [ ] Verify in browser using dev-browser skill
+- [x] Sign-in via `packages/auth` (Better Auth on Cloudflare D1 — email/password + Google OAuth)
+- [x] Plan input persists to Cloudflare D1 via `apps/api` (`/api/v1/plan`)
+- [x] Opening the app loads the user's saved plan (or starts the wizard on first visit)
+- [x] Export / import plan as JSON for backup and portability
+- [x] Verify in browser
 
-### US-102: Life-story chart
-**Description:** As a user, I see one beautiful chart of my whole life: wallets stacked over 50 years, income vs spend vs tax.
-**Acceptance Criteria:**
-- [ ] Interactive: hover a year → details; design-system SVG primitives, Astryx-first
-- [ ] Bilingual labels
-- [ ] Verify in browser using dev-browser skill
+### The 5 Lovables (what makes it an MLP, not just a port)
 
-### US-103: Plan editing + accept/reject proposals
-**Description:** As a user, I edit inputs (registry-driven sections) and can accept or reject proposed plan changes (from AI or advisor) as diffs.
+#### US-101: 5-minute onboarding wizard `[shipped]`
+**Description:** As a first-time user, I want to answer 4 short steps (income, expenses, goals, retirement wish) — or pull my existing numbers from `biz-mobile` — and immediately see my life-story chart, instead of facing a blank form of 20+ fields.  
 **Acceptance Criteria:**
-- [ ] Editing recomputes the projection live (plan-service boundary)
-- [ ] Proposals render as before/after diffs; nothing applies without explicit web acceptance
-- [ ] Verify in browser using dev-browser skill
+- [x] 4 steps: (1) monthly income + growth, (2) monthly expenses, (3) 1–3 big goals, (4) retirement age + monthly wish
+- [x] Every step is skippable with sensible TH defaults
+- [x] Finishing the wizard produces a complete `PlanInput` and lands directly on the life-story chart
+- [x] Every wizard answer remains editable later in the full inputs view
+- [x] Verify in browser
 
-### US-104: Scenario toggles
-**Description:** As a user, I turn plans on/off (buy condo, second kid, sabbatical year) and see the impact instantly.
+#### US-102: Life-story chart `[in progress — base chart + Monte Carlo band live; milestone markers next]`
+**Description:** As a user, I want one hero chart that shows my 50-year net-worth and cash-flow trajectory with my retirement year, big goals, shortfall years, and Monte Carlo P10–P90 band marked on it.  
 **Acceptance Criteria:**
-- [ ] Each plan block toggles independently; chart + headline answers update
-- [ ] Toggles persist per saved plan
-- [ ] Verify in browser using dev-browser skill
+- [x] Single hero chart switching cleanly between Net Worth and Cash Flow views
+- [x] Monte Carlo P10 / P50 / P90 survival band rendered on the chart
+- [ ] Vertical markers / callouts for retirement year, each big goal, and any shortfall year
+- [ ] Hovering any year shows age, calendar year, income, expenses, portfolio, and milestones in plain language
+- [ ] Verify in browser
 
-### US-105: What-if sliders
-**Description:** As a user, I drag sliders (savings %, return %, retirement age) and watch the future move.
+#### US-103: Propose & accept plan diffs (Human-in-the-Loop Gate) `[planned]`
+**Description:** As a user, when my personal AI agent (via MCP/API) or a shared scenario suggests a change to my 50-year plan, I want to see a clear before/after diff and its impact on my chart before I click Accept or Reject.  
 **Acceptance Criteria:**
-- [ ] Slider change recomputes < 100ms (pure engines)
-- [ ] Slider values are real inputs (saved with the plan)
-- [ ] Verify in browser using dev-browser skill
+- [ ] Proposal card lists each changed field (`before → after`) in human terms
+- [ ] Chart overlays the proposed trajectory against the current saved plan
+- [ ] Summary delta shows impact on retirement readiness, survival rate, and shortfall years
+- [ ] **Accept** applies the diff to the saved plan; **Reject** discards it cleanly
+- [ ] Nothing mutates the saved 50-year plan without an explicit Accept click on the web
+- [ ] Verify in browser
 
-### US-106: AI / MCP surface
-**Description:** As an AI agent, I run trial simulations via MCP and propose plan changes; the user accepts on the web.
+#### US-104: Scenario toggles `[planned]`
+**Description:** As a user, I want to toggle named life scenarios ("Buy a condo", "Have a kid", "Retire 5 years earlier", "Go fulltime on my business") on and off and see the chart compare them against my baseline.  
 **Acceptance Criteria:**
-- [ ] Free trial: every new account gets a 7-day free trial with full product access (one trial per person, assumed; docs/pricing.md Revision 3). At launch, trials are activated manually (PromptPay era)
-- [ ] Subscription billing: $109/year gates the whole app; personal AI included and unmetered across web + MCP ("unlimited", fair-use policy TBD); no BYOK on personal
-- [ ] Advisor tier (Phase 3 surface): $59/month or $599/year; advisor AI via BYOK or credit packs ($9.99 = 30,000 credits); 100,000 tokens/month allowance (clarify — docs/pricing.md Revision 3 Open decision 2); 5 client seats + unlimited 30-day trial clients, +$9.99/mo per extra seat
-- [ ] MCP trial simulation endpoint (read-only compute)
-- [ ] Proposal = suggested diff; applying requires web acceptance (US-103 flow)
-- [ ] AI assist helps users maintain the complex system (explain, suggest, never auto-apply)
+- [ ] Users can create, toggle, and delete named scenario overlays (stored as diffs on top of baseline)
+- [ ] At least 3 preset TH starter templates ("Buy a condo", "Retire 5 years earlier", "Take a 1-year sabbatical")
+- [ ] Toggling a scenario overlays its line on the life-story chart without overwriting the baseline plan
+- [ ] Any scenario can be promoted to become the new baseline via the US-103 Accept flow
+- [ ] Verify in browser
 
-### US-107: Tax optimizer + real-return in the app
-**Description:** As a user, the app shows the same ThaiESG/RMF recommendation and real-return comparison as the sheet, computed by packages/tax + packages/sim.
+#### US-105: Live what-if sliders `[planned]`
+**Description:** As a user, I want to drag sliders for retirement age, savings rate, expected return, and inflation and watch the chart respond in real time (< 100ms).  
 **Acceptance Criteria:**
-- [ ] Cutoff dropdown, recommended amount, tax saved ฿N
-- [ ] Real-return headline + expandable per-year table
-- [ ] Numbers match the sheet within rounding on the same inputs
+- [ ] Sliders for retirement age, monthly savings / expense level, portfolio return, and inflation
+- [ ] Chart updates in < 100ms per drag tick using the in-memory `packages/sim` engine
+- [ ] Includes a "Reset to saved" button and an "Apply changes" button (which routes through US-103 diff acceptance)
+- [ ] Verify in browser
 
-### US-108: Bilingual EN/TH
-**Description:** As a Thai user, the app is fully in Thai; EN default, EN/ไทย toggle.
-**Acceptance Criteria:**
-- [ ] All strings via packages/i18n dictionaries ({en, th} single source)
-- [ ] SSR locale = cookie → Accept-Language → 'en'; no hydration mismatch
+### Agent Surface (BYOA First; Built-in Assistant Deprioritized)
 
-### US-109: US engine hidden
-**Description:** As a developer, the US tax engine stays registered in code but is never offered to users.
+#### US-106: External Personal Agent Access (`MCP` + `API` + `llms.txt`) `[priority — promoted over built-in chat]`
+**Description:** As a user who already works with my own AI agents (Claude Desktop, Cursor, ChatGPT, Hermes, custom bots), I want to give my agent a scoped key to read my `excited.live` state, run deterministic simulations, and stage plan proposals for me to review on the web.  
 **Acceptance Criteria:**
-- [ ] UI exposes TH only; registry keeps US for future expansion
-- [ ] No US user path in wizard, inputs, or tax tab
+- [ ] Scoped, revocable API keys in Settings via `packages/auth` (`compute`, `plan:read`, `plan:propose`, `biz:read`, `biz:write`)
+- [ ] Stateless compute endpoints (`/api/v1/sim`, `/api/v1/tax`, `/api/v1/optimize`) + stateful plan/proposal endpoints (`/api/v1/plan`, `/api/v1/proposals`)
+- [ ] Published `llms.txt`, OpenAPI 3.1 spec, and MCP server tools so external agents understand the schema with zero guesswork
+- [ ] When an agent stages a proposal (`POST /api/v1/proposals`), it returns a deep link (`app.excited.live/proposals/:id`) that opens the US-103 visual diff review
+- [ ] *Note: The in-app `AssistantRail` chat UI is kept as a secondary/optional surface and deprioritized until external agent connection and core flows are complete.*
 
-### US-110: Market reality bands (Monte Carlo P10/P50/P90)
-**Description:** As a user, I see a shaded P10–P90 band around my projection, so I know the plan survives bad markets, not just the average one.
+### Bilingual & Quality Bar
+
+#### US-107: Bilingual EN/TH experience `[shipped — continuous enforcement]`
+**Description:** As a Thai or English user, I want to switch between EN and TH at any time and have every label, number format, and explanation feel native.  
 **Acceptance Criteria:**
-- [ ] Engine: seeded Monte Carlo in packages/sim (pure, deterministic — same plan ⇒ same bands; no Math.random); investment wallets sampled per year, cash-like wallets stay at plan rates
-- [ ] Chart draws the P10–P90 band for the net-worth metric (net cash has no market risk in the MVP engine, so no cash-flow band); same plan ⇒ same band across reloads and SSR/client
-- [ ] Live editing stays fast: band recompute is debounced, typing recompute unaffected
-- [ ] Survival stats: share of scenarios that never run out + worst-case first unmet year
-- [ ] Bilingual labels; verify in browser using dev-browser skill
+- [x] Every UI string lives in `packages/i18n` with `{ en, th }` (EN first)
+- [x] Locale toggle in the top bar switches language without losing state
+- [x] Thai copy uses natural spoken phrasing (no machine-translated stiffness)
+
+### Monetization Gate (Detailed Web App = Primary Revenue Engine)
+
+> Full pricing rules live in [pricing.md](pricing.md). B2B Advisor seats (US-109/US-110 from earlier drafts) are **deferred to Post-MLP backlog** so MLP stays 100% focused on the B2C consumer conversion loop.
+
+#### US-108: 7-day trial & $109/year personal subscription `[planned]`
+**Description:** As a user graduating from `biz-mobile` or the onboarding wizard, I want a 7-day free trial of the full `apps/webapp` planner and a clear $109/year subscription to keep my 50-year plan active afterwards.  
+**Acceptance Criteria:**
+- [ ] Finishing the wizard starts a 7-day trial with full access (no credit card required to run the wizard)
+- [ ] Trial status and days remaining are visible in the app header/settings
+- [ ] Checkout supports $109/year via Stripe (card + PromptPay)
+- [ ] After trial expiry without a subscription, the user's saved plan remains safe and exportable as JSON (never held hostage), while interactive editing/simulation prompts to subscribe
+- [ ] Verify in browser
 
 ## 4. Functional Requirements
 
-- FR-10: Accounts + saved plans; onboarding wizard; life-story chart; registry-driven editing; proposal accept/reject on web; scenario toggles; what-if sliders; Monte Carlo market bands (US-110); MCP trial-sim; AI billing ($109/yr unlimited personal; advisor BYOK/credits, docs/pricing.md Revision 3); TH-only tax (US hidden); EN/TH.
-- FR-11: Engines stay pure TS (no network/DOM/date); sheet tabs port 1:1 to app modules; plan-service is the single backend boundary.
-- FR-12: Wizard ships before polish on other lovable features.
+- **FR-10**: `apps/webapp` calls `packages/sim`, `packages/tax`, and `packages/biz` through a clean service layer (`plan-service.ts`) backed by `apps/api` (Hono + Cloudflare D1).
+- **FR-11**: All long-term plan mutations from external AI agents or scenario promotions pass through a single proposal/diff reducer so US-103, US-104, US-105, and US-106 share one code path.
+- **FR-12**: The onboarding wizard (US-101) is the default entry path for any user without a saved plan, with an option to seed from their `biz-mobile` account data.
 
-## 5. Non-Goals
+## 5. Non-Goals (MLP)
 
-- No native mobile (post-MLP; see prd-post-mlp.md).
-- No white-label features (Phase 3).
-- No US user-facing tax.
-- No real exit-tax modeling (post-MVP backlog).
-- No public/third-party API beyond the MLP AI/MCP surface (US-106) — planned post-MLP, see prd-post-mlp.md §7.
+- **No B2B Advisor workspace or client seats in MLP** (moved to [prd-post-mlp.md](prd-post-mlp.md) as second priority).
+- **No heavy investment in a proprietary in-app AI chatbot before MCP/API** — users bring their own agents first.
+- **No autonomous background agent workflows yet** — proactive agent routines (auto tax season alerts, scheduled plan check-ins) wait until after the core data + MCP connection is live.
+- **No US tax in UI** (engine placeholder exists in `packages/tax`, stays hidden behind TH-only selector).
+- **No brokerage / bank login credential scraping** (data enters via `biz-mobile` slip reading, wizard, manual edit, or agent API).
 
-## 6. Design Considerations
+## 6. Resolved Decisions (Formerly Open Questions)
 
-- Astryx-first (@astryxdesign/core); custom components only in packages/design-system gaps; raw HTML banned in apps/webapp/src.
-- Design changes: show screenshot options first; Prame picks visually.
-- Onboarding wizard ships first (US-101 before polish on others).
-
-## 7. Technical Considerations
-
-- Existing assets: packages/tax (TH 2026 engine + allowanceDefs contract), packages/i18n, apps/tax-webapp, projection MVP branch (feat/mvp-projection), plan-service mock boundary.
-- packages/sim to be created from the sheet's Simulation tab.
-- CI builds workspace deps before the webapp (`pnpm --filter @excited-live/webapp^... build`).
-
-## 8. Success Metrics
-
-- Activation: % of visitors who finish the wizard and see their chart.
-- D7 return rate; simulations completed per user.
-- Numbers match the sheet within rounding on the same inputs.
-
-## 9. Open Questions (MLP-relevant)
-
-- OQ-1: Auth method — email/password vs Google OAuth?
-- OQ-6 (RESOLVED 2026-09-06 Rev 2; superseded 2026-09-07 by Revision 3): AI monetization is a $109/year subscription — personal AI unlimited (fair-use TBD), 7-day free trial, no BYOK on personal; Advisor tier $59/mo or $599/yr with AI via BYOK or $9.99/30k credit packs. Purchase UX at launch: manual PromptPay activation.
+- **OQ-1 (Auth method) — RESOLVED**: Implemented via `packages/auth` (**Better Auth** on Cloudflare D1) supporting Email/Password, Google OAuth, Bearer tokens for mobile, and scoped API keys (`apiKey` plugin) for external agents. See [plan-auth-migration.md](plan-auth-migration.md).
+- **OQ-6 (Chart library) — RESOLVED**: ECharts (`ProjectionChart`) renders the 50-year trajectory and Monte Carlo P10–P90 bands.

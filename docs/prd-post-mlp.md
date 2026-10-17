@@ -1,54 +1,67 @@
-# PRD — Post-MLP (Backlog)
+# PRD — Post-MLP Expansion Roadmap (Time OS, Health OS, Agent Workflows & Backlog)
 
-Phase 3+. Trigger-based: nothing here starts until its trigger fires. Each item becomes a full PRD when triggered.
+> **Parent**: [PRD.md](PRD.md) · **Prior phase**: [prd-biz-mobile.md](prd-biz-mobile.md) & [prd-mlp.md](prd-mlp.md) · **Pricing**: [pricing.md](pricing.md)  
+> Items here are sequenced by **business & product triggers** along the `excited.live` Agentic OS horizon: **Money → Time → Health**.
 
-## 1. Real exit-tax modeling (trigger: MVP sheet live + users ask)
+---
 
-- ThaiESG/RMF withdrawals before the tax-free holding date get modeled exactly.
-- MVP assumption (tax-free exit) is replaced; real-return compare shows both on-time and early-withdrawal paths.
-- Confirm exact ThaiESG rule text (min 100k year one, holding period) — OQ-5.
+## 1. Pillar 2: Time Management OS (`packages/time` + Mobile/Web Views)
 
-## 2. Mobile surface (trigger: MLP activated + mobile traffic share proves demand)
+- **Trigger**: `apps/biz-mobile` (with slip reading + recurring burn) and `apps/webapp` are live and retaining active users on the Money graph.
+- **Core Insight (Zero Cold-Start)**: We already know **what the user spends money on** (`RecurringSubscription`, `SlipTransaction`), **where they live and commute** (e.g., rent, BTS SkyTrain), and **what jobs or ventures they run** (`fulltime_job`, `business` entities like `FromSukong`). We do not ask the user to build a time tracker from a blank page—we simply ask **how many hours per week/day they spend on those existing activities**.
+- **Scope**:
+  - **Activity-Duration Attachment**: Attach `hoursPerWeek` (or daily time logs via mobile/MCP) directly to `EntityAccount` (`fulltime_job` work hours + commute hours, `business` deep-work hours) and `RecurringSubscription` / `SlipTransaction` categories (gaming, gym, entertainment, commute).
+  - **True Net Hourly Wage Engine**: Computes the user's real take-home pay per actual hour of life energy:
+    $$\text{True Hourly Rate} = \frac{\text{After-Tax Income} - \text{Work/Commute Expenses} - \text{Work Gear Depreciation}}{\text{Work Hours} + \text{Commute/Overhead Hours}}$$
+  - **168-Hour Weekly Ledger & Time Runway**: Shows committed vs. discretionary hours across the 168-hour week, and projects lifetime free hours alongside financial retirement in `apps/webapp`.
+  - **Mobile Pro Tier Unlock**: Launches the **Money + Time Mobile Pro Plan** once both pillars operate together.
 
-- View/summarize first: headline answers, life-story chart, goal status.
-- Minimal editing only; serious planning stays on web.
-- Responsive web already exists at MLP; this is the dedicated lightweight surface.
+---
 
-## 3. White-label for advisors (trigger: first advisor pilot committed) — enterprise revenue phase
+## 2. Pillar 3: Health & Energy OS — Competing with Cal AI (`packages/health`)
 
-- Enterprise revenue phase: B2B2C — advisors/institutions pay for engagement, retention, trust. Self-serve revenue ($109/year subscriptions + the Advisor tier $59/mo or $599/yr, docs/pricing.md Revision 3) already precedes this phase. Every advisor-tier subscriber is a white-label sales lead.
-- Pilot scope defined with the first advisor: branding, advisor dashboard, client management, export.
-- Pricing Revision 2 requirements land here (docs/pricing.md): seats = client org invites (customer role), per-client AI usage control (cap / disable / no-limit), and plan export to Google Sheet — plans always belong to the client, never the advisor.
-- Banks need vendor/contract/liability — service layer (hosting, updates, white-label setup), not code restriction.
-- Brand moat: Apache-2.0 lets anyone clone code, nobody may use the excited.live name/logo.
+- **Trigger**: Money + Time ecosystem is active; multimodal ingestion pipeline (built for Thai e-slips in `biz-mobile`) is proven in production.
+- **Core Insight**: Just as users snap/share a bank slip to log money (`MeowJot` pattern), they snap a photo of their meal to log nutrition (`Cal AI` pattern)—unified under the same personal AI agent and cross-platform account.
+- **Scope**:
+  - **Cal AI-Style Multimodal Food & Macro Logging**: Snap a photo of a meal (in-app or via the user's personal AI agent over MCP/API) → vision pipeline extracts dish breakdown, calories, protein/carbs/fat, and links food spend if paired with a slip.
+  - **Cross-Platform Biometric & Habit Sync**: Sync weight, sleep, steps, and workouts across Android/iOS/web and expose them via `/api/v1/health` + MCP.
+  - **Unified Money × Time × Health Graph**: Allows the user and their personal agent to reason across all three life constraints simultaneously (e.g., *"How much money and time am I spending on takeout vs. cooking, and how is it affecting my calorie target and runway?"*).
+  - **Full OS Pro Lock-in**: Completes the 3-pillar consumer subscription lock-in (`Money + Time + Health`).
 
-## 4. US tax expansion (trigger: TH proves out + US demand signal)
+---
 
-- The US engine is already registered in code (hidden per prd-mlp.md US-109); this phase makes it real and user-facing.
-- Real 2026+ schedules, federal + state consideration, wired into wizard + tax tab.
-- Multi-country plans (TH + US cross-border) as the differentiator.
+## 3. Proactive Agent Workflows (Post-Connection Phase)
 
-## 5. Corporate tax module (trigger: white-label customers need it)
+- **Trigger**: External Personal Agent connection (`/api/v1/*` + MCP + slip ingestion) is adopted by users.
+- **Why Sequenced Here**: In Phase 1–2, "proactive" means frictionless **data capture** (e-slips + open MCP tools). Once the user's financial and time data flows reliably, we layer on **automated agent workflows**:
+  - **Q4 Tax Optimizer Check-in**: Proactively computes remaining ThaiESG / RMF / insurance allowance before Dec 31 based on actual year-to-date income and stages a one-click proposal diff.
+  - **Monthly Burn & Depreciation Digest**: Summarizes actual slip spend vs. planned recurring burn, flags subscriptions that increased in price, and announces gear finishing depreciation.
+  - **Built-in Assistant (`AssistantRail`)**: Re-prioritize the hosted in-app assistant for users who do not bring their own external agent.
 
-- Possible future module alongside personal tax; scoped when an advisor pilot asks.
+---
 
-## 6. Per-goal wallets (trigger: users outgrow the shared goal wallet)
+## 4. Deeper Financial Engine Capabilities
 
-- One wallet per goal with its own target date and rules (v2 list from the original sheet).
-- Supersedes the shared goal-savings wallet assumption (OQ-3) once triggered.
+### 4.1 Real Exit-Tax Modeling
+- **Trigger**: First user holding tax-advantaged funds (`ThaiESG` / `RMF`) asks *"What if I sell early or rebalance?"*
+- **Scope**: Track cost basis and holding-period rules per lot (5-year lock for ThaiESG; age 55 + 5 years for RMF) and model early-redemption clawbacks.
 
-## 7. Public API for your own AI (trigger: MLP live + user demand for external AI/agent access)
+### 4.2 Per-Goal Dedicated Wallets
+- **Trigger**: Users report the 3-wallet model (`Savings`, `Investment`, `Retirement`) is too coarse for ring-fenced goals (e.g., child's tuition fund).
+- **Scope**: Optional goal-attached sub-wallets with target-date glidepaths.
 
-- Goal: self-serve extension — a user's own AI or tool reads their plan and runs sims directly ("tell your AI to get it from excited.live"); no feature request needed to extend.
-- Curated public v1, never a raw internal-endpoint export: (1) stateless compute — run sim/tax from posted params (grows the MLP MCP trial-sim contract, US-106); (2) read-your-own-data with scoped tokens; (3) proposal submission — staged diffs, applied only via web acceptance (US-103). Everything else stays internal.
-- One contract, several doors: MCP server (the headline "tell your AI" surface) + OpenAPI spec + docs + llms.txt — generated from one definition, versioned (/api/v1).
-- Agent auth: scoped, revocable, audit-logged tokens (PDPA); capability scopes (compute / plan:read / propose); a plan is opened to tokens only by its owner — advisor access needs the client's consent; tokens auto-revoke with prospect-seat expiry. Never session cookies.
-- Writes stay proposal-based (US-103 invariant): no public endpoint mutates a plan; agents propose diffs, the user accepts on the web.
-- Cost control: anything that triggers model spend sits behind the subscription and its fair-use guard (pricing.md Open decision 1). Rate limits from day one; quotas per key (anonymous access, if any, gets hard caps only).
-- Two layers: the app's internal transport is not the public contract. The public surface is a thin versioned layer over plan-service (P3), so internal routes stay free to change. Security lives in auth + validation — the repo is public (Apache-2.0), obscurity was never on the table.
-- Open (Prame; touches pricing.md Resolved 1 "no free core tier"): anonymous compute tier as a distribution face vs fully gated API — not decided. Hosted compute is convenience, not moat (the engines are cloneable). Hard no's: plan-mutating public endpoints, metered endpoints for anonymous callers, wholesale "export all endpoints" dumps.
+### 4.3 US Personal Tax & Corporate Tax Engines
+- **Trigger**: First English-speaking expat cohort (US tax) or solopreneur incorporating as a Thai Co., Ltd. (Corporate tax).
+- **Scope**:
+  - Replace the flagged US 2026 placeholder in `packages/tax` with verified federal brackets, standard deductions, and 401(k)/IRA rules.
+  - Add Thai SME corporate tax + dividend withholding comparison (`Personal Freelance vs. Co., Ltd.`) for `biz-mobile` / `webapp` users scaling their business revenue.
 
-## Non-goals that stay non-goals
+---
 
-- No brokerage/account execution — planning only, every phase.
-- No features without a trigger — backlog stays honest.
+## 5. Deferred Priority 2: B2B Advisor Tier & White-Label
+
+- **Trigger**: Consumer (B2C) flywheel across `biz-mobile` and `webapp` reaches stable recurring revenue, and independent financial advisors organically request multi-client management.
+- **Why Deferred**: We are going **all-in on the consumer side first**. Provider-side monetization starts with lightweight **contextual affiliates/sponsorships**, not B2B SaaS sales.
+- **Scope (When Triggered)**:
+  - **Advisor Workspace ($59/mo or $599/yr)**: Manage up to 5 active client plans + unlimited 30-day client trial seats, with shared proposal links and advisor BYOK / credit packs.
+  - **Enterprise White-Label**: Custom domain, logo, and brand tokens for advisory firms.

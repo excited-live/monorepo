@@ -1,6 +1,9 @@
 import React from "react";
+import { Badge, Button, HStack, Img, Stack, Text } from "@excited-live/design-system";
 import type { UserSession } from "../../../../domain/types";
 import { FIXTURE_USER_SESSION } from "../../../../testing/fixtures";
+import { BADGE_TONE_CLASS } from "../../../../utils/ui";
+import { SectionCard } from "../../../../components/SectionCard";
 
 export interface SettingsProfileSectionProps {
 	userSession?: UserSession;
@@ -22,97 +25,54 @@ export const SettingsProfileSection: React.FC<SettingsProfileSectionProps> = ({
 	signOutLabel = "Sign Out",
 	signInLabel = "Sign In",
 	profileTitle = "User Profile & Cloud Account",
-}) => {
-	return (
-		<div className="card">
-			<div className="section-header">
-				<span className="section-title">{profileTitle}</span>
-				<span
-					className="item-badge"
-					style={{
-						backgroundColor: isCloudAccount
-							? "rgba(5, 150, 105, 0.12)"
-							: "rgba(20, 20, 19, 0.06)",
-						color: isCloudAccount ? "#059669" : "var(--granite)",
-					}}
+}) => (
+	<SectionCard
+		title={profileTitle}
+		badge={
+			<Badge
+				variant="neutral"
+				className={BADGE_TONE_CLASS[isCloudAccount ? "positive" : "neutral"]}
+				label={isCloudAccount ? `● ${verifiedLabel}` : "● Cloud Agent Active"}
+			/>
+		}
+	>
+		<HStack width="100%" gap={3} align="center">
+			{userSession.avatarUrl ? (
+				<Img
+					src={userSession.avatarUrl}
+					alt={userSession.name}
+					className="size-12 shrink-0 rounded-full border border-line object-cover"
+				/>
+			) : (
+				<HStack
+					justify="center"
+					align="center"
+					className="size-12 shrink-0 rounded-full bg-ink text-base font-bold text-cream"
 				>
-					{isCloudAccount ? `● ${verifiedLabel}` : `● Cloud Agent Active`}
-				</span>
-			</div>
+					{userSession.name.slice(0, 2).toUpperCase()}
+				</HStack>
+			)}
+			<Stack className="min-w-0 flex-1">
+				<Text weight="bold" className="text-[15px] text-ink">
+					{userSession.name}
+				</Text>
+				<Text className="text-[12px] text-slate">
+					{isCloudAccount ? `${userSession.orgName} • ${userSession.email}` : "Connected to Excited Cloud"}
+				</Text>
+			</Stack>
+		</HStack>
 
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "12px",
-					marginTop: "4px",
-				}}
-			>
-				{userSession.avatarUrl ? (
-					<img
-						src={userSession.avatarUrl}
-						alt={userSession.name}
-						style={{
-							width: "48px",
-							height: "48px",
-							borderRadius: "50%",
-							objectFit: "cover",
-							flexShrink: 0,
-							border: "1px solid var(--border-subtle)",
-						}}
-					/>
-				) : (
-					<div
-						style={{
-							width: "48px",
-							height: "48px",
-							borderRadius: "50%",
-							backgroundColor: "var(--ink-black)",
-							color: "var(--canvas-cream)",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							fontWeight: 700,
-							fontSize: "16px",
-							flexShrink: 0,
-						}}
-					>
-						{userSession.name.slice(0, 2).toUpperCase()}
-					</div>
-				)}
-				<div style={{ flex: 1, minWidth: 0 }}>
-					<div style={{ fontSize: "15px", fontWeight: 700, color: "var(--ink-black)" }}>
-						{userSession.name}
-					</div>
-					<div style={{ fontSize: "12px", color: "var(--slate-gray)" }}>
-						{isCloudAccount
-							? `${userSession.orgName} • ${userSession.email}`
-							: "Connected to Excited Cloud"}
-					</div>
-				</div>
-			</div>
-
-			<div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-				{isCloudAccount ? (
-					<button
-						type="button"
-						className="action-pill-btn"
-						style={{ flex: 1, justifyContent: "center", color: "var(--signal-orange)", borderColor: "rgba(207, 69, 0, 0.2)" }}
-						onClick={onSignOut}
-					>
-						{signOutLabel}
-					</button>
-				) : (
-					<button
-						type="button"
-						className="action-pill-btn"
-						style={{ flex: 1, justifyContent: "center" }}
-						onClick={onSignIn}
-					>
-						{signInLabel}
-					</button>
-				)}
-			</div>
-		</div>
-	);
-};
+		{isCloudAccount ? (
+			<Button
+				label={signOutLabel}
+				size="lg"
+				className="h-[42px] font-semibold text-signal"
+				variant="secondary"
+				width="100%"
+				onClick={onSignOut}
+			/>
+		) : (
+			<Button label={signInLabel} size="lg" className="h-[42px]" variant="secondary" width="100%" onClick={onSignIn} />
+		)}
+	</SectionCard>
+);

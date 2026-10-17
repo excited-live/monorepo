@@ -1,4 +1,6 @@
 import React from "react";
+import { Button, Stack } from "@excited-live/design-system";
+import { EmptyCard, ItemRow, SectionHeader } from "../../../../components";
 import type { LiabilityStream } from "@excited-live/biz";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../utils/i18n";
@@ -20,61 +22,40 @@ export const ManagementLiabilitySection: React.FC<ManagementLiabilitySectionProp
 	onSelectLiability = () => {},
 }) => {
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-			<div className="section-header">
-				<div>
-					<span className="section-title">Liabilities & Debt Payments</span>
-					<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
-						Total Monthly Payments: ฿{formatMoney(totalMonthlyLiabilities)}/mo
-					</div>
-				</div>
-				<button
-					type="button"
-					className="action-pill-btn primary"
-					style={{ padding: "4px 12px", fontSize: "12px" }}
-					onClick={onRegisterLiability}
-				>
-					{t("action.registerLiability", lang)}
-				</button>
-			</div>
+		<Stack gap={2} width="100%">
+			<SectionHeader
+				title="Liabilities & Debt Payments"
+				subtitle={`Total Monthly Payments: ฿${formatMoney(totalMonthlyLiabilities)}/mo`}
+				actions={
+					<Button
+						label={t("action.registerLiability", lang)}
+						size="sm"
+						variant="primary"
+						onClick={onRegisterLiability}
+					/>
+				}
+			/>
 
 			{entityLiab.length === 0 ? (
-				<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
-					No liabilities registered for this entity.
-				</div>
+				<EmptyCard>No liabilities registered for this entity.</EmptyCard>
 			) : (
-				<div className="item-list">
+				<Stack gap={2} width="100%">
 					{entityLiab.map((liab) => (
-						<div
+						<ItemRow
 							key={liab.id}
-							className="list-item-card"
+							name={liab.name}
+							imageUrl={liab.imageUrl}
+							fallback="💳"
+							sub={`Debt Payment • ${liab.category.replace(/_/g, " ")}`}
+							amount={`-฿${formatMoney(liab.amount)}`}
+							tone="negative"
+							badge="DEBT"
+							badgeTone="negative"
 							onClick={() => onSelectLiability(liab)}
-						>
-							<div className="item-thumb-wrapper">
-								{liab.imageUrl ? (
-									<img src={liab.imageUrl} alt={liab.name} className="item-thumb" />
-								) : (
-									<div className="item-thumb-fallback">💳</div>
-								)}
-							</div>
-							<div className="item-info">
-								<span className="item-name">{liab.name}</span>
-								<span className="item-sub">
-									Debt Payment • {liab.category.replace(/_/g, " ")}
-								</span>
-							</div>
-							<div className="item-amount-col">
-								<span className="item-amount negative">
-									-฿{formatMoney(liab.amount)}
-								</span>
-								<span className="item-badge" style={{ backgroundColor: "rgba(207, 69, 0, 0.08)", color: "var(--signal-orange)" }}>
-									DEBT
-								</span>
-							</div>
-						</div>
+						/>
 					))}
-				</div>
+				</Stack>
 			)}
-		</div>
+		</Stack>
 	);
 };

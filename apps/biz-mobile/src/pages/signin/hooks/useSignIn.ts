@@ -49,7 +49,7 @@ export function useSignIn(onSignedIn?: () => void) {
 
 	const label = (key: keyof typeof STRINGS): string => STRINGS[key][lang];
 
-	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (event: React.SyntheticEvent) => {
 		event.preventDefault();
 		if (!acceptedTerms) return;
 

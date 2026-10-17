@@ -1,4 +1,6 @@
 import React, { useRef } from "react";
+import { Button, Stack, Text } from "@excited-live/design-system";
+import { SectionCard } from "../../../../components/SectionCard";
 
 export interface SettingsDataPortabilitySectionProps {
 	onExportJSON?: () => void;
@@ -18,37 +20,38 @@ export const SettingsDataPortabilitySection: React.FC<SettingsDataPortabilitySec
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	return (
-		<div className="card">
-			<div className="section-title">{portabilityTitle}</div>
-			<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-				All solopreneur entities, expenses, and depreciation tables are synchronized with your Excited Cloud account and accessible by native AI agents.
-			</div>
+		<SectionCard title={portabilityTitle}>
+			<Text className="text-[13px] text-slate">
+				All solopreneur entities, expenses, and depreciation tables are synchronized with your Excited Cloud account and
+				accessible by native AI agents.
+			</Text>
 
 			<input
 				ref={fileInputRef}
 				type="file"
 				accept="application/json,.json"
 				onChange={onImportJSON}
-				style={{ display: "none" }}
+				className="hidden"
 			/>
 
-			<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-				<button
-					type="button"
-					className="action-pill-btn"
+			<Stack gap={2} width="100%">
+				<Button
+					label={exportLabel}
+					size="lg"
+					className="h-[42px]"
+					variant="secondary"
+					width="100%"
 					onClick={onExportJSON}
-				>
-					{exportLabel}
-				</button>
-
-				<button
-					type="button"
-					className="action-pill-btn"
+				/>
+				<Button
+					label={importLabel}
+					size="lg"
+					className="h-[42px]"
+					variant="secondary"
+					width="100%"
 					onClick={() => fileInputRef.current?.click()}
-				>
-					{importLabel}
-				</button>
-			</div>
-		</div>
+				/>
+			</Stack>
+		</SectionCard>
 	);
 };

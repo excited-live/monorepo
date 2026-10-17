@@ -1,6 +1,9 @@
-import { CurrencyInput } from "../../../../components/CurrencyInput";
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Button, HStack, SegmentedControl, SegmentedControlItem, Stack, Text } from "@excited-live/design-system";
+import { FormField, InputField, SelectField } from "../../../../components/FormField";
+import { ModalPage } from "../../../../components/ModalPage";
+import { SectionCard } from "../../../../components/SectionCard";
+import { CurrencyInput } from "../../../../components/CurrencyInput";
 import {
 	calculateAssetDepreciation,
 	calculateMonthlyEquivalent,
@@ -17,11 +20,7 @@ export const CapitalDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
 	initialData?: CapitalTransfer | null;
-}> = ({
-	isOpen,
-	onClose,
-	initialData,
-}) => {
+}> = ({ isOpen, onClose, initialData }) => {
 	const {
 		accounts,
 		subscriptions,
@@ -115,14 +114,7 @@ export const CapitalDrawer: React.FC<{
 				targetAssetId: targetAssetId || undefined,
 			});
 		} else {
-			injectCapital(
-				personalAccount.id,
-				targetBiz.id,
-				transferAmount,
-				note,
-				frequency,
-				targetAssetId || undefined,
-			);
+			injectCapital(personalAccount.id, targetBiz.id, transferAmount, note, frequency, targetAssetId || undefined);
 		}
 		dismiss();
 	};
@@ -137,173 +129,117 @@ export const CapitalDrawer: React.FC<{
 	const formatRunway = (mos: number | null | undefined) =>
 		mos !== null && mos !== undefined ? `${mos} mos` : "∞ (Default Alive)";
 
-	return createPortal(
-		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-			{/* Top Bar with Title on Left, ✕ on Top-Right */}
-			<div className="modal-page-nav">
-				<span className="modal-nav-title">
-					{initialData ? "Edit Capital Transfer" : "Transfer Capital"}
-				</span>
-				<button
-					type="button"
-					className="modal-nav-close"
-					onClick={dismiss}
-					aria-label="Close"
+	return (
+		<ModalPage
+			title={initialData ? "Edit Capital Transfer" : "Transfer Capital"}
+			onClose={dismiss}
+			footer={
+				<HStack gap={2} width="100%">
+					{initialData && (
+						<Button label="Delete" size="lg" variant="destructive" className="flex-1" onClick={handleDelete} />
+					)}
+					<Button
+						type="submit"
+						form="capital-form"
+						label={initialData ? "Save Changes" : "Confirm Injection"}
+						size="lg"
+						variant="primary"
+						className="h-12 flex-[2]"
+						isDisabled={!canSubmit}
+					/>
+				</HStack>
+			}
+		>
+			<Text className="text-[13px] text-slate">Deploy seed funds from Personal reserve into business treasury.</Text>
+
+			<Stack as="form" id="capital-form" gap={4} width="100%" onSubmit={handleSubmit}>
+				<InputField
+					label="Source Reserve"
+					value={`Personal (Available: ฿${formatMoney(availablePersonalCash)})`}
+					disabled
+					readOnly
+				/>
+
+				<SelectField
+					label="Target Business"
+					value={targetBizId}
+					onChange={(e) => {
+						const nextBizId = e.target.value;
+						setTargetBizId(nextBizId);
+						const bizCash = hardware.filter((h) => h.entityId === nextBizId && isCashAsset(h));
+						setTargetAssetId(bizCash[0]?.id || "primary_cash");
+					}}
 				>
-					✕
-				</button>
-			</div>
+					{businessAccounts.map((b) => (
+						<option key={b.id} value={b.id}>
+							{b.name}
+						</option>
+					))}
+				</SelectField>
 
-			{/* Full-Screen Scrollable Content */}
-			<div className="modal-page-content">
-				<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-					Deploy seed funds from Personal reserve into business treasury.
-				</div>
+				<SelectField
+					label="Target Cash Account / Asset"
+					hint="Choose the specific cash account receiving this capital injection."
+					value={targetAssetId}
+					onChange={(e) => setTargetAssetId(e.target.value)}
+				>
+					{targetBizCashAssets.length > 0 ? (
+						targetBizCashAssets.map((asset) => (
+							<option key={asset.id} value={asset.id}>
+								{asset.name} (Current: ฿{formatMoney(asset.cost)})
+							</option>
+						))
+					) : (
+						<option value="primary_cash">Primary Cash Account</option>
+					)}
+				</SelectField>
 
-				<form id="capital-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-					<div className="form-group">
-						<label className="form-label">Source Reserve</label>
-						<input
-							className="form-input"
-							value={`Personal (Available: ฿${formatMoney(availablePersonalCash)})`}
-							disabled
-							style={{ opacity: 0.8 }}
-						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Target Business</label>
-						<select
-							className="form-select"
-							value={targetBizId}
-							onChange={(e) => {
-								const nextBizId = e.target.value;
-								setTargetBizId(nextBizId);
-								const bizCash = hardware.filter((h) => h.entityId === nextBizId && isCashAsset(h));
-								setTargetAssetId(bizCash[0]?.id || "primary_cash");
-							}}
-						>
-							{businessAccounts.map((b) => (
-								<option key={b.id} value={b.id}>
-									{b.name}
-								</option>
-							))}
-						</select>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Target Cash Account / Asset</label>
-						<select
-							className="form-select"
-							value={targetAssetId}
-							onChange={(e) => setTargetAssetId(e.target.value)}
-						>
-							{targetBizCashAssets.length > 0 ? (
-								targetBizCashAssets.map((asset) => (
-									<option key={asset.id} value={asset.id}>
-										{asset.name} (Current: ฿{formatMoney(asset.cost)})
-									</option>
-								))
-							) : (
-								<option value="primary_cash">Primary Cash Account</option>
-							)}
-						</select>
-						<div style={{ fontSize: "11px", color: "var(--slate-gray)", marginTop: "4px" }}>
-							Choose the specific cash account receiving this capital injection.
-						</div>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Transfer Schedule</label>
-						<div className="sub-tab-switcher" style={{ marginBottom: "4px" }}>
-							<button
-								type="button"
-								className={`sub-tab-btn ${frequency === "one_time" ? "active" : ""}`}
-								onClick={() => setFrequency("one_time")}
-							>
-								One-Time Injection
-							</button>
-							<button
-								type="button"
-								className={`sub-tab-btn ${frequency === "monthly" ? "active" : ""}`}
-								onClick={() => setFrequency("monthly")}
-							>
-								Monthly Recurring
-							</button>
-						</div>
-						<div style={{ fontSize: "11px", color: "var(--slate-gray)" }}>
-							{frequency === "monthly"
-								? "Transfers automatically every month starting from selected month."
-								: "One-off capital injection for this month only."}
-						</div>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Transfer Amount (THB)</label>
-						<CurrencyInput
-							value={amount}
-							onChange={setAmount}
-							required
-							autoFocus
-						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Reference Note</label>
-						<input
-							className="form-input"
-							value={note}
-							onChange={(e) => setNote(e.target.value)}
-							placeholder="e.g. Founder seed for server costs"
-						/>
-					</div>
-
-					{/* Live Runway Impact Simulation Box */}
-					<div className="card" style={{ backgroundColor: "rgba(20, 20, 19, 0.03)" }}>
-						<span className="section-title">
-							Simulated Runway Impact
-						</span>
-						<div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-							<span style={{ color: "var(--slate-gray)" }}>Personal Runway</span>
-							<span style={{ fontWeight: 600 }}>
-								{personalBurn > 0 ? round2(personalAccount.cashReserve / personalBurn) : "∞"} mos →{" "}
-								<span style={{ color: "var(--signal-orange)" }}>{formatRunway(simulation.fromNewRunway)}</span>
-							</span>
-						</div>
-						<div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-							<span style={{ color: "var(--slate-gray)" }}>{targetBiz.name} Runway</span>
-							<span style={{ fontWeight: 600 }}>
-								{bizNetBurn > 0 ? round2(targetBiz.cashReserve / bizNetBurn) : "∞"} mos →{" "}
-								<span style={{ color: "#059669" }}>{formatRunway(simulation.toNewRunway)}</span>
-							</span>
-						</div>
-					</div>
-				</form>
-			</div>
-
-			{/* Sticky Bottom Action Bar */}
-			<div className="modal-sticky-footer" style={{ display: "flex", gap: "8px" }}>
-				{initialData && (
-					<button
-						type="button"
-						className="delete-btn"
-						style={{ flex: 1 }}
-						onClick={handleDelete}
+				<Stack gap={1.5} width="100%">
+					<Text className="text-[12px] font-bold uppercase tracking-[0.04em] text-slate">Transfer Schedule</Text>
+					<SegmentedControl
+						label="Transfer Schedule"
+						value={frequency}
+						onChange={(v) => setFrequency(v as "one_time" | "monthly")}
 					>
-						Delete
-					</button>
-				)}
-				<button
-					type="submit"
-					form="capital-form"
-					className="submit-btn"
-					disabled={!canSubmit}
-					style={{ flex: 2, height: "48px" }}
-				>
-					{initialData ? "Save Changes" : "Confirm Injection"}
-				</button>
-			</div>
-		</div>,
-		document.body,
+						<SegmentedControlItem value="one_time" label="One-Time Injection" />
+						<SegmentedControlItem value="monthly" label="Monthly Recurring" />
+					</SegmentedControl>
+					<Text className="text-[11px] text-slate">
+						{frequency === "monthly"
+							? "Transfers automatically every month starting from selected month."
+							: "One-off capital injection for this month only."}
+					</Text>
+				</Stack>
+
+				<FormField label="Transfer Amount (THB)">
+					<CurrencyInput value={amount} onChange={setAmount} required autoFocus />
+				</FormField>
+
+				<InputField
+					label="Reference Note"
+					value={note}
+					onChange={(e) => setNote(e.target.value)}
+					placeholder="e.g. Founder seed for server costs"
+				/>
+
+				{/* Live Runway Impact Simulation Box */}
+				<SectionCard title="Simulated Runway Impact" tint="bg-ink/[0.03]">
+					<HStack width="100%" justify="between" gap={2}>
+						<Text className="text-[13px] text-slate">Personal Runway</Text>
+						<Text className="text-[13px] font-semibold">
+							{personalBurn > 0 ? round2(personalAccount.cashReserve / personalBurn) : "∞"} mos →{" "}
+							<Text className="text-signal">{formatRunway(simulation.fromNewRunway)}</Text>
+						</Text>
+					</HStack>
+					<HStack width="100%" justify="between" gap={2}>
+						<Text className="text-[13px] text-slate">{targetBiz.name} Runway</Text>
+						<Text className="text-[13px] font-semibold">
+							{bizNetBurn > 0 ? round2(targetBiz.cashReserve / bizNetBurn) : "∞"} mos →{" "}
+							<Text className="text-[#059669]">{formatRunway(simulation.toNewRunway)}</Text>
+						</Text>
+					</HStack>
+				</SectionCard>
+			</Stack>
+		</ModalPage>
 	);
 };

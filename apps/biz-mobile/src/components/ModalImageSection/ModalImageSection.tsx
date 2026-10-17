@@ -1,5 +1,9 @@
 import React, { useRef } from "react";
+import { HStack, Img, NativeInput, PlainButton, Stack, Text } from "@excited-live/design-system";
+import { ChipButton } from "../ChipButton";
 import { CURATED_COVER_WALLPAPERS } from "@excited-live/biz";
+
+const OVERLAY_BTN = "cursor-pointer rounded-pill px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-[8px]";
 
 export interface ModalImageSectionProps {
 	value?: string;
@@ -13,12 +17,7 @@ export interface ModalImageSectionProps {
 	showCuratedWallpapers?: boolean;
 }
 
-const compressImage = (
-	file: File,
-	maxWidth = 480,
-	maxHeight = 480,
-	quality = 0.75,
-): Promise<string> => {
+const compressImage = (file: File, maxWidth = 480, maxHeight = 480, quality = 0.75): Promise<string> => {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
 		reader.onload = (e) => {
@@ -74,6 +73,7 @@ export const ModalImageSection: React.FC<ModalImageSectionProps> = ({
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const isCover = aspectRatio === "cover";
+	const coverHeight = isCover ? "h-40" : "h-[120px]";
 
 	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -109,78 +109,52 @@ export const ModalImageSection: React.FC<ModalImageSectionProps> = ({
 	};
 
 	return (
-		<div className="form-group">
-			<input
-				ref={fileInputRef}
-				type="file"
-				accept="image/*"
-				onChange={handleFileUpload}
-				style={{ display: "none" }}
-			/>
+		<Stack gap={1.5} width="100%" className="min-w-0">
+			<NativeInput ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
 
 			{effectiveValue ? (
-				<div className={`modal-image-preview-container ${isCover ? "cover" : ""}`}>
-					<img src={effectiveValue} alt="Preview" className="modal-image-preview" />
-					<div className="modal-image-actions">
-						<button
-							type="button"
-							className="modal-image-btn primary"
-							onClick={() => fileInputRef.current?.click()}
-						>
+				<Stack
+					className={`relative mb-0.5 w-full shrink-0 overflow-hidden rounded-3xl border border-line shadow-card ${coverHeight}`}
+				>
+					<Img src={effectiveValue} alt="Preview" className="size-full object-cover" />
+					<HStack gap={1.5} className="absolute top-2 right-2">
+						<PlainButton className={`${OVERLAY_BTN} bg-ink/90`} onClick={() => fileInputRef.current?.click()}>
 							Change
-						</button>
-						<button
-							type="button"
-							className="modal-image-btn"
-							onClick={handleRemove}
-						>
+						</PlainButton>
+						<PlainButton className={`${OVERLAY_BTN} bg-ink/75`} onClick={handleRemove}>
 							Remove
-						</button>
-					</div>
-				</div>
+						</PlainButton>
+					</HStack>
+				</Stack>
 			) : (
-				<button
-					type="button"
-					className={`modal-image-empty ${isCover ? "cover" : ""}` }
+				<PlainButton
+					className={`mb-0.5 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-3xl border-[1.5px] border-dashed border-line-strong bg-ink/[0.03] text-[13px] font-semibold text-granite active:bg-ink/[0.06] ${coverHeight}`}
 					onClick={() => fileInputRef.current?.click()}
 				>
-					<span className="modal-image-empty-icon">＋</span>
-					<span>{effectiveLabel}</span>
-				</button>
+					<Text className="text-[18px] leading-none">＋</Text>
+					<Text className="[font:inherit]">{effectiveLabel}</Text>
+				</PlainButton>
 			)}
 
 			{(showCuratedWallpapers || isCover) && (
-				<div style={{ marginTop: 6 }}>
-					<span style={{ fontSize: 11, fontWeight: 600, color: "var(--slate-gray)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+				<Stack className="mt-1.5">
+					<Text className="text-[11px] font-semibold uppercase tracking-[0.04em] text-slate">
 						Curated Office Wallpapers
-					</span>
-					<div className="wallpaper-chips" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "6px 0" }}>
+					</Text>
+					<HStack gap={2} className="overflow-x-auto py-1.5">
 						{CURATED_COVER_WALLPAPERS.map((wp) => (
-							<button
+							<ChipButton
 								key={wp.id}
-								type="button"
-								className="preset-chip-btn"
-								style={{
-									display: "inline-flex",
-									alignItems: "center",
-									gap: 6,
-									padding: "4px 8px",
-									fontSize: 11,
-									flexShrink: 0,
-								}}
+								className="px-2 py-1 font-medium"
 								onClick={() => handleWallpaperSelect(wp.imageUrl)}
 							>
-								<img
-									src={wp.imageUrl}
-									alt={wp.title}
-									style={{ width: 18, height: 18, borderRadius: 4, objectFit: "cover" }}
-								/>
-								<span>{wp.title}</span>
-							</button>
+								<Img src={wp.imageUrl} alt={wp.title} className="size-[18px] rounded object-cover" />
+								<Text className="[font:inherit]">{wp.title}</Text>
+							</ChipButton>
 						))}
-					</div>
-				</div>
+					</HStack>
+				</Stack>
 			)}
-		</div>
+		</Stack>
 	);
 };

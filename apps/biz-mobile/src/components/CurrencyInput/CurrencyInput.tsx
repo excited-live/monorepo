@@ -1,4 +1,6 @@
 import React, { useRef, useLayoutEffect } from "react";
+import { NativeInput } from "@excited-live/design-system";
+import { FIELD_CLASS } from "../FormField";
 
 export const formatCurrencyString = (val: string | number | undefined | null): string => {
 	if (val === undefined || val === null || val === "") return "";
@@ -27,8 +29,7 @@ export const formatCurrencyString = (val: string | number | undefined | null): s
 	return (isNegative ? "-" : "") + formattedInt;
 };
 
-export interface CurrencyInputProps
-	extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+export interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
 	value: string | number;
 	onChange: (cleanValue: string) => void;
 	allowNegative?: boolean;
@@ -38,7 +39,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 	value,
 	onChange,
 	allowNegative = false,
-	className = "form-input",
+	className = FIELD_CLASS,
 	placeholder = "0.00",
 	...props
 }) => {
@@ -95,7 +96,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
 	};
 
 	return (
-		<input
+		<NativeInput
 			{...props}
 			ref={inputRef}
 			type="text"

@@ -1,24 +1,49 @@
-import { CurrencyInput } from "../../../../components/CurrencyInput";
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import {
-	isCashAsset,
-	resolveCatalogAmount,
-	type BillingCycle,
-	type RecurringSubscription,
-} from "@excited-live/biz";
+import { Button, SegmentedControl, SegmentedControlItem, Stack, Text } from "@excited-live/design-system";
+import { FormField, InputField, SelectField } from "../../../../components/FormField";
+import { ModalPage } from "../../../../components/ModalPage";
+import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
+import { CurrencyInput } from "../../../../components/CurrencyInput";
+import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/biz";
 import { formatMoney } from "../../../../utils/format";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useBiz } from "../../../../state";
 import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 
+const PERSONAL_CATEGORIES = [
+	{ value: "housing", label: "Housing & Rent" },
+	{ value: "food", label: "Food & Dining" },
+	{ value: "groceries", label: "Groceries & Household" },
+	{ value: "transit", label: "Transit & Transport" },
+	{ value: "healthcare", label: "Healthcare & Wellness" },
+	{ value: "entertainment", label: "Subscriptions & Living" },
+	{ value: "connectivity", label: "Internet & Mobile" },
+	{ value: "family", label: "Family & Personal" },
+	{ value: "capital_deploy", label: "Deploy Capital to Business" },
+	{ value: "dev_tool", label: "Developer Tools & AI" },
+	{ value: "other", label: "Other Personal Outflow" },
+];
+
+const BUSINESS_CATEGORIES = [
+	{ value: "dev_tool", label: "Developer Tools & APIs" },
+	{ value: "ai", label: "AI Subscriptions" },
+	{ value: "saas", label: "SaaS & Productivity" },
+	{ value: "infrastructure", label: "Hosting & Infrastructure" },
+	{ value: "transit", label: "Transit & Transport" },
+	{ value: "connectivity", label: "Internet & Mobile" },
+	{ value: "office", label: "Office & Workspace" },
+	{ value: "marketing", label: "Marketing & Sales" },
+	{ value: "other", label: "Other Business Outflow" },
+];
+
 export const AddExpenseDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
 	initialData?: RecurringSubscription | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { activeEntityId, addSubscription, updateSubscription, deleteSubscription, accounts, hardware, injectCapital } = useBiz();
+	const { activeEntityId, addSubscription, updateSubscription, deleteSubscription, accounts, hardware, injectCapital } =
+		useBiz();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 	const businessAccounts = accounts.filter((a) => a.type === "business");
@@ -56,18 +81,12 @@ export const AddExpenseDrawer: React.FC<{
 		if (values.imageUrl !== undefined) setImageUrl(values.imageUrl);
 	};
 
-	const {
-		suggestions,
-		matchedItem,
-		handleQueryChange,
-		applySuggestion,
-		markTouched,
-		resetTouched,
-	} = useCatalogAutofill({
-		type: "subscription",
-		currency,
-		onApplyAutofill,
-	});
+	const { suggestions, matchedItem, handleQueryChange, applySuggestion, markTouched, resetTouched } =
+		useCatalogAutofill({
+			type: "subscription",
+			currency,
+			onApplyAutofill,
+		});
 
 	const firstBizId = businessAccounts[0]?.id || "";
 
@@ -190,312 +209,197 @@ export const AddExpenseDrawer: React.FC<{
 		: name.trim().length > 0 && Number(amount) > 0;
 	const isEditMode = Boolean(initialData);
 
-	return createPortal(
-		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-			{/* Top Bar with Title on Left, ✕ on Top-Right */}
-			<div className="modal-page-nav">
-				<span className="modal-nav-title">
-					{isEditMode ? "Edit Outflow / Expense" : "Add Outflow / Expense"}
-				</span>
-				<button
-					type="button"
-					className="modal-nav-close"
-					onClick={dismiss}
-					aria-label="Close"
-				>
-					✕
-				</button>
-			</div>
-
-			{/* Full-Screen Scrollable Content */}
-			<div className="modal-page-content">
-				{!isDeploy && (
-					<ModalImageSection
-						value={imageUrl}
-						onChange={handleImageChange}
-						onUserTouched={() => markTouched("imageUrl")}
+	return (
+		<ModalPage
+			title={isEditMode ? "Edit Outflow / Expense" : "Add Outflow / Expense"}
+			onClose={dismiss}
+			footer={
+				<>
+					<Button
+						type="submit"
+						form="expense-form"
+						label={isDeploy ? "Confirm Capital Injection" : isEditMode ? "Save Changes" : "Add Expense"}
+						size="lg"
+						variant="primary"
+						width="100%"
+						className="h-12"
+						isDisabled={!canSubmit}
 					/>
-				)}
-
-				<form id="expense-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-					<div className="form-group">
-						<label className="form-label">Category</label>
-						<select
-							className="form-select"
-							value={category}
-							onChange={(e) => handleCategoryChange(e.target.value)}
-							autoFocus={!isEditMode}
-						>
-							{isPersonal ? (
-								<>
-									<option value="housing">Housing & Rent</option>
-									<option value="food">Food & Dining</option>
-									<option value="groceries">Groceries & Household</option>
-									<option value="transit">Transit & Transport</option>
-									<option value="healthcare">Healthcare & Wellness</option>
-									<option value="entertainment">Subscriptions & Living</option>
-									<option value="connectivity">Internet & Mobile</option>
-									<option value="family">Family & Personal</option>
-									{businessAccounts.length > 0 && (
-										<option value="capital_deploy">Deploy Capital to Business</option>
-									)}
-									<option value="dev_tool">Developer Tools & AI</option>
-									<option value="other">Other Personal Outflow</option>
-								</>
-							) : (
-								<>
-									<option value="dev_tool">Developer Tools & APIs</option>
-									<option value="ai">AI Subscriptions</option>
-									<option value="saas">SaaS & Productivity</option>
-									<option value="infrastructure">Hosting & Infrastructure</option>
-									<option value="transit">Transit & Transport</option>
-									<option value="connectivity">Internet & Mobile</option>
-									<option value="office">Office & Workspace</option>
-									<option value="marketing">Marketing & Sales</option>
-									<option value="other">Other Business Outflow</option>
-								</>
-							)}
-						</select>
-					</div>
-
-					{isDeploy ? (
-						<>
-							<div className="form-group">
-								<label className="form-label">Source Reserve</label>
-								<input
-									className="form-input"
-									value={`Personal (Available: ฿${formatMoney(availablePersonalCash)})`}
-									disabled
-									style={{ opacity: 0.8 }}
-								/>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Recipient Business</label>
-								<select
-									className="form-select"
-									value={targetBizId}
-									onChange={(e) => handleTargetBizChange(e.target.value)}
-								>
-									{businessAccounts.map((b) => (
-										<option key={b.id} value={b.id}>
-											{b.name}
-										</option>
-									))}
-								</select>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Target Cash Account / Asset</label>
-								<select
-									className="form-select"
-									value={targetAssetId}
-									onChange={(e) => setTargetAssetId(e.target.value)}
-								>
-									{targetBizCashAssets.length > 0 ? (
-										targetBizCashAssets.map((asset) => (
-											<option key={asset.id} value={asset.id}>
-												{asset.name} (Current: ฿{formatMoney(asset.cost)})
-											</option>
-										))
-									) : (
-										<option value="primary_cash">Primary Cash Account</option>
-									)}
-								</select>
-								<div style={{ fontSize: "11px", color: "var(--slate-gray)", marginTop: "4px" }}>
-									Choose the specific cash account receiving this capital injection.
-								</div>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Transfer Schedule</label>
-								<div className="sub-tab-switcher" style={{ marginBottom: "4px" }}>
-									<button
-										type="button"
-										className={`sub-tab-btn ${frequency === "one_time" ? "active" : ""}`}
-										onClick={() => setFrequency("one_time")}
-									>
-										One-Time Injection
-									</button>
-									<button
-										type="button"
-										className={`sub-tab-btn ${frequency === "monthly" ? "active" : ""}`}
-										onClick={() => setFrequency("monthly")}
-									>
-										Monthly Recurring
-									</button>
-								</div>
-								<div style={{ fontSize: "11px", color: "var(--slate-gray)" }}>
-									{frequency === "monthly"
-										? "Transfers automatically every month starting from selected month."
-										: "One-off capital injection for this month only."}
-								</div>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Transfer Amount (THB)</label>
-								<CurrencyInput
-									placeholder="0.00"
-									value={amount}
-									onChange={handleAmountChange}
-									required
-									autoFocus
-								/>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Injection / Transfer Date</label>
-								<input
-									type="date"
-									className="form-input"
-									value={renewalDate}
-									onChange={(e) => setRenewalDate(e.target.value)}
-									required
-								/>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Transfer Reference / Note</label>
-								<input
-									className="form-input"
-									placeholder="e.g. Founder seed capital, operational buffer"
-									value={name}
-									onChange={(e) => setName(e.target.value)}
-								/>
-							</div>
-						</>
-					) : (
-						<>
-							<div className="form-group">
-								<label className="form-label">Service / Vendor Name</label>
-								<input
-									className="form-input"
-									placeholder={
-										isPersonal
-											? "e.g. opencode, ChatGPT, AIS Fibre, Netflix"
-											: "e.g. opencode, Figma, Cursor, AWS"
-									}
-									value={name}
-									onChange={(e) => handleNameChange(e.target.value)}
-									required
-								/>
-
-								{/* Quick Auto-Suggestion Chips */}
-								{suggestions.length > 0 && (
-									<div className="autofill-suggestion-scroll">
-										{suggestions.slice(0, 5).map((s) => {
-											const itemAmt = resolveCatalogAmount(s, currency);
-											return (
-												<button
-													key={s.id}
-													type="button"
-													className="autofill-suggestion-pill"
-													onClick={() => {
-														setName(s.name);
-														applySuggestion(s);
-													}}
-												>
-													{s.imageUrl && <img src={s.imageUrl} alt="" className="autofill-pill-img" />}
-													<span>{s.name}</span>
-													{itemAmt !== undefined && (
-														<span style={{ color: "var(--slate-gray)", fontSize: "10.5px" }}>
-															{currency === "USD" ? `$${itemAmt}` : `฿${itemAmt.toLocaleString()}`}
-														</span>
-													)}
-												</button>
-											);
-										})}
-									</div>
-								)}
-
-								{/* Match Info Banner */}
-								{matchedItem && (
-									<div className="autofill-banner">
-										<div className="autofill-banner-text">
-											<span className="autofill-banner-badge">Auto-Filled</span>
-											<span>
-												{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
-											</span>
-										</div>
-									</div>
-								)}
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Amount ({currency})</label>
-								<CurrencyInput
-									placeholder="0.00"
-									value={amount}
-									onChange={handleAmountChange}
-									required
-								/>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Payment Frequency</label>
-								<select
-									className="form-select"
-									value={cycle}
-									onChange={(e) => handleCycleChange(e.target.value as BillingCycle)}
-								>
-									<option value="one_time">One-Time Payment</option>
-									<option value="monthly">Monthly</option>
-									<option value="yearly">Yearly</option>
-									<option value="quarterly">Quarterly</option>
-									<option value="semi-annual">Semi-Annual</option>
-									<option value="weekly">Weekly</option>
-								</select>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">
-									{cycle === "one_time" ? "Payment / Charge Date" : "Next Renewal / Charge Date"}
-								</label>
-								<input
-									className="form-input"
-									type="date"
-									value={renewalDate}
-									onChange={(e) => setRenewalDate(e.target.value)}
-									required
-								/>
-							</div>
-
-							<div className="form-group">
-								<label className="form-label">Notes (Optional)</label>
-								<input
-									className="form-input"
-									placeholder="e.g. Workspace license, tier 2"
-									value={notes}
-									onChange={(e) => setNotes(e.target.value)}
-								/>
-							</div>
-						</>
+					{isEditMode && (
+						<Button label="Delete Expense" size="lg" variant="destructive" width="100%" onClick={handleDelete} />
 					)}
-				</form>
-			</div>
+				</>
+			}
+		>
+			{!isDeploy && (
+				<ModalImageSection
+					value={imageUrl}
+					onChange={handleImageChange}
+					onUserTouched={() => markTouched("imageUrl")}
+				/>
+			)}
 
-			{/* Sticky Bottom Action Bar */}
-			<div className="modal-sticky-footer">
-				<button
-					type="submit"
-					form="expense-form"
-					className="submit-btn"
-					disabled={!canSubmit}
-					style={{ opacity: canSubmit ? 1 : 0.4 }}
+			<Stack as="form" id="expense-form" gap={4} width="100%" onSubmit={handleSubmit}>
+				<SelectField
+					label="Category"
+					value={category}
+					onChange={(e) => handleCategoryChange(e.target.value)}
+					autoFocus={!isEditMode}
 				>
-					{isDeploy ? "Confirm Capital Injection" : isEditMode ? "Save Changes" : "Add Expense"}
-				</button>
-				{isEditMode && (
-					<button
-						type="button"
-						className="delete-btn"
-						onClick={handleDelete}
-					>
-						Delete Expense
-					</button>
+					{(isPersonal ? PERSONAL_CATEGORIES : BUSINESS_CATEGORIES)
+						.filter((c) => c.value !== "capital_deploy" || businessAccounts.length > 0)
+						.map((c) => (
+							<option key={c.value} value={c.value}>
+								{c.label}
+							</option>
+						))}
+				</SelectField>
+
+				{isDeploy ? (
+					<>
+						<InputField
+							label="Source Reserve"
+							value={`Personal (Available: ฿${formatMoney(availablePersonalCash)})`}
+							disabled
+							readOnly
+						/>
+
+						<SelectField
+							label="Recipient Business"
+							value={targetBizId}
+							onChange={(e) => handleTargetBizChange(e.target.value)}
+						>
+							{businessAccounts.map((b) => (
+								<option key={b.id} value={b.id}>
+									{b.name}
+								</option>
+							))}
+						</SelectField>
+
+						<SelectField
+							label="Target Cash Account / Asset"
+							hint="Choose the specific cash account receiving this capital injection."
+							value={targetAssetId}
+							onChange={(e) => setTargetAssetId(e.target.value)}
+						>
+							{targetBizCashAssets.length > 0 ? (
+								targetBizCashAssets.map((asset) => (
+									<option key={asset.id} value={asset.id}>
+										{asset.name} (Current: ฿{formatMoney(asset.cost)})
+									</option>
+								))
+							) : (
+								<option value="primary_cash">Primary Cash Account</option>
+							)}
+						</SelectField>
+
+						<Stack gap={1.5} width="100%">
+							<Text className="text-[12px] font-bold uppercase tracking-[0.04em] text-slate">Transfer Schedule</Text>
+							<SegmentedControl
+								label="Transfer Schedule"
+								value={frequency}
+								onChange={(v) => setFrequency(v as "one_time" | "monthly")}
+							>
+								<SegmentedControlItem value="one_time" label="One-Time Injection" />
+								<SegmentedControlItem value="monthly" label="Monthly Recurring" />
+							</SegmentedControl>
+							<Text className="text-[11px] text-slate">
+								{frequency === "monthly"
+									? "Transfers automatically every month starting from selected month."
+									: "One-off capital injection for this month only."}
+							</Text>
+						</Stack>
+
+						<FormField label="Transfer Amount (THB)">
+							<CurrencyInput placeholder="0.00" value={amount} onChange={handleAmountChange} required autoFocus />
+						</FormField>
+
+						<InputField
+							label="Injection / Transfer Date"
+							type="date"
+							value={renewalDate}
+							onChange={(e) => setRenewalDate(e.target.value)}
+							required
+						/>
+
+						<InputField
+							label="Transfer Reference / Note"
+							placeholder="e.g. Founder seed capital, operational buffer"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+						/>
+					</>
+				) : (
+					<>
+						<Stack gap={1.5} width="100%">
+							<InputField
+								label="Service / Vendor Name"
+								placeholder={
+									isPersonal ? "e.g. opencode, ChatGPT, AIS Fibre, Netflix" : "e.g. opencode, Figma, Cursor, AWS"
+								}
+								value={name}
+								onChange={(e) => handleNameChange(e.target.value)}
+								required
+							/>
+
+							{/* Quick Auto-Suggestion Chips */}
+							{suggestions.length > 0 && (
+								<SuggestionChips
+									suggestions={suggestions.slice(0, 5)}
+									onPick={(s) => {
+										setName(s.name);
+										applySuggestion(s as (typeof suggestions)[number]);
+									}}
+									renderMeta={(s) => {
+										const itemAmt = resolveCatalogAmount(s as (typeof suggestions)[number], currency);
+										if (itemAmt === undefined) return null;
+										return currency === "USD" ? `$${itemAmt}` : `฿${itemAmt.toLocaleString()}`;
+									}}
+								/>
+							)}
+
+							{/* Match Info Banner */}
+							{matchedItem && (
+								<AutofillBanner badge="Auto-Filled">
+									{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
+								</AutofillBanner>
+							)}
+						</Stack>
+
+						<FormField label={`Amount (${currency})`}>
+							<CurrencyInput placeholder="0.00" value={amount} onChange={handleAmountChange} required />
+						</FormField>
+
+						<SelectField
+							label="Payment Frequency"
+							value={cycle}
+							onChange={(e) => handleCycleChange(e.target.value as BillingCycle)}
+						>
+							<option value="one_time">One-Time Payment</option>
+							<option value="monthly">Monthly</option>
+							<option value="yearly">Yearly</option>
+							<option value="quarterly">Quarterly</option>
+							<option value="semi-annual">Semi-Annual</option>
+							<option value="weekly">Weekly</option>
+						</SelectField>
+
+						<InputField
+							label={cycle === "one_time" ? "Payment / Charge Date" : "Next Renewal / Charge Date"}
+							type="date"
+							value={renewalDate}
+							onChange={(e) => setRenewalDate(e.target.value)}
+							required
+						/>
+
+						<InputField
+							label="Notes (Optional)"
+							placeholder="e.g. Workspace license, tier 2"
+							value={notes}
+							onChange={(e) => setNotes(e.target.value)}
+						/>
+					</>
 				)}
-			</div>
-		</div>,
-		document.body,
+			</Stack>
+		</ModalPage>
 	);
 };

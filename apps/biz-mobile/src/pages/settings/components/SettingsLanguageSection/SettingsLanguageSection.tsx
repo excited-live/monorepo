@@ -1,5 +1,7 @@
 import React from "react";
+import { Badge, Button, HStack } from "@excited-live/design-system";
 import type { MobileLocale } from "../../../../domain/types";
+import { SectionCard } from "../../../../components/SectionCard";
 
 export interface SettingsLanguageSectionProps {
 	lang?: MobileLocale;
@@ -7,37 +9,29 @@ export interface SettingsLanguageSectionProps {
 	languageTitle?: string;
 }
 
+const LANGUAGES: Array<{ code: MobileLocale; label: string }> = [
+	{ code: "en", label: "English (EN)" },
+	{ code: "th", label: "ภาษาไทย (TH)" },
+];
+
 export const SettingsLanguageSection: React.FC<SettingsLanguageSectionProps> = ({
 	lang = "en",
 	onSetLang = () => {},
 	languageTitle = "Language / ภาษา",
-}) => {
-	return (
-		<div className="card">
-			<div className="section-header">
-				<span className="section-title">{languageTitle}</span>
-				<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.06)", color: "var(--granite)" }}>
-					{lang.toUpperCase()}
-				</span>
-			</div>
-			<div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-				<button
-					type="button"
-					className={`action-pill-btn ${lang === "en" ? "primary" : ""}`}
-					style={{ flex: 1 }}
-					onClick={() => onSetLang("en")}
-				>
-					English (EN)
-				</button>
-				<button
-					type="button"
-					className={`action-pill-btn ${lang === "th" ? "primary" : ""}`}
-					style={{ flex: 1 }}
-					onClick={() => onSetLang("th")}
-				>
-					ภาษาไทย (TH)
-				</button>
-			</div>
-		</div>
-	);
-};
+}) => (
+	<SectionCard title={languageTitle} badge={<Badge variant="neutral" label={lang.toUpperCase()} />}>
+		<HStack width="100%" gap={2}>
+			{LANGUAGES.map(({ code, label }) => (
+				<Button
+					key={code}
+					label={label}
+					size="lg"
+					className="h-[42px]"
+					variant={lang === code ? "primary" : "secondary"}
+					width="100%"
+					onClick={() => onSetLang(code)}
+				/>
+			))}
+		</HStack>
+	</SectionCard>
+);

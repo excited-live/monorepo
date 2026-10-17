@@ -23,7 +23,7 @@ const OUT = path.resolve(here, "../../landingpage/public/app");
 type Shot = {
 	name: string;
 	story: string;
-	/** Visible text of a tab/button to click before capturing. */
+	/** Label of the sub-tab (a segmented-control radio) to select before capturing. */
 	click?: string;
 };
 
@@ -45,7 +45,7 @@ test.describe("landing capture", () => {
 			});
 			await mount(shot.story);
 			if (shot.click) {
-				await page.getByRole("button", { name: shot.click, exact: true }).click();
+				await page.getByRole("radio", { name: shot.click, exact: true }).click();
 			}
 			// The gallery has no app shell; mirror `.mobile-shell` (max 480px, 16px gutters)
 			// so cards and the hero banner sit exactly as they do in the real app.

@@ -13,7 +13,7 @@ export default defineConfig({
 		// GitHub runners, so the gallery comes up but 127.0.0.1 -- what
 		// Playwright polls in webServer.url -- refuses the connection.
 		host: "127.0.0.1",
-		port: 5174,
+		port: Number(process.env.PW_CT_PORT ?? 5174),
 		strictPort: true,
 	},
 	resolve: {

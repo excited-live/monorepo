@@ -9,6 +9,7 @@
 		"typecheck": "tsc --noEmit",
 		"test:visual": "playwright test",
 		"test:visual:update": "playwright test --update-snapshots",
+		"capture:landing": "CAPTURE_LANDING=1 playwright test --project=capture-mobile --project=capture-desktop --workers=1",
 		"tauri": "tauri",
 		"android:dev": "tauri android dev",
 		"android:build": "tauri android build --apk",

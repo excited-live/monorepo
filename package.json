@@ -17,6 +17,7 @@
 		"test:visual:update": "pnpm --filter @excited-live/webapp test:visual:update",
 		"test:visual:mobile": "pnpm --filter @excited-live/biz-mobile test:visual",
 		"test:visual:mobile:update": "pnpm --filter @excited-live/biz-mobile test:visual:update",
+		"capture:landing": "pnpm --filter @excited-live/biz-mobile capture:landing && pnpm --filter @excited-live/landingpage optimize:shots",
 		"typecheck": "turbo run typecheck"
 	},
 	"dependencies": {

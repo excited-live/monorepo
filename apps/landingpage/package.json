@@ -9,6 +9,7 @@
 		"build": "astro build",
 		"preview": "astro preview",
 		"typecheck": "astro check",
+		"optimize:shots": "node scripts/optimize-app-shots.mjs",
 		"astro": "astro",
 		"gen:api-docs": "node scripts/gen-api-docs.mjs"
 	},

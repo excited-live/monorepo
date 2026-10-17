@@ -22,76 +22,83 @@ import {
 	ManagementLiabilitySection,
 	MonthStepper,
 } from "./components";
-import { useManagement } from "./hooks";
+import {
+	useAccount,
+	useMonthSelection,
+	useAccountLedger,
+	useAccountIncome,
+	useAccountExpenses,
+	useAccountAssets,
+	useAccountLiabilities,
+	useManagementView,
+	useManagementDrawers,
+} from "./hooks";
 
 export const Management: React.FC = () => {
+	// 1. Core Selection Inputs
+	const { accounts, activeEntityId, setActiveEntityId, activeAccount, isPersonal } = useAccount();
+	const { selectedMonth } = useMonthSelection();
+
+	// 2. Data Slices (dependent on activeAccount & selectedMonth)
+	const { monthActions } = useAccountLedger(activeAccount, selectedMonth);
+	const { entityRev, totalIncome, hasConfiguredSalary } = useAccountIncome(activeAccount, selectedMonth);
+	const { entitySubs, outgoingTransfers, totalMonthlyExpenses } = useAccountExpenses(activeAccount, selectedMonth);
 	const {
-		accounts,
-		hardware,
-		transfers,
-		subscriptions,
-		revenues,
-		liabilities,
-		selectedMonth,
-		userSession,
-		activeEntityId,
-		setActiveEntityId,
-		activeAccount,
-		flipped,
-		setFlipped,
-		activeCapitalSubTab,
-		setActiveCapitalSubTab,
-		lang,
-		isExpenseOpen,
-		setIsExpenseOpen,
-		selectedSub,
-		setSelectedSub,
-		isGearOpen,
-		setIsGearOpen,
-		selectedHw,
-		setSelectedHw,
-		isEditBizOpen,
-		setIsEditBizOpen,
-		editBiz,
-		setEditBiz,
-		isRevenueOpen,
-		setIsRevenueOpen,
-		selectedRev,
-		setSelectedRev,
-		isLiabilityOpen,
-		setIsLiabilityOpen,
-		selectedLiab,
-		setSelectedLiab,
-		isCapitalOpen,
-		setIsCapitalOpen,
-		selectedTransfer,
-		setSelectedTransfer,
-		isPersonal,
 		cashAssets,
 		gearAssets,
 		totalLiquidReserves,
 		totalBookValue,
 		totalDepreciation,
-		entitySubs,
-		totalMonthlyExpenses,
-		entityRev,
-		totalIncome,
-		hasConfiguredSalary,
-		entityLiab,
-		totalMonthlyLiabilities,
-		monthActions,
-		outgoingTransfers,
-		setActiveTab,
+		hardware,
+		transfers,
+		subscriptions,
+		revenues,
+		liabilities,
+	} = useAccountAssets(activeAccount, selectedMonth);
+	const { entityLiab, totalMonthlyLiabilities } = useAccountLiabilities(activeAccount);
+
+	// 3. View / Mode State
+	const {
+		userSession,
+		lang,
+		flipped,
+		setFlipped,
+		activeCapitalSubTab,
+		setActiveCapitalSubTab,
 		subTabs,
-	} = useManagement();
+		navigateToSettings,
+	} = useManagementView();
+
+	// 4. Drawers State & Actions
+	const {
+		isCapitalOpen,
+		openCapital,
+		closeCapital,
+		selectedTransfer,
+		isEditBizOpen,
+		openEditBiz,
+		closeEditBiz,
+		editBiz,
+		isExpenseOpen,
+		openExpense,
+		closeExpense,
+		selectedSub,
+		isGearOpen,
+		openGear,
+		closeGear,
+		selectedHw,
+		isRevenueOpen,
+		openRevenue,
+		closeRevenue,
+		selectedRev,
+		isLiabilityOpen,
+		openLiability,
+		closeLiability,
+		selectedLiab,
+	} = useManagementDrawers();
 
 	const handleConfigureBiz = (account: EntityAccount) => {
-		setEditBiz(account);
-		setIsEditBizOpen(true);
-	};
-
-	const handleNavigateToSettings = () => {
-		setActiveTab("settings");
+		openEditBiz(account);
 	};
 
 	return (
@@ -107,7 +114,7 @@ export const Management: React.FC = () => {
 				onFlipToLedger={() => setFlipped(true)}
 				onFlipToCapital={() => setFlipped(false)}
 				onConfigureBiz={handleConfigureBiz}
-				onNavigateToSettings={handleNavigateToSettings}
+				onNavigateToSettings={navigateToSettings}
 			/>
 
 			{/* Main App Section (Sheet) */}
@@ -141,18 +148,9 @@ export const Management: React.FC = () => {
 								totalIncome={totalIncome}
 								hasConfiguredSalary={hasConfiguredSalary}
 								lang={lang}
-								onInjectCapital={() => {
-									setSelectedTransfer(null);
-									setIsCapitalOpen(true);
-								}}
-								onAddIncome={() => {
-									setSelectedRev(null);
-									setIsRevenueOpen(true);
-								}}
-								onEditIncome={(r: RevenueStream) => {
-									setSelectedRev(r);
-									setIsRevenueOpen(true);
-								}}
+								onInjectCapital={() => openCapital(null)}
+								onAddIncome={() => openRevenue(null)}
+								onEditIncome={(r: RevenueStream) => openRevenue(r)}
 							/>
 						)}
 
@@ -164,18 +162,9 @@ export const Management: React.FC = () => {
 								outgoingTransfers={outgoingTransfers}
 								totalMonthlyExpenses={totalMonthlyExpenses}
 								lang={lang}
-								onAddExpense={() => {
-									setSelectedSub(null);
-									setIsExpenseOpen(true);
-								}}
-								onEditExpense={(sub: RecurringSubscription) => {
-									setSelectedSub(sub);
-									setIsExpenseOpen(true);
-								}}
-								onSelectTransfer={(tr) => {
-									setSelectedTransfer(tr);
-									setIsCapitalOpen(true);
-								}}
+								onAddExpense={() => openExpense(null)}
+								onEditExpense={(sub: RecurringSubscription) => openExpense(sub)}
+								onSelectTransfer={(tr) => openCapital(tr)}
 							/>
 						)}
 
@@ -195,14 +184,8 @@ export const Management: React.FC = () => {
 								totalBookValue={totalBookValue}
 								totalDepreciation={totalDepreciation}
 								lang={lang}
-								onAddAsset={() => {
-									setSelectedHw(null);
-									setIsGearOpen(true);
-								}}
-								onSelectHardware={(hw: HardwareAsset) => {
-									setSelectedHw(hw);
-									setIsGearOpen(true);
-								}}
+								onAddAsset={() => openGear(null)}
+								onSelectHardware={(hw: HardwareAsset) => openGear(hw)}
 							/>
 						)}
 
@@ -212,69 +195,49 @@ export const Management: React.FC = () => {
 								entityLiab={entityLiab}
 								totalMonthlyLiabilities={totalMonthlyLiabilities}
 								lang={lang}
-								onRegisterLiability={() => {
-									setSelectedLiab(null);
-									setIsLiabilityOpen(true);
-								}}
-								onSelectLiability={(liab: LiabilityStream) => {
-									setSelectedLiab(liab);
-									setIsLiabilityOpen(true);
-								}}
+								onRegisterLiability={() => openLiability(null)}
+								onSelectLiability={(liab: LiabilityStream) => openLiability(liab)}
 							/>
 						)}
 					</>
 				) : (
-					<ManagementLedgerSection monthActions={monthActions} selectedMonth={selectedMonth} lang={lang} />
+					<ManagementLedgerSection
+						monthActions={monthActions}
+						selectedMonth={selectedMonth}
+						lang={lang}
+					/>
 				)}
 			</Stack>
 
 			{/* Drawers & Modals */}
 			<CapitalDrawer
 				isOpen={isCapitalOpen}
-				onClose={() => {
-					setIsCapitalOpen(false);
-					setSelectedTransfer(null);
-				}}
+				onClose={closeCapital}
 				initialData={selectedTransfer}
 			/>
 			<AddBusinessDrawer
 				isOpen={isEditBizOpen}
-				onClose={() => {
-					setIsEditBizOpen(false);
-					setEditBiz(null);
-				}}
+				onClose={closeEditBiz}
 				initialData={editBiz}
 			/>
 			<AddExpenseDrawer
 				isOpen={isExpenseOpen}
-				onClose={() => {
-					setIsExpenseOpen(false);
-					setSelectedSub(null);
-				}}
+				onClose={closeExpense}
 				initialData={selectedSub}
 			/>
 			<AddGearDrawer
 				isOpen={isGearOpen}
-				onClose={() => {
-					setIsGearOpen(false);
-					setSelectedHw(null);
-				}}
+				onClose={closeGear}
 				initialData={selectedHw}
 			/>
 			<AddRevenueDrawer
 				isOpen={isRevenueOpen}
-				onClose={() => {
-					setIsRevenueOpen(false);
-					setSelectedRev(null);
-				}}
+				onClose={closeRevenue}
 				initialData={selectedRev}
 			/>
 			<AddLiabilityDrawer
 				isOpen={isLiabilityOpen}
-				onClose={() => {
-					setIsLiabilityOpen(false);
-					setSelectedLiab(null);
-				}}
+				onClose={closeLiability}
 				initialData={selectedLiab}
 			/>
 		</Stack>

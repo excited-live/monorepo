@@ -3,7 +3,7 @@ import type { EntityAccount } from "@excited-live/biz";
 import { ChevronLeftIcon, ChevronRightIcon } from "@excited-live/design-system";
 
 const SWIPE_THRESHOLD = 48;
-const TAP_THRESHOLD = 8;
+const TAP_THRESHOLD = 20;
 
 interface HeroCarouselProps {
 	accounts: EntityAccount[];
@@ -71,7 +71,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 		setDragOffset(0);
 		if (Math.abs(delta) > SWIPE_THRESHOLD) {
 			goToAccount(activeIndex + (delta < 0 ? 1 : -1));
-		} else if (Math.abs(delta) < TAP_THRESHOLD && deltaY < TAP_THRESHOLD) {
+		} else if (Math.abs(delta) < TAP_THRESHOLD && deltaY < 24) {
 			onTap?.();
 		}
 	};
@@ -130,14 +130,15 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 						<ChevronLeftIcon className="hero-pager-icon" aria-hidden="true" />
 					</button>
 
-					<div className="hero-dots">
-						{accounts.map((a, i) => (
+					<div className="hero-pager-dots">
+						{accounts.map((account, index) => (
 							<button
-								key={a.id}
+								key={account.id}
 								type="button"
-								className={`hero-dot ${i === activeIndex ? "active" : ""}`}
-								onClick={() => goToAccount(i)}
-								aria-label={`Go to ${a.name}`}
+								className={`hero-pager-dot ${index === activeIndex ? "active" : ""}`}
+								onClick={() => goToAccount(index)}
+								aria-label={`Show ${account.name}`}
+								aria-current={index === activeIndex ? "true" : undefined}
 							/>
 						))}
 					</div>

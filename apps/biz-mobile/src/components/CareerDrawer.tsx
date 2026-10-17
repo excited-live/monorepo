@@ -8,20 +8,28 @@ export const CareerDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
 }> = ({ isOpen, onClose }) => {
-	const { accounts, setCareerIncome } = useBiz();
+	const { accounts, revenues, setCareerIncome } = useBiz();
 	const personal = accounts.find((a) => a.type === "personal") || accounts[0]!;
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
+	const careerRev = revenues.find(
+		(r) => r.entityId === personal.id && (r.source === "salary" || r.id === "rev_career_prame"),
+	);
+
 	const [salary, setSalary] = useState("");
 	const [payday, setPayday] = useState("28");
+	const [startMonth, setStartMonth] = useState("");
+	const [endMonth, setEndMonth] = useState("");
 
 	useEffect(() => {
 		if (isOpen) {
 			setSalary(personal.salary ? String(personal.salary) : "");
 			setPayday(String(personal.paydayDayOfMonth ?? 28));
+			setStartMonth(careerRev?.startMonth || "");
+			setEndMonth(careerRev?.endMonth || "");
 		}
-	}, [isOpen, personal]);
+	}, [isOpen, personal, careerRev]);
 
 	if (!isOpen) return null;
 
@@ -30,7 +38,16 @@ export const CareerDrawer: React.FC<{
 		const num = Number(salary);
 		if (!num || num <= 0) return;
 		const day = Math.min(Math.max(Number(payday) || 28, 1), 31);
-		setCareerIncome(personal.id, num, day);
+		setCareerIncome(
+			personal.id,
+			num,
+			day,
+			personal.careerTitle,
+			personal.careerCompany,
+			personal.careerImageUrl,
+			startMonth || undefined,
+			endMonth || undefined,
+		);
 		dismiss();
 	};
 
@@ -79,6 +96,27 @@ export const CareerDrawer: React.FC<{
 							onChange={(e) => setPayday(e.target.value)}
 							required
 						/>
+					</div>
+
+					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+						<div className="form-group">
+							<label className="form-label">Start Month (Optional)</label>
+							<input
+								className="form-input"
+								type="month"
+								value={startMonth}
+								onChange={(e) => setStartMonth(e.target.value)}
+							/>
+						</div>
+						<div className="form-group">
+							<label className="form-label">End Month (Optional)</label>
+							<input
+								className="form-input"
+								type="month"
+								value={endMonth}
+								onChange={(e) => setEndMonth(e.target.value)}
+							/>
+						</div>
 					</div>
 				</form>
 			</div>

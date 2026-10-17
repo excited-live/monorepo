@@ -110,7 +110,7 @@ export const HomeView: React.FC = () => {
 						<span className="section-title">{t("section.entities", lang)}</span>
 						<button
 							type="button"
-							className="action-pill-btn"
+							className="action-pill-btn primary"
 							style={{ padding: "4px 12px", fontSize: "12px" }}
 							onClick={() => {
 								setSelectedBiz(null);
@@ -226,7 +226,7 @@ export const HomeView: React.FC = () => {
 						</div>
 						<button
 							type="button"
-							className="action-pill-btn"
+							className="action-pill-btn primary"
 							style={{ alignSelf: "flex-start" }}
 							onClick={() => {
 								setActiveEntityId("acc_personal");

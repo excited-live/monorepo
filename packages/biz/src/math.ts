@@ -19,6 +19,8 @@ export function calculateElapsedMonths(startDate: string, asOfDate: string): num
 
 export function calculateMonthlyEquivalent(amount: number, cycle: BillingCycle): number {
 	switch (cycle) {
+		case "one_time":
+			return round2(amount);
 		case "weekly":
 			return round2((amount * 52) / 12);
 		case "monthly":

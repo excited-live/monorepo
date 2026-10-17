@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	calculateAssetDepreciation,
 	calculateMonthlyEquivalent,
@@ -17,7 +17,6 @@ import { AddExpenseDrawer } from "../components/AddExpenseDrawer";
 import { AddGearDrawer } from "../components/AddGearDrawer";
 import { AddLiabilityDrawer } from "../components/AddLiabilityDrawer";
 import { AddRevenueDrawer } from "../components/AddRevenueDrawer";
-import { AdjustCashModal } from "../components/AdjustCashModal";
 import { CapitalDrawer } from "../components/CapitalDrawer";
 import { CapitalHeroCard } from "../components/CapitalHeroCard";
 import { HeroCarousel } from "../components/HeroCarousel";
@@ -49,7 +48,6 @@ export const CapitalView: React.FC = () => {
 	const [flipped, setFlipped] = useState(false);
 	const [isCapitalOpen, setIsCapitalOpen] = useState(false);
 	const [selectedTransfer, setSelectedTransfer] = useState<CapitalTransfer | null>(null);
-	const [isAdjustCashOpen, setIsAdjustCashOpen] = useState(false);
 
 	const [isExpenseOpen, setIsExpenseOpen] = useState(false);
 	const [selectedSub, setSelectedSub] = useState<RecurringSubscription | null>(null);
@@ -69,6 +67,13 @@ export const CapitalView: React.FC = () => {
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 
+	// Capital sub-tab removed in favor of hero derivation; fallback to income if previously set
+	useEffect(() => {
+		if (activeCapitalSubTab === "capital") {
+			setActiveCapitalSubTab("income");
+		}
+	}, [activeCapitalSubTab, setActiveCapitalSubTab]);
+
 	const monthActions = generateMonthlyLedger({
 		account: activeAccount,
 		yearMonth: selectedMonth,
@@ -84,21 +89,43 @@ export const CapitalView: React.FC = () => {
 	const entityHw = hardware.filter((h) => h.entityId === activeAccount.id);
 	const cashAssets = entityHw.filter((h) => isCashAsset(h));
 	const gearAssets = entityHw.filter((h) => !isCashAsset(h));
-	const entityRev = revenues.filter((r) => r.entityId === activeAccount.id && r.active);
+	const entityRev = revenues.filter((r) => {
+		if (r.entityId !== activeAccount.id || !r.active) return false;
+		if (selectedMonth) {
+			if (r.frequency === "one_time") return r.startMonth === selectedMonth;
+			if (r.startMonth && selectedMonth < r.startMonth) return false;
+			if (r.endMonth && selectedMonth > r.endMonth) return false;
+		}
+		return true;
+	});
 	const entityLiab = liabilities.filter((l) => l.entityId === activeAccount.id && l.active);
 
-	const hasSalaryStream = entityRev.some((r) => r.source === "salary");
-	const legacySalary = !hasSalaryStream && activeAccount.type === "personal" ? (activeAccount.salary ?? 0) : 0;
+	const hasConfiguredSalary = revenues.some(
+		(r) => r.entityId === activeAccount.id && r.source === "salary",
+	);
+	const legacySalary = !hasConfiguredSalary && activeAccount.type === "personal" ? (activeAccount.salary ?? 0) : 0;
 	const totalIncome = round2(
 		legacySalary +
-		entityRev.reduce(
-			(acc, r) => acc + (r.frequency === "yearly" ? round2(r.amount / 12) : r.frequency === "monthly" ? r.amount : 0),
-			0,
-		),
+			entityRev.reduce(
+				(acc, r) => acc + (r.frequency === "yearly" ? round2(r.amount / 12) : r.frequency === "monthly" ? r.amount : 0),
+				0,
+			),
 	);
 
+	// Capital transfers
+	const incomingTransfers = transfers.filter((t) => t.toEntityId === activeAccount.id);
+	const outgoingTransfers = transfers.filter((t) => t.fromEntityId === activeAccount.id);
+
+	// In personal account, seed capital deployed to ventures is treated as an operational expense
+	const personalCapitalBurn = isPersonal
+		? outgoingTransfers
+				.filter((t) => t.date.startsWith(selectedMonth))
+				.reduce((acc, t) => acc + t.amount, 0)
+		: 0;
+
 	const totalMonthlyExpenses = round2(
-		entitySubs.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0),
+		entitySubs.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
+			personalCapitalBurn,
 	);
 
 	const totalMonthlyLiabilities = round2(
@@ -123,19 +150,11 @@ export const CapitalView: React.FC = () => {
 		),
 	);
 
-	// Capital transfers
-	const incomingTransfers = transfers.filter((t) => t.toEntityId === activeAccount.id);
-	const outgoingTransfers = transfers.filter((t) => t.fromEntityId === activeAccount.id);
-	const relevantTransfers = isPersonal ? outgoingTransfers : incomingTransfers;
-	const totalCapitalIn = round2(incomingTransfers.reduce((acc, t) => acc + t.amount, 0));
-	const totalCapitalOut = round2(outgoingTransfers.reduce((acc, t) => acc + t.amount, 0));
-
 	const subTabs: Array<{ id: CapitalSubTab; label: string }> = [
-		{ id: "capital", label: t("subtab.capital", lang) },
-		{ id: "income", label: t("subtab.income", lang) },
-		{ id: "expense", label: t("subtab.expense", lang) },
-		{ id: "assets", label: t("subtab.assets", lang) },
-		{ id: "liability", label: t("subtab.liability", lang) },
+		{ id: "income" as CapitalSubTab, label: t("subtab.income", lang) },
+		{ id: "expense" as CapitalSubTab, label: t("subtab.expense", lang) },
+		{ id: "assets" as CapitalSubTab, label: t("subtab.assets", lang) },
+		{ id: "liability" as CapitalSubTab, label: t("subtab.liability", lang) },
 	];
 
 	return (
@@ -205,6 +224,9 @@ export const CapitalView: React.FC = () => {
 
 			{/* Main App Section (Sheet) */}
 			<div className="capital-app-sheet">
+				{/* Global Month Navigator accessible in all subtabs and views */}
+				<MonthStepper />
+
 				{!flipped ? (
 					<>
 						{/* Detail Mode Switcher */}
@@ -221,72 +243,6 @@ export const CapitalView: React.FC = () => {
 							))}
 						</div>
 
-						{/* Detail — Capital */}
-						{activeCapitalSubTab === "capital" && (
-							<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-								<div className="section-header">
-									<div>
-										<span className="section-title">{t("subtab.capital", lang)}</span>
-										<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
-											{isPersonal
-												? `Total Deployed to Ventures: ฿${formatMoney(totalCapitalOut)}`
-												: `Total Capital In: ฿${formatMoney(totalCapitalIn)}`}
-										</div>
-									</div>
-									<button
-										type="button"
-										className="action-pill-btn"
-										style={{ padding: "4px 12px", fontSize: "12px" }}
-										onClick={() => {
-											setSelectedTransfer(null);
-											setIsCapitalOpen(true);
-										}}
-									>
-										{isPersonal ? t("action.moveCapital", lang) : t("action.injectCapital", lang)}
-									</button>
-								</div>
-
-								{relevantTransfers.length === 0 ? (
-									<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
-										{isPersonal
-											? 'No seed capital deployed to ventures yet. Tap "+ Move Capital" to allocate funds.'
-											: "No capital transfers recorded for this business yet."}
-									</div>
-								) : (
-									<div className="item-list">
-										{relevantTransfers.map((tItem) => (
-											<div
-												key={tItem.id}
-												className="list-item-card"
-												style={{ cursor: "pointer" }}
-												onClick={() => {
-													setSelectedTransfer(tItem);
-													setIsCapitalOpen(true);
-												}}
-											>
-												<div className="item-thumb-wrapper">
-													<div className="item-thumb-fallback">CI</div>
-												</div>
-												<div className="item-info">
-													<span className="item-name">{tItem.note || (isPersonal ? "Capital Deployed" : "Capital Inflow")}</span>
-													<span className="item-sub">
-														{isPersonal ? "Seed to business" : "Capital inflow"} • {tItem.date}
-													</span>
-												</div>
-												<div className="item-amount-col">
-													<span className={`item-amount ${isPersonal ? "negative" : "positive"}`}>
-														{isPersonal ? `-฿${formatMoney(tItem.amount)}` : `+฿${formatMoney(tItem.amount)}`}
-													</span>
-													<span className="item-badge" style={{ backgroundColor: "rgba(207, 69, 0, 0.08)", color: "var(--signal-orange)" }}>
-														CAPITAL
-													</span>
-												</div>
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						)}
 
 						{/* Detail — Income */}
 						{activeCapitalSubTab === "income" && (
@@ -300,42 +256,63 @@ export const CapitalView: React.FC = () => {
 											{isPersonal ? "Base salary and operational income" : "Monthly recurring revenues and subscriptions"}
 										</div>
 									</div>
-									<button
-										type="button"
-										className="action-pill-btn"
-										style={{ padding: "4px 12px", fontSize: "12px" }}
-										onClick={() => {
-											setSelectedRev(null);
-											setIsRevenueOpen(true);
-										}}
-									>
-										{t("action.addIncome", lang)}
-									</button>
+									<div style={{ display: "flex", gap: "8px" }}>
+										{!isPersonal && (
+											<button
+												type="button"
+												className="action-pill-btn"
+												style={{ padding: "4px 12px", fontSize: "12px" }}
+												onClick={() => {
+													setSelectedTransfer(null);
+													setIsCapitalOpen(true);
+												}}
+											>
+												{t("action.injectCapital", lang)}
+											</button>
+										)}
+										<button
+											type="button"
+											className="action-pill-btn primary"
+											style={{ padding: "4px 12px", fontSize: "12px" }}
+											onClick={() => {
+												setSelectedRev(null);
+												setIsRevenueOpen(true);
+											}}
+										>
+											{t("action.addIncome", lang)}
+										</button>
+									</div>
 								</div>
 
-								{entityRev.length === 0 && !legacySalary ? (
+								{/* Base Salary Card (Personal Mode only, if set) */}
+								{isPersonal && activeAccount.salary && !hasConfiguredSalary && (
+									<div className="list-item-card">
+										<div className="item-thumb-wrapper">
+											<div className="item-thumb-fallback">💼</div>
+										</div>
+										<div className="item-info">
+											<span className="item-name">Primary Career Income</span>
+											<span className="item-sub">
+												Payday Day {activeAccount.paydayDayOfMonth ?? 28} • Net Monthly
+											</span>
+										</div>
+										<div className="item-amount-col">
+											<span className="item-amount positive">
+												+฿{formatMoney(activeAccount.salary)}
+											</span>
+											<span className="item-badge" style={{ backgroundColor: "rgba(10, 138, 77, 0.08)", color: "#0A8A4D" }}>
+												SALARY
+											</span>
+										</div>
+									</div>
+								)}
+
+								{entityRev.length === 0 && (!isPersonal || !activeAccount.salary) ? (
 									<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
 										No income streams registered for this entity.
 									</div>
 								) : (
 									<div className="item-list">
-										{legacySalary > 0 && !hasSalaryStream && (
-											<div className="list-item-card">
-												<div className="item-thumb-wrapper">
-													<div className="item-thumb-fallback">SA</div>
-												</div>
-												<div className="item-info">
-													<span className="item-name">Base Career Salary</span>
-													<span className="item-sub">Fixed monthly payroll</span>
-												</div>
-												<div className="item-amount-col">
-													<span className="item-amount positive">+฿{formatMoney(legacySalary)}</span>
-													<span className="item-badge" style={{ backgroundColor: "rgba(10, 138, 77, 0.08)", color: "#0A8A4D" }}>
-														SALARY
-													</span>
-												</div>
-											</div>
-										)}
 										{entityRev.map((rev) => (
 											<div
 												key={rev.id}
@@ -384,25 +361,29 @@ export const CapitalView: React.FC = () => {
 											Monthly Burn: ฿{formatMoney(totalMonthlyExpenses)}/mo
 										</span>
 										<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
-											Recurring operational commitments & services
+											{isPersonal
+												? "Recurring expenses & capital deployed to businesses"
+												: "Recurring operational commitments & services"}
 										</div>
 									</div>
-									<button
-										type="button"
-										className="action-pill-btn"
-										style={{ padding: "4px 12px", fontSize: "12px" }}
-										onClick={() => {
-											setSelectedSub(null);
-											setIsExpenseOpen(true);
-										}}
-									>
-										{t("action.addExpense", lang)}
-									</button>
+									<div style={{ display: "flex", gap: "6px" }}>
+										<button
+											type="button"
+											className="action-pill-btn primary"
+											style={{ padding: "4px 12px", fontSize: "12px" }}
+											onClick={() => {
+												setSelectedSub(null);
+												setIsExpenseOpen(true);
+											}}
+										>
+											{t("action.addExpense", lang)}
+										</button>
+									</div>
 								</div>
 
-								{entitySubs.length === 0 ? (
+								{entitySubs.length === 0 && (!isPersonal || outgoingTransfers.length === 0) ? (
 									<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
-										No recurring expenses registered for this entity.
+										No expenses registered for this entity.
 									</div>
 								) : (
 									<div className="item-list">
@@ -440,6 +421,44 @@ export const CapitalView: React.FC = () => {
 												</div>
 											</div>
 										))}
+
+										{/* Outgoing Capital Transfers (treated as expenses for personal) */}
+										{isPersonal &&
+											outgoingTransfers.map((tItem) => (
+												<div
+													key={tItem.id}
+													className="list-item-card"
+													style={{ cursor: "pointer" }}
+													onClick={() => {
+														setSelectedTransfer(tItem);
+														setIsCapitalOpen(true);
+													}}
+												>
+													<div className="item-thumb-wrapper">
+														<div className="item-thumb-fallback">CI</div>
+													</div>
+													<div className="item-info">
+														<span className="item-name">{tItem.note || "Capital Deployed"}</span>
+														<span className="item-sub">
+															Seed to business • {tItem.date}
+														</span>
+													</div>
+													<div className="item-amount-col">
+														<span className="item-amount negative">
+															-฿{formatMoney(tItem.amount)}
+														</span>
+														<span
+															className="item-badge"
+															style={{
+																backgroundColor: "rgba(207, 69, 0, 0.08)",
+																color: "var(--signal-orange)",
+															}}
+														>
+															CAPITAL
+														</span>
+													</div>
+												</div>
+											))}
 									</div>
 								)}
 							</div>
@@ -457,59 +476,61 @@ export const CapitalView: React.FC = () => {
 												Total Cash: ฿{formatMoney(totalLiquidReserves)} (Held at 100% value)
 											</div>
 										</div>
-										<div style={{ display: "flex", gap: "6px" }}>
-											<button
-												type="button"
-												className="action-pill-btn"
-												style={{ padding: "4px 12px", fontSize: "12px" }}
-												onClick={() => setIsAdjustCashOpen(true)}
-											>
-												{t("action.adjustBalance", lang)}
-											</button>
-											<button
-												type="button"
-												className="action-pill-btn"
-												style={{ padding: "4px 12px", fontSize: "12px" }}
-												onClick={() => {
-													setSelectedHw(null);
-													setIsGearOpen(true);
-												}}
-											>
-												+ Add Asset
-											</button>
-										</div>
+										<button
+											type="button"
+											className="action-pill-btn primary"
+											style={{ padding: "4px 12px", fontSize: "12px" }}
+											onClick={() => {
+												setSelectedHw(null);
+												setIsGearOpen(true);
+											}}
+										>
+											+ Add Asset
+										</button>
 									</div>
 
 									{cashAssets.length === 0 ? (
 										<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "16px" }}>
-											No cash/reserve accounts tracked. Tap "Adjust Balance" to calibrate.
+											No cash/reserve accounts tracked. Tap "+ Add Asset" to add cash reserves.
 										</div>
 									) : (
 										<div className="item-list">
-											{cashAssets.map((hw) => (
-												<div
-													key={hw.id}
-													className="list-item-card"
-													onClick={() => {
-														setSelectedHw(hw);
-														setIsGearOpen(true);
-													}}
-												>
-													<div className="item-thumb-wrapper">
-														<div className="item-thumb-fallback">฿</div>
+											{cashAssets.map((hw) => {
+												const assetInjections = incomingTransfers
+													.filter((t) => t.targetAssetId === hw.id)
+													.reduce((sum, t) => sum + t.amount, 0);
+												const displayedCashCost = hw.cost + assetInjections;
+												return (
+													<div
+														key={hw.id}
+														className="list-item-card"
+														onClick={() => {
+															setSelectedHw(hw);
+															setIsGearOpen(true);
+														}}
+													>
+														<div className="item-thumb-wrapper">
+															{hw.imageUrl ? (
+																<img src={hw.imageUrl} alt={hw.name} className="item-thumb" />
+															) : (
+																<div className="item-thumb-fallback">฿</div>
+															)}
+														</div>
+														<div className="item-info">
+															<span className="item-name">{hw.name}</span>
+															<span className="item-sub">
+																Liquid Reserve {assetInjections > 0 ? `• Injected: ฿${formatMoney(assetInjections)}` : "(No Depreciation)"}
+															</span>
+														</div>
+														<div className="item-amount-col">
+															<span className="item-amount positive">฿{formatMoney(displayedCashCost)}</span>
+															<span className="item-badge" style={{ backgroundColor: "rgba(10, 138, 77, 0.08)", color: "#0A8A4D" }}>
+																CASH
+															</span>
+														</div>
 													</div>
-													<div className="item-info">
-														<span className="item-name">{hw.name}</span>
-														<span className="item-sub">Liquid Reserve (No Depreciation)</span>
-													</div>
-													<div className="item-amount-col">
-														<span className="item-amount positive">฿{formatMoney(hw.cost)}</span>
-														<span className="item-badge" style={{ backgroundColor: "rgba(10, 138, 77, 0.08)", color: "#0A8A4D" }}>
-															CASH
-														</span>
-													</div>
-												</div>
-											))}
+												);
+											})}
 										</div>
 									)}
 								</div>
@@ -592,14 +613,14 @@ export const CapitalView: React.FC = () => {
 									</div>
 									<button
 										type="button"
-										className="action-pill-btn"
+										className="action-pill-btn primary"
 										style={{ padding: "4px 12px", fontSize: "12px" }}
 										onClick={() => {
 											setSelectedLiab(null);
 											setIsLiabilityOpen(true);
 										}}
 									>
-										{t("action.addLiability", lang)}
+										{t("action.registerLiability", lang)}
 									</button>
 								</div>
 
@@ -622,15 +643,13 @@ export const CapitalView: React.FC = () => {
 													{liab.imageUrl ? (
 														<img src={liab.imageUrl} alt={liab.name} className="item-thumb" />
 													) : (
-														<div className="item-thumb-fallback">
-															{liab.name.slice(0, 2).toUpperCase()}
-														</div>
+														<div className="item-thumb-fallback">💳</div>
 													)}
 												</div>
 												<div className="item-info">
 													<span className="item-name">{liab.name}</span>
 													<span className="item-sub">
-														{liab.category.replace(/_/g, " ")}{liab.notes ? ` • ${liab.notes}` : ""}
+														Debt Payment • {liab.category.replace(/_/g, " ")}
 													</span>
 												</div>
 												<div className="item-amount-col">
@@ -650,66 +669,65 @@ export const CapitalView: React.FC = () => {
 					</>
 				) : (
 					<>
-						{/* Back — Month Selection Archive */}
-						<MonthStepper />
-
-						<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-							<div className="section-header">
-								<span className="section-title">Month Archive</span>
-								<span style={{ fontSize: "12px", color: "var(--slate-gray)" }}>
-									{monthActions.length} events
-								</span>
+						{/* Month Action Items */}
+						<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+							<div className="section-title">
+								{t("ledger.actions", lang, {
+									count: monthActions.length,
+									month: selectedMonth,
+								})}
 							</div>
 
 							{monthActions.length === 0 ? (
 								<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
-									No charges or transactions logged for this month.
+									{t("ledger.empty", lang)}
 								</div>
 							) : (
 								<div className="item-list">
-									{monthActions.map((act) => {
-										const isPositive = act.amount >= 0;
-										const isDepreciation = act.type === "depreciation";
-
-										const matchSub = subscriptions.find((sb) => sb.id === act.reference || sb.id === act.id);
-										const matchHw = hardware.find((hw) => hw.id === act.reference || hw.id === act.id);
-										const matchRev = revenues.find((rv) => rv.id === act.reference || rv.id === act.id);
-										const matchLiab = liabilities.find((lb) => lb.id === act.reference || lb.id === act.id);
-										const itemImage = matchSub?.imageUrl || matchHw?.imageUrl || matchRev?.imageUrl || matchLiab?.imageUrl;
-
-										return (
-											<div key={act.id} className="list-item-card">
-												<div className="item-thumb-wrapper">
-													{itemImage ? (
-														<img src={itemImage} alt={act.title} className="item-thumb" />
-													) : (
-														<div className="item-thumb-fallback">
-															{act.title.slice(0, 2).toUpperCase()}
-														</div>
-													)}
-												</div>
-												<div className="item-info">
-													<span className="item-name">{act.title}</span>
-													<span className="item-sub">
-														{act.date} • {act.category || act.type.toUpperCase()}
-													</span>
-												</div>
-												<div className="item-amount-col">
-													<span
-														className={`item-amount ${isPositive ? "positive" : isDepreciation ? "" : "negative"}`}
-														style={{ color: isDepreciation ? "var(--slate-gray)" : undefined }}
-													>
-														{isPositive ? `+฿ ${formatMoney(act.amount)}` : `-฿ ${formatMoney(Math.abs(act.amount))}`}
-													</span>
-													{isDepreciation && (
-														<span className="item-badge" style={{ backgroundColor: "rgba(20, 20, 19, 0.05)", color: "var(--slate-gray)" }}>
-															Non-Cash
-														</span>
-													)}
+									{monthActions.map((action) => (
+										<div key={action.id} className="list-item-card" style={{ cursor: "default" }}>
+											<div className="item-thumb-wrapper">
+												<div className="item-thumb-fallback">
+													{action.type === "inflow"
+														? "↓"
+														: action.type === "outflow"
+															? "↑"
+															: "⚡"}
 												</div>
 											</div>
-										);
-									})}
+											<div className="item-info">
+												<span className="item-name">{action.title}</span>
+												<span className="item-sub">
+													{action.date} • {action.category ? action.category.replace(/_/g, " ") : action.type}
+												</span>
+											</div>
+											<div className="item-amount-col">
+												<span
+													className={`item-amount ${
+														action.amount > 0 ? "positive" : "negative"
+													}`}
+												>
+													{action.amount > 0 ? "+" : ""}฿
+													{formatMoney(Math.abs(action.amount))}
+												</span>
+												<span
+													className="item-badge"
+													style={{
+														backgroundColor:
+															action.type === "inflow"
+																? "rgba(10, 138, 77, 0.08)"
+																: "rgba(207, 69, 0, 0.08)",
+														color:
+															action.type === "inflow"
+																? "#0A8A4D"
+																: "var(--signal-orange)",
+													}}
+												>
+													{action.type.toUpperCase()}
+												</span>
+											</div>
+										</div>
+									))}
 								</div>
 							)}
 						</div>
@@ -726,7 +744,6 @@ export const CapitalView: React.FC = () => {
 				}}
 				initialData={selectedTransfer}
 			/>
-			<AdjustCashModal isOpen={isAdjustCashOpen} onClose={() => setIsAdjustCashOpen(false)} />
 			<AddBusinessDrawer
 				isOpen={isEditBizOpen}
 				onClose={() => {

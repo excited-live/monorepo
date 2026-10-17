@@ -1,6 +1,7 @@
 import React, { createContext, useEffect, useMemo, useState } from "react";
 import {
 	calculateCurrentTreasury,
+	isCashAsset,
 	SEED_ACCOUNTS,
 	SEED_HARDWARE,
 	SEED_LIABILITIES,
@@ -47,7 +48,14 @@ export interface BizContextType {
 	setActiveCapitalSubTab: (tab: CapitalSubTab) => void;
 	setSelectedMonth: (month: string) => void;
 	setLang: (lang: MobileLocale) => void;
-	injectCapital: (fromEntityId: string, toEntityId: string, amount: number, note?: string) => void;
+	injectCapital: (
+		fromEntityId: string,
+		toEntityId: string,
+		amount: number,
+		note?: string,
+		frequency?: "one_time" | "monthly",
+		targetAssetId?: string,
+	) => void;
 	updateCapitalTransfer: (transfer: CapitalTransfer) => void;
 	deleteCapitalTransfer: (id: string) => void;
 	addSubscription: (sub: Omit<RecurringSubscription, "id">) => void;
@@ -69,6 +77,8 @@ export interface BizContextType {
 		title?: string,
 		company?: string,
 		imageUrl?: string,
+		startMonth?: string,
+		endMonth?: string,
 	) => void;
 	updateCareer: (
 		entityId: string,
@@ -80,7 +90,6 @@ export interface BizContextType {
 			paydayDayOfMonth?: number;
 		},
 	) => void;
-	updateCashReserve: (entityId: string, newAmount: number) => void;
 	addBusiness: (name: string, imageUrl?: string, startingTreasury?: number) => string;
 	updateBusiness: (id: string, name: string, imageUrl?: string) => void;
 	deleteBusiness: (id: string) => void;
@@ -283,7 +292,34 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		toEntityId: string,
 		amount: number,
 		note?: string,
+		frequency: "one_time" | "monthly" = "one_time",
+		targetAssetId?: string,
 	) => {
+		const toCashAssets = hardware.filter((h) => h.entityId === toEntityId && isCashAsset(h));
+		let resolvedTargetAssetId = targetAssetId;
+
+		if (resolvedTargetAssetId === "primary_cash" || (!resolvedTargetAssetId && toCashAssets.length === 0)) {
+			const existingPrimary = toCashAssets[0];
+			if (existingPrimary) {
+				resolvedTargetAssetId = existingPrimary.id;
+			} else {
+				const newAssetId = `hw_cash_${Date.now()}`;
+				const newAsset: HardwareAsset = {
+					id: newAssetId,
+					entityId: toEntityId,
+					name: "Primary Cash Account",
+					cost: 0,
+					lifespanMonths: 0,
+					purchaseDate: selectedMonth,
+					category: "cash",
+				};
+				setHardware((prev) => [...prev, newAsset]);
+				resolvedTargetAssetId = newAssetId;
+			}
+		} else if (!resolvedTargetAssetId && toCashAssets.length > 0) {
+			resolvedTargetAssetId = toCashAssets[0].id;
+		}
+
 		const newTx: CapitalTransfer = {
 			id: `tx_${Date.now()}`,
 			fromEntityId,
@@ -291,6 +327,8 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			amount,
 			date: selectedMonth,
 			note: note || "Capital transfer",
+			frequency,
+			...(resolvedTargetAssetId ? { targetAssetId: resolvedTargetAssetId } : {}),
 		};
 		setTransfers((prev) => [newTx, ...prev]);
 	};
@@ -360,6 +398,8 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		title?: string,
 		company?: string,
 		imageUrl?: string,
+		startMonth?: string,
+		endMonth?: string,
 	) => {
 		setRawAccounts((prev: EntityAccount[]) =>
 			prev.map((acc) =>
@@ -387,6 +427,9 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 					amount: salary,
 					name: title || curr.name || "Career Base Salary",
 					active: salary > 0,
+					source: "salary",
+					...(startMonth !== undefined ? { startMonth: startMonth || undefined } : {}),
+					...(endMonth !== undefined ? { endMonth: endMonth || undefined } : {}),
 				};
 				return updated;
 			}
@@ -400,28 +443,14 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 						frequency: "monthly",
 						source: "salary",
 						active: true,
+						startMonth: startMonth || undefined,
+						endMonth: endMonth || undefined,
 					},
 					...prev,
 				];
 			}
 			return prev;
 		});
-	};
-
-	const updateCashReserve = (entityId: string, newAmount: number) => {
-		const targetAcc = accounts.find((a) => a.id === entityId);
-		if (!targetAcc) return;
-		const delta = newAmount - targetAcc.cashReserve;
-		if (delta === 0) return;
-		const adjustmentTx: CapitalTransfer = {
-			id: `adj_${Date.now()}`,
-			fromEntityId: delta < 0 ? entityId : "external",
-			toEntityId: delta > 0 ? entityId : "external",
-			amount: Math.abs(delta),
-			date: selectedMonth,
-			note: `Cash reserve manual calibration (${delta > 0 ? "+" : ""}${delta})`,
-		};
-		setTransfers((prev) => [adjustmentTx, ...prev]);
 	};
 
 	const deleteBusiness = (id: string) => {
@@ -479,6 +508,14 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	};
 
 	const deleteRevenue = (id: string) => {
+		const rev = revenues.find((r) => r.id === id);
+		if (rev && (rev.source === "salary" || rev.id === "rev_career_prame")) {
+			setRawAccounts((prev) =>
+				prev.map((acc) =>
+					acc.id === rev.entityId ? { ...acc, salary: 0 } : acc,
+				),
+			);
+		}
 		setRevenues((prev) => prev.filter((r) => r.id !== id));
 	};
 
@@ -499,13 +536,18 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	};
 
 	const resetToBaseline = () => {
+		storage.clear();
 		setRawAccounts(SEED_ACCOUNTS);
 		setSubscriptions(SEED_SUBSCRIPTIONS);
 		setHardware(SEED_HARDWARE);
 		setRevenues(SEED_REVENUES);
 		setLiabilities(SEED_LIABILITIES);
 		setTransfers(SEED_TRANSFERS);
+		setUserSession(DEFAULT_SESSION);
 		setActiveEntityId("acc_personal");
+		setActiveTab("home");
+		setActiveCapitalSubTab("income");
+		setSelectedMonth("2026-10");
 	};
 
 	const restoreBackup = (data: {
@@ -556,7 +598,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		deleteBusiness,
 		updateCareer,
 		setCareerIncome,
-		updateCashReserve,
 		addSubscription,
 		updateSubscription,
 		deleteSubscription,

@@ -18,14 +18,31 @@
 	justify-content: space-between;
 }
 
-.signin-container {
+/* ==========================================================================
+   Full-Screen Authentication Gate & In-App SignIn View
+   ========================================================================== */
+
+.auth-gate-shell {
+	padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+	padding-top: max(20px, env(safe-area-inset-top)) !important;
+	min-height: 100vh;
+	min-height: 100dvh;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
+}
+
+.signin-container {
+	display: flex;
+	flex-direction: column;
 	align-items: center;
-	min-height: calc(100dvh - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
-	padding: 24px 12px;
+	justify-content: center;
+	min-height: 100dvh;
+	padding: 24px 20px;
 	width: 100%;
+	max-width: 440px;
+	margin: 0 auto;
+	box-sizing: border-box;
 }
 
 .signin-hero {
@@ -33,172 +50,201 @@
 	flex-direction: column;
 	align-items: center;
 	text-align: center;
-	margin-top: auto;
-	margin-bottom: auto;
-	width: 100%;
-	max-width: 360px;
-}
-
-.signin-medallion {
-	width: 100px;
-	height: 100px;
-	border-radius: 34px;
-	background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(243, 240, 238, 0.7));
-	backdrop-filter: blur(24px) saturate(180%);
-	-webkit-backdrop-filter: blur(24px) saturate(180%);backdrop-filter: blur(24px) saturate(180%);backdrop-filter: blur(24px) saturate(180%);
-	border: 1px solid rgba(255, 255, 255, 0.9);
-	box-shadow: 0 20px 48px rgba(207, 69, 0, 0.14), 0 4px 16px rgba(20, 20, 19, 0.05);
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	margin-bottom: 24px;
+	width: 100%;
 }
 
-.signin-title {
+.signin-logo {
+	width: 56px;
+	height: 48px;
+	object-fit: contain;
+	margin-bottom: 16px;
+	display: block;
+}
+
+.signin-app-title {
 	font-size: 26px;
 	font-weight: 800;
 	letter-spacing: -0.03em;
 	color: var(--ink-black);
-	line-height: 1.18;
+	line-height: 1.15;
+	margin: 0 0 6px 0;
 }
 
-.signin-actions {
+.signin-app-tagline {
+	font-size: 14px;
+	color: var(--slate-gray);
+	margin: 0;
+	line-height: 1.4;
+}
+
+.signin-card {
+	width: 100%;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	padding: 0;
+	box-shadow: none;
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	width: 100%;
-	max-width: 320px;
-	margin: 36px auto 0;
+	gap: 16px;
 }
 
-.signin-btn-primary {
+.signin-form {
 	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 10px;
+	flex-direction: column;
+	gap: 16px;
 	width: 100%;
-	height: 52px;
-	background: var(--ink-black);
-	color: #ffffff;
-	border: none;
-	border-radius: var(--radius-pill);
-	font-size: 15px;
+}
+
+.signin-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	text-align: left;
+}
+
+.signin-label,
+.signin-field-label {
+	font-size: 12px;
 	font-weight: 700;
-	cursor: pointer;
-	box-shadow: 0 8px 24px rgba(20, 20, 19, 0.16);
-	transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-	-webkit-tap-highlight-color: transparent;
-}
-
-.signin-btn-primary:active {
-	transform: scale(0.97);
-	background: #000000;
-}
-
-.signin-btn-guest {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 44px;
-	background: transparent;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	color: var(--slate-gray);
-	border: 1px solid rgba(20, 20, 19, 0.14);
-	border-radius: var(--radius-pill);
-	font-size: 14px;
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-	-webkit-tap-highlight-color: transparent;
 }
 
-.signin-btn-guest:active {
-	background: rgba(20, 20, 19, 0.05);
-}
-
-.signin-btn-google {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 10px;
+.signin-input {
 	width: 100%;
-	height: 48px;
+	padding: 13px 16px;
+	border-radius: 14px;
+	border: 1px solid var(--border-subtle, rgba(20, 20, 19, 0.12));
 	background: #ffffff;
 	color: var(--ink-black);
-	border: 1px solid rgba(20, 20, 19, 0.14);
-	border-radius: var(--radius-pill);
-	font-size: 14px;
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-	-webkit-tap-highlight-color: transparent;
+	font: inherit;
+	font-size: 15px;
+	box-sizing: border-box;
+	outline: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.signin-btn-google:active {
-	background: rgba(20, 20, 19, 0.04);
+.signin-input:focus {
+	border-color: var(--ink-black);
+	box-shadow: 0 0 0 2px rgba(20, 20, 19, 0.12);
 }
 
-.signin-btn-primary:disabled,
-.signin-btn-google:disabled {
-	opacity: 0.45;
-	cursor: not-allowed;
-}
-
-.signin-btn-primary:disabled:active,
-.signin-btn-google:disabled:active {
-	transform: none;
-}
-
-.signin-terms {
+.signin-checkbox-label {
 	display: flex;
 	align-items: flex-start;
 	gap: 8px;
 	font-size: 12.5px;
 	line-height: 1.4;
 	color: var(--slate-gray);
+	cursor: pointer;
+	text-align: left;
 }
 
-.signin-terms-checkbox {
+.signin-checkbox-label input[type="checkbox"] {
 	width: 16px;
 	height: 16px;
-	margin: 1px 0 0;
+	margin: 2px 0 0;
 	accent-color: var(--signal-orange, #cf4500);
 	flex-shrink: 0;
 	cursor: pointer;
 }
 
-.signin-terms-link {
+.signin-link {
 	color: var(--signal-orange, #cf4500);
 	font-weight: 600;
 	text-decoration: none;
 }
 
-.signin-footer {
+.signin-error {
+	font-size: 13px;
+	color: var(--signal-orange, #cf4500);
+	margin: 0;
+	text-align: left;
+}
+
+.signin-button {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: 100%;
+	height: 48px;
+	border-radius: var(--radius-pill, 9999px);
+	font-size: 14.5px;
+	font-weight: 700;
+	cursor: pointer;
+	border: none;
+	box-sizing: border-box;
+	transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	-webkit-tap-highlight-color: transparent;
+}
+
+.signin-button.primary {
+	background: var(--ink-black, #141413);
+	color: #ffffff;
+	box-shadow: 0 4px 16px rgba(20, 20, 19, 0.14);
+}
+
+.signin-button.primary:active:not(:disabled) {
+	transform: scale(0.98);
+	background: #000000;
+}
+
+.signin-button.google {
+	background: #ffffff;
+	color: var(--ink-black, #141413);
+	border: 1px solid var(--border-subtle, rgba(20, 20, 19, 0.12));
+}
+
+.signin-button.google:active:not(:disabled) {
+	background: rgba(20, 20, 19, 0.04);
+	transform: scale(0.98);
+}
+
+.signin-button.guest {
+	background: transparent;
+	color: var(--slate-gray);
+	border: 1px solid var(--border-subtle, rgba(20, 20, 19, 0.12));
+	height: 42px;
+	font-size: 13.5px;
+	font-weight: 600;
+}
+
+.signin-button.guest:active:not(:disabled) {
+	background: rgba(20, 20, 19, 0.04);
+	transform: scale(0.98);
+}
+
+.signin-button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.signin-divider {
+	display: flex;
 	align-items: center;
 	text-align: center;
-	gap: 6px;
-	padding-top: 24px;
-	border-top: 1px solid rgba(20, 20, 19, 0.08);
-	width: 100%;
-	max-width: 340px;
-	margin-top: auto;
-}
-
-.signin-footer-brand {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--ink-black);
-}
-
-.signin-footer-sub {
-	font-size: 12px;
 	color: var(--slate-gray);
+	font-size: 12px;
+	font-weight: 500;
+	margin: 2px 0;
 }
+
+.signin-divider::before,
+.signin-divider::after {
+	content: "";
+	flex: 1;
+	border-bottom: 1px solid var(--border-subtle, rgba(20, 20, 19, 0.08));
+}
+
+.signin-divider span {
+	padding: 0 10px;
+}
+
 /* ==========================================================================
    Hero Variants — same org photo canvas, one treatment per tab
    Capital = natural org photo (default lens) · Ledger = archive grayscale
@@ -391,61 +437,23 @@
 	color: #9a3a0a;
 }
 
-.hero-flip:not(.flipped) .hero-flip-face.back {
-	pointer-events: none;
+.hero-flip:not(.flipped) .hero-flip-face.front,
+.hero-flip.flipped .hero-flip-face.back {
+	z-index: 2;
+	pointer-events: auto;
 }
 
+.hero-flip:not(.flipped) .hero-flip-face.back,
 .hero-flip.flipped .hero-flip-face.front {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
 	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
 }
 
-/* Sign-in form (Better Auth in-app sign-in — views/SignInView.tsx) */
-.signin-form {
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-	width: 100%;
-	margin-top: 8px;
-	text-align: left;
-}
-
-.signin-field {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.signin-field-label {
-	font-size: 12px;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	color: var(--slate-gray, #5c6672);
-}
-
-.signin-input {
-	width: 100%;
-	padding: 12px 16px;
-	border-radius: 16px;
-	border: 1px solid rgba(20, 20, 19, 0.12);
-	background: rgba(255, 255, 255, 0.9);
-	color: var(--ink-black, #141413);
-	font: inherit;
-	font-size: 15px;
-	outline: none;
-	transition: border-color 120ms ease, box-shadow 120ms ease;
-}
-
-.signin-input:focus {
-	border-color: var(--signal-orange, #cf4500);
-	box-shadow: 0 0 0 3px rgba(207, 69, 0, 0.12);
-}
-
-.signin-error {
-	font-size: 13px;
-	color: var(--signal-orange, #cf4500);
-	margin: 0;
-}
+/* Sign-in styles moved to dedicated auth section */
 
 /* Revenue drawer — image operations on top */
 .modal-image-actions {
@@ -516,13 +524,6 @@
 	white-space: nowrap;
 }
 
-.hero-flip:not(.flipped) .hero-flip-face.back,
-.hero-flip.flipped .hero-flip-face.front {
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-}
-
 /* Chart y-axis value labels */
 .hero-chart-ylabel {
 	position: absolute;
@@ -534,10 +535,11 @@
 	white-space: nowrap;
 }
 
-.hero-top-right {
+.hero-top-right,
+.hero-top-actions {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
 	flex-shrink: 0;
 }
 
@@ -749,7 +751,7 @@
 	right: -16px;
 	width: calc(100% + 32px);
 	margin-top: calc(-1 * (56px + max(0px, env(safe-area-inset-top) - 14px)));
-	height: calc(415px + max(0px, env(safe-area-inset-top)));
+	height: calc(440px + max(0px, env(safe-area-inset-top)));
 	overflow: hidden;
 	background: #141413;
 	z-index: 1;
@@ -790,16 +792,14 @@
 	width: calc(100% + 32px);
 	margin-left: -16px;
 	margin-right: -16px;
-	margin-top: -115px; /* Tucked higher per user request */
+	margin-top: -105px; /* Overlaps up to around the hero separator (hero-divider) */
 	border-top-left-radius: 32px;
 	border-top-right-radius: 32px;
 	background: var(--lifted-cream, #fcfbfa);
 	border-top: 1px solid var(--border-subtle);
 	box-shadow: 0 -12px 32px -4px rgba(20, 20, 19, 0.08);
-	/* Same as the home sheet: fills the shell content box and extends through the
-	   dock clearance so the sheet reaches the screen bottom. */
 	flex: 1;
-	padding: 130px 16px calc(40px + max(96px, calc(env(safe-area-inset-bottom) + 84px))); /* Top clearance: floating hero card + pager */
+	padding: 130px 16px calc(40px + max(96px, calc(env(safe-area-inset-bottom) + 84px))); /* Clearance for floating hero card & pager so MonthStepper does not overlap */
 	margin-bottom: calc(-1 * max(96px, calc(env(safe-area-inset-bottom) + 84px)));
 	display: flex;
 	flex-direction: column;
@@ -1130,4 +1130,200 @@
 	font-weight: 600;
 	color: var(--slate-gray);
 	margin-left: 6px;
+}
+
+/* Hero Balance Row & EOM Toggle / Badge */
+.hero-balance-row {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.hero-eom-tag {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--hero-muted);
+	background: var(--hero-pill-bg, rgba(20, 20, 19, 0.08));
+	border: 1px solid var(--hero-pill-border, rgba(20, 20, 19, 0.1));
+	padding: 2px 8px;
+	border-radius: var(--radius-pill);
+	text-shadow: var(--hero-text-shadow);
+}
+
+.hero-mode-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-family: var(--font-family);
+	font-size: 10.5px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: var(--radius-pill);
+	border: 1px solid var(--hero-pill-border, rgba(255, 255, 255, 0.5));
+	background: var(--hero-pill-bg, rgba(252, 251, 250, 0.7));
+	color: var(--hero-text);
+	cursor: pointer;
+	transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	-webkit-tap-highlight-color: transparent;
+	text-shadow: var(--hero-text-shadow);
+	flex-shrink: 0;
+}
+
+.hero-mode-toggle:active {
+	transform: scale(0.92);
+}
+
+.hero-mode-toggle.active {
+	background: var(--ink-black);
+	color: var(--canvas-cream);
+	border-color: var(--ink-black);
+	text-shadow: none;
+}
+
+.hero-card.tone-dark .hero-mode-toggle.active {
+	background: var(--canvas-cream);
+	color: var(--ink-black);
+	border-color: var(--canvas-cream);
+	text-shadow: none;
+}
+
+/* 4-Metric Hero Row (Single Line, No Overflow) */
+.hero-meta-row {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 6px;
+	width: 100%;
+	text-shadow: var(--hero-text-shadow);
+}
+
+.hero-meta-item {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.hero-meta-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--hero-muted);
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.hero-meta-value {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--hero-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.hero-meta-ratio {
+	font-size: 10px;
+	font-weight: 500;
+	opacity: 0.85;
+}
+
+/* Month Stepper interactive picker button */
+.stepper-label-btn {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: var(--radius-pill, 9999px);
+	transition: background-color 0.15s ease;
+	position: relative;
+	font-family: inherit;
+}
+
+.stepper-label-btn:hover {
+	background-color: rgba(20, 20, 19, 0.05);
+}
+
+.stepper-label-btn:active {
+	background-color: rgba(20, 20, 19, 0.1);
+}
+
+.stepper-picker-icon {
+	color: var(--slate-gray);
+	transition: transform 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+}
+
+.stepper-hidden-input {
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 1px;
+	pointer-events: none;
+	clip: rect(0, 0, 0, 0);
+}
+
+.item-thumb {
+	object-fit: cover;
+	width: 100%;
+	height: 100%;
+	display: block;
+	flex-shrink: 0;
+}
+
+.hero-meta-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px 16px;
+	width: 100%;
+}
+
+.hero-meta-col {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-width: 0;
+	gap: 6px;
+}
+
+.hero-meta-col .hero-meta-label {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--slate-gray);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.hero-meta-col .hero-meta-value {
+	font-size: 12px;
+	font-weight: 700;
+	white-space: nowrap;
+	color: var(--ink-black);
+}
+
+.hero-meta-col .hero-meta-value.positive {
+	color: var(--signal-green, #0a8a4d);
+}
+
+.hero-meta-col .hero-meta-value.negative {
+	color: var(--signal-orange, #cf4500);
+}
+
+.hero-status-pill.capital {
+	background: var(--hero-pill-bg, rgba(20, 20, 19, 0.06));
+	color: var(--hero-muted, var(--slate-gray));
+	border: 1px solid var(--hero-pill-border, rgba(20, 20, 19, 0.1));
+	font-weight: 600;
 }

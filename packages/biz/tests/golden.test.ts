@@ -113,4 +113,45 @@ describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
 		expect(ledger.summary.totalDepreciation).toBe(166.67); // Nothing phone 2a
 		expect(ledger.actions.length).toBeGreaterThan(0);
 	});
+
+	it("correctly stops career salary inflow after endMonth has passed", () => {
+		const personalAccount = {
+			...SEED_ACCOUNTS.find((a) => a.id === "acc_personal")!,
+			salary: 75000,
+		};
+		const careerRevenues = [
+			{
+				id: "rev_career_prame",
+				entityId: personalAccount.id,
+				name: "Engineering Lead",
+				amount: 75000,
+				frequency: "monthly" as const,
+				source: "salary" as const,
+				active: true,
+				startMonth: "2026-01",
+				endMonth: "2026-06",
+			},
+		];
+
+		const ledgerBeforeEnd = generateMonthlyLedger({
+			account: personalAccount,
+			yearMonth: "2026-06",
+			subscriptions: [],
+			hardware: [],
+			revenues: careerRevenues,
+			transfers: [],
+		});
+		expect(ledgerBeforeEnd.summary.totalInflow).toBe(75000);
+
+		const ledgerAfterEnd = generateMonthlyLedger({
+			account: personalAccount,
+			yearMonth: "2026-07",
+			subscriptions: [],
+			hardware: [],
+			revenues: careerRevenues,
+			transfers: [],
+		});
+		expect(ledgerAfterEnd.summary.totalInflow).toBe(0);
+		expect(ledgerAfterEnd.actions.filter((a) => a.category === "salary")).toHaveLength(0);
+	});
 });

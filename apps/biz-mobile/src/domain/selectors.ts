@@ -1,7 +1,5 @@
 import {
 	calculateAssetDepreciation,
-	calculateDerivedTreasury,
-	calculateMonthlyEquivalent,
 	calculateRunway,
 	generateMonthlyLedger,
 	isCashAsset,
@@ -54,43 +52,40 @@ export function calculateEntityWealthMetrics(params: {
 	);
 	const totalAssetsValue = round2(gearAssetsValue + cashAssetsValue);
 
-	const currentLiquid = account.cashReserve;
-	const eomLiquid = calculateDerivedTreasury({
+	// Compute cashflow ledger for the selected month to derive accurate runway & runrate
+	const ledger = generateMonthlyLedger({
 		account,
-		subscriptions,
-		revenues,
-		liabilities,
-		hardware,
-		transfers,
 		yearMonth,
+		subscriptions,
+		hardware,
+		revenues,
+		transfers,
+		liabilities,
 	});
+
+	const {
+		startingTreasury,
+		endingTreasury,
+		totalInflow,
+		totalCashOutflow,
+	} = ledger.summary;
+
+	const currentLiquid = startingTreasury;
+	const eomLiquid = endingTreasury;
 
 	const currentWealth = round2(currentLiquid + gearAssetsValue);
 	const eomWealth = round2(eomLiquid + gearAssetsValue);
 	const liquidPct = currentWealth > 0 ? Math.round((currentLiquid / currentWealth) * 100) : 0;
 	const gearPct = 100 - liquidPct;
 
-	const entityRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
-	const hasSalaryStream = entityRevenues.some((r) => r.source === "salary");
-	const legacySalary = !hasSalaryStream && account.type === "personal" ? (account.salary ?? 0) : 0;
-	const totalIncome = round2(
-		legacySalary +
-			entityRevenues
-				.filter((r) => r.frequency === "monthly")
-				.reduce((acc, r) => acc + r.amount, 0),
-	);
-
-	const totalExpense = round2(
-		subscriptions
-			.filter((s) => s.entityId === account.id && s.active)
-			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0),
-	);
-
 	const liabilityMonthly = round2(
 		liabilities
 			.filter((l) => l.entityId === account.id && l.active)
 			.reduce((acc, l) => acc + l.amount, 0),
 	);
+
+	const totalIncome = totalInflow;
+	const totalExpense = round2(Math.max(0, totalCashOutflow - liabilityMonthly));
 
 	const liabPct =
 		totalIncome > 0
@@ -99,9 +94,9 @@ export function calculateEntityWealthMetrics(params: {
 				? 100
 				: 0;
 
-	const netBurn = Math.max(0, round2(totalExpense + liabilityMonthly - totalIncome));
+	const netBurn = Math.max(0, round2(totalCashOutflow - totalInflow));
 	const runwayMonths = calculateRunway(currentLiquid, netBurn);
-	const isDefaultAlive = netBurn <= 0;
+	const isDefaultAlive = totalInflow > 0 && totalInflow >= totalCashOutflow;
 
 	return {
 		cashAssetsValue,
@@ -123,9 +118,10 @@ export function calculateEntityWealthMetrics(params: {
 }
 
 /**
- * Calculates consolidated wealth and liquidity across all entity accounts.
+ * Calculates aggregated wealth metrics across all accounts (personal + businesses).
+ * Pure function: operates without DOM, state, or framework dependencies.
  */
-export function calculateConsolidatedWealth(params: {
+export function calculateConsolidatedWealthMetrics(params: {
 	accounts: EntityAccount[];
 	hardware: HardwareAsset[];
 	subscriptions: RecurringSubscription[];
@@ -277,3 +273,5 @@ export function calculateProjectionBalances(params: {
 		projectedNet: baselineLedger.summary.netCashFlow,
 	};
 }
+
+export const calculateConsolidatedWealth = calculateConsolidatedWealthMetrics;

@@ -36,6 +36,9 @@ class MemoryStorageAdapter implements IStorageAdapter {
 	removeItem(key: string): void {
 		this.store.delete(key);
 	}
+	clear(): void {
+		this.store.clear();
+	}
 }
 
 export interface TestScaffoldProps {

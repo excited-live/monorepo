@@ -1,25 +1,35 @@
-# excited.live Mobile — PRD, Mobile Architecture & UI Specification
+# excited.live Mobile (`biz-mobile`) — PRD, Mobile Architecture & UI Specification
 
-> **Status**: Approved for Day One Full Mobile App (updated 2026-10-13)  
-> **Target Package**: [`apps/biz-mobile`](file:///home/prame/Project/excited.live/apps/biz-mobile)  
-> **Core Engine**: [`packages/biz`](file:///home/prame/Project/excited.live/packages/biz) (Pure TypeScript math engine + Python recompute gate)  
-> **Design Tokens**: Canonical Mastercard Design System ([`DESIGN.md`](file:///home/prame/Project/excited.live/DESIGN.md) & [`@excited-live/design-system`](file:///home/prame/Project/excited.live/packages/design-system))  
-> **Native Framework**: Tauri v2 Mobile (Android first, iOS ready — identical pattern to [`apps/tax-mobile`](file:///home/prame/Project/excited.live/apps/tax-mobile))
+> **Status**: Ship Priority #1 — Active Top-of-Funnel Consumer App (Updated 2026-10-17)  
+> **Target Package**: [`apps/biz-mobile`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/biz-mobile)  
+> **Core Engine**: [`packages/biz`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/biz) (Pure TypeScript math engine + Python recompute gate)  
+> **API & Agent Surface**: [`apps/api/src/routes/biz.ts`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/api/src/routes/biz.ts) (`/api/v1/biz` + MCP tools)  
+> **Design Tokens**: Canonical Mastercard Design System ([`DESIGN.md`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/DESIGN.md) & [`@excited-live/design-system`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/design-system))  
+> **Native Framework**: Tauri v2 Mobile (Android first, iOS ready — identical pattern to [`apps/tax-mobile`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/tax-mobile))
 
 ---
 
-## 1. Executive Summary & Product Vision
+## 1. Executive Summary & Strategic Role in the OS
 
-**excited.live Mobile** is a luxury, privacy-first mobile spend, revenue, and asset depreciation companion designed for solopreneurs, side-hustlers, and solo operators managing both personal finances and multiple ventures.
+**`excited.live` Mobile (`apps/biz-mobile`) is our #1 shipping priority and the primary consumer entry point into the `excited.live` Agentic OS.**
+
+It is a luxury, local-first + cloud-synced mobile spend, slip-capture, revenue, and asset depreciation companion designed for individuals, creators, and solopreneurs managing both personal finances and multiple ventures.
+
+### Strategic Funnel Role
+1. **Do One Simple Job Effortlessly on Mobile (Free Top-of-Funnel)**: Help users know their exact cash reserve, monthly burn, hardware depreciation, and daily slip spend in seconds.
+2. **Proactive Data Capture (MeowJot / เหมียวจด Style)**: Eliminate manual bookkeeping friction by reading Thai bank transfer e-slips (via OS Share Sheet, gallery scan, or personal AI agent) and turning them into structured ledger entries automatically.
+3. **Agent-First Open Access (`API` + `MCP`)**: Everything captured in `biz-mobile` syncs to `/api/v1/biz` so the user's external personal AI agents (Claude, ChatGPT, Hermes, LINE/Telegram bots) can query burn/runway or log transactions on their behalf.
+4. **Channel Users to the Detailed Web Planner (`apps/webapp`)**: Once users love tracking their present cashflow and runway on mobile, we channel them into the paid detailed web application (`apps/webapp`) to simulate the next 50 years of their life—carrying their `biz` numbers straight into their long-term plan.
+5. **Foundation for the Time Management Pillar**: Because `biz-mobile` already maps the user's career (`fulltime_job`), ventures (`business`), commute (`BTS`), and recurring activities, attaching weekly hours to these exact entities powers the upcoming Time Management planner with zero cold-start setup.
 
 ### The Problem
-Traditional accounting software (FlowAccount, ERPNext, QuickBooks) is bloated with compliance overhead (tax invoices, VAT filing, WHT certificates, general ledgers) that personal creators and solo founders do not need for day-to-day burn awareness. On the other hand, Google Sheets is clunky on mobile, brittle to maintain, and requires constant manual formula adjustments.
+Traditional accounting software (FlowAccount, ERPNext, QuickBooks) is bloated with compliance overhead (tax invoices, VAT filing, WHT certificates, general ledgers) that personal creators and solo founders do not need for day-to-day burn awareness. Meanwhile, basic slip-tracking bots (like MeowJot on LINE) trap data inside chat threads without modeling recurring burn, hardware depreciation, multi-entity business runways, or open MCP access for the user's own AI agents.
 
-### The Solution: Multi-Entity Solopreneur Engine
-Instead of starting with a web app and migrating later, **excited.live launches directly as a native mobile application from Day One** (`apps/biz-mobile` powered by Tauri v2 and React 19). It models 3 distinct solopreneur account types:
-1. **Personal**: Core living cash reserve, subscriptions, hardware register, and burn runway.
-2. **Fulltime Job**: Salary/cashflow stream with an **"UNTIL"** countdown metric (until next payday, or until solopreneur runway target) instead of a burn runway.
-3. **Business (Multi-Business Support)**: Multiple independent side-hustles/ventures (e.g. `FromSukong`), each with its own cash reserve, revenue stream (fixed or Stripe-ready), SaaS subscriptions, hardware register, and independent runway.
+### The Solution: Multi-Entity Solopreneur Engine + Slip Capture
+**`excited.live` launches directly as a native mobile application (`apps/biz-mobile` powered by Tauri v2 and React 19)** backed by `/api/v1/biz`. It models:
+1. **Personal**: Core living cash reserve (asset-derived treasury), recurring subscriptions, daily slip expenses, hardware register, and burn runway.
+2. **Fulltime Job (Career Card)**: Salary/cashflow stream with an **"UNTIL"** countdown metric (days until next payday + months until solopreneur freedom buffer) instead of a burn runway.
+3. **Business (Multi-Business Support)**: Multiple independent side-hustles/ventures (e.g. `FromSukong`), each with its own cash reserve, revenue stream, SaaS subscriptions, hardware register, and independent runway.
 4. **Capital Injection**: Instant transfer from Personal to any Business entity, immediately reflecting on both entities' cash reserves and runway calculations.
 
 ---
@@ -81,15 +91,15 @@ graph TD
     HeroCard -->|Personal / Business| RunwayView[Cash Left + Runway in Months + Monthly Net Burn]
     HeroCard -->|Fulltime Job| UntilView[Monthly Salary + UNTIL Payday / Freedom Target]
     
-    HeroCard --> QuickShortcuts[4 Action Squircles: + Expense / Inject Biz / + Gear / Due 30D]
+    HeroCard --> QuickShortcuts[Action Squircles: Scan Slip / + Expense / Inject Biz / + Gear]
     
+    QuickShortcuts -->|Scan Slip| SlipCaptureSheet[MeowJot-Style Thai Bank Slip Reader & Auto-Categorizer]
     QuickShortcuts -->|+ Expense| AddCostSheet[Slide-Up Add Expense Drawer]
     QuickShortcuts -->|Inject Biz| CapitalTransferSheet[Slide-Up Transfer from Personal to Business]
     QuickShortcuts -->|+ Gear| AddGearSheet[Slide-Up Add Hardware Asset Drawer]
-    QuickShortcuts -->|Due 30D| DueCalendar[Upcoming Bills Timeline]
     
-    subgraph Persistent Dock (Zero Charts)
-        BottomDock[Floating Minimalist Bottom Dock: Home / Items / Forecast / Settings]
+    subgraph Persistent Dock (Zero Heavy Charts)
+        BottomDock[Floating Minimalist Bottom Dock: Home / Capital / Ledger / Settings]
     end
 ```
 
@@ -97,66 +107,64 @@ graph TD
 
 ## 4. User Stories & Acceptance Criteria
 
-### US-BIZ-001: Mobile Recurring Subscriptions Tracker
+### US-BIZ-001: Mobile Recurring Subscriptions Tracker `[shipped]`
 **Description:** As a user on my phone, I want to view, add, and manage my regular bills and software subscriptions in under 30 seconds.  
 **Acceptance Criteria:**
-- [ ] Add/Edit modal drawer with auto-focusing `MoneyInput` (caret preserved, native numeric keypad).
-- [ ] Billing cycles supported: `Weekly`, `Monthly`, `Quarterly`, `Semi-Annual`, `Yearly`.
-- [ ] Auto-calculation of normalized monthly cost ($cycle \to monthly$).
-- [ ] Next charge date selector with pre-computed "days until renewal".
-- [ ] Overdue or imminent charges (≤ 7 days) highlighted with Signal Orange badges.
-- [ ] Soft deletion: Cancelled subscriptions remain in history with active spend set to ฿0.
+- [x] Add/Edit modal drawer with auto-focusing `MoneyInput` (caret preserved, native numeric keypad).
+- [x] Billing cycles supported: `Weekly`, `Monthly`, `Quarterly`, `Semi-Annual`, `Yearly`.
+- [x] Auto-calculation of normalized monthly cost ($\text{cycle} \to \text{monthly}$).
+- [x] Next charge date selector with pre-computed "days until renewal".
+- [x] Overdue or imminent charges ($\le 7$ days) highlighted with Signal Orange badges.
+- [x] Soft deletion: Cancelled subscriptions remain in history with active spend set to ฿0.
 
-### US-BIZ-002: Gear & Straight-Line Depreciation Register
+### US-BIZ-002: Gear & Straight-Line Depreciation Register `[shipped]`
 **Description:** As a user, I want my physical tech devices tracked with straight-line depreciation so my equipment costs appear as a transparent monthly burn rather than sporadic lump sums.  
 **Acceptance Criteria:**
-- [ ] Add asset modal: name, purchase price, purchase month, useful lifespan (months or years), category, account ID.
-- [ ] Automatic straight-line calculation: $\text{monthly} = \frac{\text{price}}{\text{lifespan}}$.
-- [ ] Automatic elapsed-months computation clamped to lifespan.
-- [ ] When elapsed months $\ge$ lifespan, status flags `fullyDepreciated: true` and monthly contribution becomes ฿0.00.
-- [ ] Displays remaining book value: $\max(0, \text{price} - \text{elapsed} \times \text{monthly})$.
-- [ ] Reproduces iPad depreciation dropping off at month 60 (Nov 2026).
+- [x] Add asset modal: name, purchase price, purchase month, useful lifespan (months or years), category, account ID.
+- [x] Automatic straight-line calculation: $\text{monthly} = \frac{\text{price}}{\text{lifespan}}$.
+- [x] Automatic elapsed-months computation clamped to lifespan.
+- [x] When elapsed months $\ge$ lifespan, status flags `isFullyDepreciated: true` and monthly contribution becomes ฿0.00.
+- [x] Displays remaining book value: $\max(0, \text{price} - \text{elapsed} \times \text{monthly})$.
+- [x] Reproduces iPad depreciation dropping off at month 60 (Nov 2026).
 
-### US-BIZ-003: Headline Burn & Dual-Perspective Outflow
+### US-BIZ-003: Headline Burn & Dual-Perspective Outflow `[shipped]`
 **Description:** As a user, I want to toggle between cash outflow and smoothed run-rate so I can plan both cash flow and long-term spending.  
 **Acceptance Criteria:**
-- [ ] **Smoothed View (Default)**: Normalizes annual/quarterly costs into a 1/12 monthly average plus monthly depreciation.
-- [ ] **Cash View**: Shows only subscriptions and bills whose renewal dates fall inside the current active calendar month, plus monthly depreciation.
-- [ ] View selection persists across app launches via local storage.
+- [x] **Smoothed View (Default)**: Normalizes annual/quarterly costs into a 1/12 monthly average plus monthly depreciation.
+- [x] **Cash View**: Shows only subscriptions and bills whose renewal dates fall inside the current active calendar month, plus monthly depreciation.
+- [x] View selection persists across app launches via local storage.
 
-### US-BIZ-004: Multi-Entity Solopreneur Architecture & Accounts
+### US-BIZ-004: Multi-Entity Solopreneur Architecture & Accounts `[shipped]`
 **Description:** As an independent creator, I want to separate my personal living expenses, my day job salary, and multiple businesses/side-hustles without having to manage separate apps.  
 **Acceptance Criteria:**
-- [ ] Support 3 distinct entity types: `personal`, `fulltime_job`, and `business`.
-- [ ] Users can create multiple business accounts (e.g. `FromSukong`, `excited.live`).
-- [ ] Top bar switcher switches between entities seamlessly with an option to `+ Add Business`.
+- [x] Support distinct entity contexts: `personal` (with optional Career/Fulltime Job card) and multiple `business` entities (`FromSukong`, `excited.live`, etc.).
+- [x] Top bar switcher switches between entities seamlessly with an option to `+ Add Business`.
 
-### US-BIZ-005: Capital Transfer / Seed Injections
+### US-BIZ-005: Capital Transfer / Seed Injections `[shipped]`
 **Description:** As a founder, I want to transfer capital from my Personal reserve into my Business, and see the immediate impact on both runways.  
 **Acceptance Criteria:**
-- [ ] Capital transfer drawer allows specifying source account (`Personal`), target business, and amount.
-- [ ] Live preview displays: Personal runway impact (e.g., 40.1 mos → 33.7 mos) and Business runway extension (e.g., 18.2 mos → 26.3 mos).
-- [ ] Transaction log tracks capital injections chronologically.
+- [x] Capital transfer drawer allows specifying source account (`Personal`), target business, and amount.
+- [x] Live preview displays: Personal runway impact and Business runway extension.
+- [x] Transaction log tracks capital injections chronologically.
 
-### US-BIZ-006: Fulltime Job "UNTIL" Metric & Income Streams
+### US-BIZ-006: Fulltime Job "UNTIL" Metric & Income Streams `[shipped]`
 **Description:** As a side-hustler with a day job, I want my salary tracked with an "UNTIL" countdown rather than an irrelevant burn runway.  
 **Acceptance Criteria:**
-- [ ] Fulltime Job hero card shows monthly salary amount and **"UNTIL"** metrics:
+- [x] Fulltime Job / Career card shows monthly salary amount and **"UNTIL"** metrics:
   - Days until next payday (e.g. `14 Days until Payday: ฿75,000`).
   - Target solopreneur freedom milestone (e.g. `Until Target Runway: 6 Months`).
-- [ ] Business accounts support Revenue/Income entry (fixed now, Stripe-ready schema).
-- [ ] Net Burn calculation: $\text{Net Burn} = \text{OpEx} + \text{Depreciation} - \text{Revenue}$. If positive, flags as `Default Alive`.
+- [x] Business accounts support Revenue/Income entry.
+- [x] Net Burn calculation: $\text{Net Burn} = \text{OpEx} + \text{Depreciation} - \text{Revenue}$. If positive net cashflow, flags as `Default Alive`.
 
-### US-BIZ-007: Pure Math Package & Verification Gate
+### US-BIZ-007: Pure Math Package & Verification Gate `[shipped]`
 **Description:** As an engineer, I want all financial computations encapsulated in a zero-dependency pure TypeScript package verified by golden tests and an independent Python script.  
 **Acceptance Criteria:**
-- [ ] Package [`packages/biz`](file:///home/prame/Project/excited.live/packages/biz) contains zero DOM, zero network, and zero UI dependencies.
-- [ ] Pure exports: `calculateMonthlyEquivalent()`, `calculateAssetDepreciation()`, `calculateSummary()`, `simulateCapitalTransfer()`.
-- [ ] Golden unit test suite validates exact baseline numbers: ฿2,577.50 / ฿537.23 / ฿3,114.73.
-- [ ] Python independent validation script [`scripts/recompute-biz.py`](file:///home/prame/Project/excited.live/scripts/recompute-biz.py) calculates identical outputs to 2 decimal places.
+- [x] Package [`packages/biz`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/biz) contains zero DOM, zero network, and zero UI dependencies.
+- [x] Golden unit test suite validates exact baseline numbers: ฿2,577.50 / ฿537.23 / ฿3,114.73.
+- [x] Python independent validation script [`scripts/recompute-biz.py`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/scripts/recompute-biz.py) calculates identical outputs to 2 decimal places.
 
-### US-BIZ-008: First-Run Onboarding Journey
-**Description:** As a new user opening excited.live for the first time, I want to replace the example data with my own in under three minutes so the hero card shows my cash and my runway, not someone else's numbers. Flows: F-50 to F-55 in [prd-flows.md](prd-flows.md).  
+### US-BIZ-008: First-Run Onboarding Journey `[planned]`
+**Description:** As a new user opening `excited.live` for the first time, I want to replace the example data with my own in under three minutes so the hero card shows my cash and my runway, not someone else's numbers. Flows: F-50 to F-55 in [prd-flows.md](prd-flows.md).  
 **Acceptance Criteria:**
 - [ ] Fresh install opens with labeled example data and a start affordance; the example state is never presented as the user's own data.
 - [ ] One screen picks the first entity: personal, fulltime job, or business, with starting cash (or salary + payday for fulltime job).
@@ -167,6 +175,35 @@ graph TD
 - [ ] Sign-in is offered after data entry, never before, and never blocks the local-first path.
 - [ ] All onboarding copy is bilingual `{ en, th }`, EN first.
 
+### US-BIZ-009: Proactive Thai Bank Slip Reading (MeowJot / เหมียวจด Style) `[planned — Priority Next]`
+**Description:** As a Thai user who pays for almost everything via PromptPay QR / bank transfer, I want `excited.live` to read my bank transfer e-slips automatically (from my phone's share sheet, slip album, or via my personal AI agent) so my spending is recorded without manual typing.  
+**Acceptance Criteria:**
+- [ ] **Slip Ingestion Channels**:
+  1. **In-App & OS Share Target**: Share an e-slip image from K Plus / SCB EASY / Krungthai NEXT / Bangkok Bank directly to `excited.live` or pick from the device's bank-slip folder.
+  2. **API / MCP Endpoint (`POST /api/v1/biz/slips`)**: External personal agents can submit either a raw slip image/payload or pre-extracted slip fields.
+- [ ] **Deterministic QR + OCR Extraction**:
+  - Parses Thai EMVCo / Bank of Thailand mini-QR payload on the slip for tamper-proof `transactionRef` (deduplication key) and bank code, paired with vision/OCR extraction for `amount`, `timestamp`, `sender`, `recipientName`, and `memo`.
+  - Duplicate uploads of the same `transactionRef` are idempotently ignored.
+- [ ] **Smart Classification (No Double-Counting)**:
+  - **Recurring Match**: If a slip matches an active `RecurringSubscription` (e.g., ฿540 to AIS), it marks that month's bill as paid and advances `nextRenewalDate` instead of double-counting burn.
+  - **One-Off Variable Spend**: Otherwise logs as a `SlipTransaction` (`outflow` or `inflow`) under the target entity (`personal` or `business`) with auto-suggested category (`food`, `transit`, `software`, `gear`, `other`).
+  - **Promote to Gear / Recurring / Capital Transfer**: One tap in the review drawer converts a slip into a depreciated `HardwareAsset`, a new `RecurringSubscription`, or an inter-entity `CapitalTransfer`.
+
+### US-BIZ-010: External Personal Agent & MCP Access (BYOA First) `[in progress — REST live, MCP/Scoped Keys next]`
+**Description:** As a user living in the agentic era, I want my own AI agent (Claude, ChatGPT, Hermes, custom Telegram/LINE bot) to read my `biz` accounts, log slips/expenses, and answer runway questions on my behalf without waiting for an in-app chatbot.  
+**Acceptance Criteria:**
+- [x] REST endpoints live at `/api/v1/biz` (`GET/PUT /`, `/accounts`, `/subscriptions`, `/hardware`, `/revenues`, `/transfers`, `/ledger/:yearMonth`).
+- [ ] **Scoped API Keys (`packages/auth`)**: Users can generate a revocable API key in Settings with granular scopes (`biz:read`, `biz:write`, `slip:write`).
+- [ ] **MCP Server & OpenAPI Spec**: Expose tools (`get_runway_summary`, `list_upcoming_bills`, `record_slip_transaction`, `add_subscription`, `simulate_capital_transfer`) so any MCP-compatible agent connects in one step.
+- [ ] **Audit Tagging**: Agent-created entries record `source: "agent"` in the monthly ledger with one-tap undo.
+
+### US-BIZ-011: Graduation Bridge to Detailed Web Planner (`apps/webapp`) `[planned]`
+**Description:** As a `biz-mobile` user who has tracked my personal burn, salary, and business cashflow, I want to open the detailed 50-year web planner (`apps/webapp`) with my real numbers pre-populated so I don't have to re-enter my financial life.  
+**Acceptance Criteria:**
+- [ ] Subtle "Simulate your 50-year life plan →" card in `biz-mobile` Forecast / Settings.
+- [ ] Maps `biz` state into `packages/sim` `PlanInput`: Career salary + net business revenue → `Income` period rows; Personal smoothed burn → `Expenses` rows; Personal + Business cash reserves → initial wallet balances.
+- [ ] Prompts the user to start their **7-day free trial** of the $109/year `apps/webapp` planner.
+
 ---
 
 ## 5. Technical Architecture & Workspace Placement
@@ -175,31 +212,26 @@ graph TD
 excited.live/
 ├── apps/
 │   ├── biz-mobile/               # Day One Native Mobile App (Tauri v2 + Vite + React 19)
-│   │   ├── src/                  # TanStack Router screens, Astryx UI, Mastercard theme
+│   │   ├── src/                  # Clean Architecture screens, Astryx UI, Mastercard theme
 │   │   ├── src-tauri/            # Rust native wrapper, Android / iOS manifest, permissions
 │   │   └── package.json          # @excited-live/biz-mobile
+│   ├── api/                      # Hono BFF on Cloudflare Workers + D1
+│   │   └── src/routes/biz.ts     # /api/v1/biz REST + agent endpoints
 │   └── tax-mobile/               # Reference Tauri v2 mobile app
 ├── packages/
-│   ├── biz/                      # Pure Business Math & Multi-Entity Engine
-│   │   ├── src/index.ts          # Pure functions, multi-entity types, validation
+│   ├── biz/                      # Pure Business Math, Multi-Entity & Ledger Engine
+│   │   ├── src/                  # types.ts, math.ts, ledger.ts, seed.ts
 │   │   └── tests/golden.test.ts  # Verification suite
+│   ├── auth/                     # Better Auth (Bearer tokens for mobile + API Keys for agents)
 │   └── design-system/            # Mastercard Design System & Astryx components
 └── scripts/
     └── recompute-biz.py          # Independent Python math verification gate
 ```
 
-### Dependency Stack
-- **Native Shell**: Tauri v2 (`@tauri-apps/api ^2.3.0`, `@tauri-apps/cli ^2.3.0`)
-- **UI Framework**: React 19, Vite 8, `@tanstack/react-router`, `@tanstack/react-query`
-- **Component Primitives**: `@astryxdesign/core`, `@excited-live/design-system`
-- **Pure Engine**: `@excited-live/biz` (workspace reference)
-- **Localization**: Bilingual EN/TH via `@excited-live/i18n` (EN default)
-
 ---
 
-## 6. Non-Goals (Strictly Out of Scope)
-- ❌ **No Heavy Mobile Charts**: Zero fussy SVGs or line graphs. Information is presented through editorial typography, status pills, and milestone countdown cards.
-- ❌ **No Tax Compliance & Accounting Books**: No VAT 7% filing, e-Tax invoices, 50 Tawi certificates, or general ledger (FlowAccount remains the tool if formal Thai corporate compliance is needed).
-- ❌ **No Invoicing & Quotations**: This is strictly a spend and burn monitor.
-- ❌ **No Automatic Bank Sync / Open Banking**: All costs are recurring agreements or gear logs; zero third-party banking credentials needed.
-- ❌ **No Ads, No Third-Party Tracking**: Completely private, on-device data.
+## 6. Non-Goals (Strictly Out of Scope for `biz-mobile`)
+- ❌ **No Heavy Multi-Decade Mobile Charts**: Zero fussy 50-year SVGs on mobile. Deep 50-year projection charts and Monte Carlo bands live in `apps/webapp` (the paid graduation surface).
+- ❌ **No Built-in Chat Assistant Bloat on Mobile**: We prioritize open API/MCP access for the user's own agents and proactive slip scanning over embedding a chat window on a phone screen.
+- ❌ **No Corporate Tax Compliance & Accounting Books**: No VAT 7% filing, e-Tax invoices, 50 Tawi certificates, or general ledger.
+- ❌ **No Direct Bank Credential Scraping**: Slip reading uses user-shared e-slips / QR payloads—zero bank password sharing required.

@@ -1,8 +1,9 @@
 import React from "react";
-import type { EntityAccount } from "@excited-live/biz";
+import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/biz";
 import { calculateProjectionBalances } from "../domain/selectors";
 import { useBiz } from "../state";
 import { formatMoney } from "../utils/format";
+import { t } from "../utils/i18n";
 import { HeroShell } from "./HeroShell";
 
 interface LedgerHeroCardProps {
@@ -21,14 +22,14 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 	yearMonth,
 	onTap,
 }) => {
-	const { subscriptions, hardware, revenues, liabilities, transfers } = useBiz();
+	const { subscriptions, hardware, revenues, liabilities, transfers, lang } = useBiz();
+	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const {
 		offsets,
 		balances,
 		totalIncome,
 		totalExpense,
-		liabilityMonthly,
 		projectedNet,
 	} = calculateProjectionBalances({
 		account,
@@ -42,25 +43,65 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 		futureMonths: FUTURE_MONTHS,
 	});
 
-	// Monthly cashflow waterfall (projected steady-state month)
-	const waterfall = [
+	// Granular expense breakdown by category/type for steady-state month
+	const entitySubs = subscriptions.filter((s) => s.entityId === account.id && s.active);
+	const outgoingTransfers = transfers.filter(
+		(t) => t.fromEntityId === account.id && t.date.startsWith(yearMonth),
+	);
+
+	const expMap = new Map<string, number>();
+	for (const s of entitySubs) {
+		const rawCat = s.category || "Subscriptions";
+		const catName = rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
+		const cost = calculateMonthlyEquivalent(s.amount, s.cycle);
+		expMap.set(catName, (expMap.get(catName) ?? 0) + cost);
+	}
+	for (const t of outgoingTransfers) {
+		expMap.set("Capital", (expMap.get("Capital") ?? 0) + t.amount);
+	}
+
+	if (expMap.size === 0 && totalExpense > 0) {
+		expMap.set("Expense", totalExpense);
+	}
+
+	const sortedCats = Array.from(expMap.entries()).sort((a, b) => b[1] - a[1]);
+	let displayCats: Array<[string, number]> = [];
+	if (sortedCats.length > 3) {
+		displayCats = sortedCats.slice(0, 2);
+		const otherSum = sortedCats.slice(2).reduce((sum, [, amt]) => sum + amt, 0);
+		if (otherSum > 0) {
+			displayCats.push(["Other", otherSum]);
+		}
+	} else {
+		displayCats = sortedCats;
+	}
+
+	// Monthly cashflow waterfall: Income -> Granular Expenses -> Net
+	const waterfall: Array<{ label: string; value: number; from: number; to: number; cls: string }> = [
 		{ label: "Income", value: totalIncome, from: 0, to: totalIncome, cls: "wf-income" },
-		{
-			label: "Expense",
-			value: totalExpense,
-			from: totalIncome - totalExpense,
-			to: totalIncome,
-			cls: "wf-expense",
-		},
-		{
-			label: "Liability",
-			value: liabilityMonthly,
-			from: projectedNet,
-			to: totalIncome - totalExpense,
-			cls: "wf-liability",
-		},
-		{ label: "Net", value: projectedNet, from: 0, to: projectedNet, cls: "wf-net" },
 	];
+
+	let currLevel = totalIncome;
+	for (const [catLabel, catVal] of displayCats) {
+		const nextLevel = currLevel - catVal;
+		waterfall.push({
+			label: catLabel,
+			value: catVal,
+			from: nextLevel,
+			to: currLevel,
+			cls: "wf-expense",
+		});
+		currLevel = nextLevel;
+	}
+
+	waterfall.push({
+		label: "Net",
+		value: projectedNet,
+		from: 0,
+		to: projectedNet,
+		cls: projectedNet >= 0 ? "wf-net" : "wf-net negative",
+	});
+
 	const wfMin = Math.min(0, projectedNet);
 	const wfMax = Math.max(totalIncome, 1);
 	const wfK = (CHART_WF_PLOT - 0) / (wfMax - wfMin);
@@ -93,6 +134,13 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 
 	const nowY = y(balances.get(0) ?? 0);
 	const nowYFrac = (nowY / CHART_H) * 100;
+	const ym6 = y(balances.get(-6) ?? 0);
+	const ym6Frac = (ym6 / CHART_H) * 100;
+	const ym6Top = Math.abs(ym6 - nowY) <= 12 ? (ym6 < nowY ? nowYFrac - 12 : nowYFrac + 12) : ym6Frac;
+	const y6 = y(balances.get(6) ?? 0);
+	const y6Frac = (y6 / CHART_H) * 100;
+	const y12 = y(balances.get(12) ?? 0);
+	const y12Frac = (y12 / CHART_H) * 100;
 
 	return (
 		<HeroShell onClick={onTap}>
@@ -101,12 +149,13 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 				<span
 					className="hero-flip-hint"
 					style={{ cursor: "pointer" }}
+					onPointerDown={stop}
 					onClick={(e) => {
 						e.stopPropagation();
 						onTap?.();
 					}}
 				>
-					Tap to flip
+					{t("hero.tapToFlip", lang)}
 				</span>
 			</div>
 
@@ -121,17 +170,52 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 				>
 					{compact(balances.get(0) ?? 0)}
 				</span>
-				{Math.abs(y(rawMax) - nowY) > 18 && (
-					<span className="hero-chart-ylabel" style={{ top: `${(y(rawMax) / CHART_H) * 100}%` }}>
-						{compact(rawMax)}
+				<span
+					className="hero-chart-ylabel"
+					style={{
+						top: `${ym6Top}%`,
+						color: "var(--hero-muted)",
+						fontWeight: 600,
+					}}
+				>
+					{compact(balances.get(-6) ?? 0)}
+				</span>
+				{Math.abs(y6 - nowY) > 14 && (
+					<span
+						className="hero-chart-ylabel"
+						style={{
+							top: `${y6Frac}%`,
+							color: "var(--hero-muted)",
+							fontWeight: 600,
+						}}
+					>
+						{compact(balances.get(6) ?? 0)}
 					</span>
 				)}
-				{Math.abs(y(rawMin) - nowY) > 18 && (
-					<span className="hero-chart-ylabel" style={{ top: `${(y(rawMin) / CHART_H) * 100}%` }}>
-						{compact(rawMin)}
+				{Math.abs(y12 - y6) > 14 && Math.abs(y12 - nowY) > 14 && (
+					<span
+						className="hero-chart-ylabel"
+						style={{
+							top: `${y12Frac}%`,
+							color: "var(--hero-muted)",
+							fontWeight: 600,
+						}}
+					>
+						{compact(balances.get(12) ?? 0)}
 					</span>
 				)}
 				<svg viewBox={`0 0 ${W} ${CHART_H}`} preserveAspectRatio="none" aria-hidden="true">
+					<line
+						x1={0}
+						x2={x(nowIndex)}
+						y1={ym6}
+						y2={ym6}
+						stroke="var(--hero-muted)"
+						strokeDasharray="2 3"
+						strokeWidth={1}
+						vectorEffect="non-scaling-stroke"
+						opacity={0.6}
+					/>
 					<line
 						x1={0}
 						x2={W}
@@ -142,6 +226,28 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 						strokeWidth={1}
 						vectorEffect="non-scaling-stroke"
 						opacity={0.5}
+					/>
+					<line
+						x1={0}
+						x2={x(nowIndex + 6)}
+						y1={y6}
+						y2={y6}
+						stroke="var(--hero-muted)"
+						strokeDasharray="2 3"
+						strokeWidth={1}
+						vectorEffect="non-scaling-stroke"
+						opacity={0.6}
+					/>
+					<line
+						x1={0}
+						x2={x(nowIndex + 12)}
+						y1={y12}
+						y2={y12}
+						stroke="var(--hero-muted)"
+						strokeDasharray="2 3"
+						strokeWidth={1}
+						vectorEffect="non-scaling-stroke"
+						opacity={0.4}
 					/>
 					<path
 						d={futurePath}
@@ -162,6 +268,33 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 						strokeLinejoin="round"
 						vectorEffect="non-scaling-stroke"
 					/>
+					<circle
+						cx={x(0)}
+						cy={ym6}
+						r={3.5}
+						fill="var(--hero-pill-bg, #fff)"
+						stroke="var(--hero-muted)"
+						strokeWidth={2}
+						vectorEffect="non-scaling-stroke"
+					/>
+					<circle
+						cx={x(nowIndex + 6)}
+						cy={y(balances.get(6) ?? 0)}
+						r={3.5}
+						fill="var(--hero-pill-bg, #fff)"
+						stroke="var(--hero-muted)"
+						strokeWidth={2}
+						vectorEffect="non-scaling-stroke"
+					/>
+					<circle
+						cx={x(nowIndex + 12)}
+						cy={y(balances.get(12) ?? 0)}
+						r={3.5}
+						fill="var(--hero-pill-bg, #fff)"
+						stroke="var(--hero-muted)"
+						strokeWidth={2}
+						vectorEffect="non-scaling-stroke"
+					/>
 				</svg>
 
 				<div className="hero-chart-now-line" style={{ left: `${xFrac(nowIndex)}%` }} />
@@ -174,6 +307,23 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 				</span>
 			</div>
 
+			{/* Timeline X-Axis Labels with In-Chart Projection Metrics */}
+			<div className="hero-chart-labels">
+				<span className="hero-chart-label" style={{ left: `${xFrac(0)}%` }}>
+					-6M
+				</span>
+				<span className="hero-chart-label now" style={{ left: `${xFrac(nowIndex)}%`, transform: "translateX(-50%)" }}>
+					Now
+				</span>
+				<span className="hero-chart-label" style={{ left: `${xFrac(nowIndex + 6)}%`, transform: "translateX(-50%)" }}>
+					+6M
+				</span>
+				<span className="hero-chart-label" style={{ left: `${xFrac(nowIndex + 12)}%`, transform: "translateX(-100%)" }}>
+					+12M
+				</span>
+			</div>
+
+			{/* Granular Waterfall Breakdown */}
 			<div className="hero-waterfall">
 				{waterfall.map((col) => {
 					const bottom = Math.min(wfY(col.from), wfY(col.to));
@@ -187,24 +337,10 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 									style={{ bottom: `${bottom}px`, height: `${height}px` }}
 								/>
 							</div>
-							<span className="wf-name">{col.label}</span>
+							<span className="wf-name" title={col.label}>{col.label}</span>
 						</div>
 					);
 				})}
-			</div>
-
-			<hr className="hero-divider" />
-			<div className="hero-meta-row">
-				<span className="hero-meta-label">Total Cashflow Today</span>
-				<span className="hero-meta-value">฿ {formatMoney(account.cashReserve)}</span>
-			</div>
-			<div className="hero-meta-row secondary">
-				<span className="hero-meta-label">Projected in 6 Months</span>
-				<span className="hero-meta-value">฿ {formatMoney(balances.get(6) ?? 0)}</span>
-			</div>
-			<div className="hero-meta-row secondary">
-				<span className="hero-meta-label">Projected in 12 Months</span>
-				<span className="hero-meta-value">฿ {formatMoney(balances.get(12) ?? 0)}</span>
 			</div>
 		</HeroShell>
 	);

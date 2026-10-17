@@ -35,6 +35,17 @@ export class LocalStorageAdapter implements IStorageAdapter {
 			// Ignore storage disabled
 		}
 	}
+
+	clear(): void {
+		if (typeof window === "undefined" || !window.localStorage) {
+			return;
+		}
+		try {
+			window.localStorage.clear();
+		} catch {
+			// Ignore storage disabled
+		}
+	}
 }
 
 export const defaultStorage = new LocalStorageAdapter();

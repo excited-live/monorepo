@@ -1,33 +1,47 @@
 import type { MobileLocale } from "../domain/types";
 
+export type SupportedLang = "en" | "th";
+
 export const DICTIONARY: Record<string, { en: string; th: string }> = {
-	// Navigation Tabs
+	// Navigation Tabs & Dock
 	"tab.home": { en: "Home", th: "หน้าหลัก" },
 	"tab.businessDetail": { en: "Business Detail", th: "รายละเอียดธุรกิจ" },
 	"tab.personalDetail": { en: "Personal Detail", th: "รายละเอียดส่วนตัว" },
 	"tab.settings": { en: "Settings", th: "ตั้งค่า" },
+	"nav.home": { en: "Home", th: "หน้าแรก" },
+	"nav.personal": { en: "Personal", th: "ส่วนตัว" },
+	"nav.business": { en: "Business", th: "ธุรกิจ" },
+	"nav.settings": { en: "Settings", th: "ตั้งค่า" },
 
 	// Subtabs
-	"subtab.capital": { en: "Capital", th: "เงินทุน" },
 	"subtab.income": { en: "Income", th: "รายรับ" },
 	"subtab.expense": { en: "Expense", th: "รายจ่าย" },
 	"subtab.assets": { en: "Assets", th: "สินทรัพย์" },
+	"subtab.capital": { en: "Capital", th: "เงินทุน" },
 	"subtab.liability": { en: "Liability", th: "หนี้สิน" },
 	"subtab.ledger": { en: "Ledger", th: "บัญชีแยกประเภท" },
 
 	// Hero Card
 	"hero.wealth": { en: "Wealth", th: "ความมั่งคั่ง" },
+	"hero.personalWealth": { en: "Personal Wealth", th: "ความมั่งคั่งส่วนตัว" },
 	"hero.bookValue": { en: "Book Value", th: "มูลค่าตามบัญชี" },
 	"hero.eomHint": { en: "( ) = end of month value", th: "( ) = มูลค่าสิ้นเดือน" },
+	"hero.eomBadge": { en: "End of Month", th: "สิ้นเดือน" },
 	"hero.tapToFlip": { en: "Tap to flip", th: "แตะเพื่อพลิก" },
 	"hero.liquid": { en: "Liquid", th: "เงินสดคล่อง" },
 	"hero.gear": { en: "Gear", th: "อุปกรณ์" },
-	"hero.totalIncome": { en: "Total Income", th: "รายรับรวม" },
-	"hero.totalExpense": { en: "Total Expense", th: "รายจ่ายรวม" },
-	"hero.totalAsset": { en: "Total Asset", th: "สินทรัพย์รวม" },
+	"hero.income": { en: "Income", th: "รายรับ" },
+	"hero.expense": { en: "Expense", th: "รายจ่าย" },
+	"hero.asset": { en: "Asset", th: "สินทรัพย์" },
+	"hero.totalIncome": { en: "Income", th: "รายรับ" },
+	"hero.totalExpense": { en: "Expense", th: "รายจ่าย" },
+	"hero.totalAsset": { en: "Asset", th: "สินทรัพย์" },
 	"hero.liability": { en: "Liability", th: "หนี้สิน" },
+	"hero.runway": { en: "Runway", th: "รันเวย์" },
+	"hero.totalCapital": { en: "Capital", th: "เงินทุน" },
+	"hero.capitalDeployed": { en: "Capital Deployed", th: "เงินทุนที่ลง" },
 	"hero.runwayMos": { en: "{count} mos runway", th: "รันเวย์ {count} เดือน" },
-	"hero.defaultAlive": { en: "⚡ Default Alive", th: "⚡ อยู่รอดได้ต่อเนื่อง" },
+	"hero.defaultAlive": { en: "⚡ Default Alive", th: "⚡ อยู่รอดได้อย่างต่อเนื่อง" },
 
 	// Ledger View
 	"ledger.title": { en: "Monthly Ledger", th: "บัญชีแยกประเภทรายเดือน" },
@@ -45,6 +59,7 @@ export const DICTIONARY: Record<string, { en: string; th: string }> = {
 	"action.addIncome": { en: "+ Add Income", th: "+ เพิ่มรายได้" },
 	"action.addExpense": { en: "+ Add Expense", th: "+ เพิ่มรายจ่าย" },
 	"action.addAsset": { en: "+ Add Asset", th: "+ เพิ่มสินทรัพย์" },
+	"action.addLiability": { en: "+ Add Liability", th: "+ เพิ่มหนี้สิน" },
 	"action.registerLiability": { en: "+ Register Debt", th: "+ บันทึกหนี้สิน" },
 	"action.adjustCash": { en: "Adjust Balance", th: "ปรับยอดเงินสด" },
 
@@ -58,11 +73,18 @@ export const DICTIONARY: Record<string, { en: string; th: string }> = {
 	"section.physicalGear": { en: "Hardware & Gear Assets", th: "อุปกรณ์และเครื่องมือทำงาน" },
 	"section.liabilities": { en: "Debts & Liabilities", th: "ภาระหนี้สินและการผ่อนชำระ" },
 
-	// Home
+	// Home View Labels
 	"home.consolidated": { en: "Consolidated Wealth", th: "ความมั่งคั่งรวมทั้งหมด" },
-	"home.currentCareer": { en: "Current Career", th: "อาชีพปัจจุบัน" },
 	"home.personal": { en: "Personal", th: "ส่วนตัว" },
-	"home.businesses": { en: "Businesses", th: "ธุรกิจทั้งหมด" },
+	"home.personalWealth": { en: "Personal Wealth", th: "ความมั่งคั่งส่วนตัว" },
+	"home.businessTreasury": { en: "Business Treasury", th: "เงินกองคลังธุรกิจ" },
+	"home.totalHoldings": { en: "Total Holdings", th: "ทรัพย์สินรวมทั้งหมด" },
+	"home.currentCareer": { en: "Current Career", th: "อาชีพปัจจุบัน" },
+	"home.addCareer": { en: "Add Career Income", th: "เพิ่มรายได้จากอาชีพ" },
+	"home.businesses": { en: "Ventures & Businesses", th: "ธุรกิจและการลงทุน" },
+	"home.noBusinesses": { en: "No businesses created yet.", th: "ยังไม่มีธุรกิจที่สร้างไว้" },
+	"home.activeSubscriptions": { en: "Active Subscriptions", th: "การสมัครสมาชิกที่ใช้งานอยู่" },
+	"home.noSubscriptions": { en: "No subscriptions tracked.", th: "ไม่มีการสมัครสมาชิกที่ติดตามอยู่" },
 
 	// Settings
 	"settings.title": { en: "Settings & Configuration", th: "การตั้งค่าระบบ" },
@@ -80,14 +102,30 @@ export const DICTIONARY: Record<string, { en: string; th: string }> = {
 	"settings.signIn": { en: "Sign In / Cloud Account", th: "เข้าสู่ระบบ / บัญชีคลาวด์" },
 	"settings.verified": { en: "Account verified", th: "ยืนยันบัญชีแล้ว" },
 	"settings.localDevice": { en: "Local device", th: "อุปกรณ์นี้ (Local)" },
+
+	// Common
+	"common.edit": { en: "Edit", th: "แก้ไข" },
+	"common.delete": { en: "Delete", th: "ลบ" },
+	"common.cancel": { en: "Cancel", th: "ยกเลิก" },
+	"common.save": { en: "Save", th: "บันทึก" },
+	"common.active": { en: "Active", th: "ใช้งานอยู่" },
+	"common.inactive": { en: "Inactive", th: "ไม่ใช้งาน" },
 };
 
-export function t(key: string, lang: MobileLocale, vars?: Record<string, string | number>): string {
+export const translations = DICTIONARY;
+
+export function t(
+	key: string,
+	lang: MobileLocale | SupportedLang = "en",
+	params?: Record<string, string | number>,
+): string {
 	const entry = DICTIONARY[key];
-	let text = entry ? (lang === "th" ? entry.th : entry.en) : key;
-	if (vars) {
-		for (const [vKey, val] of Object.entries(vars)) {
-			text = text.replace(new RegExp(`\\{${vKey}\\}`, "g"), String(val));
+	if (!entry) return key;
+
+	let text: string = entry[lang as SupportedLang] ?? entry.en ?? key;
+	if (params) {
+		for (const [k, v] of Object.entries(params)) {
+			text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
 		}
 	}
 	return text;

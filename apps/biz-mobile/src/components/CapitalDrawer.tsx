@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import {
 	calculateAssetDepreciation,
 	calculateMonthlyEquivalent,
+	isCashAsset,
 	type CapitalTransfer,
 	round2,
 	simulateCapitalTransfer,
@@ -40,24 +41,33 @@ export const CapitalDrawer: React.FC<{
 
 	const defaultTarget = businessAccounts.find((b) => b.id === activeEntityId) || businessAccounts[0] || personalAccount;
 	const [targetBizId, setTargetBizId] = useState(initialData?.toEntityId || defaultTarget.id);
+	const [targetAssetId, setTargetAssetId] = useState(initialData?.targetAssetId || "");
+	const [frequency, setFrequency] = useState<"one_time" | "monthly">(initialData?.frequency || "one_time");
 	const [amount, setAmount] = useState<string>(initialData ? String(initialData.amount) : "20000");
 	const [note, setNote] = useState<string>(initialData?.note ?? "Founder seed capital");
 
 	useEffect(() => {
 		if (initialData) {
 			setTargetBizId(initialData.toEntityId);
+			setTargetAssetId(initialData.targetAssetId || "");
+			setFrequency(initialData.frequency || "one_time");
 			setAmount(String(initialData.amount));
 			setNote(initialData.note);
 		} else {
-			setTargetBizId(defaultTarget.id);
+			const bId = defaultTarget.id;
+			setTargetBizId(bId);
+			const bizCash = hardware.filter((h) => h.entityId === bId && isCashAsset(h));
+			setTargetAssetId(bizCash[0]?.id || "primary_cash");
+			setFrequency("one_time");
 			setAmount("20000");
 			setNote("Founder seed capital");
 		}
-	}, [initialData, defaultTarget.id]);
+	}, [initialData, defaultTarget.id, hardware]);
 
 	if (!isOpen) return null;
 
 	const targetBiz = accounts.find((a) => a.id === targetBizId) || businessAccounts[0]!;
+	const targetBizCashAssets = hardware.filter((h) => h.entityId === targetBiz.id && isCashAsset(h));
 	const transferAmount = Number(amount) || 0;
 
 	// Calculate personal net burn
@@ -101,9 +111,18 @@ export const CapitalDrawer: React.FC<{
 				toEntityId: targetBiz.id,
 				amount: transferAmount,
 				note: note || "Capital transfer",
+				frequency,
+				targetAssetId: targetAssetId || undefined,
 			});
 		} else {
-			injectCapital(personalAccount.id, targetBiz.id, transferAmount, note);
+			injectCapital(
+				personalAccount.id,
+				targetBiz.id,
+				transferAmount,
+				note,
+				frequency,
+				targetAssetId || undefined,
+			);
 		}
 		dismiss();
 	};
@@ -157,14 +176,66 @@ export const CapitalDrawer: React.FC<{
 						<select
 							className="form-select"
 							value={targetBizId}
-							onChange={(e) => setTargetBizId(e.target.value)}
+						onChange={(e) => {
+								const nextBizId = e.target.value;
+								setTargetBizId(nextBizId);
+								const bizCash = hardware.filter((h) => h.entityId === nextBizId && isCashAsset(h));
+								setTargetAssetId(bizCash[0]?.id || "primary_cash");
+							}}
 						>
 							{businessAccounts.map((b) => (
 								<option key={b.id} value={b.id}>
-									{b.name} (Treasury: ฿{formatMoney(b.cashReserve)})
+									{b.name}
 								</option>
 							))}
 						</select>
+					</div>
+
+					<div className="form-group">
+						<label className="form-label">Target Cash Account / Asset</label>
+						<select
+							className="form-select"
+							value={targetAssetId}
+							onChange={(e) => setTargetAssetId(e.target.value)}
+						>
+							{targetBizCashAssets.length > 0 ? (
+								targetBizCashAssets.map((asset) => (
+									<option key={asset.id} value={asset.id}>
+										{asset.name} (Current: ฿{formatMoney(asset.cost)})
+									</option>
+								))
+							) : (
+								<option value="primary_cash">Primary Cash Account</option>
+							)}
+						</select>
+						<div style={{ fontSize: "11px", color: "var(--slate-gray)", marginTop: "4px" }}>
+							Choose the specific cash account receiving this capital injection.
+						</div>
+					</div>
+
+					<div className="form-group">
+						<label className="form-label">Transfer Schedule</label>
+						<div className="sub-tab-switcher" style={{ marginBottom: "4px" }}>
+							<button
+								type="button"
+								className={`sub-tab-btn ${frequency === "one_time" ? "active" : ""}`}
+								onClick={() => setFrequency("one_time")}
+							>
+								One-Time Injection
+							</button>
+							<button
+								type="button"
+								className={`sub-tab-btn ${frequency === "monthly" ? "active" : ""}`}
+								onClick={() => setFrequency("monthly")}
+							>
+								Monthly Recurring
+							</button>
+						</div>
+						<div style={{ fontSize: "11px", color: "var(--slate-gray)" }}>
+							{frequency === "monthly"
+								? "Transfers automatically every month starting from selected month."
+								: "One-off capital injection for this month only."}
+						</div>
 					</div>
 
 					<div className="form-group">
@@ -227,9 +298,9 @@ export const CapitalDrawer: React.FC<{
 					form="capital-form"
 					className="submit-btn"
 					disabled={!canSubmit}
-					style={{ flex: initialData ? 2 : 1, opacity: canSubmit ? 1 : 0.4 }}
+					style={{ flex: 2, height: "48px" }}
 				>
-					{initialData ? "Save Changes" : `Confirm Transfer (฿${formatMoney(transferAmount)})`}
+					{initialData ? "Save Changes" : "Confirm Injection"}
 				</button>
 			</div>
 		</div>,

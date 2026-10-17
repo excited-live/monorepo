@@ -12,8 +12,7 @@ import type {
 
 /**
  * Cash on hand today: cash assets plus net capital transfers. No monthly flows
- * are applied, so this is the number you can check against a bank balance
- * mid-month (before this month's income/expenses have happened).
+ * amortised here \u2014 those belong in end-of-month treasury.
  */
 export function calculateCurrentTreasury(params: {
 	account: EntityAccount;
@@ -66,62 +65,94 @@ export function calculateDerivedTreasury(params: {
 
 	const current = calculateCurrentTreasury({ account, hardware, transfers });
 
-	const activeRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
-	const hasSalaryStream = activeRevenues.some((r) => r.source === "salary");
-	const legacySalary = hasSalaryStream ? 0 : (account.salary ?? 0);
-	const income = activeRevenues.reduce(
-		(acc, r) => {
-			if (r.frequency === "monthly") return acc + r.amount;
-			if (r.frequency === "yearly") return acc + round2(r.amount / 12);
-			if (r.frequency === "one_time") {
-				if (yearMonth) {
-					return r.startMonth === yearMonth ? acc + r.amount : acc;
-				}
-				return acc;
-			}
-			return acc;
-		},
-		legacySalary,
+	const activeRevenues = revenues.filter((r) => {
+		if (r.entityId !== account.id || !r.active) return false;
+		if (yearMonth) {
+			if (r.frequency === "one_time") return r.startMonth === yearMonth;
+			if (r.startMonth && yearMonth < r.startMonth) return false;
+			if (r.endMonth && yearMonth > r.endMonth) return false;
+		}
+		return true;
+	});
+
+	// Inflows from career salary (personal or business payroll)
+	// If already configured as a revenue stream with source 'salary', the revenue stream's schedule governs strictly.
+	// Never fall back to legacy account.salary if ANY salary revenue exists or if revenues are configured for this account.
+	const hasConfiguredSalary = revenues.some(
+		(r) => r.entityId === account.id && (r.source === "salary" || r.id === "rev_career_prame" || r.id.startsWith("rev_career")),
+	);
+	const hasAnyRevenuesForEntity = revenues.some((r) => r.entityId === account.id);
+	const salaryInflow = account.salary && !hasConfiguredSalary && !hasAnyRevenuesForEntity ? account.salary : 0;
+
+	const monthlyIncome = activeRevenues.reduce(
+		(acc, r) => acc + (r.frequency === "yearly" ? round2(r.amount / 12) : r.amount),
+		salaryInflow,
 	);
 
-	const expenses =
-		subscriptions
-			.filter((s) => s.entityId === account.id && s.active)
-			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
-		liabilities
-			.filter((l) => l.entityId === account.id && l.active)
-			.reduce((acc, l) => acc + l.amount, 0);
+	const activeSubs = subscriptions.filter((s) => {
+		if (s.entityId !== account.id || !s.active) return false;
+		if (yearMonth && s.cycle === "one_time") {
+			return s.nextRenewalDate.startsWith(yearMonth);
+		}
+		return true;
+	});
+	const monthlySubscriptions = activeSubs.reduce(
+		(acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle),
+		0,
+	);
 
-	return round2(current + income - expenses);
+	const activeLiab = liabilities.filter((l) => l.entityId === account.id && l.active);
+	const monthlyLiabilities = activeLiab.reduce((acc, l) => acc + l.amount, 0);
+
+	return round2(current + monthlyIncome - monthlySubscriptions - monthlyLiabilities);
 }
 
+/**
+ * Pure ledger derivation engine for a specific entity and month.
+ */
 export function generateMonthlyLedger(params: {
 	account: EntityAccount;
-	yearMonth: string; // "YYYY-MM"
+	yearMonth: string;
 	subscriptions: RecurringSubscription[];
 	hardware: HardwareAsset[];
 	revenues: RevenueStream[];
 	transfers: CapitalTransfer[];
 	liabilities?: LiabilityStream[];
-}): { summary: MonthlySummary; actions: LedgerActionItem[] } {
-	const { account, yearMonth, subscriptions, hardware, revenues, transfers, liabilities = [] } = params;
+}): {
+	summary: MonthlySummary;
+	actions: LedgerActionItem[];
+} {
+	const {
+		account,
+		yearMonth,
+		subscriptions,
+		hardware,
+		revenues,
+		transfers,
+		liabilities = [],
+	} = params;
 
 	const actions: LedgerActionItem[] = [];
 
-	// 1. Inflows
+	// 1. Inflows (Capital & Revenues)
 	let totalInflow = 0;
 
-	// Inflows from capital transfers
-	const incomingTransfers = transfers.filter(
-		(t) => t.toEntityId === account.id && t.date.startsWith(yearMonth),
-	);
+	// Inflows from capital transfers (one_time or monthly recurring)
+	const incomingTransfers = transfers.filter((t) => {
+		if (t.toEntityId !== account.id) return false;
+		if (t.frequency === "monthly") {
+			return t.date.slice(0, 7) <= yearMonth;
+		}
+		return t.date.startsWith(yearMonth);
+	});
 	for (const t of incomingTransfers) {
 		totalInflow += t.amount;
+		const isRecurring = t.frequency === "monthly";
 		actions.push({
-			id: `action_${t.id}`,
+			id: `action_in_${t.id}_${yearMonth}`,
 			entityId: account.id,
-			date: t.date,
-			title: `Capital Inflow: ${t.note}`,
+			date: isRecurring ? `${yearMonth}-01` : t.date,
+			title: isRecurring ? `Recurring Capital Injected: ${t.note}` : `Capital Injected: ${t.note}`,
 			type: "inflow",
 			category: "capital_transfer",
 			reference: t.id,
@@ -154,9 +185,13 @@ export function generateMonthlyLedger(params: {
 	}
 
 	// Inflows from career salary (personal or business payroll)
-	// If already tracked as a revenue stream with source 'salary', avoid double-counting
-	const hasSalaryInRevenues = activeRevenues.some((r) => r.source === "salary");
-	if (account.salary && !hasSalaryInRevenues) {
+	// If already configured as a revenue stream with source 'salary', the revenue stream's schedule governs strictly.
+	// Never fall back to legacy account.salary if ANY salary revenue exists or if revenues are configured for this account.
+	const hasConfiguredSalary = revenues.some(
+		(r) => r.entityId === account.id && (r.source === "salary" || r.id === "rev_career_prame" || r.id.startsWith("rev_career")),
+	);
+	const hasAnyRevenuesForEntity = revenues.some((r) => r.entityId === account.id);
+	if (account.salary && !hasConfiguredSalary && !hasAnyRevenuesForEntity) {
 		const payday = account.paydayDayOfMonth ?? 28;
 		const dateStr = `${yearMonth}-${String(payday).padStart(2, "0")}`;
 		totalInflow += account.salary;
@@ -175,17 +210,22 @@ export function generateMonthlyLedger(params: {
 	// 2. Outflows (Cash & Subscriptions)
 	let totalCashOutflow = 0;
 
-	// Outflows to capital transfers
-	const outgoingTransfers = transfers.filter(
-		(t) => t.fromEntityId === account.id && t.date.startsWith(yearMonth),
-	);
+	// Outflows to capital transfers (one_time or monthly recurring)
+	const outgoingTransfers = transfers.filter((t) => {
+		if (t.fromEntityId !== account.id) return false;
+		if (t.frequency === "monthly") {
+			return t.date.slice(0, 7) <= yearMonth;
+		}
+		return t.date.startsWith(yearMonth);
+	});
 	for (const t of outgoingTransfers) {
 		totalCashOutflow += t.amount;
+		const isRecurring = t.frequency === "monthly";
 		actions.push({
-			id: `action_out_${t.id}`,
+			id: `action_out_${t.id}_${yearMonth}`,
 			entityId: account.id,
-			date: t.date,
-			title: `Capital Deployed: ${t.note}`,
+			date: isRecurring ? `${yearMonth}-01` : t.date,
+			title: isRecurring ? `Recurring Capital Deployed: ${t.note}` : `Capital Deployed: ${t.note}`,
 			type: "outflow",
 			category: "capital_transfer",
 			reference: t.id,
@@ -194,7 +234,13 @@ export function generateMonthlyLedger(params: {
 	}
 
 	// Outflows from subscriptions
-	const entitySubs = subscriptions.filter((s) => s.entityId === account.id && s.active);
+	const entitySubs = subscriptions.filter((s) => {
+		if (s.entityId !== account.id || !s.active) return false;
+		if (s.cycle === "one_time") {
+			return s.nextRenewalDate.startsWith(yearMonth);
+		}
+		return true;
+	});
 	for (const s of entitySubs) {
 		const monthlyCost = calculateMonthlyEquivalent(s.amount, s.cycle);
 		totalCashOutflow += monthlyCost;
@@ -234,44 +280,44 @@ export function generateMonthlyLedger(params: {
 		if (dep.monthlyRate > 0) {
 			totalDepreciation += dep.monthlyRate;
 			actions.push({
-				id: `action_dep_${h.id}`,
+				id: `action_hw_${h.id}`,
 				entityId: account.id,
 				date: `${yearMonth}-28`,
-				title: `${h.name} Straight-Line Depreciation (${dep.elapsedMonths}/${h.lifespanMonths} mos)`,
+				title: `Depreciation: ${h.name}`,
 				type: "depreciation",
-				category: "asset_depreciation",
+				category: h.category,
 				reference: h.id,
 				amount: -dep.monthlyRate,
 			});
 		}
 	}
 
-	totalInflow = round2(totalInflow);
-	totalCashOutflow = round2(totalCashOutflow);
-	totalDepreciation = round2(totalDepreciation);
-	const netCashFlow = round2(totalInflow - totalCashOutflow);
-	const netBurn = round2(totalCashOutflow + totalDepreciation - totalInflow);
-
-	// Sort actions by date
+	// Sort actions by date ascending
 	actions.sort((a, b) => a.date.localeCompare(b.date));
 
-	const startingTreasury = account.cashReserve;
+	const startingTreasury = calculateCurrentTreasury({ account, hardware, transfers });
+	const netCashFlow = round2(totalInflow - totalCashOutflow);
 	const endingTreasury = round2(startingTreasury + netCashFlow);
-	const runwayMonths = calculateRunway(endingTreasury, netBurn);
-	const isDefaultAlive = netBurn <= 0;
 
-	const summary: MonthlySummary = {
-		entityId: account.id,
-		yearMonth,
-		startingTreasury,
-		totalInflow,
-		totalCashOutflow,
-		totalDepreciation,
-		netCashFlow,
-		endingTreasury,
-		runwayMonths,
-		isDefaultAlive,
+	// Total monthly burn rate includes subscriptions + liabilities (depreciation is non-cash)
+	const monthlyBurn = totalCashOutflow;
+	const netBurn = Math.max(0, monthlyBurn - totalInflow);
+	const runwayMonths = calculateRunway(startingTreasury, netBurn);
+	const isDefaultAlive = totalInflow > 0 && totalInflow >= monthlyBurn;
+
+	return {
+		summary: {
+			entityId: account.id,
+			yearMonth,
+			startingTreasury: round2(startingTreasury),
+			endingTreasury: round2(endingTreasury),
+			totalInflow: round2(totalInflow),
+			totalCashOutflow: round2(totalCashOutflow),
+			totalDepreciation: round2(totalDepreciation),
+			netCashFlow,
+			runwayMonths,
+			isDefaultAlive,
+		},
+		actions,
 	};
-
-	return { summary, actions };
 }

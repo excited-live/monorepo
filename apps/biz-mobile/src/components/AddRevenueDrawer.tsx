@@ -86,6 +86,8 @@ export const AddRevenueDrawer: React.FC<{
 				name.trim(),
 				notes.trim() || undefined,
 				imageUrl || undefined,
+				startMonth || undefined,
+				endMonth || undefined,
 			);
 		}
 

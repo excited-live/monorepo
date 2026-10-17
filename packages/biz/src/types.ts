@@ -1,6 +1,6 @@
 export type EntityType = "personal" | "business";
 
-export type BillingCycle = "weekly" | "monthly" | "quarterly" | "semi-annual" | "yearly";
+export type BillingCycle = "weekly" | "monthly" | "quarterly" | "semi-annual" | "yearly" | "one_time";
 
 export interface EntityAccount {
 	id: string;
@@ -25,8 +25,10 @@ export interface CapitalTransfer {
 	fromEntityId: string;
 	toEntityId: string;
 	amount: number;
-	date: string; // YYYY-MM-DD
+	date: string; // YYYY-MM-DD or YYYY-MM
 	note: string;
+	targetAssetId?: string;
+	frequency?: "one_time" | "monthly";
 }
 
 export interface RecurringSubscription {

@@ -1,0 +1,75 @@
+---
+title: "Catalog"
+description: "Autofill catalog for subscriptions and hardware."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## Search the catalog
+
+`GET` `/api/v1/catalog/suggest`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `q` | query | `string` | no | Search text (name, alias or domain). |
+| `currency` | query | `string` | no | Defaults to `THB`. |
+| `type` | query | `"subscription"` \| `"hardware"` \| `"career"` \| `"revenue"` | no |  |
+
+**Responses**
+
+- `200` — Best match, suggestions and a favicon fallback. `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/catalog/suggest" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Resolve autofill values
+
+`POST` `/api/v1/catalog/resolve`
+
+Smart resolver that skips fields the user already touched.
+
+**Request body** (`application/json`)
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | `string` | yes |  |
+| `currency` | `string` | no |  |
+| `type` | `"subscription"` \| `"hardware"` \| `"career"` \| `"revenue"` | no |  |
+| `touchedFields` | `object` | no |  |
+| `touchedFields.amount` | `boolean` | no |  |
+| `touchedFields.cycle` | `boolean` | no |  |
+| `touchedFields.category` | `boolean` | no |  |
+| `touchedFields.imageUrl` | `boolean` | no |  |
+| `currentValues` | `object` | no |  |
+| `currentValues.amount` | `number` \| `string` | no |  |
+| `currentValues.cycle` | `string` | no |  |
+| `currentValues.category` | `string` | no |  |
+| `currentValues.imageUrl` | `string` | no |  |
+
+**Responses**
+
+- `200` — Autofill values. `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/catalog/resolve" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Schemas
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+

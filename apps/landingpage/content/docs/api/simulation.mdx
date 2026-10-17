@@ -1,0 +1,76 @@
+---
+title: "Simulation"
+description: "Stateless plan simulations."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## Run a Monte Carlo simulation
+
+`POST` `/api/v1/sim/monte-carlo`
+
+Stateless; nothing is stored. `config` defaults to the engine's default configuration.
+
+**Request body** (`application/json`)
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `plan` | [PlanInput](#planinput) | yes |  |
+| `config` | map of `any` | no |  |
+
+**Responses**
+
+- `200` — Monte Carlo result. map of `any`
+- `400` — Body is not `\{ plan, config? }`. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/sim/monte-carlo" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Run a deterministic simulation
+
+`POST` `/api/v1/sim/simulate`
+
+Stateless; nothing is stored.
+
+**Request body** (`application/json`)
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `plan` | [PlanInput](#planinput) | yes |  |
+
+**Responses**
+
+- `200` — Simulation result. map of `any`
+- `400` — Body is not `\{ plan }`. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/sim/simulate" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Schemas
+
+### PlanInput
+
+Plan document defined by `@excited-live/sim` (`PlanInput`). Stored and returned verbatim.
+
+Type: map of `any`
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+

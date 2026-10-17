@@ -1,15 +1,18 @@
 import { Hono } from "hono"
+import { describeRoute, openAPIRouteHandler } from "hono-openapi"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
+import { documentation, jsonResponse } from "./openapi/docs"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
 import { createBizRouter } from "./routes/biz"
 import { createCatalogRouter } from "./routes/catalog"
 import { createPlanRouter } from "./routes/plan"
 import { createSettingsRouter } from "./routes/settings"
 import { simRouter } from "./routes/sim"
+import { z } from "zod"
 
 export interface AppOptions {
 	/**
@@ -44,15 +47,30 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		}),
 	)
 
-	app.get("/health", (c) => {
-		return c.json({ status: "ok", service: "excited-live-api", timestamp: new Date().toISOString() })
-	})
+	app.get(
+		"/health",
+		describeRoute({
+			tags: ["System"],
+			operationId: "getHealth",
+			summary: "Health check",
+			security: [],
+			responses: {
+				200: jsonResponse(
+					"Service is up.",
+					z.object({ status: z.literal("ok"), service: z.string(), timestamp: z.string() }),
+				),
+			},
+		}),
+		(c) => {
+			return c.json({ status: "ok", service: "excited-live-api", timestamp: new Date().toISOString() })
+		},
+	)
 
 	app.get("/", (c) => {
 		return c.json({
 			name: "excited.live API",
 			version: "0.0.1",
-			docs: "/health",
+			docs: "/openapi.json",
 		})
 	})
 
@@ -80,6 +98,10 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	apiV1.route("/sim", simRouter)
 
 	app.route("/api/v1", apiV1)
+
+	// The OpenAPI document, generated from the route annotations above. Mounted
+	// outside /api/v1 so it stays public like /health.
+	app.get("/openapi.json", openAPIRouteHandler(app, { documentation }))
 
 	return app
 }

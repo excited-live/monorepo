@@ -1,0 +1,32 @@
+---
+title: "Auth"
+description: "Session check. The rest of the Better Auth surface is served under `/api/v1/auth/*`."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## Current session
+
+`GET` `/api/v1/auth/me`
+
+Session check for native apps.
+
+**Responses**
+
+- `200` — Authenticated. `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `503` — Auth is not configured in this environment. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/auth/me" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Schemas
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+

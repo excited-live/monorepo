@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../app";
 import { createNodeSqliteDriver } from "../db/node-sqlite";
 
 describe("api/v1/catalog", () => {
-	const db = createNodeSqliteDriver(":memory:");
-	const app = createApp({ db });
+	let app: ReturnType<typeof createApp>;
+
+	beforeAll(async () => {
+		app = createApp({ db: await createNodeSqliteDriver(":memory:") });
+	});
 
 	it("returns suggestions and best match for opencode", async () => {
 		const res = await app.request("/api/v1/catalog/suggest?q=opencode&currency=THB");

@@ -225,7 +225,7 @@ describe("unchanged endpoints", () => {
 		expect(Object.keys(await health.json()).sort()).toEqual(["service", "status", "timestamp"])
 
 		const root = await app.request("/")
-		expect(await root.json()).toEqual({ name: "excited.live API", version: "0.0.1", docs: "/health" })
+		expect(await root.json()).toEqual({ name: "excited.live API", version: "0.0.1", docs: "/openapi.json" })
 
 		db.driver.close()
 	})

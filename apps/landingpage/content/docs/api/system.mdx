@@ -1,0 +1,21 @@
+---
+title: "System"
+description: "Health and discovery."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## Health check
+
+`GET` `/health`
+
+**Responses**
+
+- `200` — Service is up. `object`
+
+```bash
+curl "$API_URL/health" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+

@@ -1,5 +1,8 @@
 import { Hono, type MiddlewareHandler } from "hono";
 import type { ApiEnv } from "../lib/env";
+import { jsonResponse, route } from "../openapi/docs";
+import { ErrorSchema } from "../openapi/schemas";
+import { z } from "zod";
 import { getTokensAuth, tokensAuthConfigured } from "../lib/auth";
 
 /**
@@ -19,7 +22,19 @@ export function createAuthRouter(): Hono<ApiEnv> {
 
 	// Convenience session check for native apps: 200 + user, 401 without a
 	// valid Bearer token, 503 when auth is not configured in this environment.
-	router.get("/me", async (c) => {
+	router.get("/me", route({
+		tags: ["Auth"],
+		operationId: "getMe",
+		summary: "Current session",
+		description: "Session check for native apps.",
+		responses: {
+			200: jsonResponse("Authenticated.", z.object({
+				authenticated: z.literal(true),
+				user: z.object({ id: z.string(), email: z.string(), name: z.string() }),
+			})),
+			503: jsonResponse("Auth is not configured in this environment.", ErrorSchema),
+		},
+	}), async (c) => {
 		const auth = await getTokensAuth(c.req.url, c.env);
 		if (!auth) {
 			return c.json({ error: "auth not configured in this environment" }, 503);

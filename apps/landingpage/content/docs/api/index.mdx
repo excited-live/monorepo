@@ -1,0 +1,55 @@
+---
+title: "API reference"
+description: "REST endpoints for every entity: accounts, subscriptions, hardware, revenues, liabilities, transfers, plan and settings."
+---
+
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+
+REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.
+
+**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key). On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, and falls back to a shared `default` bucket.
+
+Examples use `$API_URL` for the API base URL and `$TOKEN` for your bearer token. The machine-readable document is the committed [`apps/api/openapi.json`](https://github.com/fromsukong/excited.live/blob/main/apps/api/openapi.json).
+
+## Endpoints
+
+| Method | Path | Summary |
+| --- | --- | --- |
+| `GET` | [`/health`](/docs/api/system) | Health check |
+| `GET` | [`/api/v1/auth/me`](/docs/api/auth) | Current session |
+| `GET` | [`/api/v1/biz`](/docs/api/biz) | Get the full biz snapshot |
+| `PUT` | [`/api/v1/biz`](/docs/api/biz) | Replace the full biz snapshot |
+| `GET` | [`/api/v1/biz/ledger/{yearMonth}`](/docs/api/biz) | Get the computed monthly ledger |
+| `GET` | [`/api/v1/biz/accounts`](/docs/api/accounts) | List accounts |
+| `POST` | [`/api/v1/biz/accounts`](/docs/api/accounts) | Create an account |
+| `PUT` | [`/api/v1/biz/accounts/{id}`](/docs/api/accounts) | Update an account |
+| `DELETE` | [`/api/v1/biz/accounts/{id}`](/docs/api/accounts) | Delete an account |
+| `GET` | [`/api/v1/biz/subscriptions`](/docs/api/subscriptions) | List subscriptions |
+| `POST` | [`/api/v1/biz/subscriptions`](/docs/api/subscriptions) | Create a subscription |
+| `PUT` | [`/api/v1/biz/subscriptions/{id}`](/docs/api/subscriptions) | Update a subscription |
+| `DELETE` | [`/api/v1/biz/subscriptions/{id}`](/docs/api/subscriptions) | Delete a subscription |
+| `GET` | [`/api/v1/biz/hardware`](/docs/api/hardware) | List hardware |
+| `POST` | [`/api/v1/biz/hardware`](/docs/api/hardware) | Create a hardware asset |
+| `PUT` | [`/api/v1/biz/hardware/{id}`](/docs/api/hardware) | Update a hardware asset |
+| `DELETE` | [`/api/v1/biz/hardware/{id}`](/docs/api/hardware) | Delete a hardware asset |
+| `GET` | [`/api/v1/biz/revenues`](/docs/api/revenues) | List revenues |
+| `POST` | [`/api/v1/biz/revenues`](/docs/api/revenues) | Create a revenue |
+| `PUT` | [`/api/v1/biz/revenues/{id}`](/docs/api/revenues) | Update a revenue |
+| `DELETE` | [`/api/v1/biz/revenues/{id}`](/docs/api/revenues) | Delete a revenue |
+| `GET` | [`/api/v1/biz/liabilities`](/docs/api/liabilities) | List liabilities |
+| `POST` | [`/api/v1/biz/liabilities`](/docs/api/liabilities) | Create a liability |
+| `PUT` | [`/api/v1/biz/liabilities/{id}`](/docs/api/liabilities) | Update a liability |
+| `DELETE` | [`/api/v1/biz/liabilities/{id}`](/docs/api/liabilities) | Delete a liability |
+| `GET` | [`/api/v1/biz/transfers`](/docs/api/transfers) | List transfers |
+| `POST` | [`/api/v1/biz/transfers`](/docs/api/transfers) | Create a transfer |
+| `DELETE` | [`/api/v1/biz/transfers/{id}`](/docs/api/transfers) | Delete a transfer |
+| `GET` | [`/api/v1/catalog/suggest`](/docs/api/catalog) | Search the catalog |
+| `POST` | [`/api/v1/catalog/resolve`](/docs/api/catalog) | Resolve autofill values |
+| `GET` | [`/api/v1/plan`](/docs/api/plan) | Get the plan |
+| `PUT` | [`/api/v1/plan`](/docs/api/plan) | Save the plan |
+| `GET` | [`/api/v1/settings`](/docs/api/settings) | Get settings |
+| `PUT` | [`/api/v1/settings`](/docs/api/settings) | Save settings |
+| `POST` | [`/api/v1/sim/monte-carlo`](/docs/api/simulation) | Run a Monte Carlo simulation |
+| `POST` | [`/api/v1/sim/simulate`](/docs/api/simulation) | Run a deterministic simulation |

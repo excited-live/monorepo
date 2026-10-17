@@ -22,6 +22,7 @@ export const AddGearDrawer: React.FC<{
 	const [purchaseDate, setPurchaseDate] = useState(selectedMonth);
 	const [category, setCategory] = useState("workstation");
 	const [imageUrl, setImageUrl] = useState("");
+	const [isDefault, setIsDefault] = useState(false);
 
 	useEffect(() => {
 		if (initialData) {
@@ -31,6 +32,7 @@ export const AddGearDrawer: React.FC<{
 			setPurchaseDate(initialData.purchaseDate === "Historical" ? "2024-01" : initialData.purchaseDate);
 			setCategory(initialData.category);
 			setImageUrl(initialData.imageUrl || "");
+			setIsDefault(Boolean(initialData.isDefault));
 		} else {
 			setName("");
 			setCost("");
@@ -38,6 +40,7 @@ export const AddGearDrawer: React.FC<{
 			setPurchaseDate(selectedMonth);
 			setCategory("workstation");
 			setImageUrl("");
+			setIsDefault(false);
 		}
 	}, [initialData, isOpen, selectedMonth]);
 
@@ -61,6 +64,7 @@ export const AddGearDrawer: React.FC<{
 				purchaseDate,
 				category,
 				imageUrl: imageUrl || undefined,
+				isDefault: isCash ? isDefault : undefined,
 			});
 		} else {
 			addHardware({
@@ -71,6 +75,7 @@ export const AddGearDrawer: React.FC<{
 				purchaseDate,
 				category,
 				imageUrl: imageUrl || undefined,
+				isDefault: isCash ? isDefault : undefined,
 			});
 		}
 
@@ -170,6 +175,24 @@ export const AddGearDrawer: React.FC<{
 							required
 						/>
 					</div>
+
+					{isCash && (
+						<div className="form-group" style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "4px" }}>
+							<input
+								type="checkbox"
+								id="default-wallet-checkbox"
+								checked={isDefault}
+								onChange={(e) => setIsDefault(e.target.checked)}
+								style={{ width: "18px", height: "18px", marginTop: "2px", accentColor: "var(--signal-orange)", cursor: "pointer" }}
+							/>
+							<label htmlFor="default-wallet-checkbox" style={{ fontSize: "14px", fontWeight: 500, cursor: "pointer" }}>
+								Default Operating Wallet
+								<div style={{ fontSize: "12px", color: "var(--slate-gray)", fontWeight: 400 }}>
+									Absorbs net operating cashflow (income minus expenses) and untargeted transfers.
+								</div>
+							</label>
+						</div>
+					)}
 
 					{!isCash && (
 						<div className="form-group">

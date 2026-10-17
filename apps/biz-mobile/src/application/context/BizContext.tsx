@@ -40,10 +40,11 @@ export interface BizContextType {
 	selectedMonth: string; // "YYYY-MM"
 	lang: MobileLocale;
 	userSession: UserSession;
-	cloudSyncStatus: "synced" | "syncing" | "offline" | "error";
+	cloudSyncStatus: "synced" | "syncing" | "error";
 	lastSyncedAt: string | null;
 	syncWithCloud: () => Promise<void>;
 	signInWithEmail: (email: string, password: string) => Promise<void>;
+	signUpWithEmail: (email: string, password: string, name: string) => Promise<void>;
 	signInWithGoogle: (idToken: string) => Promise<void>;
 	signOut: () => Promise<void>;
 	updateUserProfile: (profile: Partial<UserSession>) => void;
@@ -112,10 +113,10 @@ export interface BizContextType {
 const STORAGE_PREFIX = "excited_live_mobile_data_v1";
 
 export const DEFAULT_SESSION: UserSession = {
-	id: "usr_guest",
+	id: "",
 	email: "",
-	name: "Guest Solopreneur",
-	orgName: "My Business",
+	name: "",
+	orgName: "",
 	isAuthenticated: false,
 	avatarUrl: DEFAULT_PROFILE_AVATAR,
 };
@@ -148,38 +149,32 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	// Raw entity accounts from storage or seed (before derived treasury)
 	const [rawAccounts, setRawAccounts] = useState<EntityAccount[]>(() => {
 		if (initialAccounts) return initialAccounts;
-		const saved = storage.getItem<EntityAccount[]>(`${STORAGE_PREFIX}_accounts`, SEED_ACCOUNTS);
-		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_ACCOUNTS;
+		return SEED_ACCOUNTS;
 	});
 
 	const [subscriptions, setSubscriptions] = useState<RecurringSubscription[]>(() => {
 		if (initialSubscriptions) return initialSubscriptions;
-		const saved = storage.getItem<RecurringSubscription[]>(`${STORAGE_PREFIX}_subs`, SEED_SUBSCRIPTIONS);
-		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_SUBSCRIPTIONS;
+		return SEED_SUBSCRIPTIONS;
 	});
 
 	const [hardware, setHardware] = useState<HardwareAsset[]>(() => {
 		if (initialHardware) return initialHardware;
-		const saved = storage.getItem<HardwareAsset[]>(`${STORAGE_PREFIX}_hw`, SEED_HARDWARE);
-		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_HARDWARE;
+		return SEED_HARDWARE;
 	});
 
 	const [revenues, setRevenues] = useState<RevenueStream[]>(() => {
 		if (initialRevenues) return initialRevenues;
-		const saved = storage.getItem<RevenueStream[]>(`${STORAGE_PREFIX}_rev`, SEED_REVENUES);
-		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_REVENUES;
+		return SEED_REVENUES;
 	});
 
 	const [liabilities, setLiabilities] = useState<LiabilityStream[]>(() => {
 		if (initialLiabilities) return initialLiabilities;
-		const saved = storage.getItem<LiabilityStream[]>(`${STORAGE_PREFIX}_liab`, SEED_LIABILITIES);
-		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_LIABILITIES;
+		return SEED_LIABILITIES;
 	});
 
 	const [transfers, setTransfers] = useState<CapitalTransfer[]>(() => {
 		if (initialTransfers) return initialTransfers;
-		const saved = storage.getItem<CapitalTransfer[]>(`${STORAGE_PREFIX}_tx`, SEED_TRANSFERS);
-		return saved && Array.isArray(saved) && saved.length > 0 ? saved : SEED_TRANSFERS;
+		return SEED_TRANSFERS;
 	});
 
 	const [userSession, setUserSession] = useState<UserSession>(() => {
@@ -195,7 +190,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	const [lang, setLang] = useState<MobileLocale>("en");
 
 	// Cloud native sync state tracking
-	const [cloudSyncStatus, setCloudSyncStatus] = useState<"synced" | "syncing" | "offline" | "error">("synced");
+	const [cloudSyncStatus, setCloudSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
 	const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() => {
 		return storage.getItem<string | null>(`${STORAGE_PREFIX}_last_synced_at`, null);
 	});
@@ -277,7 +272,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 							setLastSyncedAt(now);
 							storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
 						} else {
-							setCloudSyncStatus("offline");
+							setCloudSyncStatus("error");
 						}
 					} else if (!remote.isDefault) {
 						// Server has saved cloud data: hydrate client state
@@ -291,16 +286,15 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 						setCloudSyncStatus("synced");
 						setLastSyncedAt(syncedTimestamp);
 						storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, syncedTimestamp);
-						storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
-					} else {
+									} else {
 						setCloudSyncStatus("synced");
 					}
 				} else {
-					setCloudSyncStatus("offline");
+					setCloudSyncStatus("error");
 				}
 			} catch {
 				if (!isCancelled) {
-					setCloudSyncStatus("offline");
+					setCloudSyncStatus("error");
 				}
 			} finally {
 				if (!isCancelled) {
@@ -316,30 +310,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		};
 	}, [userSession.isAuthenticated, userSession.id, storage]);
 
-	// Persistence to storage adapter (instant local cache)
-	useEffect(() => {
-		storage.setItem(`${STORAGE_PREFIX}_accounts`, rawAccounts);
-	}, [rawAccounts, storage]);
 
-	useEffect(() => {
-		storage.setItem(`${STORAGE_PREFIX}_subs`, subscriptions);
-	}, [subscriptions, storage]);
-
-	useEffect(() => {
-		storage.setItem(`${STORAGE_PREFIX}_hw`, hardware);
-	}, [hardware, storage]);
-
-	useEffect(() => {
-		storage.setItem(`${STORAGE_PREFIX}_rev`, revenues);
-	}, [revenues, storage]);
-
-	useEffect(() => {
-		storage.setItem(`${STORAGE_PREFIX}_liab`, liabilities);
-	}, [liabilities, storage]);
-
-	useEffect(() => {
-		storage.setItem(`${STORAGE_PREFIX}_tx`, transfers);
-	}, [transfers, storage]);
 
 	useEffect(() => {
 		storage.setItem(`${STORAGE_PREFIX}_session`, userSession);
@@ -372,12 +343,11 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 					setCloudSyncStatus("synced");
 					setLastSyncedAt(now);
 					storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
-					storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
-				} else {
-					setCloudSyncStatus("offline");
+							} else {
+					setCloudSyncStatus("error");
 				}
 			} catch {
-				setCloudSyncStatus("offline");
+				setCloudSyncStatus("error");
 			}
 		}, 800);
 
@@ -388,17 +358,21 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		};
 	}, [rawAccounts, subscriptions, hardware, revenues, liabilities, transfers, userSession.isAuthenticated, userSession.id, storage]);
 
-	// Derived accounts: calculateCurrentTreasury derives cash on hand from cash assets and transfers
+	// Derived accounts: calculateCurrentTreasury derives cash on hand from cash assets, transfers, and operational flows
 	const accounts = useMemo(() => {
 		return rawAccounts.map((acc) => {
 			const derived = calculateCurrentTreasury({
 				account: acc,
 				hardware,
 				transfers,
+				subscriptions,
+				revenues,
+				liabilities,
+				yearMonth: selectedMonth,
 			});
 			return { ...acc, cashReserve: derived };
 		});
-	}, [rawAccounts, hardware, transfers]);
+	}, [rawAccounts, hardware, transfers, subscriptions, revenues, liabilities, selectedMonth]);
 
 	const applySession = async (token: string, user: { id: string; email: string; name: string }) => {
 		setBearerToken(token);
@@ -423,8 +397,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 				const ts = remote.updatedAt || new Date().toISOString();
 				setLastSyncedAt(ts);
 				storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, ts);
-				storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
-				setCloudSyncStatus("synced");
+						setCloudSyncStatus("synced");
 			} else {
 				// Newly connected account: save current state to user's cloud account
 				const pushRes = await bizApi.syncSnapshot(
@@ -442,19 +415,23 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 					const now = new Date().toISOString();
 					setLastSyncedAt(now);
 					storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
-					storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
-					setCloudSyncStatus("synced");
+								setCloudSyncStatus("synced");
 				} else {
-					setCloudSyncStatus("offline");
+					setCloudSyncStatus("error");
 				}
 			}
 		} catch {
-			setCloudSyncStatus("offline");
+			setCloudSyncStatus("error");
 		}
 	};
 
 	const signInWithEmail = async (email: string, password: string) => {
 		const res = await authApi.signIn(email, password);
+		await applySession(res.token, res.user);
+	};
+
+	const signUpWithEmail = async (email: string, password: string, name: string) => {
+		const res = await authApi.signUpEmail(email, password, name);
 		await applySession(res.token, res.user);
 	};
 
@@ -492,12 +469,11 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 				setCloudSyncStatus("synced");
 				setLastSyncedAt(now);
 				storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
-				storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
-			} else {
-				setCloudSyncStatus("offline");
+					} else {
+				setCloudSyncStatus("error");
 			}
 		} catch {
-			setCloudSyncStatus("offline");
+			setCloudSyncStatus("error");
 		}
 	};
 
@@ -517,7 +493,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		let resolvedTargetAssetId = targetAssetId;
 
 		if (resolvedTargetAssetId === "primary_cash" || (!resolvedTargetAssetId && toCashAssets.length === 0)) {
-			const existingPrimary = toCashAssets[0];
+			const existingPrimary = toCashAssets.find((h) => h.isDefault) || toCashAssets[0];
 			if (existingPrimary) {
 				resolvedTargetAssetId = existingPrimary.id;
 			} else {
@@ -530,12 +506,14 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 					lifespanMonths: 0,
 					purchaseDate: selectedMonth,
 					category: "cash",
+					isDefault: true,
 				};
 				setHardware((prev) => [...prev, newAsset]);
 				resolvedTargetAssetId = newAssetId;
 			}
 		} else if (!resolvedTargetAssetId && toCashAssets.length > 0) {
-			resolvedTargetAssetId = toCashAssets[0]?.id;
+			const defaultOrFirst = toCashAssets.find((h) => h.isDefault) || toCashAssets[0];
+			resolvedTargetAssetId = defaultOrFirst?.id;
 		}
 
 		const newTx: CapitalTransfer = {
@@ -549,17 +527,14 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			...(resolvedTargetAssetId ? { targetAssetId: resolvedTargetAssetId } : {}),
 		};
 		setTransfers((prev) => [newTx, ...prev]);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateCapitalTransfer = (transfer: CapitalTransfer) => {
 		setTransfers((prev) => prev.map((t) => (t.id === transfer.id ? transfer : t)));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteCapitalTransfer = (id: string) => {
 		setTransfers((prev) => prev.filter((t) => t.id !== id));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addBusiness = (name: string, imageUrl?: string, startingTreasury?: number): string => {
@@ -574,19 +549,38 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		};
 		setRawAccounts((prev) => [...prev, newBiz]);
 		setActiveEntityId(newId);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+
+		// Automatically create a default wallet (marked as default)
+		const walletId = `hw_wallet_${Date.now()}`;
+		const defaultWallet: HardwareAsset = {
+			id: walletId,
+			entityId: newId,
+			name: `${name} Main Wallet`,
+			cost: 0,
+			lifespanMonths: 0,
+			purchaseDate: selectedMonth,
+			category: "cash",
+			isDefault: true,
+		};
+		setHardware((prev) => [...prev, defaultWallet]);
 
 		// When starting treasury is entered, record it as a regular CapitalTransfer from personal
 		if (startingTreasury && startingTreasury > 0) {
-			const initialTransfer: CapitalTransfer = {
-				id: `tx_${Date.now()}`,
-				fromEntityId: "acc_personal",
-				toEntityId: newId,
-				amount: startingTreasury,
-				date: selectedMonth,
-				note: `${name} Initial Capital`,
-			};
-			setTransfers((prev) => [initialTransfer, ...prev]);
+			const hasPersonal = rawAccounts.some((a) => a.id === "acc_personal");
+			if (hasPersonal) {
+				const initialTransfer: CapitalTransfer = {
+					id: `tx_${Date.now()}`,
+					fromEntityId: "acc_personal",
+					toEntityId: newId,
+					amount: startingTreasury,
+					date: selectedMonth,
+					note: `${name} Initial Capital`,
+					targetAssetId: walletId,
+				};
+				setTransfers((prev) => [initialTransfer, ...prev]);
+			} else {
+				defaultWallet.cost = startingTreasury;
+			}
 		}
 		return newId;
 	};
@@ -595,7 +589,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setRawAccounts((prev) =>
 			prev.map((acc) => (acc.id === id ? { ...acc, name, imageUrl } : acc)),
 		);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateCareer = (
@@ -611,7 +604,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setRawAccounts((prev) =>
 			prev.map((acc) => (acc.id === entityId ? { ...acc, ...career } : acc)),
 		);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const setCareerIncome = (
@@ -674,7 +666,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			}
 			return prev;
 		});
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteBusiness = (id: string) => {
@@ -685,7 +676,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setLiabilities((prev) => prev.filter((l) => l.entityId !== id));
 		setTransfers((prev) => prev.filter((t) => t.fromEntityId !== id && t.toEntityId !== id));
 		setActiveEntityId("acc_personal");
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addSubscription = (sub: Omit<RecurringSubscription, "id">) => {
@@ -694,17 +684,14 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `sub_${Date.now()}`,
 		};
 		setSubscriptions((prev) => [...prev, newSub]);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateSubscription = (sub: RecurringSubscription) => {
 		setSubscriptions((prev) => prev.map((s) => (s.id === sub.id ? sub : s)));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteSubscription = (id: string) => {
 		setSubscriptions((prev) => prev.filter((s) => s.id !== id));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addHardware = (hw: Omit<HardwareAsset, "id">) => {
@@ -712,18 +699,28 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			...hw,
 			id: `hw_${Date.now()}`,
 		};
-		setHardware((prev) => [...prev, newHw]);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+		setHardware((prev) => {
+			const updated = hw.isDefault
+				? prev.map((h) => (h.entityId === hw.entityId && isCashAsset(h) ? { ...h, isDefault: false } : h))
+				: prev;
+			return [...updated, newHw];
+		});
 	};
 
 	const updateHardware = (hw: HardwareAsset) => {
-		setHardware((prev) => prev.map((h) => (h.id === hw.id ? hw : h)));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+		setHardware((prev) => {
+			return prev.map((h) => {
+				if (h.id === hw.id) return hw;
+				if (hw.isDefault && h.entityId === hw.entityId && isCashAsset(h)) {
+					return { ...h, isDefault: false };
+				}
+				return h;
+			});
+		});
 	};
 
 	const deleteHardware = (id: string) => {
 		setHardware((prev) => prev.filter((h) => h.id !== id));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addRevenue = (rev: Omit<RevenueStream, "id">) => {
@@ -732,12 +729,10 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `rev_${Date.now()}`,
 		};
 		setRevenues((prev) => [...prev, newRev]);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateRevenue = (rev: RevenueStream) => {
 		setRevenues((prev) => prev.map((r) => (r.id === rev.id ? rev : r)));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteRevenue = (id: string) => {
@@ -750,7 +745,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			);
 		}
 		setRevenues((prev) => prev.filter((r) => r.id !== id));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addLiability = (liab: Omit<LiabilityStream, "id">) => {
@@ -759,17 +753,14 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `liab_${Date.now()}`,
 		};
 		setLiabilities((prev) => [...prev, newLiab]);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateLiability = (liab: LiabilityStream) => {
 		setLiabilities((prev) => prev.map((l) => (l.id === liab.id ? liab : l)));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteLiability = (id: string) => {
 		setLiabilities((prev) => prev.filter((l) => l.id !== id));
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const resetToBaseline = () => {
@@ -804,7 +795,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		if (Array.isArray(data.liabilities)) setLiabilities(data.liabilities);
 		if (Array.isArray(data.transfers)) setTransfers(data.transfers);
 		if (data.user && typeof data.user === "object") setUserSession(data.user);
-		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const contextValue: BizContextType = {
@@ -829,6 +819,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		lastSyncedAt,
 		syncWithCloud,
 		signInWithEmail,
+		signUpWithEmail,
 		signInWithGoogle,
 		signOut,
 		updateUserProfile,

@@ -13,6 +13,9 @@ export default defineConfig({
 		}),
 		react(),
 	],
+	define: {
+		__TAURI_DEV_HOST__: JSON.stringify(process.env.TAURI_DEV_HOST || ""),
+	},
 	resolve: {
 		alias: {
 			"~": resolve(import.meta.dirname, "./src"),
@@ -22,7 +25,7 @@ export default defineConfig({
 	server: {
 		port: 1430,
 		strictPort: true,
-		host: host || false,
+		host: host || "0.0.0.0",
 		proxy: {
 			// Same-origin API path for local dev: auth headers never cross origins.
 			"/api": {

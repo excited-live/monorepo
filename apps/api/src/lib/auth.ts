@@ -49,10 +49,20 @@ async function resolveAuthDatabase(env: unknown): Promise<AuthDatabase> {
 
 /** Trusted origins for cross-origin auth calls (mobile origins, webapp origin). */
 function trustedOrigins(): string[] {
-	return (process.env.BETTER_AUTH_TRUSTED_ORIGINS || "")
+	const configured = (process.env.BETTER_AUTH_TRUSTED_ORIGINS || "")
 		.split(",")
 		.map((value) => value.trim())
 		.filter(Boolean)
+	return [
+		...configured,
+		"http://localhost:*",
+		"http://127.0.0.1:*",
+		"http://192.168.*:*",
+		"http://10.*:*",
+		"http://172.*:*",
+		"tauri://localhost",
+		"http://tauri.localhost",
+	]
 }
 
 function googleProvider(): { clientId: string; clientSecret: string } | undefined {

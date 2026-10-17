@@ -12,7 +12,26 @@ import type {
 
 export type { BizSnapshot, MonthlyLedger };
 
-const API_ROOT = import.meta.env.VITE_API_URL || "/api/v1";
+declare const __TAURI_DEV_HOST__: string | undefined;
+
+export const getApiRoot = (): string => {
+	if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+	if (typeof __TAURI_DEV_HOST__ !== "undefined" && __TAURI_DEV_HOST__) {
+		return `http://${__TAURI_DEV_HOST__}:8000/api/v1`;
+	}
+	if (typeof window !== "undefined" && window.location) {
+		const host = window.location.hostname;
+		// Inside Tauri Android WebView, the origin is http://tauri.localhost.
+		// In Android's Chromium WebViewClient, `shouldInterceptRequest` intercepts tauri.localhost
+		// and strips POST request bodies entirely. We must connect directly to the dev machine LAN IP:
+		if (host === "tauri.localhost") {
+			return "http://192.168.1.130:8000/api/v1";
+		}
+	}
+	return "/api/v1";
+};
+
+const API_ROOT = getApiRoot();
 const BIZ_BASE = `${API_ROOT}/biz`;
 const CATALOG_BASE = `${API_ROOT}/catalog`;
 
@@ -76,74 +95,64 @@ function authHeaders(extra: Record<string, string> = {}): Record<string, string>
 
 async function authErrorMessage(res: Response): Promise<string> {
 	try {
-		const body = (await res.json()) as { message?: string; error?: string };
-		return body.message || body.error || "";
+		const clone = res.clone();
+		const body = (await clone.json()) as { message?: string; error?: string; code?: string };
+		return body.message || body.error || body.code || `HTTP ${res.status}`;
 	} catch {
-		return "";
+		try {
+			const text = await res.text();
+			return text || `HTTP ${res.status}`;
+		} catch {
+			return `HTTP ${res.status}`;
+		}
 	}
 }
 
 export const authApi = {
 	async signIn(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
+		const cleanEmail = email.trim();
 		const res = await fetch(`${API_ROOT}/auth/sign-in/email`, {
 			method: "POST",
-			headers: { "content-type": "application/json", Authorization: "Bearer" },
-			body: JSON.stringify({ email, password }),
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ email: cleanEmail, password }),
 		});
 		if (!res.ok) {
 			throw new Error((await authErrorMessage(res)) || "Sign-in failed");
 		}
-		const data = (await res.json().catch(() => null)) as { token?: string } | null;
-		const token = data?.token ?? res.headers.get("set-auth-token");
+		const data = (await res.json().catch(() => null)) as { token?: string; user?: AuthUser } | null;
+		const token = res.headers.get("set-auth-token") ?? data?.token;
 		if (!token) {
 			throw new Error("Sign-in did not return a session token");
 		}
 		setBearerToken(token);
-		const user = await authApi.me();
+		const user = data?.user ?? (await authApi.me());
 		if (!user) {
 			throw new Error("Sign-in succeeded but the session could not be resolved");
 		}
 		return { token, user };
 	},
 
-	async signInEmail(email: string, password: string): Promise<SessionResponse> {
-		const res = await fetch(`${API_ROOT}/auth/sign-in/email`, {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ email, password }),
-		});
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({ message: "Sign-in failed" }));
-			throw new Error(err.message || `HTTP ${res.status}`);
-		}
-		const setToken = res.headers.get("set-auth-token");
-		const data = await res.json();
-		if (setToken) {
-			setBearerToken(setToken);
-		} else if (data?.session?.token) {
-			setBearerToken(data.session.token);
-		}
-		return data;
-	},
-
-	async signUpEmail(email: string, password: string, name: string): Promise<SessionResponse> {
+	async signUpEmail(email: string, password: string, name: string): Promise<{ token: string; user: AuthUser }> {
+		const cleanEmail = email.trim();
 		const res = await fetch(`${API_ROOT}/auth/sign-up/email`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ email, password, name }),
+			body: JSON.stringify({ email: cleanEmail, password, name: name.trim() || "Solopreneur" }),
 		});
 		if (!res.ok) {
-			const err = await res.json().catch(() => ({ message: "Sign-up failed" }));
-			throw new Error(err.message || `HTTP ${res.status}`);
+			throw new Error((await authErrorMessage(res)) || "Sign-up failed");
 		}
-		const setToken = res.headers.get("set-auth-token");
-		const data = await res.json();
-		if (setToken) {
-			setBearerToken(setToken);
-		} else if (data?.session?.token) {
-			setBearerToken(data.session.token);
+		const data = (await res.json().catch(() => null)) as { token?: string; user?: AuthUser } | null;
+		const token = res.headers.get("set-auth-token") ?? data?.token;
+		if (!token) {
+			throw new Error("Sign-up did not return a session token");
 		}
-		return data;
+		setBearerToken(token);
+		const user = data?.user ?? (await authApi.me());
+		if (!user) {
+			throw new Error("Sign-up succeeded but the session could not be resolved");
+		}
+		return { token, user };
 	},
 
 	async signInWithGoogleIdToken(idToken: string): Promise<{ token: string; user: AuthUser }> {

@@ -40,7 +40,30 @@ export function createAuthRouter(): Hono<ApiEnv> {
 		if (!auth) {
 			return c.json({ error: "auth not configured in this environment" }, 503);
 		}
-		return auth.handler(c.req.raw);
+		let reqToHandle = c.req.raw;
+		if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+			const bodyText = await c.req.text().catch(() => "");
+			console.log(`[auth request] ${c.req.method} ${c.req.path} bodyLen=${bodyText.length} preview=${JSON.stringify(bodyText.slice(0, 80))}`);
+			const headers = new Headers(c.req.raw.headers);
+			reqToHandle = new Request(c.req.raw.url, {
+				method: c.req.method,
+				headers,
+				body: bodyText,
+				// @ts-expect-error duplex is standard in Node fetch
+				duplex: "half",
+			});
+		}
+		const res = await auth.handler(reqToHandle);
+		if (res.status >= 400) {
+			try {
+				const clone = res.clone();
+				const text = await clone.text();
+				console.warn(`[auth error ${res.status}] ${c.req.method} ${c.req.path} -> ${text}`);
+			} catch {
+				// ignore
+			}
+		}
+		return res;
 	});
 
 	return router;

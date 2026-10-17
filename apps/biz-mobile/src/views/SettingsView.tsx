@@ -190,17 +190,17 @@ export const SettingsView: React.FC = () => {
 						}}
 					>
 						{cloudSyncStatus === "synced"
-							? `● ${lang === "th" ? "ซิงก์แล้ว" : "Synced to Cloud"}`
+							? `● ${lang === "th" ? "ซิงก์กับคลาวด์แล้ว" : "Synced to Cloud"}`
 							: cloudSyncStatus === "syncing"
-								? `● ${lang === "th" ? "กำลังซิงก์..." : "Syncing..."}`
-								: `● ${lang === "th" ? "ออฟไลน์ (เซฟในเครื่อง)" : "Offline (Saved locally)"}`}
+								? `● ${lang === "th" ? "กำลังซิงก์กับคลาวด์..." : "Syncing to Cloud..."}`
+								: `● ${lang === "th" ? "เกิดข้อผิดพลาดในการเชื่อมต่อคลาวด์" : "Cloud Sync Error"}`}
 					</span>
 				</div>
 
 				<p style={{ fontSize: "13px", color: "var(--slate-gray)", marginTop: "4px" }}>
 					{lang === "th"
-						? "ระบบคลาวด์เนทีฟเชื่อมต่ออัตโนมัติกับ Excited Cloud พร้อมระบบออฟไลน์แคชในเครื่องทันที"
-						: "State is persistent across devices via Excited Cloud SQLite/D1 with instant local offline capability."}
+						? "ระบบคลาวด์เนทีฟ: ข้อมูลทั้งหมดจะถูกจัดเก็บและซิงก์แบบเรียลไทม์กับ Excited Cloud (D1/SQLite) โดยตรง"
+						: "Pure cloud-native architecture: all business state and balances are stored and synced in real-time with Excited Cloud."}
 				</p>
 
 				{lastSyncedAt && (

@@ -2,6 +2,27 @@ import { serve } from "@hono/node-server"
 import { createApp } from "./app"
 import { getDb } from "./db"
 
+// Load local environment files if present
+if (typeof process.loadEnvFile === "function") {
+	try {
+		process.loadEnvFile()
+	} catch {
+		// Ignore if no .env in cwd
+	}
+	try {
+		const envPath = new URL("../.env", import.meta.url)
+		process.loadEnvFile(envPath)
+	} catch {
+		// Ignore if no .env in package dir
+	}
+}
+
+// Dev fallback: if running dev server and BETTER_AUTH_SECRET is not configured, provide a dev secret
+if (!process.env.BETTER_AUTH_SECRET && process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
+	process.env.BETTER_AUTH_SECRET = "excited-live-dev-secret-better-auth-solopreneur-2026"
+	console.log("[excited-live-api] BETTER_AUTH_SECRET not set; configured default dev secret.")
+}
+
 const app = createApp()
 
 const port = Number(process.env.PORT) || 8000

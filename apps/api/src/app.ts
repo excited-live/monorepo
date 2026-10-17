@@ -38,6 +38,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		cors({
 			origin: (origin) => origin || "*",
 			allowHeaders: ["Content-Type", "Authorization", "x-user-id"],
+			exposeHeaders: ["set-auth-token"],
 			allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 			credentials: true,
 		}),

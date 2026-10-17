@@ -142,7 +142,12 @@ export const AddRevenueDrawer: React.FC<{
 			</div>
 
 			<div className="modal-page-content">
-				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
+				<ModalImageSection
+					value={imageUrl}
+					onChange={(v) => setImageUrl(v ?? "")}
+					aspectRatio={isCareer ? "cover" : "square"}
+					showCuratedWallpapers={isCareer}
+				/>
 
 				<form id="revenue-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">

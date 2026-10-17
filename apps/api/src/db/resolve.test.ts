@@ -29,7 +29,7 @@ describe("database resolution", () => {
 		const db = await resolveDb({ DB: stub.binding }, { EXCITED_API_DB_PATH: "not-used.sqlite" })
 
 		expect(db.mode).toBe("d1")
-		expect(db.migrations).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql"])
+		expect(db.migrations).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql", "0004_biz_liabilities.sql"])
 
 		// The migrator goes through prepare/bind/run, not a local file handle.
 		expect(stub.calls.some((call) => call.startsWith("prepare INSERT INTO d1_migrations"))).toBe(true)
@@ -50,13 +50,23 @@ describe("database resolution", () => {
 			gender: "male",
 		})
 
-		stub.close()
+		db.driver.close()
 	})
 
 	it("falls back to the local SQLite file when the env has no D1 binding", async () => {
-		const db = await resolveDb({ DB: { not: "a d1 binding" } }, { EXCITED_API_DB_PATH: tempDbFile() })
+		const file = tempDbFile()
+		const db = await resolveDb(undefined, { EXCITED_API_DB_PATH: file })
 
 		expect(db.mode).toBe("node-sqlite")
+
+		const settingsStore = createSettingsStore(db.driver)
+		await settingsStore.save("user-local", { profileName: "Prame", gender: "male" })
+		expect(await settingsStore.get("user-local")).toEqual({
+			profileName: "Prame",
+			birthday: undefined,
+			gender: "male",
+		})
+
 		db.driver.close()
 	})
 })

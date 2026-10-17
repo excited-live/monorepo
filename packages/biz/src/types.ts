@@ -10,7 +10,7 @@ export interface EntityAccount {
 	salary?: number;
 	paydayDayOfMonth?: number;
 	targetSafetyBuffer?: number;
-	currency: "THB";
+	currency: "THB" | "USD" | (string & {});
 	createdAt?: string;
 	active?: boolean;
 	notes?: string;
@@ -127,4 +127,21 @@ export interface LedgerActionItem {
 	type: "subscription" | "depreciation" | "revenue" | "capital_in" | "capital_out" | "inflow" | "outflow";
 	category?: string;
 	reference?: string;
+}
+
+export interface MonthlyLedger {
+	yearMonth: string;
+	summary: MonthlySummary;
+	actionItems: LedgerActionItem[];
+}
+
+export interface BizSnapshot {
+	accounts: EntityAccount[];
+	subscriptions: RecurringSubscription[];
+	hardware: HardwareAsset[];
+	revenues: RevenueStream[];
+	transfers: CapitalTransfer[];
+	liabilities?: LiabilityStream[];
+	updatedAt?: string;
+	isDefault?: boolean;
 }

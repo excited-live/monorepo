@@ -137,4 +137,11 @@ create index "oauthConsent_userId_idx" on "oauthConsent" ("userId");
 create unique index "oauthClientResource_clientId_resourceId_uidx" on "oauthClientResource" ("clientId", "resourceId");
 `,
 	},
+	{
+		name: "0004_biz_liabilities.sql",
+		sql: `-- 0004_biz_liabilities.sql — add liabilities column to biz_snapshots
+
+ALTER TABLE biz_snapshots ADD COLUMN liabilities_json TEXT;
+`,
+	},
 ]

@@ -1,4 +1,7 @@
 import React from "react";
+import { Badge, Button, HStack, Img, PlainButton, Stack, Text } from "@excited-live/design-system";
+import { EntityThumb } from "../../../../components/EntityThumb";
+import { ListItemCard } from "../../../../components/ListItemCard";
 import type { EntityAccount } from "@excited-live/biz";
 import { calculatePaydayCountdown as defaultCalculatePaydayCountdown } from "../../../../domain/selectors";
 import { formatMoney } from "../../../../utils/format";
@@ -23,115 +26,102 @@ export const HomeEntitiesSection: React.FC<HomeEntitiesSectionProps> = ({
 	onSelectAccount = () => {},
 	onOpenCareerEdit = () => {},
 	eomTreasury = (acc) => acc.cashReserve,
-	formatType = (entityType) =>
-		entityType === "personal" ? t("home.personal", lang) : t("home.businesses", lang),
+	formatType = (entityType) => (entityType === "personal" ? t("home.personal", lang) : t("home.businesses", lang)),
 	calculatePaydayCountdown = defaultCalculatePaydayCountdown,
 }) => {
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-			<div className="section-header">
-				<span className="section-title">{t("section.entities", lang)}</span>
-				<button
-					type="button"
-					className="action-pill-btn primary"
-					style={{ padding: "4px 12px", fontSize: "12px" }}
-					onClick={onAddBusiness}
-				>
-					{t("action.addBusiness", lang)}
-				</button>
-			</div>
+		<Stack gap={2} className="gap-2.5" width="100%">
+			<HStack width="100%" justify="between" align="center">
+				<Text className="text-[12px] font-bold uppercase tracking-wider text-slate">{t("section.entities", lang)}</Text>
+				<Button label={t("action.addBusiness", lang)} variant="primary" size="sm" onClick={onAddBusiness} />
+			</HStack>
 
-			<div className="item-list">
+			<Stack gap={2} width="100%">
 				{accounts.map((acc) => {
-					const hasCareer =
-						acc.type === "personal" && Boolean(acc.careerTitle || acc.careerCompany || acc.salary);
+					const hasCareer = acc.type === "personal" && Boolean(acc.careerTitle || acc.careerCompany || acc.salary);
 					const countdown = calculatePaydayCountdown(acc.paydayDayOfMonth);
 					return (
-						<div
-							key={acc.id}
-							className={`list-item-card ${hasCareer ? "has-subcard" : ""}`}
-						>
-							<div
-								className="entity-card-main"
+						<ListItemCard key={acc.id} isStacked={hasCareer}>
+							<HStack
 								role="button"
 								tabIndex={0}
-								style={{ cursor: "pointer" }}
+								gap={3}
+								align="center"
+								width="100%"
+								className="min-w-0 cursor-pointer"
 								onClick={() => onSelectAccount(acc.id)}
+								onKeyDown={(e: React.KeyboardEvent) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										onSelectAccount(acc.id);
+									}
+								}}
 							>
-								<div className="item-thumb-wrapper">
-									{acc.imageUrl ? (
-										<img src={acc.imageUrl} alt={acc.name} className="item-thumb" />
-									) : (
-										<div className="item-thumb-fallback">
-											{acc.name.slice(0, 2).toUpperCase()}
-										</div>
-									)}
-								</div>
-								<div className="item-info">
-									<span className="item-name">{acc.name}</span>
-									<span className="item-sub">
+								<EntityThumb imageUrl={acc.imageUrl} name={acc.name} />
+								<Stack gap={0.5} className="min-w-0 flex-1">
+									<Text maxLines={1} className="text-[15px] font-semibold text-ink">
+										{acc.name}
+									</Text>
+									<Text maxLines={1} className="text-[12px] text-slate">
 										Treasury: ฿{formatMoney(acc.cashReserve)} (฿{formatMoney(eomTreasury(acc))})
-									</span>
-								</div>
-								<div className="item-amount-col">
-									<span
-										className="item-badge"
-										style={{
-											backgroundColor: "rgba(20, 20, 19, 0.06)",
-											color: "var(--granite)",
-										}}
-									>
-										{formatType(acc.type)}
-									</span>
-								</div>
-							</div>
+									</Text>
+								</Stack>
+								<Badge variant="neutral" label={formatType(acc.type)} className="shrink-0" />
+							</HStack>
 
 							{/* Career sub-card decoupled from entity card click */}
 							{hasCareer && (
-								<button
-									type="button"
-									className="career-subcard"
-									onClick={(e) => {
+								<PlainButton
+									className="flex w-full cursor-pointer items-center gap-2.5 rounded-2xl border border-signal/10 bg-signal/5 p-2.5 text-left active:bg-signal/10"
+									onClick={(e: React.MouseEvent) => {
 										e.stopPropagation();
 										onOpenCareerEdit(acc);
 									}}
 								>
 									{acc.careerImageUrl ? (
-										<img
+										<Img
 											src={acc.careerImageUrl}
 											alt={acc.careerTitle || acc.name}
-											className="career-subcard-image"
+											className="block size-11 shrink-0 rounded-[12px] object-cover"
 										/>
 									) : (
-										<div className="career-subcard-image career-subcard-image-fallback">
-											{(acc.careerTitle || acc.name).slice(0, 2).toUpperCase()}
-										</div>
+										<HStack
+											justify="center"
+											align="center"
+											className="size-11 shrink-0 rounded-[12px] bg-signal/10 text-[13px] font-bold uppercase text-signal"
+										>
+											{(acc.careerTitle || acc.name).slice(0, 2)}
+										</HStack>
 									)}
-									<div className="career-subcard-info">
-										<div className="career-subcard-head">
-											<span className="career-subcard-eyebrow">{t("home.currentCareer", lang)}</span>
+									<Stack gap={0.5} className="min-w-0 flex-1">
+										<HStack width="100%" justify="between" align="center" gap={2}>
+											<Text className="text-[10px] font-bold uppercase tracking-[0.06em] text-signal">
+												{t("home.currentCareer", lang)}
+											</Text>
 											{countdown && (
-												<span className="career-subcard-payday">{countdown}</span>
+												<Text className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.04em] text-slate">
+													{countdown}
+												</Text>
 											)}
-										</div>
-										<span className="career-subcard-title">
+										</HStack>
+										<Text maxLines={1} className="text-[13px] font-bold text-ink">
 											{acc.careerTitle || acc.name}
-										</span>
+										</Text>
 										{acc.careerCompany && (
-											<span className="career-subcard-company">{acc.careerCompany}</span>
+											<Text maxLines={1} className="text-[12px] text-slate">
+												{acc.careerCompany}
+											</Text>
 										)}
 										{acc.salary ? (
-											<span className="career-subcard-income">
-												+฿{formatMoney(acc.salary)}/mo
-											</span>
+											<Text className="text-[12px] font-bold text-[#059669]">+฿{formatMoney(acc.salary)}/mo</Text>
 										) : null}
-									</div>
-								</button>
+									</Stack>
+								</PlainButton>
 							)}
-						</div>
+						</ListItemCard>
 					);
 				})}
-			</div>
-		</div>
+			</Stack>
+		</Stack>
 	);
 };

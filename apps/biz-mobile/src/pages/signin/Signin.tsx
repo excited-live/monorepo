@@ -1,4 +1,16 @@
 import React from "react";
+import {
+	Button,
+	CheckboxInput,
+	Divider,
+	HStack,
+	Heading,
+	Img,
+	Link,
+	Stack,
+	Text,
+	TextInput,
+} from "@excited-live/design-system";
 import { GoogleIcon } from "./components";
 import { useSignIn } from "./hooks";
 
@@ -7,6 +19,8 @@ import { useSignIn } from "./hooks";
  * against the Better Auth tokens mount on the API (/api/v1/auth/*).
  * Pure cloud-first: no offline demo mode, all data lives on Excited Cloud.
  */
+const INPUT_CLASS = "h-[50px] rounded-[14px] bg-white";
+
 export const Signin: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }) => {
 	const {
 		mode,
@@ -29,194 +43,162 @@ export const Signin: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }) =>
 		handleTermsClick,
 	} = useSignIn(onSignedIn);
 
+	const isBusy = isLoading || isGoogleLoading;
+	const isSignUp = mode === "signup";
+
+	const switchMode = (next: "signin" | "signup") => {
+		setMode(next);
+		setError(null);
+	};
+
 	return (
-		<div className="signin-container">
-			<div className="signin-hero">
-				<img
-					src="/logo-mark.png"
-					alt="Excited Live"
-					className="signin-logo"
-				/>
-				<h1 className="signin-app-title">Excited Live</h1>
-				<p className="signin-app-tagline">{label("title")}</p>
-			</div>
+		<Stack align="center" justify="center" width="100%" maxWidth={440} className="mx-auto min-h-dvh px-5 py-6">
+			<Stack align="center" width="100%" gap={1.5} className="mb-6 text-center">
+				<Img src="/logo-mark.png" alt="Excited Live" className="mb-2 h-12 w-14 object-contain" />
+				<Heading level={1} className="text-[26px] font-extrabold leading-tight tracking-tight text-ink">
+					Excited Live
+				</Heading>
+				<Text className="text-sm text-slate">{label("title")}</Text>
+			</Stack>
 
-			<div className="signin-card">
-				{/* Tab switcher: Sign In vs Sign Up */}
-				<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-					<button
-						type="button"
-						className={`action-pill-btn ${mode === "signin" ? "primary" : ""}`}
-						style={{ flex: 1, justifyContent: "center" }}
-						onClick={() => {
-							setMode("signin");
-							setError(null);
-						}}
-					>
-						{label("tabSignIn")}
-					</button>
-					<button
-						type="button"
-						className={`action-pill-btn ${mode === "signup" ? "primary" : ""}`}
-						style={{ flex: 1, justifyContent: "center" }}
-						onClick={() => {
-							setMode("signup");
-							setError(null);
-						}}
-					>
-						{label("tabSignUp")}
-					</button>
-				</div>
+			<Stack gap={4} width="100%">
+				<HStack gap={2} width="100%">
+					<Button
+						label={label("tabSignIn")}
+						size="lg"
+						variant={isSignUp ? "secondary" : "primary"}
+						width="100%"
+						onClick={() => switchMode("signin")}
+					/>
+					<Button
+						label={label("tabSignUp")}
+						size="lg"
+						variant={isSignUp ? "primary" : "secondary"}
+						width="100%"
+						onClick={() => switchMode("signup")}
+					/>
+				</HStack>
 
-				<form onSubmit={handleSubmit} className="signin-form">
-					{mode === "signup" && (
-						<div className="signin-field">
-							<label htmlFor="signin-name" className="signin-label">
-								{label("name")}
-							</label>
-							<input
-								id="signin-name"
-								name="name"
-								type="text"
-								autoComplete="name"
-								required
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								className="signin-input"
-								placeholder={label("namePlaceholder")}
-								disabled={isLoading || isGoogleLoading}
-							/>
-						</div>
+				<Stack as="form" gap={4} width="100%" onSubmit={handleSubmit}>
+					{isSignUp && (
+						<TextInput
+							className={INPUT_CLASS}
+							label={label("name")}
+							htmlName="name"
+							autoComplete="name"
+							required
+							value={name}
+							onChange={setName}
+							placeholder={label("namePlaceholder")}
+							isDisabled={isBusy}
+						/>
 					)}
 
-					<div className="signin-field">
-						<label htmlFor="signin-email" className="signin-label">
-							{label("email")}
-						</label>
-						<input
-							id="signin-email"
-							name="email"
-							type="email"
-							autoComplete="email"
-							required
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							className="signin-input"
-							placeholder="you@domain.com"
-							disabled={isLoading || isGoogleLoading}
-						/>
-					</div>
+					<TextInput
+							className={INPUT_CLASS}
+						label={label("email")}
+						htmlName="email"
+						type="email"
+						autoComplete="email"
+						required
+						value={email}
+						onChange={setEmail}
+						placeholder="you@domain.com"
+						isDisabled={isBusy}
+					/>
 
-					<div className="signin-field">
-						<label htmlFor="signin-password" className="signin-label">
-							{label("password")}
-						</label>
-						<input
-							id="signin-password"
-							name="password"
-							type="password"
-							autoComplete={mode === "signup" ? "new-password" : "current-password"}
-							required
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							className="signin-input"
-							minLength={8}
-							placeholder="••••••••"
-							disabled={isLoading || isGoogleLoading}
-						/>
-					</div>
+					<TextInput
+							className={INPUT_CLASS}
+						label={label("password")}
+						htmlName="password"
+						type="password"
+						autoComplete={isSignUp ? "new-password" : "current-password"}
+						required
+						minLength={8}
+						value={password}
+						onChange={setPassword}
+						placeholder="••••••••"
+						isDisabled={isBusy}
+					/>
 
-					<label className="signin-checkbox-label">
-						<input
-							type="checkbox"
-							checked={acceptedTerms}
-							onChange={(e) => setAcceptedTerms(e.target.checked)}
-							disabled={isLoading || isGoogleLoading}
+					<HStack gap={2} className="items-start">
+						<CheckboxInput
+							isLabelHidden
+							label={`${label("agreePrefix")}${label("termsLink")}`}
+							value={acceptedTerms}
+							onChange={setAcceptedTerms}
+							isDisabled={isBusy}
 						/>
-						<span>
+						<Text
+							className="cursor-pointer text-[12.5px] leading-snug text-slate"
+							onClick={() => !isBusy && setAcceptedTerms(!acceptedTerms)}
+						>
 							{label("agreePrefix")}
-							<a
+							<Link
 								href="https://excited.live/docs/terms"
-								onClick={handleTermsClick}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleTermsClick(e);
+								}}
 								target="_blank"
 								rel="noreferrer"
-								className="signin-link"
+								className="font-semibold text-signal no-underline"
 							>
 								{label("termsLink")}
-							</a>
-						</span>
-					</label>
+							</Link>
+						</Text>
+					</HStack>
 
 					{error && (
-						<p role="alert" className="signin-error">
+						<Text as="p" role="alert" className="text-[13px] text-signal">
 							{error}
-						</p>
+						</Text>
 					)}
 
-					<button
+					<Button
 						type="submit"
-						disabled={!acceptedTerms || isLoading || isGoogleLoading}
-						className="signin-button primary"
-					>
-						{isLoading
-							? mode === "signup"
-								? label("submittingSignUp")
-								: label("submittingSignIn")
-							: mode === "signup"
-								? label("signUpWithEmail")
-								: label("signInWithEmail")}
-					</button>
+						label={
+							isLoading
+								? isSignUp
+									? label("submittingSignUp")
+									: label("submittingSignIn")
+								: isSignUp
+									? label("signUpWithEmail")
+									: label("signInWithEmail")
+						}
+						size="lg"
+						variant="primary"
+						width="100%"
+						className="h-12"
+						isDisabled={!acceptedTerms || isBusy}
+					/>
 
-					<div style={{ textAlign: "center", marginTop: "10px" }}>
-						<button
-							type="button"
-							onClick={() => {
-								setMode(mode === "signin" ? "signup" : "signin");
-								setError(null);
-							}}
-							style={{
-								background: "none",
-								border: "none",
-								color: "var(--granite)",
-								fontSize: "13px",
-								cursor: "pointer",
-								textDecoration: "underline",
-							}}
-						>
-							{mode === "signin" ? label("needAccount") : label("haveAccount")}
-						</button>
-					</div>
-				</form>
+					<Button
+						label={isSignUp ? label("haveAccount") : label("needAccount")}
+						variant="ghost"
+						onClick={() => switchMode(isSignUp ? "signin" : "signup")}
+						className="self-center text-[13px] text-granite underline"
+					/>
+				</Stack>
 
-				<div className="signin-divider">
-					<span>or</span>
-				</div>
+				<Divider label="or" />
 
-				<button
-					type="button"
+				<Button
+					label={isGoogleLoading ? label("googleSubmitting") : label("google")}
+					icon={<GoogleIcon />}
+					size="lg"
+					variant="secondary"
+					width="100%"
+					className="h-12"
 					onClick={handleGoogleSignIn}
-					disabled={!acceptedTerms || isLoading || isGoogleLoading}
-					className="signin-button google"
-				>
-					<GoogleIcon />
-					<span>
-						{isGoogleLoading ? label("googleSubmitting") : label("google")}
-					</span>
-				</button>
+					isDisabled={!acceptedTerms || isBusy}
+				/>
 
-				<p
-					style={{
-						fontSize: "11px",
-						color: "var(--slate-gray)",
-						textAlign: "center",
-						marginTop: "16px",
-						lineHeight: 1.4,
-					}}
-				>
+				<Text as="p" className="mt-1 text-center text-[11px] leading-snug text-slate">
 					{label("cloudNotice")}
-				</p>
-			</div>
-		</div>
+				</Text>
+			</Stack>
+		</Stack>
 	);
 };
 

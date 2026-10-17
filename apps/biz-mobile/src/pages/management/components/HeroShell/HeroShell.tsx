@@ -1,4 +1,6 @@
 import React from "react";
+import { Stack } from "@excited-live/design-system";
+import "../hero.css";
 import type { EntityAccount } from "@excited-live/biz";
 
 export type HeroVariant = "home" | "capital" | "register" | "ledger";
@@ -12,12 +14,12 @@ export interface HeroShellProps {
 
 export const HeroShell: React.FC<HeroShellProps> = ({ variant = "home", onClick, children }) => {
 	return (
-		<div
+		<Stack
 			className={`hero-card variant-${variant} tone-light`}
 			onClick={onClick}
 			style={{ cursor: onClick ? "pointer" : undefined }}
 		>
-			<div className="hero-card-content">{children}</div>
-		</div>
+			<Stack className="hero-card-content">{children}</Stack>
+		</Stack>
 	);
 };

@@ -1,6 +1,8 @@
-import { CurrencyInput } from "../CurrencyInput";
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { Button, HStack, Stack } from "@excited-live/design-system";
+import { FormField, InputField, SelectField } from "../FormField";
+import { ModalPage } from "../ModalPage";
+import { CurrencyInput } from "../CurrencyInput";
 import type { RevenueStream } from "@excited-live/biz";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
@@ -125,136 +127,104 @@ export const AddRevenueDrawer: React.FC<{
 				["other", "Other"],
 			];
 
-	return createPortal(
-		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-			<div className="modal-page-nav">
-				<span className="modal-nav-title">
-					{isCareer ? (isEditMode ? "Edit Career" : "Log Career Income") : isEditMode ? "Edit Revenue Stream" : "Log Inflow / Revenue"}
-				</span>
-				<button
-					type="button"
-					className="modal-nav-close"
-					onClick={dismiss}
-					aria-label="Close"
-				>
-					✕
-				</button>
-			</div>
+	return (
+		<ModalPage
+			title={
+				isCareer
+					? isEditMode
+						? "Edit Career"
+						: "Log Career Income"
+					: isEditMode
+						? "Edit Revenue Stream"
+						: "Log Inflow / Revenue"
+			}
+			onClose={dismiss}
+			footer={
+				<>
+					<Button
+						type="submit"
+						form="revenue-form"
+						label={isEditMode ? "Save Changes" : "Log Inflow"}
+						size="lg"
+						variant="primary"
+						width="100%"
+						className="h-12"
+						isDisabled={!canSubmit}
+					/>
 
-			<div className="modal-page-content">
-				<ModalImageSection
-					value={imageUrl}
-					onChange={(v) => setImageUrl(v ?? "")}
-					aspectRatio={isCareer ? "cover" : "square"}
-					showCuratedWallpapers={isCareer}
+					{isEditMode && (
+						<Button label="Delete Stream" size="lg" variant="destructive" width="100%" onClick={handleDelete} />
+					)}
+				</>
+			}
+		>
+			<ModalImageSection
+				value={imageUrl}
+				onChange={(v) => setImageUrl(v ?? "")}
+				aspectRatio={isCareer ? "cover" : "square"}
+				showCuratedWallpapers={isCareer}
+			/>
+
+			<Stack as="form" id="revenue-form" gap={4} width="100%" onSubmit={handleSubmit}>
+				<SelectField
+					label="Source Channel"
+					value={source}
+					onChange={(e) => setSource(e.target.value as typeof source)}
+					autoFocus={!isEditMode}
+				>
+					{sourceOptions.map(([value, label]) => (
+						<option key={value} value={value}>
+							{label}
+						</option>
+					))}
+				</SelectField>
+
+				<InputField
+					label="Stream / Client Name"
+					placeholder={isPersonal ? "e.g. Freelance Project, Side Income" : "e.g. Acme Corp Retainer, Stripe MRR"}
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					required
 				/>
 
-				<form id="revenue-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-					<div className="form-group">
-						<label className="form-label">Source Channel</label>
-						<select
-							className="form-select"
-							value={source}
-							onChange={(e) => setSource(e.target.value as typeof source)}
-							autoFocus={!isEditMode}
-						>
-							{sourceOptions.map(([value, label]) => (
-								<option key={value} value={value}>
-									{label}
-								</option>
-							))}
-						</select>
-					</div>
+				<FormField label="Amount (THB)">
+					<CurrencyInput placeholder="0.00" value={amount} onChange={setAmount} required />
+				</FormField>
 
-					<div className="form-group">
-						<label className="form-label">Stream / Client Name</label>
-						<input
-							className="form-input"
-							placeholder={isPersonal ? "e.g. Freelance Project, Side Income" : "e.g. Acme Corp Retainer, Stripe MRR"}
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Amount (THB)</label>
-						<CurrencyInput
-							placeholder="0.00"
-							value={amount}
-							onChange={setAmount}
-							required
-						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Frequency</label>
-						<select
-							className="form-select"
-							value={frequency}
-							onChange={(e) => setFrequency(e.target.value as typeof frequency)}
-						>
-							<option value="monthly">Monthly</option>
-							<option value="yearly">Yearly</option>
-							<option value="one_time">One-time</option>
-						</select>
-					</div>
-
-					<div className="form-row">
-						<div className="form-group">
-							<label className="form-label">Start Month</label>
-							<input
-								className="form-input"
-								type="month"
-								value={startMonth}
-								onChange={(e) => setStartMonth(e.target.value)}
-							/>
-						</div>
-						<div className="form-group">
-							<label className="form-label">End Month</label>
-							<input
-								className="form-input"
-								type="month"
-								value={endMonth}
-								onChange={(e) => setEndMonth(e.target.value)}
-							/>
-						</div>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">{isPersonal ? "Note (Optional)" : "Contract / Notes (Optional)"}</label>
-						<input
-							className="form-input"
-							placeholder={isPersonal ? "e.g. Monthly side income" : "e.g. Net-30 terms, milestone 1 of 3"}
-							value={notes}
-							onChange={(e) => setNotes(e.target.value)}
-						/>
-					</div>
-				</form>
-			</div>
-
-			<div className="modal-sticky-footer">
-				<button
-					type="submit"
-					form="revenue-form"
-					className="submit-btn"
-					disabled={!canSubmit}
-					style={{ opacity: canSubmit ? 1 : 0.4 }}
+				<SelectField
+					label="Frequency"
+					value={frequency}
+					onChange={(e) => setFrequency(e.target.value as typeof frequency)}
 				>
-					{isEditMode ? "Save Changes" : "Log Inflow"}
-				</button>
+					<option value="monthly">Monthly</option>
+					<option value="yearly">Yearly</option>
+					<option value="one_time">One-time</option>
+				</SelectField>
 
-				{isEditMode && (
-					<button
-						type="button"
-						className="delete-btn"
-						onClick={handleDelete}
-					>
-						Delete Stream
-					</button>
-				)}
-			</div>
-		</div>,
-		document.body,
+				<HStack wrap="wrap" gap={2} width="100%">
+					<InputField
+						fieldClassName="flex-1 basis-[150px]"
+						label="Start Month"
+						type="month"
+						value={startMonth}
+						onChange={(e) => setStartMonth(e.target.value)}
+					/>
+					<InputField
+						fieldClassName="flex-1 basis-[150px]"
+						label="End Month"
+						type="month"
+						value={endMonth}
+						onChange={(e) => setEndMonth(e.target.value)}
+					/>
+				</HStack>
+
+				<InputField
+					label={isPersonal ? "Note (Optional)" : "Contract / Notes (Optional)"}
+					placeholder={isPersonal ? "e.g. Monthly side income" : "e.g. Net-30 terms, milestone 1 of 3"}
+					value={notes}
+					onChange={(e) => setNotes(e.target.value)}
+				/>
+			</Stack>
+		</ModalPage>
 	);
 };

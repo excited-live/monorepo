@@ -1,7 +1,10 @@
 import React, { useRef, useState } from "react";
 import type { EntityAccount } from "@excited-live/biz";
-import { ChevronLeftIcon, ChevronRightIcon } from "@excited-live/design-system";
+import { ChevronLeftIcon, ChevronRightIcon, HStack, PlainButton, Stack } from "@excited-live/design-system";
 import { CapitalHeroCard } from "../CapitalHeroCard";
+
+const PAGER_BTN =
+	"inline-flex size-[30px] cursor-pointer items-center justify-center rounded-pill border border-white/60 bg-lifted/70 p-0 text-ink shadow-[0_2px_8px_rgba(20,20,19,0.05)] backdrop-blur-[16px] backdrop-saturate-[160%] transition-[transform,opacity,background] duration-150 [-webkit-tap-highlight-color:transparent] enabled:active:scale-90 enabled:active:bg-white/95 disabled:cursor-default disabled:opacity-35 disabled:shadow-none";
 
 const SWIPE_THRESHOLD = 48;
 const TAP_THRESHOLD = 20;
@@ -87,9 +90,9 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 	};
 
 	return (
-		<div className="hero-carousel-wrapper">
-			<div
-				className="hero-carousel"
+		<Stack gap={2} width="100%" className="min-w-0 gap-2.5">
+			<Stack
+				className="-my-1 -mb-[22px] touch-pan-y select-none overflow-hidden pt-1 pb-[22px]"
 				onPointerDown={handlePointerDown}
 				onPointerMove={handlePointerMove}
 				onPointerUp={finishDrag}
@@ -98,63 +101,67 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 					cursor: accounts.length > 1 ? (isDragging ? "grabbing" : "grab") : undefined,
 				}}
 			>
-				<div
-					className="hero-track"
+				<HStack
+					width="100%"
+					className="will-change-transform"
 					style={{
 						transform: `translateX(calc(${-activeIndex * 100}% + ${dragOffset}px))`,
-						transition: isDragging
-							? "none"
-							: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+						transition: isDragging ? "none" : "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
 					}}
 				>
 					{accounts.map((account) => (
-						<div
+						<HStack
 							key={account.id}
-							className="hero-slide"
+							className="min-w-0 flex-[0_0_100%] [&>*]:flex-1"
 							aria-hidden={account.id !== activeEntityId}
 						>
 							{renderCard(account)}
-						</div>
+						</HStack>
 					))}
-				</div>
-			</div>
+				</HStack>
+			</Stack>
 
 			{accounts.length > 1 && (
-				<div className="hero-pager" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-					<button
-						type="button"
-						className="hero-pager-btn"
+				<HStack
+					gap={3}
+					justify="center"
+					align="center"
+					onClick={(e) => e.stopPropagation()}
+					onPointerDown={(e) => e.stopPropagation()}
+				>
+					<PlainButton
+						className={PAGER_BTN}
 						onClick={() => goToAccount(activeIndex - 1)}
 						disabled={activeIndex === 0}
 						aria-label="Previous organization"
 					>
-						<ChevronLeftIcon className="hero-pager-icon" aria-hidden="true" />
-					</button>
+						<ChevronLeftIcon className="block size-4" aria-hidden="true" />
+					</PlainButton>
 
-					<div className="hero-pager-dots">
+					<HStack gap={1.5} align="center">
 						{accounts.map((account, index) => (
-							<button
+							<PlainButton
 								key={account.id}
-								type="button"
-								className={`hero-pager-dot ${index === activeIndex ? "active" : ""}`}
+								className={`relative h-[7px] cursor-pointer rounded-pill p-0 transition-[width,background] duration-200 after:absolute after:-inset-1.5 after:content-[''] ${
+									index === activeIndex ? "w-[18px] bg-ink" : "w-[7px] bg-ink/20"
+								}`}
 								onClick={() => goToAccount(index)}
 								aria-label={`Show ${account.name}`}
 								aria-current={index === activeIndex ? "true" : undefined}
 							/>
 						))}
-					</div>
+					</HStack>
 
-					<button
-						type="button"
-						className="hero-pager-btn"
+					<PlainButton
+						className={PAGER_BTN}
 						onClick={() => goToAccount(activeIndex + 1)}
 						disabled={activeIndex === accounts.length - 1}
 						aria-label="Next organization"
 					>
-						<ChevronRightIcon className="hero-pager-icon" aria-hidden="true" />
-					</button>
-				</div>
+						<ChevronRightIcon className="block size-4" aria-hidden="true" />
+					</PlainButton>
+				</HStack>
 			)}
-		</div>
+		</Stack>
 	);
 };

@@ -1,6 +1,9 @@
-import { CurrencyInput } from "../../../../components/CurrencyInput";
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { Button, HStack, NativeInput, Stack, Text } from "@excited-live/design-system";
+import { FIELD_CLASS, FormField, InputField } from "../../../../components/FormField";
+import { ModalPage } from "../../../../components/ModalPage";
+import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
+import { CurrencyInput } from "../../../../components/CurrencyInput";
 import { resolveCatalogAmount } from "@excited-live/biz";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
@@ -29,28 +32,22 @@ export const CareerDrawer: React.FC<{
 	const [endMonth, setEndMonth] = useState("");
 	const [coverImageUrl, setCoverImageUrl] = useState("");
 
-	const {
-		markTouched,
-		resetTouched,
-		suggestions,
-		matchedItem,
-		applySuggestion,
-		handleQueryChange,
-	} = useCatalogAutofill({
-		type: "career",
-		currency,
-		debounceMs: 250,
-		onApplyAutofill: (values: AutofillValues) => {
-			if (values.amount !== undefined) {
-				setSalary(String(values.amount));
-			}
-			if (values.coverImageUrl) {
-				setCoverImageUrl(values.coverImageUrl);
-			} else if (values.imageUrl) {
-				setCoverImageUrl(values.imageUrl);
-			}
-		},
-	});
+	const { markTouched, resetTouched, suggestions, matchedItem, applySuggestion, handleQueryChange } =
+		useCatalogAutofill({
+			type: "career",
+			currency,
+			debounceMs: 250,
+			onApplyAutofill: (values: AutofillValues) => {
+				if (values.amount !== undefined) {
+					setSalary(String(values.amount));
+				}
+				if (values.coverImageUrl) {
+					setCoverImageUrl(values.coverImageUrl);
+				} else if (values.imageUrl) {
+					setCoverImageUrl(values.imageUrl);
+				}
+			},
+		});
 
 	useEffect(() => {
 		if (isOpen) {
@@ -104,157 +101,115 @@ export const CareerDrawer: React.FC<{
 
 	const canSubmit = Number(salary) > 0;
 
-	return createPortal(
-		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-			<div className="modal-page-nav">
-				<span className="modal-nav-title">Career & Salary</span>
-				<button
-					type="button"
-					className="modal-nav-close"
-					onClick={dismiss}
-					aria-label="Close"
-				>
-					✕
-				</button>
-			</div>
+	return (
+		<ModalPage
+			title="Career & Salary"
+			onClose={dismiss}
+			footer={
+				<>
+					<Button
+						type="submit"
+						form="career-form"
+						label="Save Career Income"
+						size="lg"
+						variant="primary"
+						width="100%"
+						className="h-12"
+						isDisabled={!canSubmit}
+					/>
+				</>
+			}
+		>
+			<Text className="text-[13px] text-slate">
+				Configure your employer and salary. The company cover image will serve as the hero background on your management
+				page.
+			</Text>
 
-			<div className="modal-page-content">
-				<div style={{ fontSize: "13px", color: "var(--slate-gray)" }}>
-					Configure your employer and salary. The company cover image will serve as the hero background on your management page.
-				</div>
+			<Stack as="form" id="career-form" gap={4} width="100%" onSubmit={handleSubmit}>
+				{/* Company / Office Hero Background */}
+				<FormField label="Company / Office Cover Photo">
+					<ModalImageSection
+						value={coverImageUrl}
+						onChange={handleCoverChange}
+						onUserTouched={() => markTouched("imageUrl")}
+						emptyLabel="Add Company Cover Image"
+						aspectRatio="cover"
+						showCuratedWallpapers={true}
+					/>
+				</FormField>
 
-				<form id="career-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-					{/* Company / Office Hero Background */}
-					<div className="form-group">
-						<label className="form-label">Company / Office Cover Photo</label>
-						<ModalImageSection
-							value={coverImageUrl}
-							onChange={handleCoverChange}
-							onUserTouched={() => markTouched("imageUrl")}
-							emptyLabel="Add Company Cover Image"
-							aspectRatio="cover"
-							showCuratedWallpapers={true}
+				<FormField label="Company / Employer">
+					<NativeInput
+						className={FIELD_CLASS}
+						placeholder="e.g. Agoda, LINE MAN Wongnai, Bitkub, KBTG"
+						value={company}
+						onChange={(e) => handleCompanyChange(e.target.value)}
+					/>
+
+					{/* Quick Company Suggestions */}
+					{suggestions.length > 0 && (
+						<SuggestionChips
+							suggestions={suggestions.slice(0, 5)}
+							onPick={(s) => {
+								setCompany(s.name);
+								applySuggestion(s as (typeof suggestions)[number]);
+							}}
+							renderMeta={(s) => {
+								const benchmark = resolveCatalogAmount(s as (typeof suggestions)[number], currency);
+								if (benchmark === undefined) return null;
+								return currency === "USD" ? `$${benchmark}` : `฿${benchmark.toLocaleString()}`;
+							}}
 						/>
-					</div>
+					)}
 
-					<div className="form-group">
-						<label className="form-label">Company / Employer</label>
-						<input
-							className="form-input"
-							placeholder="e.g. Agoda, LINE MAN Wongnai, Bitkub, KBTG"
-							value={company}
-							onChange={(e) => handleCompanyChange(e.target.value)}
-						/>
+					{/* Matched Banner */}
+					{matchedItem && (
+						<AutofillBanner badge="Company Found">
+							{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
+						</AutofillBanner>
+					)}
+				</FormField>
 
-						{/* Quick Company Suggestions */}
-						{suggestions.length > 0 && (
-							<div className="autofill-suggestion-scroll">
-								{suggestions.slice(0, 5).map((s) => {
-									const salaryBenchmark = resolveCatalogAmount(s, currency);
-									return (
-										<button
-											key={s.id}
-											type="button"
-											className="autofill-suggestion-pill"
-											onClick={() => {
-												setCompany(s.name);
-												applySuggestion(s);
-											}}
-										>
-											{s.imageUrl && <img src={s.imageUrl} alt="" className="autofill-pill-img" />}
-											<span>{s.name}</span>
-											{salaryBenchmark !== undefined && (
-												<span style={{ color: "var(--slate-gray)", fontSize: "10.5px" }}>
-													{currency === "USD" ? `$${salaryBenchmark}` : `฿${salaryBenchmark.toLocaleString()}`}
-												</span>
-											)}
-										</button>
-									);
-								})}
-							</div>
-						)}
+				<InputField
+					label="Job Title / Role"
+					placeholder="e.g. Senior Software Engineer, Design Lead"
+					value={title}
+					onChange={(e) => setTitle(e.target.value)}
+				/>
 
-						{/* Matched Banner */}
-						{matchedItem && (
-							<div className="autofill-banner">
-								<div className="autofill-banner-text">
-									<span className="autofill-banner-badge">Company Found</span>
-									<span>{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}</span>
-								</div>
-							</div>
-						)}
-					</div>
+				<FormField label={<>Monthly Salary ({currency})</>}>
+					<CurrencyInput placeholder="0.00" value={salary} onChange={handleSalaryChange} required />
+				</FormField>
 
-					<div className="form-group">
-						<label className="form-label">Job Title / Role</label>
-						<input
-							className="form-input"
-							placeholder="e.g. Senior Software Engineer, Design Lead"
-							value={title}
-							onChange={(e) => setTitle(e.target.value)}
-						/>
-					</div>
+				<InputField
+					label="Payday (Day of Month)"
+					type="number"
+					inputMode="numeric"
+					min={1}
+					max={31}
+					placeholder="28"
+					value={payday}
+					onChange={(e) => setPayday(e.target.value)}
+					required
+				/>
 
-					<div className="form-group">
-						<label className="form-label">Monthly Salary ({currency})</label>
-						<CurrencyInput
-							placeholder="0.00"
-							value={salary}
-							onChange={handleSalaryChange}
-							required
-						/>
-					</div>
-
-					<div className="form-group">
-						<label className="form-label">Payday (Day of Month)</label>
-						<input
-							className="form-input"
-							type="number"
-							inputMode="numeric"
-							min={1}
-							max={31}
-							placeholder="28"
-							value={payday}
-							onChange={(e) => setPayday(e.target.value)}
-							required
-						/>
-					</div>
-
-					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-						<div className="form-group">
-							<label className="form-label">Start Month (Optional)</label>
-							<input
-								className="form-input"
-								type="month"
-								value={startMonth}
-								onChange={(e) => setStartMonth(e.target.value)}
-							/>
-						</div>
-						<div className="form-group">
-							<label className="form-label">End Month (Optional)</label>
-							<input
-								className="form-input"
-								type="month"
-								value={endMonth}
-								onChange={(e) => setEndMonth(e.target.value)}
-							/>
-						</div>
-					</div>
-				</form>
-			</div>
-
-			<div className="modal-sticky-footer">
-				<button
-					type="submit"
-					form="career-form"
-					className="submit-btn"
-					disabled={!canSubmit}
-					style={{ opacity: canSubmit ? 1 : 0.4 }}
-				>
-					Save Career Income
-				</button>
-			</div>
-		</div>,
-		document.body,
+				<HStack wrap="wrap" gap={3} width="100%">
+					<InputField
+						fieldClassName="flex-1 basis-[150px]"
+						label="Start Month (Optional)"
+						type="month"
+						value={startMonth}
+						onChange={(e) => setStartMonth(e.target.value)}
+					/>
+					<InputField
+						fieldClassName="flex-1 basis-[150px]"
+						label="End Month (Optional)"
+						type="month"
+						value={endMonth}
+						onChange={(e) => setEndMonth(e.target.value)}
+					/>
+				</HStack>
+			</Stack>
+		</ModalPage>
 	);
 };

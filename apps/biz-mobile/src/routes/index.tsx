@@ -1,4 +1,5 @@
 import React from "react";
+import { Stack } from "@excited-live/design-system";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAppUI, useUserData } from "../state";
 import { Home } from "../pages/home/Home";
@@ -39,8 +40,8 @@ function IndexComponent() {
 	};
 
 	return (
-		<div key={activeTab} className="tab-view-container">
+		<Stack key={activeTab} width="100%" className="min-h-0 min-w-0 flex-1 animate-tab-fade-in">
 			{renderContent()}
-		</div>
+		</Stack>
 	);
 }

@@ -1,5 +1,12 @@
 import React from "react";
-import type { EntityAccount, HardwareAsset, LiabilityStream, RecurringSubscription, RevenueStream } from "@excited-live/biz";
+import { SegmentedControl, SegmentedControlItem, Stack } from "@excited-live/design-system";
+import type {
+	EntityAccount,
+	HardwareAsset,
+	LiabilityStream,
+	RecurringSubscription,
+	RevenueStream,
+} from "@excited-live/biz";
 import { AddBusinessDrawer } from "../../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../../components/AddRevenueDrawer";
 import {
@@ -88,7 +95,7 @@ export const Management: React.FC = () => {
 	};
 
 	return (
-		<div className="capital-page-layout">
+		<Stack width="100%" className="relative min-h-0 flex-1">
 			<ManagementHeroSection
 				accounts={accounts}
 				activeEntityId={activeEntityId}
@@ -104,25 +111,26 @@ export const Management: React.FC = () => {
 			/>
 
 			{/* Main App Section (Sheet) */}
-			<div className="capital-app-sheet">
+			<Stack
+				gap={4}
+				className="relative z-10 -mt-[105px] -mb-[var(--dock-clearance)] -mx-4 w-[calc(100%+32px)] flex-1 rounded-t-[32px] border-t border-line bg-lifted px-4 pt-[130px] pb-[calc(40px+var(--dock-clearance))] shadow-[0_-12px_32px_-4px_rgba(20,20,19,0.08)]"
+			>
 				{/* Global Month Navigator accessible in all subtabs and views */}
 				<MonthStepper />
 
 				{!flipped ? (
 					<>
 						{/* Detail Mode Switcher */}
-						<div className="sub-tab-switcher">
+						<SegmentedControl
+							label="Detail view"
+							layout="fill"
+							value={activeCapitalSubTab}
+							onChange={(v) => setActiveCapitalSubTab(v as typeof activeCapitalSubTab)}
+						>
 							{subTabs.map((tab) => (
-								<button
-									key={tab.id}
-									type="button"
-									className={`sub-tab-btn ${activeCapitalSubTab === tab.id ? "active" : ""}`}
-									onClick={() => setActiveCapitalSubTab(tab.id)}
-								>
-									{tab.label}
-								</button>
+								<SegmentedControlItem key={tab.id} value={tab.id} label={tab.label} />
 							))}
-						</div>
+						</SegmentedControl>
 
 						{/* Detail — Income */}
 						{activeCapitalSubTab === "income" && (
@@ -216,13 +224,9 @@ export const Management: React.FC = () => {
 						)}
 					</>
 				) : (
-					<ManagementLedgerSection
-						monthActions={monthActions}
-						selectedMonth={selectedMonth}
-						lang={lang}
-					/>
+					<ManagementLedgerSection monthActions={monthActions} selectedMonth={selectedMonth} lang={lang} />
 				)}
-			</div>
+			</Stack>
 
 			{/* Drawers & Modals */}
 			<CapitalDrawer
@@ -273,6 +277,6 @@ export const Management: React.FC = () => {
 				}}
 				initialData={selectedLiab}
 			/>
-		</div>
+		</Stack>
 	);
 };

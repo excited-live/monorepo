@@ -1,10 +1,5 @@
 import React from "react";
-import {
-	HomeIcon,
-	SettingsIcon,
-	WalletIcon,
-	type IconProps,
-} from "@excited-live/design-system";
+import { HStack, HomeIcon, PlainButton, SettingsIcon, WalletIcon, type IconProps } from "@excited-live/design-system";
 import { useBiz } from "../../state";
 import { t } from "../../utils/i18n";
 
@@ -26,25 +21,34 @@ export const BottomDock: React.FC = () => {
 	];
 
 	return (
-		<div className="bottom-dock-wrapper">
-			<nav className="bottom-dock" aria-label="Main Navigation">
+		<HStack
+			justify="center"
+			className="pointer-events-none fixed inset-x-0 bottom-[max(16px,env(safe-area-inset-bottom))] z-[100] px-4"
+		>
+			<HStack
+				as="nav"
+				aria-label="Main Navigation"
+				gap={1}
+				className="pointer-events-auto w-full max-w-[420px] rounded-pill border border-white/65 bg-lifted/75 p-[5px] shadow-[0_12px_36px_rgba(20,20,19,0.12),0_2px_8px_rgba(20,20,19,0.06)] backdrop-blur-[24px] backdrop-saturate-[190%]"
+			>
 				{tabs.map(({ id, label, Icon }) => {
 					const isActive = activeTab === id;
 					return (
-						<button
+						<PlainButton
 							key={id}
-							type="button"
-							className={`dock-tab-btn ${isActive ? "active" : ""}`}
+							className={`inline-flex h-11 flex-1 cursor-pointer items-center justify-center rounded-pill transition-all duration-200 [-webkit-tap-highlight-color:transparent] active:scale-[0.92] ${
+								isActive ? "bg-ink/95 text-cream shadow-[0_2px_8px_rgba(20,20,19,0.18)]" : "text-ink"
+							}`}
 							onClick={() => setActiveTab(id)}
 							aria-label={label}
 							aria-current={isActive ? "page" : undefined}
 							title={label}
 						>
-							<Icon className="dock-tab-icon" aria-hidden="true" />
-						</button>
+							<Icon className="block size-[22px]" aria-hidden="true" />
+						</PlainButton>
 					);
 				})}
-			</nav>
-		</div>
+			</HStack>
+		</HStack>
 	);
 };

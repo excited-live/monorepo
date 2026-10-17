@@ -1,6 +1,8 @@
-import { CurrencyInput } from "../CurrencyInput";
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { Button, Stack, Text } from "@excited-live/design-system";
+import { FormField, InputField } from "../FormField";
+import { ModalPage } from "../ModalPage";
+import { CurrencyInput } from "../CurrencyInput";
 import type { EntityAccount } from "@excited-live/biz";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
@@ -12,11 +14,7 @@ interface AddBusinessDrawerProps {
 	initialData?: EntityAccount | null;
 }
 
-export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
-	isOpen,
-	onClose,
-	initialData,
-}) => {
+export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({ isOpen, onClose, initialData }) => {
 	const { addBusiness, updateBusiness, deleteBusiness } = useBiz();
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -54,7 +52,11 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 
 	const handleDelete = () => {
 		if (!initialData) return;
-		if (confirm(`Are you sure you want to delete business "${initialData.name}"? All associated hardware, subscriptions, and revenue will also be removed.`)) {
+		if (
+			confirm(
+				`Are you sure you want to delete business "${initialData.name}"? All associated hardware, subscriptions, and revenue will also be removed.`,
+			)
+		) {
 			deleteBusiness(initialData.id);
 			dismiss();
 		}
@@ -63,83 +65,53 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({
 	const canSubmit = name.trim().length > 0;
 	const isEditMode = Boolean(initialData);
 
-	return createPortal(
-		<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-			{/* Top Bar with Title on Left, ✕ on Top-Right */}
-			<div className="modal-page-nav">
-				<span className="modal-nav-title">
-					{isEditMode ? "Edit Business" : "Add Business"}
-				</span>
-				<button
-					type="button"
-					className="modal-nav-close"
-					onClick={dismiss}
-					aria-label="Close"
-				>
-					✕
-				</button>
-			</div>
+	return (
+		<ModalPage
+			title={isEditMode ? "Edit Business" : "Add Business"}
+			onClose={dismiss}
+			footer={
+				<>
+					<Button
+						type="submit"
+						form="business-form"
+						label={isEditMode ? "Save Business" : "Create Business"}
+						size="lg"
+						variant="primary"
+						width="100%"
+						className="h-12"
+						isDisabled={!canSubmit}
+					/>
 
-			{/* Full-Screen Scrollable Content */}
-			<div className="modal-page-content">
-				<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
-
-				<form id="business-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-					<div className="form-group">
-						<label className="form-label">Business Name</label>
-						<input
-							className="form-input"
-							placeholder="e.g. Studio Neon Co., Ltd."
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-							autoFocus={!isEditMode}
-						/>
-					</div>
-
-					{!isEditMode && (
-						<div className="form-group">
-							<label className="form-label">Starting Treasury / Capital (Optional)</label>
-							<CurrencyInput
-								placeholder="0.00"
-								value={startingTreasury}
-								onChange={setStartingTreasury}
-							/>
-							<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "-2px" }}>
-								Initial liquid bank balance allocated to this business.
-							</div>
-						</div>
+					{isEditMode && (
+						<Button label="Delete Business" size="lg" variant="destructive" width="100%" onClick={handleDelete} />
 					)}
+				</>
+			}
+		>
+			<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
 
-					<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "-6px", lineHeight: 1.45 }}>
-						Treasury tracks liquid capital on hand, and projects end-of-month cash = liquid cash + revenues − operational burn.
-					</div>
-				</form>
-			</div>
+			<Stack as="form" id="business-form" gap={4} width="100%" onSubmit={handleSubmit}>
+				<InputField
+					label="Business Name"
+					placeholder="e.g. Studio Neon Co., Ltd."
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					required
+					autoFocus={!isEditMode}
+				/>
 
-			{/* Sticky Bottom Action Bar */}
-			<div className="modal-sticky-footer">
-				<button
-					type="submit"
-					form="business-form"
-					className="submit-btn"
-					disabled={!canSubmit}
-					style={{ opacity: canSubmit ? 1 : 0.4 }}
-				>
-					{isEditMode ? "Save Business" : "Create Business"}
-				</button>
-
-				{isEditMode && (
-					<button
-						type="button"
-						className="delete-btn"
-						onClick={handleDelete}
-					>
-						Delete Business
-					</button>
+				{!isEditMode && (
+					<FormField label="Starting Treasury / Capital (Optional)">
+						<CurrencyInput placeholder="0.00" value={startingTreasury} onChange={setStartingTreasury} />
+						<Text className="text-[12px] text-slate">Initial liquid bank balance allocated to this business.</Text>
+					</FormField>
 				)}
-			</div>
-		</div>,
-		document.body,
+
+				<Text className="text-[12px] text-slate">
+					Treasury tracks liquid capital on hand, and projects end-of-month cash = liquid cash + revenues − operational
+					burn.
+				</Text>
+			</Stack>
+		</ModalPage>
 	);
 };

@@ -1,4 +1,5 @@
 import React from "react";
+import { Stack } from "@excited-live/design-system";
 import { AddBusinessDrawer } from "../../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../../components/AddRevenueDrawer";
 import {
@@ -49,7 +50,7 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 	};
 
 	return (
-		<div className="home-page-layout">
+		<Stack width="100%" className="relative min-h-0 flex-1">
 			{/* Full-width Background Hero Illustration */}
 			<HomeHeroBackground />
 
@@ -99,10 +100,7 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 				}}
 				initialData={selectedBiz}
 			/>
-			<CareerDrawer
-				isOpen={isCareerOpen}
-				onClose={() => setIsCareerOpen(false)}
-			/>
+			<CareerDrawer isOpen={isCareerOpen} onClose={() => setIsCareerOpen(false)} />
 			<AddRevenueDrawer
 				isOpen={isRevenueOpen}
 				onClose={() => {
@@ -111,6 +109,6 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 				}}
 				initialData={careerStream}
 			/>
-		</div>
+		</Stack>
 	);
 };

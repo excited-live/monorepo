@@ -1,4 +1,6 @@
 import React from "react";
+import { Button, Stack } from "@excited-live/design-system";
+import { EmptyCard, ItemRow, SectionHeader } from "../../../../components";
 import type { CapitalTransfer, RecurringSubscription } from "@excited-live/biz";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../utils/i18n";
@@ -26,104 +28,52 @@ export const ManagementExpenseSection: React.FC<ManagementExpenseSectionProps> =
 	onSelectTransfer = () => {},
 }) => {
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-			<div className="section-header">
-				<div>
-					<span className="section-title">
-						Monthly Burn: ฿{formatMoney(totalMonthlyExpenses)}/mo
-					</span>
-					<div style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
-						{isPersonal
-							? "Recurring expenses & capital deployed to businesses"
-							: "Recurring operational commitments & services"}
-					</div>
-				</div>
-				<div style={{ display: "flex", gap: "6px" }}>
-					<button
-						type="button"
-						className="action-pill-btn primary"
-						style={{ padding: "4px 12px", fontSize: "12px" }}
-						onClick={onAddExpense}
-					>
-						{t("action.addExpense", lang)}
-					</button>
-				</div>
-			</div>
+		<Stack gap={2} width="100%">
+			<SectionHeader
+				title={`Monthly Burn: ฿${formatMoney(totalMonthlyExpenses)}/mo`}
+				subtitle={
+					isPersonal
+						? "Recurring expenses & capital deployed to businesses"
+						: "Recurring operational commitments & services"
+				}
+				actions={<Button label={t("action.addExpense", lang)} size="sm" variant="primary" onClick={onAddExpense} />}
+			/>
 
 			{entitySubs.length === 0 && (!isPersonal || outgoingTransfers.length === 0) ? (
-				<div className="card" style={{ textAlign: "center", color: "var(--slate-gray)", padding: "24px" }}>
-					No expenses registered for this entity.
-				</div>
+				<EmptyCard>No expenses registered for this entity.</EmptyCard>
 			) : (
-				<div className="item-list">
+				<Stack gap={2} width="100%">
 					{entitySubs.map((sub) => (
-						<div
+						<ItemRow
 							key={sub.id}
-							className="list-item-card"
+							name={sub.name}
+							imageUrl={sub.imageUrl}
+							sub={`Billed ${sub.cycle} • Due day ${sub.nextRenewalDate?.slice(8) || "01"} • ${sub.category}`}
+							amount={`-฿${formatMoney(sub.amount)}`}
+							tone="negative"
+							badge={sub.cycle.toUpperCase()}
+							badgeTone="negative"
 							onClick={() => onEditExpense(sub)}
-						>
-							<div className="item-thumb-wrapper">
-								{sub.imageUrl ? (
-									<img src={sub.imageUrl} alt={sub.name} className="item-thumb" />
-								) : (
-									<div className="item-thumb-fallback">
-										{sub.name.slice(0, 2).toUpperCase()}
-									</div>
-								)}
-							</div>
-							<div className="item-info">
-								<span className="item-name">{sub.name}</span>
-								<span className="item-sub">
-									Billed {sub.cycle} • Due day {sub.nextRenewalDate?.slice(8) || "01"} • {sub.category}
-								</span>
-							</div>
-							<div className="item-amount-col">
-								<span className="item-amount negative">
-									-฿{formatMoney(sub.amount)}
-								</span>
-								<span className="item-badge" style={{ backgroundColor: "rgba(207, 69, 0, 0.08)", color: "var(--signal-orange)" }}>
-									{sub.cycle.toUpperCase()}
-								</span>
-							</div>
-						</div>
+						/>
 					))}
 
 					{/* Outgoing Capital Transfers (treated as expenses for personal) */}
 					{isPersonal &&
 						outgoingTransfers.map((tItem) => (
-							<div
+							<ItemRow
 								key={tItem.id}
-								className="list-item-card"
-								style={{ cursor: "pointer" }}
+								name={tItem.note || "Capital Deployed"}
+								fallback="CI"
+								sub={`Seed to business • ${tItem.date}`}
+								amount={`-฿${formatMoney(tItem.amount)}`}
+								tone="negative"
+								badge="CAPITAL"
+								badgeTone="negative"
 								onClick={() => onSelectTransfer(tItem)}
-							>
-								<div className="item-thumb-wrapper">
-									<div className="item-thumb-fallback">CI</div>
-								</div>
-								<div className="item-info">
-									<span className="item-name">{tItem.note || "Capital Deployed"}</span>
-									<span className="item-sub">
-										Seed to business • {tItem.date}
-									</span>
-								</div>
-								<div className="item-amount-col">
-									<span className="item-amount negative">
-										-฿{formatMoney(tItem.amount)}
-									</span>
-									<span
-										className="item-badge"
-										style={{
-											backgroundColor: "rgba(207, 69, 0, 0.08)",
-											color: "var(--signal-orange)",
-										}}
-									>
-										CAPITAL
-									</span>
-								</div>
-							</div>
+							/>
 						))}
-				</div>
+				</Stack>
 			)}
-		</div>
+		</Stack>
 	);
 };

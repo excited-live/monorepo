@@ -1,9 +1,6 @@
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import React from "react";
-import "@astryxdesign/core/reset.css";
-import "@astryxdesign/core/astryx.css";
-import "@excited-live/design-system/mastercard-theme.css";
 import { Theme, mastercardTheme } from "@excited-live/design-system";
 import "../../src/styles.css";
 import { BizProvider } from "../../src/application/context/BizContext";

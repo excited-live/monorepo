@@ -1,6 +1,11 @@
 import React, { useRef } from "react";
+import { HStack, NativeInput, PlainButton, Svg, SvgPath, Text } from "@excited-live/design-system";
+import { GLASS_PILL } from "../../../../utils/ui";
 import { parseYearMonth } from "@excited-live/biz";
 import { useBiz } from "../../../../state";
+
+const STEP_BTN =
+	"cursor-pointer rounded-pill px-3 py-1.5 text-[13px] font-semibold text-ink transition-colors duration-150 hover:bg-ink/5 active:bg-ink/10";
 
 const formatMonthName = (ym: string) => {
 	const [year, month] = ym.split("-");
@@ -16,7 +21,7 @@ export const MonthStepper: React.FC = () => {
 		const { year, month } = parseYearMonth(selectedMonth);
 		const zeroBased = month - 1 + delta;
 		const nextYear = year + Math.floor(zeroBased / 12);
-		const nextMonth = ((zeroBased % 12) + 12) % 12 + 1;
+		const nextMonth = (((zeroBased % 12) + 12) % 12) + 1;
 		setSelectedMonth(`${nextYear}-${String(nextMonth).padStart(2, "0")}`);
 	};
 
@@ -35,41 +40,28 @@ export const MonthStepper: React.FC = () => {
 	};
 
 	return (
-		<div className="month-stepper-bar">
-			<button
-				type="button"
-				className="stepper-btn"
-				onClick={() => shiftMonth(-1)}
-				aria-label="Previous Month"
-			>
+		<HStack width="100%" justify="between" align="center" className={`min-w-0 px-3 py-1.5 ${GLASS_PILL}`}>
+			<PlainButton className={STEP_BTN} onClick={() => shiftMonth(-1)} aria-label="Previous Month">
 				‹
-			</button>
-			<button
-				type="button"
-				className="stepper-label-btn"
+			</PlainButton>
+			<PlainButton
+				className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-2.5 py-1 transition-colors duration-150 hover:bg-ink/5 active:bg-ink/10"
 				onClick={handleOpenPicker}
 				title="Tap to select month"
 				aria-label={`Selected month: ${formatMonthName(selectedMonth)}. Tap to change`}
 			>
-				<span className="stepper-label">{formatMonthName(selectedMonth)}</span>
-				<svg
-					className="stepper-picker-icon"
-					viewBox="0 0 20 20"
-					fill="currentColor"
-					width="14"
-					height="14"
-					aria-hidden="true"
-				>
-					<path
+				<Text className="text-[15px] font-bold text-ink">{formatMonthName(selectedMonth)}</Text>
+				<Svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14" aria-hidden="true" className="text-slate">
+					<SvgPath
 						fillRule="evenodd"
 						d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
 						clipRule="evenodd"
 					/>
-				</svg>
-				<input
+				</Svg>
+				<NativeInput
 					ref={monthInputRef}
 					type="month"
-					className="stepper-hidden-input"
+					className="pointer-events-none absolute size-px opacity-0 [clip:rect(0,0,0,0)]"
 					value={selectedMonth}
 					onChange={(e) => {
 						if (e.target.value) {
@@ -79,15 +71,10 @@ export const MonthStepper: React.FC = () => {
 					aria-hidden="true"
 					tabIndex={-1}
 				/>
-			</button>
-			<button
-				type="button"
-				className="stepper-btn"
-				onClick={() => shiftMonth(1)}
-				aria-label="Next Month"
-			>
+			</PlainButton>
+			<PlainButton className={STEP_BTN} onClick={() => shiftMonth(1)} aria-label="Next Month">
 				›
-			</button>
-		</div>
+			</PlainButton>
+		</HStack>
 	);
 };

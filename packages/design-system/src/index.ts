@@ -1,7 +1,16 @@
+import "./astryxAugment";
 export { AppDocument, type AppDocumentProps } from "./AppDocument";
 export { Img, type ImgProps } from "./Img";
 export { PlainButton, type PlainButtonProps } from "./PlainButton";
 export { Link, type LinkProps } from "./Link";
+export {
+	NativeInput,
+	NativeSelect,
+	NativeTextArea,
+	type NativeInputProps,
+	type NativeSelectProps,
+	type NativeTextAreaProps,
+} from "./NativeFields";
 export {
 	Svg,
 	SvgLine,
@@ -74,6 +83,13 @@ export {
 	type ChatToolCallItem,
 	type ChatMessageSender,
 } from "@astryxdesign/core/Chat";
+export { Avatar, type AvatarProps } from "@astryxdesign/core/Avatar";
+export { BottomSheet, type BottomSheetProps } from "@astryxdesign/core/BottomSheet";
+export { CheckboxInput, type CheckboxInputProps } from "@astryxdesign/core/CheckboxInput";
+export { Divider, type DividerProps } from "@astryxdesign/core/Divider";
+export { Spinner, type SpinnerProps } from "@astryxdesign/core/Spinner";
+export { Switch, type SwitchProps } from "@astryxdesign/core/Switch";
+export { TextArea, type TextAreaProps } from "@astryxdesign/core/TextArea";
 export { Badge, type BadgeProps } from "@astryxdesign/core/Badge";
 export { Button, type ButtonProps } from "@astryxdesign/core/Button";
 export { Card, type CardProps } from "@astryxdesign/core/Card";

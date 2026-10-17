@@ -1,11 +1,10 @@
 import React from "react";
+import { Stack, Theme, mastercardTheme } from "@excited-live/design-system";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
-import "@excited-live/design-system/mastercard-theme.css";
 import { Header } from "../components/Header";
 import { BottomDock } from "../components/BottomDock";
 import { BizProvider, useUserData } from "../state";
-import "../styles.css";
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -19,16 +18,21 @@ function AppShell() {
 	const { userSession } = useUserData();
 
 	return (
-		<div
-			className={`mobile-shell ${!userSession.isAuthenticated ? "auth-gate-shell" : ""}`}
-			data-astryx-theme="mastercard"
-		>
-			{userSession.isAuthenticated && <Header />}
-			<main className="mobile-main">
-				<Outlet />
-			</main>
-			{userSession.isAuthenticated && <BottomDock />}
-		</div>
+		<Theme theme={mastercardTheme} mode="light">
+			<Stack
+				className={`relative mx-auto min-h-dvh w-full max-w-[480px] overflow-visible pt-0 pr-[max(16px,env(safe-area-inset-right))] pb-[var(--dock-clearance)] pl-[max(16px,env(safe-area-inset-left))] ${
+					userSession.isAuthenticated
+						? ""
+						: "justify-between !pt-[max(20px,env(safe-area-inset-top))] !pb-[max(20px,env(safe-area-inset-bottom))]"
+				}`}
+			>
+				{userSession.isAuthenticated && <Header />}
+				<Stack as="main" width="100%" className="min-w-0 flex-1">
+					<Outlet />
+				</Stack>
+				{userSession.isAuthenticated && <BottomDock />}
+			</Stack>
+		</Theme>
 	);
 }
 

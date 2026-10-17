@@ -1,4 +1,6 @@
 import React from "react";
+import { Heading, Stack, Text } from "@excited-live/design-system";
+import { ModalPage } from "../../components";
 import { Signin } from "../signin/Signin";
 import {
 	SettingsCloudSyncSection,
@@ -26,15 +28,13 @@ export const Settings: React.FC = () => {
 	} = useSettings();
 
 	return (
-		<div className="screen-content">
-			<div className="section-header">
-				<div>
-					<h2 style={{ fontSize: "20px", fontWeight: 700 }}>{t("settings.title")}</h2>
-					<p style={{ fontSize: "12px", color: "var(--slate-gray)", marginTop: "2px" }}>
-						Multi-entity isolation, profile, and system synchronization.
-					</p>
-				</div>
-			</div>
+		<Stack gap={4} width="100%" className="min-w-0 pt-2">
+			<Stack gap={0.5}>
+				<Heading level={2} className="text-xl font-bold">
+					{t("settings.title")}
+				</Heading>
+				<Text className="text-[12px] text-slate">Multi-entity isolation, profile, and system synchronization.</Text>
+			</Stack>
 
 			{/* User Profile & Cloud Account */}
 			<SettingsProfileSection
@@ -57,11 +57,7 @@ export const Settings: React.FC = () => {
 			/>
 
 			{/* Language Switcher */}
-			<SettingsLanguageSection
-				lang={lang}
-				onSetLang={setLang}
-				languageTitle={t("settings.language")}
-			/>
+			<SettingsLanguageSection lang={lang} onSetLang={setLang} languageTitle={t("settings.language")} />
 
 			{/* Data Backup & Portability */}
 			<SettingsDataPortabilitySection
@@ -74,22 +70,11 @@ export const Settings: React.FC = () => {
 
 			{/* Sign In Sheet if requested */}
 			{isSignInOpen && (
-				<div className="fullscreen-modal-page" data-astryx-theme="mastercard">
-					<div className="modal-page-nav">
-						<span className="modal-nav-title">{t("settings.signIn")}</span>
-						<button
-							type="button"
-							className="modal-nav-close"
-							onClick={() => setIsSignInOpen(false)}
-							aria-label="Close"
-						>
-							✕
-						</button>
-					</div>
+				<ModalPage title={t("settings.signIn")} onClose={() => setIsSignInOpen(false)}>
 					<Signin onSignedIn={() => setIsSignInOpen(false)} />
-				</div>
+				</ModalPage>
 			)}
-		</div>
+		</Stack>
 	);
 };
 

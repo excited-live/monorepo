@@ -1,5 +1,8 @@
 import React from "react";
+import { Badge, Button, Text } from "@excited-live/design-system";
 import type { MobileLocale } from "../../../../domain/types";
+import { BADGE_TONE_CLASS } from "../../../../utils/ui";
+import { SectionCard } from "../../../../components/SectionCard";
 
 export interface SettingsCloudSyncSectionProps {
 	cloudSyncStatus?: "synced" | "syncing" | "error";
@@ -8,70 +11,49 @@ export interface SettingsCloudSyncSectionProps {
 	lang?: MobileLocale;
 }
 
+const STATUS_BADGE = {
+	synced: { tone: "positive", en: "Synced to Cloud", th: "ซิงก์กับคลาวด์แล้ว" },
+	syncing: { tone: "negative", en: "Syncing to Cloud...", th: "กำลังซิงก์กับคลาวด์..." },
+	error: { tone: "neutral", en: "Cloud Sync Error", th: "เกิดข้อผิดพลาดในการเชื่อมต่อคลาวด์" },
+} as const;
+
 export const SettingsCloudSyncSection: React.FC<SettingsCloudSyncSectionProps> = ({
 	cloudSyncStatus = "synced",
 	lastSyncedAt = null,
 	onSyncWithCloud = () => {},
 	lang = "en",
 }) => {
-	return (
-		<div className="card">
-			<div className="section-header">
-				<span className="section-title">
-					{lang === "th" ? "การซิงก์ข้อมูลคลาวด์" : "Cloud Synchronization"}
-				</span>
-				<span
-					className="item-badge"
-					style={{
-						backgroundColor:
-							cloudSyncStatus === "synced"
-								? "rgba(5, 150, 105, 0.12)"
-								: cloudSyncStatus === "syncing"
-									? "rgba(207, 69, 0, 0.12)"
-									: "rgba(20, 20, 19, 0.08)",
-						color:
-							cloudSyncStatus === "synced"
-								? "#059669"
-								: cloudSyncStatus === "syncing"
-									? "var(--signal-orange)"
-									: "var(--granite)",
-						fontWeight: 600,
-					}}
-				>
-					{cloudSyncStatus === "synced"
-						? `● ${lang === "th" ? "ซิงก์กับคลาวด์แล้ว" : "Synced to Cloud"}`
-						: cloudSyncStatus === "syncing"
-							? `● ${lang === "th" ? "กำลังซิงก์กับคลาวด์..." : "Syncing to Cloud..."}`
-							: `● ${lang === "th" ? "เกิดข้อผิดพลาดในการเชื่อมต่อคลาวด์" : "Cloud Sync Error"}`}
-				</span>
-			</div>
+	const th = lang === "th";
+	const status = STATUS_BADGE[cloudSyncStatus];
+	const isSyncing = cloudSyncStatus === "syncing";
 
-			<p style={{ fontSize: "13px", color: "var(--slate-gray)", marginTop: "4px" }}>
-				{lang === "th"
+	return (
+		<SectionCard
+			title={th ? "การซิงก์ข้อมูลคลาวด์" : "Cloud Synchronization"}
+			badge={<Badge variant="neutral" className={BADGE_TONE_CLASS[status.tone]} label={`● ${th ? status.th : status.en}`} />}
+		>
+			<Text className="text-[13px] text-slate">
+				{th
 					? "ระบบคลาวด์เนทีฟ: ข้อมูลทั้งหมดจะถูกจัดเก็บและซิงก์แบบเรียลไทม์กับ Excited Cloud (D1/SQLite) โดยตรง"
 					: "Pure cloud-native architecture: all business state and balances are stored and synced in real-time with Excited Cloud."}
-			</p>
+			</Text>
 
 			{lastSyncedAt && (
-				<div style={{ fontSize: "11px", color: "var(--granite)", marginTop: "6px" }}>
-					{lang === "th" ? "ซิงก์ล่าสุด: " : "Last synced: "}
+				<Text className="text-[11px] text-granite">
+					{th ? "ซิงก์ล่าสุด: " : "Last synced: "}
 					{new Date(lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-				</div>
+				</Text>
 			)}
 
-			<div style={{ marginTop: "10px" }}>
-				<button
-					type="button"
-					className="action-pill-btn primary"
-					style={{ width: "100%", justifyContent: "center" }}
-					disabled={cloudSyncStatus === "syncing"}
-					onClick={onSyncWithCloud}
-				>
-					{cloudSyncStatus === "syncing"
-						? (lang === "th" ? "กำลังเชื่อมต่อ..." : "Syncing...")
-						: (lang === "th" ? "ซิงก์กับคลาวด์เดี๋ยวนี้" : "Sync Now")}
-				</button>
-			</div>
-		</div>
+			<Button
+				label={isSyncing ? (th ? "กำลังเชื่อมต่อ..." : "Syncing...") : th ? "ซิงก์กับคลาวด์เดี๋ยวนี้" : "Sync Now"}
+				size="lg"
+				className="h-[42px]"
+				variant="primary"
+				width="100%"
+				isDisabled={isSyncing}
+				onClick={onSyncWithCloud}
+			/>
+		</SectionCard>
 	);
 };

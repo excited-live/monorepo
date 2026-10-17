@@ -73,10 +73,11 @@ export const SEED_SUBSCRIPTIONS: RecurringSubscription[] = [
 		nextRenewalDate: "2026-11-02",
 		billingDay: 2,
 		active: true,
-		notes: "Cellular plan",
+		notes: "5G Unlimited data plan",
+		imageUrl: "https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=200&q=80",
 	},
 	{
-		id: "sub_phone_line",
+		id: "sub_phone",
 		entityId: "acc_personal",
 		name: "Phone Line",
 		amount: 20,
@@ -142,6 +143,7 @@ export const SEED_HARDWARE: HardwareAsset[] = [
 		lifespanMonths: 0,
 		purchaseDate: "2026-01",
 		category: "cash",
+		isDefault: true,
 	},
 	{
 		id: "hw_cash_fromsukong",
@@ -151,6 +153,7 @@ export const SEED_HARDWARE: HardwareAsset[] = [
 		lifespanMonths: 0,
 		purchaseDate: "2026-01",
 		category: "cash",
+		isDefault: true,
 	},
 	{
 		id: "hw_pc",

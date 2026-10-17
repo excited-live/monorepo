@@ -3,26 +3,37 @@ import { isTauri } from "@tauri-apps/api/core";
 import { useBiz } from "../state";
 
 /**
- * Sign-in page (in-app). Email + password and native Google sign-in against
- * the Better Auth tokens mount on the API — replaces the WorkOS browser +
- * deep-link flow: no system browser, no token/PII in URLs, fully in-app.
+ * Sign-in & Sign-up page (in-app). Email + password and native Google sign-in
+ * against the Better Auth tokens mount on the API (/api/v1/auth/*).
+ * Pure cloud-first: no offline demo mode, all data lives on Excited Cloud.
  */
 const STRINGS = {
 	title: { en: "Financial planner app for Solopreneur", th: "แอปวางแผนการเงินสำหรับนักธุรกิจอิสระ" },
-	signInWithEmail: { en: "Sign in with Email", th: "เข้าสู่ระบบด้วยอีเมล" },
+	tabSignIn: { en: "Sign In", th: "เข้าสู่ระบบ" },
+	tabSignUp: { en: "Create Account", th: "สมัครสมาชิก" },
+	signInWithEmail: { en: "Sign In to Cloud", th: "เข้าสู่ระบบคลาวด์" },
+	signUpWithEmail: { en: "Create Cloud Account", th: "สร้างบัญชีคลาวด์" },
+	name: { en: "Full Name or Business Name", th: "ชื่อ-นามสกุล หรือชื่อธุรกิจ" },
+	namePlaceholder: { en: "e.g. Prame Sukong", th: "เช่น ปราม สุคง" },
 	email: { en: "Email", th: "อีเมล" },
 	password: { en: "Password", th: "รหัสผ่าน" },
-	submitting: { en: "Signing In…", th: "กำลังเข้าสู่ระบบ…" },
+	submittingSignIn: { en: "Signing In…", th: "กำลังเข้าสู่ระบบ…" },
+	submittingSignUp: { en: "Creating Account…", th: "กำลังสร้างบัญชี…" },
 	google: { en: "Continue with Google", th: "ดำเนินการต่อด้วย Google" },
 	googleSubmitting: { en: "Connecting…", th: "กำลังเชื่อมต่อ…" },
 	agreePrefix: { en: "I agree to the ", th: "ฉันยอมรับ" },
 	termsLink: { en: "Terms & Conditions", th: "ข้อกำหนดและเงื่อนไข" },
-	guest: { en: "Explore Offline Demo", th: "ลองใช้แบบออฟไลน์" },
+	needAccount: { en: "Don't have an account? Create one", th: "ยังไม่มีบัญชี? สร้างบัญชีใหม่" },
+	haveAccount: { en: "Already have an account? Sign in", th: "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ" },
 	genericError: { en: "Sign-in failed. Check your email and password.", th: "เข้าสู่ระบบไม่สำเร็จ ตรวจสอบอีเมลและรหัสผ่านอีกครั้ง" },
-	networkError: { en: "Could not reach the API. Try again.", th: "เชื่อมต่อ API ไม่ได้ กรุณาลองอีกครั้ง" },
+	networkError: { en: "Could not reach Excited Cloud API. Ensure backend is running (pnpm dev:api).", th: "เชื่อมต่อ Excited Cloud API ไม่ได้ ตรวจสอบว่า API กำลังทำงานอยู่" },
 	googleError: { en: "Google sign-in failed. Try again.", th: "เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองอีกครั้ง" },
 	googleUnavailable: { en: "Google sign-in is available in the mobile app.", th: "การเข้าสู่ระบบด้วย Google ใช้ได้ในแอปมือถือเท่านั้น" },
 	googleNotConfigured: { en: "Google sign-in is not configured yet.", th: "ยังไม่ได้ตั้งค่าการเข้าสู่ระบบด้วย Google" },
+	cloudNotice: {
+		en: "Cloud-native mode: all financial models, capital flows, and assets sync directly to Excited Cloud.",
+		th: "ระบบคลาวด์เนทีฟ: ข้อมูลธุรกิจ โมเดลการเงิน และเงินทุนทั้งหมดจะซิงก์ตรงกับ Excited Cloud",
+	},
 } as const;
 
 const TERMS_URL = "https://excited.live/docs/terms";
@@ -52,7 +63,9 @@ const GoogleIcon: React.FC = () => (
 );
 
 export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }) => {
-	const { signInWithEmail, signInWithGoogle, updateUserProfile, lang } = useBiz();
+	const { signInWithEmail, signUpWithEmail, signInWithGoogle, lang } = useBiz();
+	const [mode, setMode] = useState<"signin" | "signup">("signin");
+	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -60,20 +73,46 @@ export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const handleSignIn = async (event: React.FormEvent) => {
+	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (!acceptedTerms) return;
+
+		const form = event.currentTarget;
+		const emailInput = form.querySelector<HTMLInputElement>("#signin-email");
+		const passwordInput = form.querySelector<HTMLInputElement>("#signin-password");
+		const nameInput = form.querySelector<HTMLInputElement>("#signin-name");
+
+		const cleanEmail = (email || emailInput?.value || "").trim();
+		const cleanPassword = password || passwordInput?.value || "";
+		const cleanName = (name || nameInput?.value || "").trim() || "Solopreneur";
+
+		if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+			setError(lang === "th" ? "กรุณากรอกอีเมลที่ถูกต้อง" : "Please enter a valid email address.");
+			return;
+		}
+		if (cleanPassword.length < 8) {
+			setError(lang === "th" ? "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร" : "Password must be at least 8 characters long.");
+			return;
+		}
 		setIsLoading(true);
 		setError(null);
+		console.log(`[SignInView] submitting ${mode}: email=${cleanEmail}, passLen=${cleanPassword.length}`);
 		try {
-			await signInWithEmail(email, password);
+			if (mode === "signup") {
+				await signUpWithEmail(cleanEmail, cleanPassword, cleanName);
+			} else {
+				await signInWithEmail(cleanEmail, cleanPassword);
+			}
 			onSignedIn?.();
 		} catch (err) {
-			setError(
-				err instanceof Error && err.message.includes("fetch")
-					? label("networkError", lang)
-					: label("genericError", lang),
-			);
+			const msg = err instanceof Error ? err.message : "";
+			if (msg.includes("fetch") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+				setError(label("networkError", lang));
+			} else if (msg) {
+				setError(msg);
+			} else {
+				setError(label("genericError", lang));
+			}
 		} finally {
 			setIsLoading(false);
 		}
@@ -121,17 +160,6 @@ export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }
 		await openUrl(TERMS_URL);
 	};
 
-	const handleGuestAccess = () => {
-		updateUserProfile({
-			id: "usr_guest",
-			name: "Guest Solopreneur",
-			email: "guest@excited.live",
-			orgName: "Preview Business",
-			isAuthenticated: true,
-		});
-		onSignedIn?.();
-	};
-
 	return (
 		<div className="signin-container">
 			<div className="signin-hero">
@@ -145,13 +173,60 @@ export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }
 			</div>
 
 			<div className="signin-card">
-				<form onSubmit={handleSignIn} className="signin-form">
+				{/* Tab switcher: Sign In vs Sign Up */}
+				<div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+					<button
+						type="button"
+						className={`action-pill-btn ${mode === "signin" ? "primary" : ""}`}
+						style={{ flex: 1, justifyContent: "center" }}
+						onClick={() => {
+							setMode("signin");
+							setError(null);
+						}}
+					>
+						{label("tabSignIn", lang)}
+					</button>
+					<button
+						type="button"
+						className={`action-pill-btn ${mode === "signup" ? "primary" : ""}`}
+						style={{ flex: 1, justifyContent: "center" }}
+						onClick={() => {
+							setMode("signup");
+							setError(null);
+						}}
+					>
+						{label("tabSignUp", lang)}
+					</button>
+				</div>
+
+				<form onSubmit={handleSubmit} className="signin-form">
+					{mode === "signup" && (
+						<div className="signin-field">
+							<label htmlFor="signin-name" className="signin-label">
+								{label("name", lang)}
+							</label>
+							<input
+								id="signin-name"
+								name="name"
+								type="text"
+								autoComplete="name"
+								required
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								className="signin-input"
+								placeholder={label("namePlaceholder", lang)}
+								disabled={isLoading || isGoogleLoading}
+							/>
+						</div>
+					)}
+
 					<div className="signin-field">
 						<label htmlFor="signin-email" className="signin-label">
 							{label("email", lang)}
 						</label>
 						<input
 							id="signin-email"
+							name="email"
 							type="email"
 							autoComplete="email"
 							required
@@ -169,12 +244,14 @@ export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }
 						</label>
 						<input
 							id="signin-password"
+							name="password"
 							type="password"
-							autoComplete="current-password"
+							autoComplete={mode === "signup" ? "new-password" : "current-password"}
 							required
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							className="signin-input"
+							minLength={8}
 							placeholder="••••••••"
 							disabled={isLoading || isGoogleLoading}
 						/>
@@ -212,8 +289,34 @@ export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }
 						disabled={!acceptedTerms || isLoading || isGoogleLoading}
 						className="signin-button primary"
 					>
-						{isLoading ? label("submitting", lang) : label("signInWithEmail", lang)}
+						{isLoading
+							? mode === "signup"
+								? label("submittingSignUp", lang)
+								: label("submittingSignIn", lang)
+							: mode === "signup"
+								? label("signUpWithEmail", lang)
+								: label("signInWithEmail", lang)}
 					</button>
+
+					<div style={{ textAlign: "center", marginTop: "10px" }}>
+						<button
+							type="button"
+							onClick={() => {
+								setMode(mode === "signin" ? "signup" : "signin");
+								setError(null);
+							}}
+							style={{
+								background: "none",
+								border: "none",
+								color: "var(--granite)",
+								fontSize: "13px",
+								cursor: "pointer",
+								textDecoration: "underline",
+							}}
+						>
+							{mode === "signin" ? label("needAccount", lang) : label("haveAccount", lang)}
+						</button>
+					</div>
 				</form>
 
 				<div className="signin-divider">
@@ -232,14 +335,17 @@ export const SignInView: React.FC<{ onSignedIn?: () => void }> = ({ onSignedIn }
 					</span>
 				</button>
 
-				<button
-					type="button"
-					onClick={handleGuestAccess}
-					disabled={isLoading || isGoogleLoading}
-					className="signin-button guest"
+				<p
+					style={{
+						fontSize: "11px",
+						color: "var(--slate-gray)",
+						textAlign: "center",
+						marginTop: "16px",
+						lineHeight: 1.4,
+					}}
 				>
-					{label("guest", lang)}
-				</button>
+					{label("cloudNotice", lang)}
+				</p>
 			</div>
 		</div>
 	);

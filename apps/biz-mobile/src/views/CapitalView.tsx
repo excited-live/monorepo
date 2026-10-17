@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
 	calculateAssetDepreciation,
+	calculateCashAssetBalance,
 	calculateMonthlyEquivalent,
 	generateMonthlyLedger,
 	type CapitalTransfer,
@@ -113,7 +114,6 @@ export const CapitalView: React.FC = () => {
 	);
 
 	// Capital transfers
-	const incomingTransfers = transfers.filter((t) => t.toEntityId === activeAccount.id);
 	const outgoingTransfers = transfers.filter((t) => t.fromEntityId === activeAccount.id);
 
 	// In personal account, seed capital deployed to ventures is treated as an operational expense
@@ -140,7 +140,19 @@ export const CapitalView: React.FC = () => {
 	);
 
 	const totalLiquidReserves = round2(
-		cashAssets.reduce((acc, h) => acc + h.cost, 0),
+		cashAssets.reduce((acc, h) => {
+			const bal = calculateCashAssetBalance({
+				asset: h,
+				hardware,
+				transfers,
+				account: activeAccount,
+				subscriptions,
+				revenues,
+				liabilities,
+				yearMonth: selectedMonth,
+			});
+			return acc + bal.effectiveBalance;
+		}, 0),
 	);
 
 	const totalDepreciation = round2(
@@ -496,10 +508,16 @@ export const CapitalView: React.FC = () => {
 									) : (
 										<div className="item-list">
 											{cashAssets.map((hw) => {
-												const assetInjections = incomingTransfers
-													.filter((t) => t.targetAssetId === hw.id)
-													.reduce((sum, t) => sum + t.amount, 0);
-												const displayedCashCost = hw.cost + assetInjections;
+												const assetBal = calculateCashAssetBalance({
+													asset: hw,
+													hardware,
+													transfers,
+													account: activeAccount,
+													subscriptions,
+													revenues,
+													liabilities,
+													yearMonth: selectedMonth,
+												});
 												return (
 													<div
 														key={hw.id}
@@ -517,14 +535,48 @@ export const CapitalView: React.FC = () => {
 															)}
 														</div>
 														<div className="item-info">
-															<span className="item-name">{hw.name}</span>
+															<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+																<span className="item-name">{hw.name}</span>
+																{assetBal.isDefault && (
+																	<span
+																						className="item-badge"
+																						style={{
+																							backgroundColor: "rgba(207, 69, 0, 0.08)",
+																							color: "var(--signal-orange)",
+																							fontSize: "10px",
+																							padding: "1px 6px",
+																						}}
+																	>
+																		DEFAULT
+																	</span>
+												)}
+															</div>
 															<span className="item-sub">
-																Liquid Reserve {assetInjections > 0 ? `• Injected: ฿${formatMoney(assetInjections)}` : "(No Depreciation)"}
+																{assetBal.isDefault
+																	? `Base: ฿${formatMoney(assetBal.baseCost)}${
+																			assetBal.assetInjections !== 0
+																				? ` • Cap: ${assetBal.assetInjections >= 0 ? "+" : ""}฿${formatMoney(assetBal.assetInjections)}`
+																: ""
+														}${
+															assetBal.netOperatingCash !== 0
+																? ` • Net Flow: ${assetBal.netOperatingCash >= 0 ? "+" : ""}฿${formatMoney(assetBal.netOperatingCash)}`
+																: ""
+														}`
+													: `Liquid Reserve${
+															assetBal.assetInjections !== 0
+																? ` • Injected: ฿${formatMoney(assetBal.assetInjections)}`
+															: " (No Depreciation)"
+														}`}
 															</span>
 														</div>
 														<div className="item-amount-col">
-															<span className="item-amount positive">฿{formatMoney(displayedCashCost)}</span>
-															<span className="item-badge" style={{ backgroundColor: "rgba(10, 138, 77, 0.08)", color: "#0A8A4D" }}>
+															<span className={`item-amount ${assetBal.effectiveBalance >= 0 ? "positive" : "negative"}`}>
+																฿{formatMoney(assetBal.effectiveBalance)}
+															</span>
+															<span
+																className="item-badge"
+																style={{ backgroundColor: "rgba(10, 138, 77, 0.08)", color: "#0A8A4D" }}
+															>
 																CASH
 															</span>
 														</div>

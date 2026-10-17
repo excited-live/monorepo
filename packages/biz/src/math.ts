@@ -17,6 +17,25 @@ export function calculateElapsedMonths(startDate: string, asOfDate: string): num
 	return Math.max(0, diffYears * 12 + diffMonths);
 }
 
+export function shiftYearMonth(ym: string, delta: number): string {
+	const { year, month } = parseYearMonth(ym);
+	const zeroBased = month - 1 + delta;
+	const nextYear = year + Math.floor(zeroBased / 12);
+	const nextMonth = ((zeroBased % 12) + 12) % 12 + 1;
+	return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+}
+
+export function getYearMonthRange(fromYm: string, toYm: string): string[] {
+	if (fromYm > toYm) return [];
+	const months: string[] = [];
+	let current = fromYm;
+	while (current <= toYm) {
+		months.push(current);
+		current = shiftYearMonth(current, 1);
+	}
+	return months;
+}
+
 export function calculateMonthlyEquivalent(amount: number, cycle: BillingCycle): number {
 	switch (cycle) {
 		case "one_time":

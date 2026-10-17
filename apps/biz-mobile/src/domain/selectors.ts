@@ -1,5 +1,6 @@
 import {
 	calculateAssetDepreciation,
+	calculateCashAssetBalance,
 	calculateDerivedTreasury,
 	calculateRunway,
 	generateMonthlyLedger,
@@ -41,8 +42,21 @@ export function calculateEntityWealthMetrics(params: {
 	} = params;
 
 	const entityAssets = hardware.filter((h) => h.entityId === account.id);
+	const cashAssets = entityAssets.filter((h) => isCashAsset(h));
 	const cashAssetsValue = round2(
-		entityAssets.filter((h) => isCashAsset(h)).reduce((acc, h) => acc + h.cost, 0),
+		cashAssets.reduce((acc, h) => {
+			const bal = calculateCashAssetBalance({
+				asset: h,
+				hardware,
+				transfers,
+				account,
+				subscriptions,
+				revenues,
+				liabilities,
+				yearMonth,
+			});
+			return acc + bal.effectiveBalance;
+		}, 0),
 	);
 	const gearAssets = entityAssets.filter((h) => !isCashAsset(h));
 	const gearAssetsValue = round2(
@@ -248,19 +262,18 @@ export function calculateProjectionBalances(params: {
 
 	const balances = new Map<number, number>();
 	let running = account.cashReserve;
-	balances.set(0, running);
-
-	for (let i = 1; i <= futureMonths; i++) {
+	for (let i = -pastMonths; i <= futureMonths; i++) {
 		const targetYm = shiftYearMonth(yearMonth, i);
-		running += netOf(targetYm);
-		balances.set(i, round2(running));
-	}
-
-	running = account.cashReserve;
-	for (let i = -1; i >= -pastMonths; i--) {
-		const targetYm = shiftYearMonth(yearMonth, i + 1);
-		running -= netOf(targetYm);
-		balances.set(i, round2(running));
+		if (i === 0) {
+			running = baselineLedger.summary.endingTreasury;
+		} else if (i < 0) {
+			const pastNet = netOf(targetYm);
+			running = round2(running - pastNet);
+		} else {
+			const futureNet = netOf(targetYm);
+			running = round2(running + futureNet);
+		}
+		balances.set(i, running);
 	}
 
 	return {
@@ -268,9 +281,11 @@ export function calculateProjectionBalances(params: {
 		balances,
 		totalIncome: baselineLedger.summary.totalInflow,
 		totalExpense: baselineLedger.summary.totalCashOutflow,
-		liabilityMonthly: liabilities
-			.filter((l) => l.entityId === account.id && l.active)
-			.reduce((acc, l) => acc + l.amount, 0),
+		liabilityMonthly: round2(
+			liabilities
+				.filter((l) => l.entityId === account.id && l.active)
+				.reduce((acc, l) => acc + l.amount, 0),
+		),
 		projectedNet: baselineLedger.summary.netCashFlow,
 	};
 }

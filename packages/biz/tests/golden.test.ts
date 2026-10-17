@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	calculateAssetDepreciation,
+	calculateCashAssetBalance,
+	calculateCurrentTreasury,
 	calculateMonthlyEquivalent,
 	generateMonthlyLedger,
 	round2,
@@ -10,6 +12,7 @@ import {
 	SEED_SUBSCRIPTIONS,
 	SEED_TRANSFERS,
 	simulateCapitalTransfer,
+	type HardwareAsset,
 } from "../src";
 
 describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
@@ -153,5 +156,218 @@ describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
 		});
 		expect(ledgerAfterEnd.summary.totalInflow).toBe(0);
 		expect(ledgerAfterEnd.actions.filter((a) => a.category === "salary")).toHaveLength(0);
+	});
+
+	it("adds net operating cash (income - expense) to default wallet and deducts when negative", () => {
+		const defaultWallet: HardwareAsset = {
+			id: "hw_default_biz",
+			entityId: "acc_test_biz",
+			name: "Main Operating Wallet",
+			cost: 10000,
+			lifespanMonths: 0,
+			purchaseDate: "2026-10",
+			category: "cash",
+			isDefault: true,
+		};
+		const secondaryWallet: HardwareAsset = {
+			id: "hw_reserve_biz",
+			entityId: "acc_test_biz",
+			name: "Tax Reserve Account",
+			cost: 5000,
+			lifespanMonths: 0,
+			purchaseDate: "2026-10",
+			category: "cash",
+			isDefault: false,
+		};
+		const hardware = [defaultWallet, secondaryWallet];
+
+		// Scenario A: Positive cashflow (Income: 25k, Expense: 5k -> Net: +20k)
+		const revs = [
+			{
+				id: "rev_1",
+				entityId: "acc_test_biz",
+				name: "Client Contract",
+				amount: 25000,
+				frequency: "monthly" as const,
+				source: "bank_transfer" as const,
+				active: true,
+			},
+		];
+		const subs = [
+			{
+				id: "sub_1",
+				entityId: "acc_test_biz",
+				name: "Cloud Hosting",
+				amount: 5000,
+				cycle: "monthly" as const,
+				category: "infrastructure",
+				nextRenewalDate: "2026-10-15",
+				active: true,
+			},
+		];
+
+		const balDefaultSurplus = calculateCashAssetBalance({
+			asset: defaultWallet,
+			hardware,
+			transfers: [],
+			subscriptions: subs,
+			revenues: revs,
+			yearMonth: "2026-10",
+		});
+
+		// 10,000 base + 20,000 net = 30,000
+		expect(balDefaultSurplus.isDefault).toBe(true);
+		expect(balDefaultSurplus.netOperatingCash).toBe(20000);
+		expect(balDefaultSurplus.effectiveBalance).toBe(30000);
+
+		// Secondary wallet remains unaffected by operational cashflow
+		const balReserve = calculateCashAssetBalance({
+			asset: secondaryWallet,
+			hardware,
+			transfers: [],
+			subscriptions: subs,
+			revenues: revs,
+			yearMonth: "2026-10",
+		});
+		expect(balReserve.isDefault).toBe(false);
+		expect(balReserve.netOperatingCash).toBe(0);
+		expect(balReserve.effectiveBalance).toBe(5000);
+
+		// Scenario B: Deficit cashflow (Income: 2k, Expense: 7k -> Net: -5k)
+		const subsDeficit = [
+			{
+				id: "sub_2",
+				entityId: "acc_test_biz",
+				name: "Heavy Compute",
+				amount: 7000,
+				cycle: "monthly" as const,
+				category: "infrastructure",
+				nextRenewalDate: "2026-10-15",
+				active: true,
+			},
+		];
+		const revsDeficit = [
+			{
+				id: "rev_2",
+				entityId: "acc_test_biz",
+				name: "Small gig",
+				amount: 2000,
+				frequency: "monthly" as const,
+				source: "bank_transfer" as const,
+				active: true,
+			},
+		];
+
+		const balDefaultDeficit = calculateCashAssetBalance({
+			asset: defaultWallet,
+			hardware,
+			transfers: [],
+			subscriptions: subsDeficit,
+			revenues: revsDeficit,
+			yearMonth: "2026-10",
+		});
+
+		// 10,000 base - 5,000 deficit = 5,000
+		expect(balDefaultDeficit.netOperatingCash).toBe(-5000);
+		expect(balDefaultDeficit.effectiveBalance).toBe(5000);
+
+		// calculateCurrentTreasury sums effective balances
+		const treasury = calculateCurrentTreasury({
+			account: {
+				id: "acc_test_biz",
+				name: "Test Biz",
+				type: "business",
+				cashReserve: 0,
+				currency: "THB",
+			},
+			hardware,
+			transfers: [],
+			subscriptions: subsDeficit,
+			revenues: revsDeficit,
+			yearMonth: "2026-10",
+		});
+		// 5,000 (default) + 5,000 (reserve) = 10,000
+		expect(treasury).toBe(10000);
+	});
+
+	it("dynamically changes startingTreasury, endingTreasury, and runway as months advance", () => {
+		const testAccount = {
+			id: "acc_advance_test",
+			name: "Advance Test",
+			type: "business" as const,
+			cashReserve: 100000,
+			currency: "THB" as const,
+		};
+		const hardware = [
+			{
+				id: "hw_cash_adv",
+				entityId: "acc_advance_test",
+				name: "Main Cash",
+				cost: 100000,
+				lifespanMonths: 0,
+				purchaseDate: "2026-10",
+				category: "cash" as const,
+				isDefault: true,
+			},
+		];
+		const subs = [
+			{
+				id: "sub_burn",
+				entityId: "acc_advance_test",
+				name: "Server Infra",
+				amount: 10000,
+				cycle: "monthly" as const,
+				category: "infrastructure" as const,
+				nextRenewalDate: "2026-10-15",
+				active: true,
+			},
+		];
+
+		const octLedger = generateMonthlyLedger({
+			account: testAccount,
+			yearMonth: "2026-10",
+			subscriptions: subs,
+			hardware,
+			revenues: [],
+			transfers: [],		});
+		expect(octLedger.summary.startingTreasury).toBe(100000);
+		expect(octLedger.summary.endingTreasury).toBe(90000);
+		expect(octLedger.summary.runwayMonths).toBe(10);
+
+		const novLedger = generateMonthlyLedger({
+			account: testAccount,
+			yearMonth: "2026-11",
+			subscriptions: subs,
+			hardware,
+			revenues: [],
+			transfers: [],
+		});
+		expect(novLedger.summary.startingTreasury).toBe(90000);
+		expect(novLedger.summary.endingTreasury).toBe(80000);
+		expect(novLedger.summary.runwayMonths).toBe(9);
+
+		const decLedger = generateMonthlyLedger({
+			account: testAccount,
+			yearMonth: "2026-12",
+			subscriptions: subs,
+			hardware,
+			revenues: [],
+			transfers: [],
+		});
+		expect(decLedger.summary.startingTreasury).toBe(80000);
+		expect(decLedger.summary.endingTreasury).toBe(70000);
+		expect(decLedger.summary.runwayMonths).toBe(8);
+
+		// Also verify cash asset balance compounds across months
+		const decCash = calculateCashAssetBalance({
+			asset: hardware[0]!,
+			hardware,
+			transfers: [],
+			subscriptions: subs,
+			revenues: [],
+			yearMonth: "2026-12",
+		});
+		// 100k - (10k * 3 months) = 70k
+		expect(decCash.effectiveBalance).toBe(70000);
 	});
 });

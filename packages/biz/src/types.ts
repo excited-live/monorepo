@@ -55,6 +55,7 @@ export interface HardwareAsset {
 	salvageValue?: number;
 	category: string;
 	imageUrl?: string;
+	isDefault?: boolean;
 }
 
 export interface RevenueStream {

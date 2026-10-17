@@ -1,62 +1,157 @@
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
-import type React from "react";
+import React from "react";
 import "@astryxdesign/core/reset.css";
 import "@astryxdesign/core/astryx.css";
 import "@excited-live/design-system/mastercard-theme.css";
+import { Theme, mastercardTheme } from "@excited-live/design-system";
 import "../../src/styles.css";
+import { BizProvider } from "../../src/application/context/BizContext";
+import type { IStorageAdapter } from "../../src/application/storage/storage.interface";
+import {
+	FIXTURE_ACCOUNTS,
+	FIXTURE_HARDWARE,
+	FIXTURE_LIABILITIES,
+	FIXTURE_REVENUES,
+	FIXTURE_SUBSCRIPTIONS,
+	FIXTURE_TRANSFERS,
+	FIXTURE_USER_SESSION,
+} from "../../src/testing/fixtures";
 
-const stories = import.meta.glob("../../src/**/*.story.{tsx,jsx}");
-const id = (f: string) => f.replace(/^(\.\.\/)+src\//, "").replace(/\.story\.\w+$/, "");
-
-async function resolve(storyId: string) {
-	const sep = storyId.lastIndexOf("/");
-	const [path, name] = [storyId.slice(0, sep), storyId.slice(sep + 1)];
-	const file = Object.keys(stories).find((f) => id(f) === path || id(f).endsWith("/" + path));
-	if (!file) {
-		throw new Error(
-			`Cannot find file for story "${storyId}". Available: ${Object.keys(stories)
-				.map(id)
-				.join(", ")}`,
-		);
+class MemoryStorageAdapter implements IStorageAdapter {
+	private store = new Map<string, string>();
+	getItem<T>(key: string, defaultValue: T): T {
+		const val = this.store.get(key);
+		if (!val) return defaultValue;
+		try {
+			return JSON.parse(val) as T;
+		} catch {
+			return defaultValue;
+		}
 	}
-	const loader = stories[file];
-	if (!loader) {
-		throw new Error(`Loader not found for ${file}`);
+	setItem<T>(key: string, value: T): void {
+		this.store.set(key, JSON.stringify(value));
 	}
-	const mod = (await loader()) as Record<string, unknown>;
-	const component = mod?.[name] ?? mod?.default;
-	if (!component) {
-		throw new Error(
-			`Export "${name}" not found in ${file}. Available exports: ${Object.keys(mod ?? {}).join(", ")}`,
-		);
+	removeItem(key: string): void {
+		this.store.delete(key);
 	}
-	return component as React.ComponentType<Record<string, unknown>>;
+	clear(): void {
+		this.store.clear();
+	}
 }
 
-const rootEl = document.getElementById("root")!;
-let root: Root | undefined;
+const storage = new MemoryStorageAdapter();
+
+const componentModules = import.meta.glob([
+	"../../src/**/*.{tsx,jsx}",
+	"!../../src/**/*.spec.{tsx,jsx}",
+	"!../../src/**/*.story.{tsx,jsx}",
+	"!../../src/**/*.d.ts",
+]);
+
+async function resolve(componentId: string) {
+	const normalized = componentId.replace(/^\/+/, "").replace(/\.[^/.]+$/, "");
+	const parts = normalized.split("/");
+	const targetName = parts[parts.length - 1];
+
+	// Match file by exact relative path, or by suffix, or by component/file name
+	let fileMatch: string | undefined;
+	for (const path of Object.keys(componentModules)) {
+		const cleanPath = path.replace(/^(\.\.\/)+src\//, "").replace(/\.[^/.]+$/, "");
+		if (
+			cleanPath === normalized ||
+			cleanPath.endsWith("/" + normalized) ||
+			cleanPath.endsWith("/" + targetName)
+		) {
+			fileMatch = path;
+			break;
+		}
+	}
+
+	if (!fileMatch) {
+		throw new Error(
+			`Cannot find component module for "${componentId}". Available modules:\n${Object.keys(
+				componentModules,
+			)
+				.map((p) => p.replace(/^(\.\.\/)+src\//, ""))
+				.join("\n")}`,
+		);
+	}
+
+	const loader = componentModules[fileMatch];
+	const mod = (await loader()) as Record<string, unknown>;
+
+	let Component = mod[targetName] ?? mod.default;
+	if (!Component) {
+		for (const [, value] of Object.entries(mod)) {
+			if (typeof value === "function") {
+				Component = value;
+				break;
+			}
+		}
+	}
+
+	if (!Component) {
+		throw new Error(
+			`Component "${targetName}" not found in ${fileMatch}. Available exports: ${Object.keys(
+				mod,
+			).join(", ")}`,
+		);
+	}
+
+	return Component as React.ComponentType<Record<string, unknown>>;
+}
+
+let root: Root | null = null;
 
 declare global {
 	interface Window {
-		mount: (params: { story: string; props?: Record<string, unknown> }) => Promise<void>;
-		unmount: () => Promise<void>;
+		mount: (args: { story: string; props?: Record<string, unknown> }) => Promise<void>;
+		unmount: () => void;
 	}
 }
 
 window.mount = async ({
 	story,
-	props,
+	props = {},
 }: {
 	story: string;
 	props?: Record<string, unknown>;
 }) => {
-	const Story = await resolve(story);
-	root ??= createRoot(rootEl);
-	flushSync(() => root!.render(<Story {...(props ?? {})} />));
+	const Component = await resolve(story);
+	const container = document.getElementById("root");
+	if (!container) throw new Error("Mount root #root not found");
+
+	if (!root) {
+		root = createRoot(container);
+	}
+
+	// Always wrap component in BizProvider & Theme for full standalone testing capability
+	flushSync(() => {
+		root?.render(
+			<Theme theme={mastercardTheme} mode="light">
+				<BizProvider
+					storage={storage}
+					initialAccounts={FIXTURE_ACCOUNTS}
+					initialHardware={FIXTURE_HARDWARE}
+					initialSubscriptions={FIXTURE_SUBSCRIPTIONS}
+					initialRevenues={FIXTURE_REVENUES}
+					initialLiabilities={FIXTURE_LIABILITIES}
+					initialTransfers={FIXTURE_TRANSFERS}
+					initialUserSession={FIXTURE_USER_SESSION}
+				>
+					<Component {...props} />
+				</BizProvider>
+			</Theme>,
+		);
+	});
 };
 
-window.unmount = async () => {
-	root?.unmount();
-	root = undefined;
+window.unmount = () => {
+	if (root) {
+		flushSync(() => {
+			root?.unmount();
+			root = null;
+		});
+	}
 };

@@ -4,7 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import "@excited-live/design-system/mastercard-theme.css";
 import { Header } from "../components/Header";
 import { BottomDock } from "../components/BottomDock";
-import { BizProvider, useBiz } from "../state";
+import { BizProvider, useUserData } from "../state";
 import "../styles.css";
 
 interface RouterContext {
@@ -16,7 +16,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function AppShell() {
-	const { userSession } = useBiz();
+	const { userSession } = useUserData();
 
 	return (
 		<div

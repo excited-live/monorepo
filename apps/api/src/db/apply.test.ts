@@ -23,7 +23,7 @@ describe("migrations", () => {
 		const db = await resolveDb(undefined, { [DB_FILE_ENV]: tempDbFile() })
 
 		expect(db.mode).toBe("node-sqlite")
-		expect(db.migrations).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql"])
+		expect(db.migrations).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql", "0004_biz_liabilities.sql"])
 
 
 		const tables = await db.driver.all<{ name: string }>(
@@ -42,7 +42,7 @@ describe("migrations", () => {
 		const ledger = await first.driver.all<{ name: string; applied_at: string }>(
 			"SELECT name, applied_at FROM d1_migrations",
 		)
-		expect(ledger.map((row) => row.name)).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql"])
+		expect(ledger.map((row) => row.name)).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql", "0004_biz_liabilities.sql"])
 
 		expect(ledger[0]?.applied_at).toBeTruthy()
 		first.driver.close()
@@ -51,7 +51,7 @@ describe("migrations", () => {
 		const second = await resolveDb(undefined, { [DB_FILE_ENV]: file })
 		expect(second.migrations).toEqual([])
 		const after = await second.driver.all<{ name: string }>("SELECT name FROM d1_migrations")
-		expect(after.map((row) => row.name)).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql"])
+		expect(after.map((row) => row.name)).toEqual(["0001_init.sql", "0002_biz_store.sql", "0003_auth.sql", "0004_biz_liabilities.sql"])
 
 		second.driver.close()
 	})

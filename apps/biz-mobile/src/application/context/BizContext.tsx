@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useEffect, useMemo, useRef, useState } from "react";
 import {
 	calculateCurrentTreasury,
 	isCashAsset,
@@ -8,6 +8,7 @@ import {
 	SEED_REVENUES,
 	SEED_SUBSCRIPTIONS,
 	SEED_TRANSFERS,
+	type BizSnapshot,
 	type CapitalTransfer,
 	type EntityAccount,
 	type HardwareAsset,
@@ -15,7 +16,7 @@ import {
 	type RecurringSubscription,
 	type RevenueStream,
 } from "@excited-live/biz";
-import { authApi, setBearerToken } from "../../lib/api-client";
+import { authApi, bizApi, setBearerToken } from "../../lib/api-client";
 import { defaultStorage } from "../storage/local-storage.adapter";
 import type { IStorageAdapter } from "../storage/storage.interface";
 import {
@@ -39,6 +40,9 @@ export interface BizContextType {
 	selectedMonth: string; // "YYYY-MM"
 	lang: MobileLocale;
 	userSession: UserSession;
+	cloudSyncStatus: "synced" | "syncing" | "offline" | "error";
+	lastSyncedAt: string | null;
+	syncWithCloud: () => Promise<void>;
 	signInWithEmail: (email: string, password: string) => Promise<void>;
 	signInWithGoogle: (idToken: string) => Promise<void>;
 	signOut: () => Promise<void>;
@@ -190,6 +194,35 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 	const [selectedMonth, setSelectedMonth] = useState<string>("2026-10");
 	const [lang, setLang] = useState<MobileLocale>("en");
 
+	// Cloud native sync state tracking
+	const [cloudSyncStatus, setCloudSyncStatus] = useState<"synced" | "syncing" | "offline" | "error">("synced");
+	const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() => {
+		return storage.getItem<string | null>(`${STORAGE_PREFIX}_last_synced_at`, null);
+	});
+
+	const isInitialLoadedRef = useRef(false);
+	const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const latestStateRef = useRef({
+		rawAccounts,
+		subscriptions,
+		hardware,
+		revenues,
+		liabilities,
+		transfers,
+	});
+
+	useEffect(() => {
+		latestStateRef.current = {
+			rawAccounts,
+			subscriptions,
+			hardware,
+			revenues,
+			liabilities,
+			transfers,
+		};
+	}, [rawAccounts, subscriptions, hardware, revenues, liabilities, transfers]);
+
 	// Session restoration from API
 	useEffect(() => {
 		const token = userSession.token;
@@ -210,7 +243,80 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			});
 	}, [userSession.isAuthenticated, userSession.token]);
 
-	// Persistence to storage adapter
+	// Initial cloud synchronization & hydration from backend
+	useEffect(() => {
+		let isCancelled = false;
+		const userId = userSession.isAuthenticated && userSession.id ? userSession.id : "default";
+
+		async function initCloudSync() {
+			try {
+				const remote = await bizApi.getSnapshot(userId);
+				if (isCancelled) return;
+
+				if (remote && Array.isArray(remote.accounts) && remote.accounts.length > 0) {
+					const hasLocalCustomData = storage.getItem<boolean>(`${STORAGE_PREFIX}_has_custom_data`, false);
+					// If the remote server is uninitialized (isDefault=true) but user has local work,
+					// push their local work to cloud so they never lose anything!
+					if (remote.isDefault && hasLocalCustomData) {
+						setCloudSyncStatus("syncing");
+						const currentState = latestStateRef.current;
+						const pushRes = await bizApi.syncSnapshot(
+							{
+								accounts: currentState.rawAccounts,
+								subscriptions: currentState.subscriptions,
+								hardware: currentState.hardware,
+								revenues: currentState.revenues,
+								transfers: currentState.transfers,
+								liabilities: currentState.liabilities,
+							},
+							userId,
+						);
+						if (pushRes.ok) {
+							const now = new Date().toISOString();
+							setCloudSyncStatus("synced");
+							setLastSyncedAt(now);
+							storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
+						} else {
+							setCloudSyncStatus("offline");
+						}
+					} else if (!remote.isDefault) {
+						// Server has saved cloud data: hydrate client state
+						setRawAccounts(remote.accounts);
+						setSubscriptions(remote.subscriptions ?? []);
+						setHardware(remote.hardware ?? []);
+						setRevenues(remote.revenues ?? []);
+						setLiabilities(remote.liabilities ?? SEED_LIABILITIES);
+						setTransfers(remote.transfers ?? []);
+						const syncedTimestamp = remote.updatedAt || new Date().toISOString();
+						setCloudSyncStatus("synced");
+						setLastSyncedAt(syncedTimestamp);
+						storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, syncedTimestamp);
+						storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+					} else {
+						setCloudSyncStatus("synced");
+					}
+				} else {
+					setCloudSyncStatus("offline");
+				}
+			} catch {
+				if (!isCancelled) {
+					setCloudSyncStatus("offline");
+				}
+			} finally {
+				if (!isCancelled) {
+					isInitialLoadedRef.current = true;
+				}
+			}
+		}
+
+		initCloudSync();
+
+		return () => {
+			isCancelled = true;
+		};
+	}, [userSession.isAuthenticated, userSession.id, storage]);
+
+	// Persistence to storage adapter (instant local cache)
 	useEffect(() => {
 		storage.setItem(`${STORAGE_PREFIX}_accounts`, rawAccounts);
 	}, [rawAccounts, storage]);
@@ -239,6 +345,49 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		storage.setItem(`${STORAGE_PREFIX}_session`, userSession);
 	}, [userSession, storage]);
 
+	// Continuous debounced cloud synchronization on any state mutation
+	useEffect(() => {
+		if (!isInitialLoadedRef.current) return;
+
+		if (syncTimeoutRef.current) {
+			clearTimeout(syncTimeoutRef.current);
+		}
+
+		setCloudSyncStatus("syncing");
+		const userId = userSession.isAuthenticated && userSession.id ? userSession.id : "default";
+
+		syncTimeoutRef.current = setTimeout(async () => {
+			try {
+				const snapshot: BizSnapshot = {
+					accounts: rawAccounts,
+					subscriptions,
+					hardware,
+					revenues,
+					transfers,
+					liabilities,
+				};
+				const res = await bizApi.syncSnapshot(snapshot, userId);
+				if (res.ok) {
+					const now = new Date().toISOString();
+					setCloudSyncStatus("synced");
+					setLastSyncedAt(now);
+					storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
+					storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+				} else {
+					setCloudSyncStatus("offline");
+				}
+			} catch {
+				setCloudSyncStatus("offline");
+			}
+		}, 800);
+
+		return () => {
+			if (syncTimeoutRef.current) {
+				clearTimeout(syncTimeoutRef.current);
+			}
+		};
+	}, [rawAccounts, subscriptions, hardware, revenues, liabilities, transfers, userSession.isAuthenticated, userSession.id, storage]);
+
 	// Derived accounts: calculateCurrentTreasury derives cash on hand from cash assets and transfers
 	const accounts = useMemo(() => {
 		return rawAccounts.map((acc) => {
@@ -251,7 +400,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		});
 	}, [rawAccounts, hardware, transfers]);
 
-	const applySession = (token: string, user: { id: string; email: string; name: string }) => {
+	const applySession = async (token: string, user: { id: string; email: string; name: string }) => {
 		setBearerToken(token);
 		setUserSession({
 			id: user.id,
@@ -261,16 +410,57 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			isAuthenticated: true,
 			token,
 		});
+		setCloudSyncStatus("syncing");
+		try {
+			const remote = await bizApi.getSnapshot(user.id);
+			if (remote && !remote.isDefault && remote.accounts && remote.accounts.length > 0) {
+				setRawAccounts(remote.accounts);
+				setSubscriptions(remote.subscriptions ?? []);
+				setHardware(remote.hardware ?? []);
+				setRevenues(remote.revenues ?? []);
+				setLiabilities(remote.liabilities ?? SEED_LIABILITIES);
+				setTransfers(remote.transfers ?? []);
+				const ts = remote.updatedAt || new Date().toISOString();
+				setLastSyncedAt(ts);
+				storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, ts);
+				storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+				setCloudSyncStatus("synced");
+			} else {
+				// Newly connected account: save current state to user's cloud account
+				const pushRes = await bizApi.syncSnapshot(
+					{
+						accounts: rawAccounts,
+						subscriptions,
+						hardware,
+						revenues,
+						transfers,
+						liabilities,
+					},
+					user.id,
+				);
+				if (pushRes.ok) {
+					const now = new Date().toISOString();
+					setLastSyncedAt(now);
+					storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
+					storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+					setCloudSyncStatus("synced");
+				} else {
+					setCloudSyncStatus("offline");
+				}
+			}
+		} catch {
+			setCloudSyncStatus("offline");
+		}
 	};
 
 	const signInWithEmail = async (email: string, password: string) => {
 		const res = await authApi.signIn(email, password);
-		applySession(res.token, res.user);
+		await applySession(res.token, res.user);
 	};
 
 	const signInWithGoogle = async (idToken: string) => {
 		const res = await authApi.signInWithGoogleIdToken(idToken);
-		applySession(res.token, res.user);
+		await applySession(res.token, res.user);
 	};
 
 	const signOut = async () => {
@@ -281,6 +471,34 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		}
 		setBearerToken(null);
 		setUserSession(DEFAULT_SESSION);
+		setCloudSyncStatus("synced");
+	};
+
+	const syncWithCloud = async () => {
+		setCloudSyncStatus("syncing");
+		const userId = userSession.isAuthenticated && userSession.id ? userSession.id : "default";
+		try {
+			const snapshot: BizSnapshot = {
+				accounts: rawAccounts,
+				subscriptions,
+				hardware,
+				revenues,
+				transfers,
+				liabilities,
+			};
+			const res = await bizApi.syncSnapshot(snapshot, userId);
+			if (res.ok) {
+				const now = new Date().toISOString();
+				setCloudSyncStatus("synced");
+				setLastSyncedAt(now);
+				storage.setItem(`${STORAGE_PREFIX}_last_synced_at`, now);
+				storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
+			} else {
+				setCloudSyncStatus("offline");
+			}
+		} catch {
+			setCloudSyncStatus("offline");
+		}
 	};
 
 	const updateUserProfile = (profile: Partial<UserSession>) => {
@@ -317,7 +535,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 				resolvedTargetAssetId = newAssetId;
 			}
 		} else if (!resolvedTargetAssetId && toCashAssets.length > 0) {
-			resolvedTargetAssetId = toCashAssets[0].id;
+			resolvedTargetAssetId = toCashAssets[0]?.id;
 		}
 
 		const newTx: CapitalTransfer = {
@@ -331,14 +549,17 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			...(resolvedTargetAssetId ? { targetAssetId: resolvedTargetAssetId } : {}),
 		};
 		setTransfers((prev) => [newTx, ...prev]);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateCapitalTransfer = (transfer: CapitalTransfer) => {
 		setTransfers((prev) => prev.map((t) => (t.id === transfer.id ? transfer : t)));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteCapitalTransfer = (id: string) => {
 		setTransfers((prev) => prev.filter((t) => t.id !== id));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addBusiness = (name: string, imageUrl?: string, startingTreasury?: number): string => {
@@ -353,9 +574,9 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		};
 		setRawAccounts((prev) => [...prev, newBiz]);
 		setActiveEntityId(newId);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 
 		// When starting treasury is entered, record it as a regular CapitalTransfer from personal
-		// so it pops up in the Capital subtab and is editable and manageable just like any other capital transfer!
 		if (startingTreasury && startingTreasury > 0) {
 			const initialTransfer: CapitalTransfer = {
 				id: `tx_${Date.now()}`,
@@ -374,6 +595,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setRawAccounts((prev) =>
 			prev.map((acc) => (acc.id === id ? { ...acc, name, imageUrl } : acc)),
 		);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateCareer = (
@@ -389,6 +611,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setRawAccounts((prev) =>
 			prev.map((acc) => (acc.id === entityId ? { ...acc, ...career } : acc)),
 		);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const setCareerIncome = (
@@ -451,6 +674,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			}
 			return prev;
 		});
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteBusiness = (id: string) => {
@@ -461,6 +685,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setLiabilities((prev) => prev.filter((l) => l.entityId !== id));
 		setTransfers((prev) => prev.filter((t) => t.fromEntityId !== id && t.toEntityId !== id));
 		setActiveEntityId("acc_personal");
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addSubscription = (sub: Omit<RecurringSubscription, "id">) => {
@@ -469,14 +694,17 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `sub_${Date.now()}`,
 		};
 		setSubscriptions((prev) => [...prev, newSub]);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateSubscription = (sub: RecurringSubscription) => {
 		setSubscriptions((prev) => prev.map((s) => (s.id === sub.id ? sub : s)));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteSubscription = (id: string) => {
 		setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addHardware = (hw: Omit<HardwareAsset, "id">) => {
@@ -485,14 +713,17 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `hw_${Date.now()}`,
 		};
 		setHardware((prev) => [...prev, newHw]);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateHardware = (hw: HardwareAsset) => {
 		setHardware((prev) => prev.map((h) => (h.id === hw.id ? hw : h)));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteHardware = (id: string) => {
 		setHardware((prev) => prev.filter((h) => h.id !== id));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addRevenue = (rev: Omit<RevenueStream, "id">) => {
@@ -501,10 +732,12 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `rev_${Date.now()}`,
 		};
 		setRevenues((prev) => [...prev, newRev]);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateRevenue = (rev: RevenueStream) => {
 		setRevenues((prev) => prev.map((r) => (r.id === rev.id ? rev : r)));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteRevenue = (id: string) => {
@@ -517,6 +750,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			);
 		}
 		setRevenues((prev) => prev.filter((r) => r.id !== id));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const addLiability = (liab: Omit<LiabilityStream, "id">) => {
@@ -525,14 +759,17 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			id: `liab_${Date.now()}`,
 		};
 		setLiabilities((prev) => [...prev, newLiab]);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const updateLiability = (liab: LiabilityStream) => {
 		setLiabilities((prev) => prev.map((l) => (l.id === liab.id ? liab : l)));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const deleteLiability = (id: string) => {
 		setLiabilities((prev) => prev.filter((l) => l.id !== id));
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const resetToBaseline = () => {
@@ -548,6 +785,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setActiveTab("home");
 		setActiveCapitalSubTab("income");
 		setSelectedMonth("2026-10");
+		storage.removeItem(`${STORAGE_PREFIX}_has_custom_data`);
 	};
 
 	const restoreBackup = (data: {
@@ -566,6 +804,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		if (Array.isArray(data.liabilities)) setLiabilities(data.liabilities);
 		if (Array.isArray(data.transfers)) setTransfers(data.transfers);
 		if (data.user && typeof data.user === "object") setUserSession(data.user);
+		storage.setItem(`${STORAGE_PREFIX}_has_custom_data`, true);
 	};
 
 	const contextValue: BizContextType = {
@@ -586,6 +825,9 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		lang,
 		setLang,
 		userSession,
+		cloudSyncStatus,
+		lastSyncedAt,
+		syncWithCloud,
 		signInWithEmail,
 		signInWithGoogle,
 		signOut,

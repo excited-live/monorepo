@@ -1,11 +1,17 @@
 import { CurrencyInput } from "./CurrencyInput";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { isCashAsset, type BillingCycle, type RecurringSubscription } from "@excited-live/biz";
+import {
+	isCashAsset,
+	resolveCatalogAmount,
+	type BillingCycle,
+	type RecurringSubscription,
+} from "@excited-live/biz";
 import { formatMoney } from "../utils/format";
 import { ModalImageSection } from "./ModalImageSection";
 import { useModalBack } from "../hooks/useModalBack";
 import { useBiz } from "../state";
+import { useCatalogAutofill, type AutofillValues } from "../hooks/useCatalogAutofill";
 
 export const AddExpenseDrawer: React.FC<{
 	isOpen: boolean;
@@ -16,6 +22,7 @@ export const AddExpenseDrawer: React.FC<{
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 	const businessAccounts = accounts.filter((a) => a.type === "business");
+	const currency = activeAccount.currency || "THB";
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -41,6 +48,27 @@ export const AddExpenseDrawer: React.FC<{
 		setTargetAssetId(cashHw[0]?.id || "primary_cash");
 	};
 
+	// Smart catalog autofill with user-touch protection
+	const onApplyAutofill = (values: AutofillValues) => {
+		if (values.amount !== undefined) setAmount(String(values.amount));
+		if (values.cycle !== undefined) setCycle(values.cycle as BillingCycle);
+		if (values.category !== undefined) setCategory(values.category);
+		if (values.imageUrl !== undefined) setImageUrl(values.imageUrl);
+	};
+
+	const {
+		suggestions,
+		matchedItem,
+		handleQueryChange,
+		applySuggestion,
+		markTouched,
+		resetTouched,
+	} = useCatalogAutofill({
+		type: "subscription",
+		currency,
+		onApplyAutofill,
+	});
+
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
@@ -50,6 +78,10 @@ export const AddExpenseDrawer: React.FC<{
 			setRenewalDate(initialData.nextRenewalDate);
 			setNotes(initialData.notes || "");
 			setImageUrl(initialData.imageUrl || "");
+			markTouched("amount");
+			markTouched("cycle");
+			markTouched("category");
+			markTouched("imageUrl");
 		} else {
 			setName("");
 			setAmount("");
@@ -65,10 +97,35 @@ export const AddExpenseDrawer: React.FC<{
 				setTargetAssetId(cashHw[0]?.id || "primary_cash");
 			}
 			setFrequency("one_time");
+			resetTouched();
 		}
-	}, [initialData, isOpen, isPersonal, hardware, businessAccounts]);
+	}, [initialData, isOpen, isPersonal, hardware, businessAccounts, markTouched, resetTouched]);
 
 	if (!isOpen) return null;
+
+	const handleNameChange = (val: string) => {
+		setName(val);
+		handleQueryChange(val, { amount, cycle, category, imageUrl });
+	};
+
+	const handleAmountChange = (val: string) => {
+		markTouched("amount");
+		setAmount(val);
+	};
+
+	const handleCycleChange = (val: BillingCycle) => {
+		markTouched("cycle");
+		setCycle(val);
+	};
+
+	const handleCategoryChange = (val: string) => {
+		markTouched("category");
+		setCategory(val);
+	};
+
+	const handleImageChange = (val: string | undefined) => {
+		setImageUrl(val ?? "");
+	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -150,7 +207,13 @@ export const AddExpenseDrawer: React.FC<{
 
 			{/* Full-Screen Scrollable Content */}
 			<div className="modal-page-content">
-				{!isDeploy && <ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />}
+				{!isDeploy && (
+					<ModalImageSection
+						value={imageUrl}
+						onChange={handleImageChange}
+						onUserTouched={() => markTouched("imageUrl")}
+					/>
+				)}
 
 				<form id="expense-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 					<div className="form-group">
@@ -158,7 +221,7 @@ export const AddExpenseDrawer: React.FC<{
 						<select
 							className="form-select"
 							value={category}
-							onChange={(e) => setCategory(e.target.value)}
+							onChange={(e) => handleCategoryChange(e.target.value)}
 							autoFocus={!isEditMode}
 						>
 							{isPersonal ? (
@@ -174,11 +237,13 @@ export const AddExpenseDrawer: React.FC<{
 									{businessAccounts.length > 0 && (
 										<option value="capital_deploy">Deploy Capital to Business</option>
 									)}
+									<option value="dev_tool">Developer Tools & AI</option>
 									<option value="other">Other Personal Outflow</option>
 								</>
 							) : (
 								<>
 									<option value="dev_tool">Developer Tools & APIs</option>
+									<option value="ai">AI Subscriptions</option>
 									<option value="saas">SaaS & Productivity</option>
 									<option value="infrastructure">Hosting & Infrastructure</option>
 									<option value="transit">Transit & Transport</option>
@@ -228,7 +293,7 @@ export const AddExpenseDrawer: React.FC<{
 									{targetBizCashAssets.length > 0 ? (
 										targetBizCashAssets.map((asset) => (
 											<option key={asset.id} value={asset.id}>
-												{asset.name} (Current: ฿{formatMoney(asset.cost)})
+												{asset.name} (Current: ฿${formatMoney(asset.cost)})
 											</option>
 										))
 									) : (
@@ -270,7 +335,7 @@ export const AddExpenseDrawer: React.FC<{
 								<CurrencyInput
 									placeholder="0.00"
 									value={amount}
-									onChange={setAmount}
+									onChange={handleAmountChange}
 									required
 									autoFocus
 								/>
@@ -305,21 +370,61 @@ export const AddExpenseDrawer: React.FC<{
 									className="form-input"
 									placeholder={
 										isPersonal
-											? "e.g. Netflix, Apartment Rent, Gym, Groceries"
-											: "e.g. Figma Organization, OpenAI API, AWS"
+											? "e.g. opencode, ChatGPT, AIS Fibre, Netflix"
+											: "e.g. opencode, Figma, Cursor, AWS"
 									}
 									value={name}
-									onChange={(e) => setName(e.target.value)}
+									onChange={(e) => handleNameChange(e.target.value)}
 									required
 								/>
+
+								{/* Quick Auto-Suggestion Chips */}
+								{suggestions.length > 0 && (
+									<div className="autofill-suggestion-scroll">
+										{suggestions.slice(0, 5).map((s) => {
+											const itemAmt = resolveCatalogAmount(s, currency);
+											return (
+												<button
+													key={s.id}
+													type="button"
+													className="autofill-suggestion-pill"
+													onClick={() => {
+														setName(s.name);
+														applySuggestion(s);
+													}}
+												>
+													{s.imageUrl && <img src={s.imageUrl} alt="" className="autofill-pill-img" />}
+													<span>{s.name}</span>
+													{itemAmt !== undefined && (
+														<span style={{ color: "var(--slate-gray)", fontSize: "10.5px" }}>
+															{currency === "USD" ? `$${itemAmt}` : `฿${itemAmt.toLocaleString()}`}
+														</span>
+													)}
+												</button>
+											);
+										})}
+									</div>
+								)}
+
+								{/* Match Info Banner */}
+								{matchedItem && (
+									<div className="autofill-banner">
+										<div className="autofill-banner-text">
+											<span className="autofill-banner-badge">Auto-Filled</span>
+											<span>
+												{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
+											</span>
+										</div>
+									</div>
+								)}
 							</div>
 
 							<div className="form-group">
-								<label className="form-label">Amount (THB)</label>
+								<label className="form-label">Amount ({currency})</label>
 								<CurrencyInput
 									placeholder="0.00"
 									value={amount}
-									onChange={setAmount}
+									onChange={handleAmountChange}
 									required
 								/>
 							</div>
@@ -329,7 +434,7 @@ export const AddExpenseDrawer: React.FC<{
 								<select
 									className="form-select"
 									value={cycle}
-									onChange={(e) => setCycle(e.target.value as BillingCycle)}
+									onChange={(e) => handleCycleChange(e.target.value as BillingCycle)}
 								>
 									<option value="one_time">One-Time Payment</option>
 									<option value="monthly">Monthly</option>

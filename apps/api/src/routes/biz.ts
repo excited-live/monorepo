@@ -4,6 +4,7 @@ import {
 	type CapitalTransfer,
 	type EntityAccount,
 	type HardwareAsset,
+	type LiabilityStream,
 	type RecurringSubscription,
 	type RevenueStream,
 } from "@excited-live/biz";
@@ -69,7 +70,8 @@ export function createBizRouter(): Hono<ApiEnv> {
 		const subscriptions = data.subscriptions.filter((s) => s.entityId !== id);
 		const hardware = data.hardware.filter((h) => h.entityId !== id);
 		const revenues = data.revenues.filter((r) => r.entityId !== id);
-		await store.save(userId, { ...data, accounts, subscriptions, hardware, revenues });
+		const liabilities = data.liabilities.filter((l) => l.entityId !== id);
+		await store.save(userId, { ...data, accounts, subscriptions, hardware, revenues, liabilities });
 		return c.json({ ok: true });
 	});
 
@@ -193,6 +195,46 @@ export function createBizRouter(): Hono<ApiEnv> {
 		return c.json({ ok: true });
 	});
 
+	// LIABILITIES
+	router.get("/liabilities", async (c) => {
+		const store = createBizStore(c.get("db"));
+		const data = await store.get(getUserId(c));
+		return c.json(data.liabilities);
+	});
+
+	router.post("/liabilities", async (c) => {
+		const store = createBizStore(c.get("db"));
+		const userId = getUserId(c);
+		const data = await store.get(userId);
+		const newLiab = await c.req.json<LiabilityStream>();
+		await store.save(userId, {
+			...data,
+			liabilities: [...data.liabilities, newLiab],
+		});
+		return c.json(newLiab, 201);
+	});
+
+	router.put("/liabilities/:id", async (c) => {
+		const id = c.req.param("id");
+		const store = createBizStore(c.get("db"));
+		const userId = getUserId(c);
+		const data = await store.get(userId);
+		const update = await c.req.json<Partial<LiabilityStream>>();
+		const liabilities = data.liabilities.map((l) => (l.id === id ? { ...l, ...update } : l));
+		await store.save(userId, { ...data, liabilities });
+		return c.json({ ok: true });
+	});
+
+	router.delete("/liabilities/:id", async (c) => {
+		const id = c.req.param("id");
+		const store = createBizStore(c.get("db"));
+		const userId = getUserId(c);
+		const data = await store.get(userId);
+		const liabilities = data.liabilities.filter((l) => l.id !== id);
+		await store.save(userId, { ...data, liabilities });
+		return c.json({ ok: true });
+	});
+
 	// TRANSFERS
 	router.get("/transfers", async (c) => {
 		const store = createBizStore(c.get("db"));
@@ -210,6 +252,16 @@ export function createBizRouter(): Hono<ApiEnv> {
 			transfers: [...data.transfers, newTx],
 		});
 		return c.json(newTx, 201);
+	});
+
+	router.delete("/transfers/:id", async (c) => {
+		const id = c.req.param("id");
+		const store = createBizStore(c.get("db"));
+		const userId = getUserId(c);
+		const data = await store.get(userId);
+		const transfers = data.transfers.filter((t) => t.id !== id);
+		await store.save(userId, { ...data, transfers });
+		return c.json({ ok: true });
 	});
 
 	// COMPUTED MONTHLY LEDGER

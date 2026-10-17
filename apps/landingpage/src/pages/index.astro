@@ -3,12 +3,150 @@ import Layout from '@/components/layout.astro';
 import WaitlistForm from '@/components/WaitlistForm';
 import LangSelect from '@/components/LangSelect';
 
-const title = 'excited.live — Plan the life you want to live';
+const title = 'excited.live — Know your runway across every project';
 const description =
-	'Simulate your money and life plans before you live them. Tax, expenses, and future scenarios — free for everyone. Join the waitlist.';
+	'A free Android app that shows how long your cash lasts across your day job, side projects and every business, in one place. Join the waitlist.';
+
+const appSchema = {
+	'@type': 'SoftwareApplication',
+	name: 'excited.live',
+	description,
+	applicationCategory: 'FinanceApplication',
+	operatingSystem: 'Android',
+	inLanguage: ['en', 'th'],
+	offers: { '@type': 'Offer', price: '0', priceCurrency: 'THB' },
+	publisher: { '@id': 'https://excited.live/#org' },
+};
+
+// Example data. Mirrors the demo fixtures behind the app screenshots
+// (apps/biz-mobile/src/testing/landing-fixtures.ts), so the toggle and the
+// phone never disagree.
+const entities = [
+	{
+		name: 'Mint Living',
+		tag: { en: 'Personal', th: 'ส่วนตัว' },
+		runway: 17,
+		fill: 71,
+		cash: '฿1,025,600',
+		burn: '฿60,440',
+		bx: '12%',
+		by: '34%',
+		br: '-5deg',
+	},
+	{
+		name: 'Bean Coffee',
+		tag: { en: 'Business', th: 'ธุรกิจ' },
+		runway: 16,
+		fill: 67,
+		cash: '฿760,100',
+		burn: '฿47,500',
+		bx: '-4%',
+		by: '-24%',
+		br: '4deg',
+	},
+	{
+		name: 'Mint Studio',
+		tag: { en: 'Business', th: 'ธุรกิจ' },
+		runway: 20,
+		fill: 83,
+		cash: '฿519,700',
+		burn: '฿26,000',
+		bx: '-22%',
+		by: '16%',
+		br: '-3deg',
+	},
+];
+
+const noise = [
+	{ icon: '📊', en: 'money_final_v7.xlsx', th: 'money_final_v7.xlsx', nx: '4%', ny: '7%', nr: '-4deg' },
+	{ icon: '🏦', en: '3 bank apps', th: 'แอปธนาคาร 3 แอป', nx: '63%', ny: '5%', nr: '3deg' },
+	{ icon: '💬', en: 'LINE: slips', th: 'LINE: สลิป', nx: '5%', ny: '80%', nr: '4deg', extra: true },
+	{ icon: '🧾', en: 'POS export.csv', th: 'POS export.csv', nx: '68%', ny: '82%', nr: '-3deg', extra: true },
+];
+
+const asks = [
+	{
+		en: 'How much can I spend on the café?',
+		th: 'ใช้เงินกับร้านกาแฟได้เท่าไหร่?',
+		nx: '33%',
+		ny: '13%',
+		nr: '-2deg',
+	},
+	{
+		en: 'How long is the studio’s runway?',
+		th: 'สตูดิโอไปต่อได้อีกกี่เดือน?',
+		nx: '56%',
+		ny: '50%',
+		nr: '2deg',
+	},
+	{
+		en: '…and what about my own life?',
+		th: 'แล้วชีวิตส่วนตัวล่ะ?',
+		nx: '6%',
+		ny: '57%',
+		nr: '-3deg',
+	},
+];
+
+const media = [
+	{
+		img: '/app/mobile/runway.webp',
+		shift: '0%',
+		h: { en: 'Runway, not just a balance', th: 'รันเวย์ ไม่ใช่แค่ยอดเงิน' },
+		p: {
+			en: 'See months of cash left, your monthly net burn, and whether you are default alive.',
+			th: 'เห็นว่าเงินพออีกกี่เดือน เผาเงินสุทธิเท่าไหร่ และรอดไหม',
+		},
+	},
+	{
+		img: '/app/mobile/expenses.webp',
+		shift: '-50%',
+		h: { en: 'Every bill, smoothed', th: 'ทุกบิล เฉลี่ยเป็นรายเดือน' },
+		p: {
+			en: 'Yearly and quarterly charges become one monthly number, with renewal alerts a week ahead.',
+			th: 'ค่าใช้จ่ายรายปีและรายไตรมาสถูกแปลงเป็นตัวเลขรายเดือน พร้อมเตือนล่วงหน้า 7 วัน',
+		},
+	},
+	{
+		img: '/app/mobile/gear.webp',
+		shift: '-52%',
+		h: { en: 'Gear that depreciates honestly', th: 'อุปกรณ์ที่ค่าเสื่อมถูกต้อง' },
+		p: {
+			en: 'Your laptop becomes a monthly cost, not a lump-sum surprise.',
+			th: 'โน้ตบุ๊กกลายเป็นต้นทุนรายเดือน ไม่ใช่ก้อนใหญ่ที่โผล่มาให้ตกใจ',
+		},
+	},
+];
+
+const minis = [
+	{
+		icon: '💼',
+		h: { en: 'Payday countdown', th: 'นับถอยหลังวันเงินเดือน' },
+		p: {
+			en: 'Your day job gets an UNTIL card: days to payday and months to your freedom buffer.',
+			th: 'งานประจำมีการ์ด UNTIL บอกวันถึงเงินเดือน และอีกกี่เดือนถึงเงินสำรองอิสรภาพ',
+		},
+	},
+	{
+		icon: '🏪',
+		h: { en: 'Many businesses, one app', th: 'หลายธุรกิจ แอปเดียว' },
+		p: {
+			en: 'Each venture gets its own cash, bills and runway. Switch in one tap.',
+			th: 'แต่ละธุรกิจมีเงินสด บิล และรันเวย์ของตัวเอง สลับได้ในแตะเดียว',
+		},
+	},
+	{
+		icon: '🔁',
+		h: { en: 'Move money, keep the math', th: 'โอนเงินเข้าธุรกิจ ตัวเลขยังเป๊ะ' },
+		p: {
+			en: 'Inject capital from personal into a business and both runways update instantly.',
+			th: 'ใส่ทุนจากส่วนตัวเข้าธุรกิจ แล้วรันเวย์ทั้งสองฝั่งอัปเดตทันที',
+		},
+	},
+];
 ---
 
-<Layout title={title} description={description}>
+<Layout title={title} description={description} schema={appSchema}>
 	<!-- ============ NAV ============ -->
 	<div class="nav-wrap">
 		<nav class="nav-pill" aria-label="Main">
@@ -17,13 +155,13 @@ const description =
 				<span>excited<span class="brand-dot">.live</span></span>
 			</a>
 			<div class="nav-links">
-				<a href="#what">
-					<span data-lang-en>What is it</span>
-					<span data-lang-th>มันคืออะไร</span>
+				<a href="#features">
+					<span data-lang-en>Features</span>
+					<span data-lang-th>ฟีเจอร์</span>
 				</a>
-				<a href="#perks">
-					<span data-lang-en>Why join</span>
-					<span data-lang-th>ทำไมต้องลง</span>
+				<a href="#next">
+					<span data-lang-en>Coming next</span>
+					<span data-lang-th>เร็ว ๆ นี้</span>
 				</a>
 				<a href="/blog">
 					<span data-lang-en>Blog</span>
@@ -46,170 +184,303 @@ const description =
 
 	<!-- ============ HERO ============ -->
 	<header class="hero" id="waitlist">
-		<div class="hero-graph" aria-hidden="true">
-			<svg viewBox="0 0 460 340">
-				<g class="grid">
-					<line x1="20" y1="70" x2="440" y2="70" />
-					<line x1="20" y1="145" x2="440" y2="145" />
-					<line x1="20" y1="220" x2="440" y2="220" />
-					<line x1="20" y1="295" x2="440" y2="295" />
-				</g>
-				<path
-					class="area"
-					d="M20 295 C 90 288, 150 262, 200 240 C 260 214, 300 175, 350 140 C 385 115, 415 85, 440 62 L440 295 Z"
-				/>
-				<path
-					class="line-proj"
-					d="M20 295 C 110 282, 200 262, 290 252 C 350 245, 405 240, 440 236"
-				/>
-				<path
-					class="line-main"
-					d="M20 295 C 90 288, 150 262, 200 240 C 260 214, 300 175, 350 140 C 385 115, 415 85, 440 62"
-				/>
-				<circle class="dot-halo" cx="440" cy="62" r="13" />
-				<circle class="dot" cx="440" cy="62" r="6" />
-				<text class="axis" x="20" y="322">2026</text>
-				<text class="axis" x="400" y="322">2036</text>
-			</svg>
-			<span class="hero-chip chip-goal">
-				<span data-lang-en>Buy a condo · 2031</span>
-				<span data-lang-th>ซื้อคอนโด · 2031</span>
-			</span>
-			<span class="hero-chip chip-reached">
-				<span data-lang-en>Goal reached ✓</span>
-				<span data-lang-th>ถึงเป้าหมาย ✓</span>
-			</span>
-		</div>
 		<div class="hero-inner">
 			<p class="eyebrow">
-				<span data-lang-en>Coming soon</span>
-				<span data-lang-th>เร็ว ๆ นี้</span>
+				<span data-lang-en>Free Android app</span>
+				<span data-lang-th>แอป Android ฟรี</span>
 			</p>
 			<h1>
-				<span data-lang-en>Plan the life<br />you want to <span class="accent">live</span></span>
-				<span data-lang-th>วางแผนชีวิตแบบ<br />ที่คุณอยาก<span class="accent">ใช้ชีวิต</span></span>
+				<span data-lang-en>Every project.<br />Every baht.<br />One <span class="accent">runway</span>.</span>
+				<span data-lang-th>ทุกโปรเจกต์ ทุกบาท<br />ใน<span class="accent">รันเวย์เดียว</span></span>
 			</h1>
 			<p class="hero-sub">
 				<span data-lang-en>
-					Simulate your money and your plans before you live them — tax, expenses, and life
-					goals. Free for everyone.
+					See how long your cash lasts across your day job, your side projects and your
+					businesses. One free app, one honest number.
 				</span>
 				<span data-lang-th>
-					จำลองการเงินและแผนชีวิตของคุณก่อนใช้จริง — ภาษี ค่าใช้จ่าย และเป้าหมายต่าง ๆ
-					ฟรีสำหรับทุกคน
+					ดูว่าเงินพออีกกี่เดือน ทั้งเงินเดือน ไซด์โปรเจกต์ และธุรกิจ
+					ในแอปฟรีแอปเดียว ตัวเลขเดียวที่ไม่หลอกตัวเอง
 				</span>
 			</p>
 			<div class="hero-perks">
 				<span class="perk-chip">
 					<span class="dot"></span>
-					<span data-lang-en>Battle-tested math</span>
-					<span data-lang-th>คณิตที่พิสูจน์แล้ว</span>
+					<span data-lang-en>Free</span>
+					<span data-lang-th>ฟรี</span>
 				</span>
 				<span class="perk-chip">
 					<span class="dot"></span>
-					<span data-lang-en>AI native</span>
-					<span data-lang-th>AI เนทีฟ</span>
+					<span data-lang-en>Works offline</span>
+					<span data-lang-th>ใช้ได้แบบออฟไลน์</span>
 				</span>
 				<span class="perk-chip">
 					<span class="dot"></span>
-					<span data-lang-en>Data safe</span>
-					<span data-lang-th>ข้อมูลปลอดภัย</span>
+					<span data-lang-en>Made for Thai life</span>
+					<span data-lang-th>ออกแบบมาเพื่อคนไทย</span>
 				</span>
 			</div>
 			<WaitlistForm client:visible />
 		</div>
+
+		<div class="hero-visual">
+			<svg class="hero-orbit" viewBox="0 0 520 640" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M 30 600 C 40 380, 120 160, 470 40" />
+			</svg>
+			<div class="phone">
+				<div class="phone-screen">
+					<img
+						src="/app/mobile/home.webp"
+						width="780"
+						height="1568"
+						alt="The excited.live app showing consolidated wealth and three accounts: a personal account with a payday countdown and two businesses"
+						fetchpriority="high"
+					/>
+				</div>
+			</div>
+			<span class="float-chip chip-a">
+				<span class="dot"></span>
+				<span data-lang-en>Runway 17 mo</span>
+				<span data-lang-th>รันเวย์ 17 เดือน</span>
+			</span>
+			<span class="float-chip chip-b">
+				<span data-lang-en>Payday in 10 days</span>
+				<span data-lang-th>อีก 10 วันเงินเดือนออก</span>
+			</span>
+			<span class="float-chip chip-c">
+				<span data-lang-en>3 businesses, 1 view</span>
+				<span data-lang-th>3 ธุรกิจ ดูที่เดียว</span>
+			</span>
+		</div>
 	</header>
 
-	<!-- ============ SEE IT IN ACTION ============ -->
-	<section class="section section-demo" id="demo">
+	<!-- ============ BEFORE / AFTER ============ -->
+	<section class="section" id="problem">
 		<div class="section-head">
 			<p class="eyebrow">
-				<span data-lang-en>See it in action</span>
-				<span data-lang-th>ดูตัวอย่างการใช้งานจริง</span>
+				<span data-lang-en>Before and after</span>
+				<span data-lang-th>ก่อน และ หลัง</span>
 			</p>
 			<h2>
-				<span data-lang-en>Type a number. Watch everything move.</span>
-				<span data-lang-th>พิมพ์ตัวเลข แล้วดูทุกอย่างเคลื่อนที่</span>
+				<span data-lang-en>Too many projects. No single answer.</span>
+				<span data-lang-th>หลายโปรเจกต์ แต่ไม่มีคำตอบเดียว</span>
 			</h2>
 			<p>
 				<span data-lang-en>
-					Real screenshots from the app. Change your salary or retirement age and the
-					chart, taxes, and plan update instantly — no spreadsheets, no waiting.
+					Flip the switch and see what changes when every project, business and your own
+					life share one runway.
 				</span>
 				<span data-lang-th>
-					ภาพจริงจากในแอป ลองเปลี่ยนเงินเดือนหรืออายุเกษียณ แล้วกราฟ ภาษี
-					และแผนของคุณอัปเดตทันที — ไม่ต้องใช้ Excel ไม่ต้องรอ
+					กดสวิตช์ดูว่าจะเปลี่ยนไปแค่ไหน เมื่อทุกโปรเจกต์ ทุกธุรกิจ
+					และชีวิตส่วนตัวอยู่ในรันเวย์เดียว
 				</span>
 			</p>
 		</div>
 
-		<div class="demo-stage">
-			<div class="demo-window" role="img"
-				aria-label="excited.live app: typing a new income updates the plan chart and numbers instantly">
-				<div class="demo-chrome" aria-hidden="true">
-					<span class="demo-dot"></span>
-					<span class="demo-dot"></span>
-					<span class="demo-dot"></span>
-					<span class="demo-url">app.excited.live</span>
-					<span class="demo-live-badge">
-						<span data-lang-en>Live demo</span>
-						<span data-lang-th>ดูสด</span>
+		<div class="chaos" data-state="after">
+			<div class="switch" role="group" aria-label="Before and after">
+				<button type="button" class="switch-btn" data-view="before" aria-pressed="false">
+					<span data-lang-en>Before</span>
+					<span data-lang-th>ก่อน</span>
+				</button>
+				<button type="button" class="switch-btn" data-view="after" aria-pressed="true">
+					<span data-lang-en>With excited.live</span>
+					<span data-lang-th>มี excited.live</span>
+				</button>
+			</div>
+
+			<div class="chaos-stage">
+				<div class="chaos-total">
+					<p class="eyebrow">
+						<span data-lang-en>Consolidated wealth</span>
+						<span data-lang-th>ความมั่งคั่งรวม</span>
+					</p>
+					<span class="total-num swap">
+						<span class="is-before">฿ ???</span>
+						<span class="is-after">฿2,305,400</span>
+					</span>
+					<span class="total-hint swap">
+						<span class="is-before">
+							<span data-lang-en>nobody knows</span>
+							<span data-lang-th>ไม่มีใครรู้</span>
+						</span>
+						<span class="is-after">
+							<span data-lang-en>across 3 accounts</span>
+							<span data-lang-th>รวม 3 บัญชี</span>
+						</span>
 					</span>
 				</div>
-				<div class="demo-screen">
-					<img class="demo-shot is-active" src="/demo/app-01.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-02.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-03.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-04.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-05.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-06.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-07.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-08.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<img class="demo-shot" src="/demo/app-09.webp" alt="" loading="lazy" width="2560" height="1720" />
-					<div class="demo-cursor" aria-hidden="true"></div>
-					<div class="demo-typing is-visible" aria-hidden="true">
-						<span class="demo-typing-text">1,500,000</span>
-						<span class="demo-typing-caret"></span>
-					</div>
+
+				<div class="ent-grid">
+					{
+						entities.map((e) => (
+							<article class="ent" style={`--bx:${e.bx};--by:${e.by};--br:${e.br};--fill:${e.fill}%`}>
+								<div class="ent-top">
+									<span class="ent-name">{e.name}</span>
+									<span class="ent-tag">
+										<span data-lang-en>{e.tag.en}</span>
+										<span data-lang-th>{e.tag.th}</span>
+									</span>
+								</div>
+								<div class="ent-runway swap">
+									<span class="is-before">
+										??<small>
+											<span data-lang-en>mo</span>
+											<span data-lang-th>เดือน</span>
+										</small>
+									</span>
+									<span class="is-after">
+										{e.runway}<small>
+											<span data-lang-en>mo runway</span>
+											<span data-lang-th>เดือน รันเวย์</span>
+										</small>
+									</span>
+								</div>
+								<div class="ent-bar" aria-hidden="true">
+									<span />
+								</div>
+								<div class="ent-rows">
+									<div>
+										<span>
+											<span data-lang-en>Cash</span>
+											<span data-lang-th>เงินสด</span>
+										</span>
+										<b class="swap">
+											<span class="is-before">฿ ???</span>
+											<span class="is-after">{e.cash}</span>
+										</b>
+									</div>
+									<div>
+										<span>
+											<span data-lang-en>Burn / mo</span>
+											<span data-lang-th>ค่าใช้จ่าย/เดือน</span>
+										</span>
+										<b class="swap">
+											<span class="is-before">฿ ???</span>
+											<span class="is-after">{e.burn}</span>
+										</b>
+									</div>
+								</div>
+							</article>
+						))
+					}
 				</div>
+
+				{
+					noise.map((n) => (
+						<span
+							class={`noise${n.extra ? ' noise--extra' : ''}`}
+							style={`--nx:${n.nx};--ny:${n.ny};--nr:${n.nr}`}
+							aria-hidden="true"
+						>
+							<span>{n.icon}</span>
+							<span data-lang-en>{n.en}</span>
+							<span data-lang-th>{n.th}</span>
+						</span>
+					))
+				}
+				{
+					asks.map((a) => (
+						<span class="ask" style={`--nx:${a.nx};--ny:${a.ny};--nr:${a.nr}`} aria-hidden="true">
+							<span data-lang-en>{a.en}</span>
+							<span data-lang-th>{a.th}</span>
+						</span>
+					))
+				}
 			</div>
-			<div class="demo-steps" aria-hidden="true">
-				<span class="demo-step is-on">
-					<span data-lang-en>Set your plan</span>
-					<span data-lang-th>ตั้งแผนของคุณ</span>
-				</span>
-				<span class="demo-step">
-					<span data-lang-en>Check cash flow</span>
-					<span data-lang-th>ดูกระแสเงินสด</span>
-				</span>
-				<span class="demo-step">
-					<span data-lang-en>Read the verdict</span>
-					<span data-lang-th>อ่านสรุปผล</span>
-				</span>
+
+			<div class="chaos-caption" aria-live="polite">
+				<p class="is-before">
+					<span data-lang-en>Five tools, three projects, and still no answer.</span>
+					<span data-lang-th>5 เครื่องมือ 3 โปรเจกต์ แต่ยังตอบไม่ได้</span>
+				</p>
+				<p class="is-after">
+					<span data-lang-en>One view. Every runway. Updated as you log.</span>
+					<span data-lang-th>มุมมองเดียว เห็นทุกรันเวย์ อัปเดตทุกครั้งที่จด</span>
+				</p>
 			</div>
+			<p class="chaos-example">
+				<span data-lang-en>Example data from the app.</span>
+				<span data-lang-th>ข้อมูลตัวอย่างจากในแอป</span>
+			</p>
 		</div>
 	</section>
-	<!-- ============ WHAT IS IT ============ -->
-	<section class="section" id="what">
+
+	<!-- ============ FEATURES ============ -->
+	<section class="section" id="features">
 		<div class="section-head">
 			<p class="eyebrow">
-				<span data-lang-en>What is excited.live</span>
-				<span data-lang-th>excited.live คืออะไร</span>
+				<span data-lang-en>What is inside</span>
+				<span data-lang-th>มีอะไรในแอป</span>
 			</p>
 			<h2>
-				<span data-lang-en>Simulate your life before you live it.</span>
-				<span data-lang-th>จำลองชีวิตก่อนใช้มันจริง</span>
+				<span data-lang-en>Built for people who run more than one thing.</span>
+				<span data-lang-th>สร้างมาเพื่อคนที่ทำมากกว่าหนึ่งอย่าง</span>
 			</h2>
 			<p>
 				<span data-lang-en>
-					excited.live is a free financial simulation tool. Try real decisions — changing
-					jobs, buying a home, retiring early — and see the numbers before you commit.
+					Cash, bills and gear for you and every venture, with honest math underneath.
 				</span>
 				<span data-lang-th>
-					excited.live เป็นเครื่องมือจำลองการเงินฟรี ลองการตัดสินใจจริง — เปลี่ยนงาน ซื้อบ้าน
-					เกษียณเร็ว — แล้วเห็นตัวเลขก่อนลงมือทำจริง
+					เงินสด บิล และอุปกรณ์ ของคุณและทุกธุรกิจ ด้วยการคำนวณที่ตรงไปตรงมา
 				</span>
 			</p>
+		</div>
+
+		<div class="bento">
+			{
+				media.map((m) => (
+					<article class="bento-card">
+						<div class="bento-copy">
+							<h3>
+								<span data-lang-en>{m.h.en}</span>
+								<span data-lang-th>{m.h.th}</span>
+							</h3>
+							<p>
+								<span data-lang-en>{m.p.en}</span>
+								<span data-lang-th>{m.p.th}</span>
+							</p>
+						</div>
+						<div class="bento-shot">
+							<img src={m.img} alt="" loading="lazy" width="780" height="1500" style={`transform:translateY(${m.shift})`} />
+						</div>
+					</article>
+				))
+			}
+		</div>
+
+		<div class="perk-cards is-tight">
+			{
+				minis.map((m) => (
+					<article class="perk-card">
+						<span class="perk-icon" aria-hidden="true">
+							{m.icon}
+						</span>
+						<h3>
+							<span data-lang-en>{m.h.en}</span>
+							<span data-lang-th>{m.h.th}</span>
+						</h3>
+						<p>
+							<span data-lang-en>{m.p.en}</span>
+							<span data-lang-th>{m.p.th}</span>
+						</p>
+					</article>
+				))
+			}
+		</div>
+	</section>
+
+	<!-- ============ HOW IT WORKS ============ -->
+	<section class="section" id="how">
+		<div class="section-head">
+			<p class="eyebrow">
+				<span data-lang-en>How it works</span>
+				<span data-lang-th>ใช้งานอย่างไร</span>
+			</p>
+			<h2>
+				<span data-lang-en>Three steps to an honest number.</span>
+				<span data-lang-th>สามขั้นตอนสู่ตัวเลขที่จริงใจ</span>
+			</h2>
 		</div>
 
 		<div class="orbit-stage">
@@ -220,43 +491,195 @@ const description =
 				<div class="orbit-circle">
 					<span class="step-num">01</span>
 					<span class="step-title">
-						<span data-lang-en>Set goals</span>
-						<span data-lang-th>กำหนดเป้าหมาย</span>
+						<span data-lang-en>Add your accounts</span>
+						<span data-lang-th>เพิ่มบัญชีของคุณ</span>
 					</span>
-					<span class="satellite" aria-hidden="true">🎯</span>
+					<span class="satellite" aria-hidden="true">🏦</span>
 				</div>
 				<p class="orbit-caption">
-					<span data-lang-en>Tell us the life you want to live.</span>
-					<span data-lang-th>บอกเป้าหมายชีวิตที่คุณอยากได้</span>
+					<span data-lang-en>Personal, your job, every business.</span>
+					<span data-lang-th>ส่วนตัว งานประจำ และทุกธุรกิจ</span>
 				</p>
 			</div>
 			<div class="orbit-item">
 				<div class="orbit-circle">
 					<span class="step-num">02</span>
 					<span class="step-title">
-						<span data-lang-en>Weigh trade-offs</span>
-						<span data-lang-th>คำนวณ tradeoff</span>
+						<span data-lang-en>Log bills and gear</span>
+						<span data-lang-th>จดบิลและอุปกรณ์</span>
 					</span>
-					<span class="satellite" aria-hidden="true">⚖️</span>
+					<span class="satellite" aria-hidden="true">🧾</span>
 				</div>
 				<p class="orbit-caption">
-					<span data-lang-en>See what each choice really costs.</span>
-					<span data-lang-th>เห็นต้นทุนจริงของทุกทางเลือก</span>
+					<span data-lang-en>A minute each. No accounting degree.</span>
+					<span data-lang-th>ไม่ถึงนาทีต่อรายการ ไม่ต้องจบบัญชี</span>
 				</p>
 			</div>
 			<div class="orbit-item">
 				<div class="orbit-circle">
 					<span class="step-num">03</span>
 					<span class="step-title">
-						<span data-lang-en>Live</span>
-						<span data-lang-th>ใช้ชีวิต</span>
+						<span data-lang-en>Read your runway</span>
+						<span data-lang-th>ดูรันเวย์</span>
 					</span>
-					<span class="satellite" aria-hidden="true">🌴</span>
+					<span class="satellite" aria-hidden="true">🧭</span>
 				</div>
 				<p class="orbit-caption">
-					<span data-lang-en>Go live it — AI keeps your plan on track.</span>
-					<span data-lang-th>ใช้ชีวิตจริง — ให้ AI ช่วยดูแลแผนให้</span>
+					<span data-lang-en>Know how long you can last, today.</span>
+					<span data-lang-th>รู้ทันทีว่าไปต่อได้อีกกี่เดือน</span>
 				</p>
+			</div>
+		</div>
+	</section>
+
+	<!-- ============ COMING NEXT ============ -->
+	<section class="section" id="next">
+		<div class="next-panel">
+			<p class="eyebrow">
+				<span data-lang-en>Coming next</span>
+				<span data-lang-th>เร็ว ๆ นี้</span>
+			</p>
+			<h2>
+				<span data-lang-en>Your bank slips will log themselves.</span>
+				<span data-lang-th>สลิปโอนเงินจะจดตัวเอง</span>
+			</h2>
+			<p class="next-lede">
+				<span data-lang-en>
+					We are building the part nobody enjoys: typing in every transfer.
+				</span>
+				<span data-lang-th>เรากำลังทำส่วนที่ไม่มีใครอยากทำ คือนั่งพิมพ์ทุกการโอนเอง</span>
+			</p>
+
+			<div class="next-grid">
+				<article class="next-card next-card--lead">
+					<div>
+						<span class="tag-soon">
+							<span data-lang-en>Coming next</span>
+							<span data-lang-th>เร็ว ๆ นี้</span>
+						</span>
+						<h3 style="margin-top: 16px;">
+							<span data-lang-en>Thai bank slip reading</span>
+							<span data-lang-th>อ่านสลิปธนาคารไทย</span>
+						</h3>
+						<p style="margin-top: 12px;">
+							<span data-lang-en>
+								Share a slip from your banking app and it lands in your ledger. Bills you
+								already track are marked paid instead of counted twice.
+							</span>
+							<span data-lang-th>
+								แชร์สลิปจากแอปธนาคาร แล้วรายการเข้าบัญชีให้เลย
+								บิลที่ติดตามอยู่แล้วจะถูกติ๊กว่าจ่ายแล้ว ไม่นับซ้ำ
+							</span>
+						</p>
+					</div>
+					<div class="slip" aria-hidden="true">
+						<span class="slip-head"><span class="ok">✓</span>โอนเงินสำเร็จ</span>
+						<span class="slip-amount">฿540.00</span>
+						<span class="slip-to">AIS Fibre</span>
+						<span class="slip-match">
+							<span data-lang-en>✓ Matched to your monthly bill</span>
+							<span data-lang-th>✓ ตรงกับบิลรายเดือนของคุณ</span>
+						</span>
+					</div>
+				</article>
+
+				<article class="next-card">
+					<span class="tag-soon">
+						<span data-lang-en>Coming next</span>
+						<span data-lang-th>เร็ว ๆ นี้</span>
+					</span>
+					<h3>
+						<span data-lang-en>Three-minute guided setup</span>
+						<span data-lang-th>ตั้งค่าใน 3 นาที</span>
+					</h3>
+					<p>
+						<span data-lang-en>
+							Start from example data, then swap in your own cash, bills and gear step by
+							step.
+						</span>
+						<span data-lang-th>
+							เริ่มจากข้อมูลตัวอย่าง แล้วค่อย ๆ ใส่เงินสด บิล และอุปกรณ์ของคุณทีละขั้น
+						</span>
+					</p>
+				</article>
+
+				<article class="next-card">
+					<span class="tag-soon">
+						<span data-lang-en>Coming next</span>
+						<span data-lang-th>เร็ว ๆ นี้</span>
+					</span>
+					<h3>
+						<span data-lang-en>Bring your own AI agent</span>
+						<span data-lang-th>เอา AI ของคุณมาเชื่อมได้</span>
+					</h3>
+					<p>
+						<span data-lang-en>
+							Ask Claude, ChatGPT or your LINE bot: “How long is the café’s runway?”
+						</span>
+						<span data-lang-th>
+							ถาม Claude, ChatGPT หรือบอท LINE ของคุณได้เลย “ร้านกาแฟไปต่อได้อีกกี่เดือน?”
+						</span>
+					</p>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<!-- ============ GO DEEPER (web planner) ============ -->
+	<section class="section" id="deeper">
+		<div class="deeper">
+			<div>
+				<p class="eyebrow">
+					<span data-lang-en>Go deeper</span>
+					<span data-lang-th>ไปให้ลึกขึ้น</span>
+				</p>
+				<h2>
+					<span data-lang-en>When tracking feels easy, look 50 years ahead.</span>
+					<span data-lang-th>เมื่อการจดเป็นเรื่องง่าย ลองมองไปข้างหน้า 50 ปี</span>
+				</h2>
+				<p>
+					<span data-lang-en>
+						The excited.live web planner takes the same numbers and simulates your whole
+						life: Monte Carlo ranges, Thai tax and what-if sliders. The app stays free
+						either way.
+					</span>
+					<span data-lang-th>
+						ตัวช่วยวางแผนบนเว็บใช้ตัวเลขชุดเดิมของคุณมาจำลองชีวิตทั้งชีวิต ทั้งช่วงความเป็นไปได้แบบ
+						Monte Carlo ภาษีไทย และสไลเดอร์ลองสมมติ แอปยังฟรีเหมือนเดิม
+					</span>
+				</p>
+				<ul class="deeper-list">
+					<li>
+						<span data-lang-en>7-day free trial</span>
+						<span data-lang-th>ทดลองใช้ฟรี 7 วัน</span>
+					</li>
+					<li>
+						<span data-lang-en>Then $109 a year (฿3,690)</span>
+						<span data-lang-th>หลังจากนั้น $109 ต่อปี (฿3,690)</span>
+					</li>
+					<li>
+						<span data-lang-en>Export your data anytime</span>
+						<span data-lang-th>ส่งออกข้อมูลได้ทุกเมื่อ</span>
+					</li>
+				</ul>
+				<p style="margin-top: 28px;">
+					<a class="btn-outline" href="#join">
+						<span data-lang-en>Join the waitlist</span>
+						<span data-lang-th>ลงทะเบียนรอรับสิทธิ์</span>
+					</a>
+				</p>
+			</div>
+			<div class="browser">
+				<div class="browser-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+				<div class="browser-shot">
+					<img
+						src="/demo/app-03.webp"
+						alt="The excited.live web planner showing a 50-year net worth projection next to editable income, expenses and wallets"
+						loading="lazy"
+						width="2560"
+						height="1720"
+					/>
+				</div>
 			</div>
 		</div>
 	</section>
@@ -282,30 +705,30 @@ const description =
 					<span data-lang-th>ลองใช้ก่อนใคร</span>
 				</h3>
 				<p>
-					<span data-lang-en>Get your invite before the public launch.</span>
-					<span data-lang-th>ได้รับเชิญก่อนเปิดให้คนทั่วไปใช้</span>
+					<span data-lang-en>Get the Android build before the public launch.</span>
+					<span data-lang-th>ได้แอป Android ก่อนเปิดตัวจริง</span>
 				</p>
 			</article>
 			<article class="perk-card">
-				<span class="perk-icon" aria-hidden="true">🎁</span>
+				<span class="perk-icon" aria-hidden="true">🗳️</span>
 				<h3>
-					<span data-lang-en>Special reward</span>
-					<span data-lang-th>ของรางวัลสุดพิเศษ</span>
+					<span data-lang-en>Steer the roadmap</span>
+					<span data-lang-th>กำหนดทิศทางแอป</span>
 				</h3>
 				<p>
-					<span data-lang-en>Founding members get a thank-you reward at launch.</span>
-					<span data-lang-th>ผู้ร่วมก่อตั้งได้ของขวัญขอบคุณตอนเปิดตัว</span>
+					<span data-lang-en>Vote on what ships next: slip scanning, AI agents, iOS.</span>
+					<span data-lang-th>โหวตว่าอะไรมาก่อน สแกนสลิป เอเจนต์ AI หรือ iOS</span>
 				</p>
 			</article>
 			<article class="perk-card">
-				<span class="perk-icon" aria-hidden="true">⭐</span>
+				<span class="perk-icon" aria-hidden="true">🏅</span>
 				<h3>
-					<span data-lang-en>Priority support</span>
-					<span data-lang-th>ซัพพอร์ตก่อนใคร</span>
+					<span data-lang-en>Founders wall</span>
+					<span data-lang-th>กำแพงผู้ร่วมก่อตั้ง</span>
 				</h3>
 				<p>
-					<span data-lang-en>Your questions jump the queue.</span>
-					<span data-lang-th>คำถามของคุณได้รับการตอบก่อน</span>
+					<span data-lang-en>Opt in and your name goes on the app’s founders list.</span>
+					<span data-lang-th>ยินยอมแล้วชื่อของคุณจะอยู่ในรายชื่อผู้ร่วมก่อตั้งในแอป</span>
 				</p>
 			</article>
 		</div>
@@ -314,10 +737,10 @@ const description =
 	<!-- ============ FOOTER ============ -->
 	<footer class="footer">
 		<div class="footer-inner">
-			<div class="footer-main">
+			<div class="footer-main" id="join">
 				<h2>
-					<span data-lang-en>Ready to live the life you're excited about?</span>
-					<span data-lang-th>พร้อมใช้ชีวิตแบบที่คุณตั้งตารอแล้วหรือยัง?</span>
+					<span data-lang-en>Ready to know your runway?</span>
+					<span data-lang-th>พร้อมรู้รันเวย์ของคุณหรือยัง?</span>
 				</h2>
 				<WaitlistForm client:visible dark />
 
@@ -334,27 +757,6 @@ const description =
 						>
 							Instagram
 						</a>
-						<span class="journey-link is-soon">
-							YouTube
-							<em>
-								<span data-lang-en>soon</span>
-								<span data-lang-th>เร็ว ๆ นี้</span>
-							</em>
-						</span>
-						<span class="journey-link is-soon">
-							X
-							<em>
-								<span data-lang-en>soon</span>
-								<span data-lang-th>เร็ว ๆ นี้</span>
-							</em>
-						</span>
-						<span class="journey-link is-soon">
-							Threads
-							<em>
-								<span data-lang-en>soon</span>
-								<span data-lang-th>เร็ว ๆ นี้</span>
-							</em>
-						</span>
 					</div>
 				</div>
 			</div>
@@ -365,13 +767,17 @@ const description =
 						<span data-lang-en>Product</span>
 						<span data-lang-th>ผลิตภัณฑ์</span>
 					</h4>
-					<a href="#what">
-						<span data-lang-en>What is it</span>
-						<span data-lang-th>มันคืออะไร</span>
+					<a href="#features">
+						<span data-lang-en>Features</span>
+						<span data-lang-th>ฟีเจอร์</span>
 					</a>
-					<a href="#perks">
-						<span data-lang-en>Why join</span>
-						<span data-lang-th>ทำไมต้องลง</span>
+					<a href="#next">
+						<span data-lang-en>Coming next</span>
+						<span data-lang-th>เร็ว ๆ นี้</span>
+					</a>
+					<a href="#deeper">
+						<span data-lang-en>Web planner</span>
+						<span data-lang-th>ตัวช่วยวางแผนบนเว็บ</span>
 					</a>
 					<a href="/blog">
 						<span data-lang-en>Blog</span>
@@ -436,96 +842,48 @@ const description =
 	</script>
 
 	<script is:inline data-astro-rerun>
-		// Demo section: rotate through 9 real app frames — 1s per frame, 3 frames per
-		// "tab" (step pill), so the full cycle is 9s. Cursor/typing overlay follow the
-		// measured position of the UI element each frame is about.
+		// Before / after switch. Markup ships in the "after" state so the section is
+		// complete without JS; on load we rewind to "before", then play the reveal
+		// once when the section scrolls into view (unless the visitor already clicked).
 		(function () {
-			var shots = document.querySelectorAll('.demo-shot');
-			var steps = document.querySelectorAll('.demo-step');
-			var cursor = document.querySelector('.demo-cursor');
-			var typing = document.querySelector('.demo-typing');
+			var stage = document.querySelector('.chaos');
+			var buttons = document.querySelectorAll('.switch-btn');
+			if (!stage || !buttons.length) return;
+			var touched = false;
 			var reduce = false;
 			try {
 				reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 			} catch (e) { /* very old browsers: animation is fine */ }
-			if (!shots.length || reduce) return;
 
-			// Cursor target per frame (measured from the live app DOM):
-			//  1-3  income input (typing new salary)  · tab 1 "Set your plan"
-			//  4-6  cash-flow switch / range pills    · tab 2 "Check cash flow"
-			//  7-9  verdict tab / range pill          · tab 3 "Read the verdict"
-			var POSITIONS = [
-				{ x: 60.2, y: 22, typing: true },
-				{ x: 60.2, y: 22, typing: true },
-				{ x: 60.2, y: 22, typing: false },
-				{ x: 23, y: 26, typing: false },
-				{ x: 36.2, y: 26, typing: false },
-				{ x: 42.7, y: 26, typing: false },
-				{ x: 25.3, y: 28.7, typing: false },
-				{ x: 20.2, y: 28.7, typing: false },
-				{ x: 41.2, y: 26, typing: false }
-			];
-			var current = 0;
-
-			function moveCursor(pos) {
-				if (!cursor) return;
-				cursor.style.left = pos.x + '%';
-				cursor.style.top = pos.y + '%';
+			function setView(view) {
+				stage.setAttribute('data-state', view);
+				buttons.forEach(function (b) {
+					b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === view));
+				});
 			}
 
-			function show(n) {
-				for (var i = 0; i < shots.length; i++) {
-					shots[i].classList.toggle('is-active', i === n);
-				}
-				// step pills map 3 frames -> 1 tab
-				for (var j = 0; j < steps.length; j++) {
-					steps[j].classList.toggle('is-on', j === Math.floor(n / 3));
-				}
-				moveCursor(POSITIONS[n]);
-				if (typing) typing.classList.toggle('is-visible', !!POSITIONS[n].typing);
-			}
-
-			setInterval(function () {
-				current = (current + 1) % shots.length;
-				show(current);
-			}, 1000);
-		})();
-	</script>
-
-	<script is:inline data-astro-rerun>
-		// Hero graph: draw the growth line in when the page loads; respect reduced motion.
-		(function () {
-			var line = document.querySelector('.hero-graph .line-main');
-			var area = document.querySelector('.hero-graph .area');
-			var dot = document.querySelector('.hero-graph .dot');
-			var halo = document.querySelector('.hero-graph .dot-halo');
-			var chips = document.querySelectorAll('.hero-chip');
-			var reduce = false;
-			try {
-				reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			} catch (e) { /* very old browsers: animation is fine */ }
-			if (reduce) return;
-			if (line) {
-				var len = 0;
-				try {
-					len = line.getTotalLength();
-				} catch (e) { len = 0; }
-				if (len > 0) {
-					line.style.strokeDasharray = len;
-					line.style.strokeDashoffset = len;
-					// force layout, then transition the draw
-					void line.getBoundingClientRect();
-					line.style.transition = 'stroke-dashoffset 2.2s cubic-bezier(0.22, 1, 0.36, 1) 0.2s';
-					line.style.strokeDashoffset = '0';
-				}
-			}
-			if (area) area.classList.add('is-drawn');
-			if (dot) dot.classList.add('is-drawn');
-			if (halo) halo.classList.add('is-drawn');
-			chips.forEach(function (chip, i) {
-				chip.classList.add('is-drawn');
-				chip.style.transitionDelay = (1.2 + i * 0.35) + 's';
+			buttons.forEach(function (b) {
+				b.addEventListener('click', function () {
+					touched = true;
+					setView(b.getAttribute('data-view'));
+				});
 			});
+
+			if (reduce || !('IntersectionObserver' in window)) return;
+			setView('before');
+			var observer = new IntersectionObserver(
+				function (entries) {
+					entries.forEach(function (entry) {
+						if (!entry.isIntersecting) return;
+						observer.disconnect();
+						setTimeout(function () {
+							if (!touched) setView('after');
+						}, 1600);
+					});
+				},
+				{ threshold: 0.5 }
+			);
+			observer.observe(stage);
 		})();
 	</script>
 </Layout>

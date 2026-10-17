@@ -14,6 +14,15 @@ import {
 	FIXTURE_TRANSFERS,
 	FIXTURE_USER_SESSION,
 } from "../../src/testing/fixtures";
+import {
+	LANDING_ACCOUNTS,
+	LANDING_HARDWARE,
+	LANDING_LIABILITIES,
+	LANDING_REVENUES,
+	LANDING_SUBSCRIPTIONS,
+	LANDING_TRANSFERS,
+	LANDING_USER_SESSION,
+} from "../../src/testing/landing-fixtures";
 
 class MemoryStorageAdapter implements IStorageAdapter {
 	private store = new Map<string, string>();
@@ -103,6 +112,8 @@ let root: Root | null = null;
 
 declare global {
 	interface Window {
+		/** Set via addInitScript by `*.capture.spec.tsx` to swap in marketing demo data. */
+		__EXL_FIXTURES__?: "landing";
 		mount: (args: { story: string; props?: Record<string, unknown> }) => Promise<void>;
 		unmount: () => void;
 	}
@@ -123,19 +134,21 @@ window.mount = async ({
 		root = createRoot(container);
 	}
 
+	const demo = window.__EXL_FIXTURES__ === "landing";
+
 	// Always wrap component in BizProvider & Theme for full standalone testing capability
 	flushSync(() => {
 		root?.render(
 			<Theme theme={mastercardTheme} mode="light">
 				<BizProvider
 					storage={storage}
-					initialAccounts={FIXTURE_ACCOUNTS}
-					initialHardware={FIXTURE_HARDWARE}
-					initialSubscriptions={FIXTURE_SUBSCRIPTIONS}
-					initialRevenues={FIXTURE_REVENUES}
-					initialLiabilities={FIXTURE_LIABILITIES}
-					initialTransfers={FIXTURE_TRANSFERS}
-					initialUserSession={FIXTURE_USER_SESSION}
+					initialAccounts={demo ? LANDING_ACCOUNTS : FIXTURE_ACCOUNTS}
+					initialHardware={demo ? LANDING_HARDWARE : FIXTURE_HARDWARE}
+					initialSubscriptions={demo ? LANDING_SUBSCRIPTIONS : FIXTURE_SUBSCRIPTIONS}
+					initialRevenues={demo ? LANDING_REVENUES : FIXTURE_REVENUES}
+					initialLiabilities={demo ? LANDING_LIABILITIES : FIXTURE_LIABILITIES}
+					initialTransfers={demo ? LANDING_TRANSFERS : FIXTURE_TRANSFERS}
+					initialUserSession={demo ? LANDING_USER_SESSION : FIXTURE_USER_SESSION}
 				>
 					<Component {...props} />
 				</BizProvider>

@@ -23,7 +23,8 @@ Astro + React islands + fumadocs (blog/docs/search) + KaTeX.
 ```text
 src/
   pages/
-    index.astro               # landing (hero, waitlist form, LangSelect)
+    index.astro               # landing: hero + phone, before/after toggle, features,
+                              # coming-next, web-planner teaser, perks, waitlist
     blog/index.astro          # blog index
     blog/[slug].astro         # one post (deck beats stripped)
     blog/[slug]/slides.astro  # the deck built from :::slide blocks
@@ -50,7 +51,8 @@ content/
 src/content.config.ts         # astro content collections: docs, meta, blog (zod schemas)
 public/                       # robots.txt, _headers, katex.min.css, fonts, og.png,
                               # favicon.svg, favicon-32.png, apple-touch-icon.png,
-                              # logo-mark.png, logo-wordmark.png, blog/, demo/
+                              # logo-mark.png, logo-wordmark.png, blog/, demo/ (web planner),
+                              # app/{mobile,desktop}/*.webp (generated, see below)
 BLOG.md                       # the blog/slides authoring contract (read before writing a post)
 n8n/                          # waitlist endpoint contract (section 4); real automation JSON
 ```
@@ -185,6 +187,21 @@ content/blog/<slug>.md
 - `src/content.config.ts` zod schemas enforce frontmatter (docs need title; meta
   collection holds optional title/description/pages/icon for the docs tree; blog
   needs title + date, optional description/youtube/draft).
+
+## 6b. App screenshots (generated, do not hand-edit)
+
+`public/app/{mobile,desktop}/*.webp` are real screens of `apps/biz-mobile` rendered with
+marketing demo data (`apps/biz-mobile/src/testing/landing-fixtures.ts`). One config
+captures both form factors; the second step converts PNG to WebP:
+
+```bash
+pnpm capture:landing    # biz-mobile Playwright (capture-mobile + capture-desktop) -> optimize
+```
+
+Set `PW_CT_PORT=<free port>` if another checkout already holds the gallery on 5174
+(Playwright would silently reuse that server and render the wrong code). The landing
+copy that quotes demo numbers (before/after toggle, hero chips) mirrors the fixtures:
+change both together.
 
 ## 7. Commands
 

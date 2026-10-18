@@ -83,6 +83,7 @@ jobs:
             apps/webapp/src/components/__snapshots__/
             apps/webapp/src/pages/**/__snapshots__/
             apps/biz-mobile/src/components/__snapshots__/
+            apps/biz-mobile/src/pages/**/__snapshots__/
           retention-days: 30
 
       - name: Upload visual test report & diffs on failure

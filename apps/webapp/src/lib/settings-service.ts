@@ -1,4 +1,4 @@
-import { type DateInputProps } from "@excited-live/design-system"
+import { type DateInputProps } from "@astryxdesign/core/DateInput"
 import { apiFetch, isLiveApi } from "./api-client"
 
 export interface UserSettings {

@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Button, HStack, NativeInput, Stack, Text } from "@excited-live/design-system";
+import { NativeInput } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { FIELD_CLASS, FormField, InputField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";

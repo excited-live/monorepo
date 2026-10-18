@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
 	calculateDerivedTreasury,
 	isCashAsset,
@@ -135,7 +135,9 @@ export function useHome() {
 	const handleSkipLiability = () => {
 		try {
 			localStorage.setItem("biz_onboarding_liability_skipped", "true");
-		} catch {}
+		} catch {
+			// localStorage unavailable — nothing to persist
+		}
 		setHasSkippedLiability(true);
 	};
 

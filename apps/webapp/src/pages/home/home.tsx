@@ -1,14 +1,9 @@
-import {
-	HStack,
-	PlainButton,
-	Stack,
-	Tab,
-	TabList,
-	Table,
-	Text,
-	pixel,
-	proportional,
-} from "@excited-live/design-system"
+import { PlainButton } from "@excited-live/design-system"
+import { HStack } from "@astryxdesign/core/HStack"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Tab, TabList } from "@astryxdesign/core/TabList"
+import { Table, pixel, proportional } from "@astryxdesign/core/Table"
+import { Text } from "@astryxdesign/core/Text"
 import { ProjectionChart } from "./components/ProjectionChart"
 import { EntryDialog } from "./components/EntryDialog"
 import { ValueDialog } from "./components/ValueDialog"

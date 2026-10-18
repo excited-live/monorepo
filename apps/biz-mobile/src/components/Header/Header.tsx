@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { BottomSheet, Badge, HStack, Heading, Img, PlainButton, Stack, Text } from "@excited-live/design-system";
+import { Img, PlainButton } from "@excited-live/design-system";
+import { BottomSheet } from "@astryxdesign/core/BottomSheet";
+import { Badge } from "@astryxdesign/core/Badge";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../EntityThumb";
 import { useModalBack } from "../../hooks/useModalBack";
 import { useBiz } from "../../state";

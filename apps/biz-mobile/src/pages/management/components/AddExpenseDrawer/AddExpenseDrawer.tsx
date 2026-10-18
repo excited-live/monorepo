@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Button, SegmentedControl, SegmentedControlItem, Stack, Text } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { FormField, InputField, SelectField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";

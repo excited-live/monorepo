@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
 import "../hero.css";
 import type { EntityAccount } from "@excited-live/biz";
 

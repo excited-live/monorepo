@@ -1,5 +1,8 @@
 import React, { useRef } from "react";
-import { HStack, Img, NativeInput, PlainButton, Stack, Text } from "@excited-live/design-system";
+import { Img, NativeInput, PlainButton } from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { ChipButton } from "../ChipButton";
 import { CURATED_COVER_WALLPAPERS } from "@excited-live/biz";
 

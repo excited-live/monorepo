@@ -1,4 +1,8 @@
-import { Button, Card, Heading, Stack, Text } from "@excited-live/design-system"
+import { Button } from "@astryxdesign/core/Button"
+import { Card } from "@astryxdesign/core/Card"
+import { Heading } from "@astryxdesign/core/Heading"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
 
 export interface PageEmptyStateProps {
 	title: string

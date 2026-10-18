@@ -1,16 +1,11 @@
 import { useState } from "react"
-import {
-	Button,
-	Dialog,
-	DialogHeader,
-	HStack,
-	Layout,
-	LayoutContent,
-	LayoutFooter,
-	PlainButton,
-	Stack,
-	TextInput,
-} from "@excited-live/design-system"
+import { PlainButton } from "@excited-live/design-system"
+import { Button } from "@astryxdesign/core/Button"
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog"
+import { HStack } from "@astryxdesign/core/HStack"
+import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout"
+import { Stack } from "@astryxdesign/core/Stack"
+import { TextInput } from "@astryxdesign/core/TextInput"
 import { type PlanInput } from "../../../lib/plan-service"
 import { MonthYearPicker } from "./MonthYearPicker"
 

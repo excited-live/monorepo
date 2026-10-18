@@ -1,5 +1,8 @@
 import React from "react";
-import { Badge, HStack, Img, Text } from "@excited-live/design-system";
+import { Img } from "@excited-live/design-system";
+import { Badge } from "@astryxdesign/core/Badge";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
 import { ChipButton } from "../ChipButton";
 
 export interface AutofillSuggestion {

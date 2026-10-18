@@ -1,5 +1,10 @@
 import React from "react";
-import { Badge, Button, HStack, Img, Stack, Text } from "@excited-live/design-system";
+import { Img } from "@excited-live/design-system";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import type { UserSession } from "../../../../domain/types";
 import { FIXTURE_USER_SESSION } from "../../../../testing/fixtures";
 import { BADGE_TONE_CLASS } from "../../../../utils/ui";

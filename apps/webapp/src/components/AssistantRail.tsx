@@ -5,10 +5,10 @@ import {
 	ChatMessageBubble,
 	ChatMessageList,
 	ChatToolCalls,
-	Stack,
-	Text,
 	type ChatToolCallItem,
-} from "@excited-live/design-system"
+} from "@astryxdesign/core/Chat"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
 import { formatBaht } from "../lib/format"
 import { type PlanSummary } from "../lib/plan-service"
 

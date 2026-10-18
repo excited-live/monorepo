@@ -1,5 +1,7 @@
 import React from "react";
-import { Stack, Theme, mastercardTheme } from "@excited-live/design-system";
+import { mastercardTheme } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Theme } from "@astryxdesign/core/theme";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { Header } from "../components/Header";

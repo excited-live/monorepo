@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
 import { AddBusinessDrawer } from "../../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../../components/AddRevenueDrawer";
 import { AddExpenseDrawer } from "../management/components/AddExpenseDrawer";

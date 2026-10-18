@@ -2,15 +2,12 @@ import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { Suspense } from "react"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
-import {
-	Card,
-	Grid,
-	PlainButton,
-	Stack,
-	Text,
-	Theme,
-	mastercardTheme,
-} from "@excited-live/design-system"
+import { PlainButton, mastercardTheme } from "@excited-live/design-system"
+import { Card } from "@astryxdesign/core/Card"
+import { Grid } from "@astryxdesign/core/Grid"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
+import { Theme } from "@astryxdesign/core/theme"
 import { AssistantRail } from "../components/AssistantRail"
 import { Topbar } from "../components/Topbar"
 import { betterAuthConfigured } from "../lib/auth-config"

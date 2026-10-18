@@ -1,5 +1,7 @@
 import React, { useRef } from "react";
-import { HStack, NativeInput, PlainButton, Svg, SvgPath, Text } from "@excited-live/design-system";
+import { NativeInput, PlainButton, Svg, SvgPath } from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
 import { GLASS_PILL } from "../../../../utils/ui";
 import { parseYearMonth } from "@excited-live/biz";
 import { useBiz } from "../../../../state";

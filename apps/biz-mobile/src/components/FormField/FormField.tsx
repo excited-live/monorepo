@@ -1,6 +1,12 @@
 import React from "react";
-import { NativeInput, NativeSelect, NativeTextArea, Stack, Text } from "@excited-live/design-system";
-import type { NativeInputProps, NativeSelectProps, NativeTextAreaProps } from "@excited-live/design-system";
+import { NativeInput, NativeSelect, NativeTextArea } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
+import type {
+	NativeInputProps,
+	NativeSelectProps,
+	NativeTextAreaProps,
+} from "@excited-live/design-system";
 
 /** Shared look of every native control: white 14px-radius field, ink focus ring. */
 export const FIELD_CLASS =

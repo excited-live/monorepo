@@ -1,5 +1,6 @@
 import React from "react";
-import { Img, Stack } from "@excited-live/design-system";
+import { Img } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
 
 export const HomeHeroBackground: React.FC = () => (
 	<Stack

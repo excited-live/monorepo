@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 const DESIGN_SYSTEM_HINT =
-	"Raw HTML is not allowed in app code. Use a component instead: Astryx components or primitives from @excited-live/design-system (Box, Text, Heading, PlainButton, Svg/SvgLine/SvgPath, SvgIcon, AppDocument). If no primitive fits, add one to packages/design-system.";
+	"Raw HTML is not allowed in app code. Use a component instead: Astryx components (@astryxdesign/core/<Component>) or primitives from @excited-live/design-system (AppDocument, Img, Link, PlainButton, NativeInput/NativeSelect/NativeTextArea, Svg/SvgLine/SvgPath, SvgIcon). If no primitive fits, add one to packages/design-system.";
 
 /**
  * Elements forbidden in apps/webapp — everything a page needs must come from
@@ -76,6 +76,14 @@ export default tseslint.config(
 		rules: {
 			"react-hooks/rules-of-hooks": "error",
 			"react-hooks/exhaustive-deps": "warn",
+			"@typescript-eslint/no-unused-vars": [
+				"error",
+				{
+					argsIgnorePattern: "^_",
+					varsIgnorePattern: "^_",
+					caughtErrorsIgnorePattern: "^_",
+				},
+			],
 		},
 	},
 	{

@@ -1,11 +1,6 @@
-import {
-	PlainButton,
-	Table,
-	Text,
-	pixel,
-	proportional,
-	type TableColumn,
-} from "@excited-live/design-system"
+import { PlainButton } from "@excited-live/design-system"
+import { Table, pixel, proportional, type TableColumn } from "@astryxdesign/core/Table"
+import { Text } from "@astryxdesign/core/Text"
 import { formatBaht } from "../../../lib/format"
 import {
 	rowLifetimeTotal,

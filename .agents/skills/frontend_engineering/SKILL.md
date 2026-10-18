@@ -36,7 +36,7 @@ apps/
           index.tsx          # Route mapping to lazy-loaded HomePage
           settings.tsx       # Route mapping to lazy-loaded SettingsPage
 packages/
-  design-system/             # Design tokens, Astryx wrappers, Mastercard theme
+  design-system/             # Mastercard theme, brand/native primitives, icons
   sim/                       # Financial simulation & Monte Carlo calculation engine
   tax/                       # Thai and US tax computation models
   i18n/                      # Core internationalization tokens and dictionary types
@@ -81,7 +81,7 @@ packages/
 
 ## 3. Design System Integration (@excited-live/design-system)
 
-The design system wraps `@astryxdesign/core` styled with StyleX and themed via the Mastercard theme.
+The design system owns the Mastercard theme and zero-style primitives; app components are imported directly from `@astryxdesign/core/<Component>` and themed by it.
 
 ### Dialog & Modal Guidelines
 1. **Modal Padding**:
@@ -110,7 +110,7 @@ The design system wraps `@astryxdesign/core` styled with StyleX and themed via t
    - This ensures content maintains proper 28px/32px breathing room from the dialog borders and prevents elements from touching rounded corners.
 
 ### Form Inputs & Controls
-- **Dropdowns / Single Select**: Use `<Selector>` from `@excited-live/design-system`. Supports `options`, `value`, `onChange`, `label`, and `isDisabled`.
+- **Dropdowns / Single Select**: Use `<Selector>` from `@astryxdesign/core/Selector`. Supports `options`, `value`, `onChange`, `label`, and `isDisabled`.
 - **Toggles / Segments**: Use `<SegmentedControl>` and `<SegmentedControlItem>`.
 - **Numeric Fields**: Use `<NumberInput>` with `units` (e.g. `฿`, `%`) and `step`.
 
@@ -119,7 +119,7 @@ The design system wraps `@astryxdesign/core` styled with StyleX and themed via t
 ## 4. Table & Add Action Patterns
 
 When displaying grouped items with expandable detail rows:
-1. **Row Expansion**: Use `useTableRowExpansion` from `@excited-live/design-system`.
+1. **Row Expansion**: Use `useTableRowExpansion` from `@astryxdesign/core/Table`.
 2. **Bottom Row Action ("Add item")**:
    - Bottom row displays `+ {t("row.addItem")}`.
    - Clicking opens the dialog with `lockType: false`.

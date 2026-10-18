@@ -1,5 +1,10 @@
 import React from "react";
-import { Badge, Button, HStack, Img, PlainButton, Stack, Text } from "@excited-live/design-system";
+import { Img, PlainButton } from "@excited-live/design-system";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../../../../components/EntityThumb";
 import { ListItemCard } from "../../../../components/ListItemCard";
 import type { EntityAccount } from "@excited-live/biz";

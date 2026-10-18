@@ -1,13 +1,13 @@
+import { CalendarIcon } from "@excited-live/design-system"
+import { HStack } from "@astryxdesign/core/HStack"
 import {
-	CalendarIcon,
-	HStack,
 	Selector,
 	SelectorOption,
 	type SelectorOptionData,
 	type SelectorOptionType,
-	StatusDot,
-	Text,
-} from "@excited-live/design-system"
+} from "@astryxdesign/core/Selector"
+import { StatusDot } from "@astryxdesign/core/StatusDot"
+import { Text } from "@astryxdesign/core/Text"
 import { useMemo } from "react"
 import { usePlanDashboardContext } from "../../../hooks/usePlanDashboard"
 import { useLocale } from "../../../lib/locale-context"

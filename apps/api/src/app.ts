@@ -2,6 +2,8 @@ import { Hono } from "hono"
 import { describeRoute, openAPIRouteHandler } from "hono-openapi"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import type { ContentfulStatusCode } from "hono/utils/http-status"
+import { DomainError } from "./modules/accounting/domain/errors"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
@@ -47,6 +49,19 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 			credentials: true,
 		}),
 	)
+
+	// Domain errors carry their own HTTP status (404/409/400), so they are
+	// mapped here rather than in router middleware: Hono's composer catches a
+	// handler's throw at that handler's own dispatch level and calls this
+	// handler directly, so a `try { await next() } catch` in a router never
+	// sees it.
+	app.onError((err, c) => {
+		if (err instanceof DomainError) {
+			return c.json({ error: err.message, code: err.code }, err.status as ContentfulStatusCode)
+		}
+		console.error(err)
+		return c.text("Internal Server Error", 500)
+	})
 
 	app.get(
 		"/health",

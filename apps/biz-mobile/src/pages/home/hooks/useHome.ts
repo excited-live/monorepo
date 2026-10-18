@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
 	calculateDerivedTreasury,
+	calculateOpeningTreasury,
 	type EntityAccount,
 	type HardwareAsset,
 	type LiabilityStream,
@@ -41,6 +42,7 @@ export function useHome() {
 	const {
 		setActiveEntityId,
 		setActiveTab,
+		selectedMonth,
 		lang,
 	} = useAppUI();
 
@@ -74,6 +76,19 @@ export function useHome() {
 			revenues,
 			liabilities,
 			transfers,
+			yearMonth: selectedMonth,
+		});
+
+	/** Treasury at the start of the selected month for a single account */
+	const openingTreasury = (acc: EntityAccount) =>
+		calculateOpeningTreasury({
+			account: acc,
+			subscriptions,
+			revenues,
+			liabilities,
+			hardware,
+			transfers,
+			yearMonth: selectedMonth,
 		});
 
 	/** End-of-month treasury for a single account */
@@ -85,6 +100,7 @@ export function useHome() {
 			liabilities,
 			hardware,
 			transfers,
+			yearMonth: selectedMonth,
 		});
 
 	// --- Onboarding step state -------------------------------------------------
@@ -322,6 +338,7 @@ export function useHome() {
 		totalEomTreasury,
 		personalCash,
 		businessCash,
+		openingTreasury,
 		eomTreasury,
 		openCareerEdit,
 		formatType,

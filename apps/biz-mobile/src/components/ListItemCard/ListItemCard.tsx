@@ -1,5 +1,6 @@
 import React from "react";
-import { Card, Stack } from "@excited-live/design-system";
+import { Card } from "@astryxdesign/core/Card";
+import { Stack } from "@astryxdesign/core/Stack";
 
 export interface ListItemCardProps {
 	children: React.ReactNode;

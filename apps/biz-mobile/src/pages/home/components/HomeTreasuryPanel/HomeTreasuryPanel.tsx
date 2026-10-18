@@ -1,5 +1,7 @@
 import React from "react";
-import { HStack, Stack, Text } from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../utils/i18n";
 import type { MobileLocale } from "../../../../domain/types";

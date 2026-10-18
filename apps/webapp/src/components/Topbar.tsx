@@ -1,11 +1,7 @@
-import {
-	Img,
-	PlainButton,
-	Stack,
-	Tab,
-	TabList,
-	Text,
-} from "@excited-live/design-system"
+import { Img, PlainButton } from "@excited-live/design-system"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Tab, TabList } from "@astryxdesign/core/TabList"
+import { Text } from "@astryxdesign/core/Text"
 import { Link, useLocation } from "@tanstack/react-router"
 import { useLocale } from "../lib/locale-context"
 import { TopbarAuth, type TopbarAuthProps } from "./TopbarAuth"

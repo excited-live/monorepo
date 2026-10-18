@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { type DateInputProps } from "@excited-live/design-system"
+import { type DateInputProps } from "@astryxdesign/core/DateInput"
 import { useLocale } from "../../lib/locale-context"
 import {
 	fetchSettingsData,

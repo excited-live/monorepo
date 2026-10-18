@@ -1,11 +1,6 @@
-import {
-	PlainButton,
-	Table,
-	Text,
-	pixel,
-	proportional,
-	type TableColumn,
-} from "@excited-live/design-system"
+import { PlainButton } from "@excited-live/design-system"
+import { Table, pixel, proportional, type TableColumn } from "@astryxdesign/core/Table"
+import { Text } from "@astryxdesign/core/Text"
 import { useLocale } from "../../../lib/locale-context"
 import { type PlanInput } from "../../../lib/plan-service"
 import { ADD_ROW_ID } from "./EntryTable"

@@ -1,11 +1,9 @@
-import {
-	DateInput,
-	Grid,
-	Heading,
-	Stack,
-	Text,
-	TextInput,
-} from "@excited-live/design-system"
+import { DateInput } from "@astryxdesign/core/DateInput"
+import { Grid } from "@astryxdesign/core/Grid"
+import { Heading } from "@astryxdesign/core/Heading"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
+import { TextInput } from "@astryxdesign/core/TextInput"
 import { GenderField } from "./components/GenderField"
 import { useSettings } from "./useSettings"
 import { PageEmptyState } from "../../components/PageEmptyState"

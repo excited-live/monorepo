@@ -1,5 +1,6 @@
 import React from "react";
-import { Stack, Text } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 
 export interface HomeAppSectionProps {
 	children?: React.ReactNode;

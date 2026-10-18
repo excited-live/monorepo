@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Stack } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { Stack } from "@astryxdesign/core/Stack";
 import { EmptyCard, ItemRow, SectionHeader } from "../../../../components";
 import type { LiabilityStream } from "@excited-live/biz";
 import { formatMoney } from "../../../../utils/format";

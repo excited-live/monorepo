@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "@excited-live/design-system";
+import { Stack } from "@astryxdesign/core/Stack";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAppUI, useUserData } from "../state";
 import { Home } from "../pages/home/Home";

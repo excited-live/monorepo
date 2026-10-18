@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Button, HStack, Stack } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
 import { FormField, InputField, SelectField } from "../FormField";
 import { ModalPage } from "../ModalPage";
 import { CurrencyInput } from "../CurrencyInput";

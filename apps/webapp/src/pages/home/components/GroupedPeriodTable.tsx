@@ -1,14 +1,14 @@
 import { useState } from "react"
+import { PlainButton } from "@excited-live/design-system"
+import { Stack } from "@astryxdesign/core/Stack"
 import {
-	PlainButton,
-	Stack,
 	Table,
-	Text,
 	pixel,
 	proportional,
 	useTableRowExpansion,
 	type TableColumn,
-} from "@excited-live/design-system"
+} from "@astryxdesign/core/Table"
+import { Text } from "@astryxdesign/core/Text"
 import { formatBaht } from "../../../lib/format"
 import {
 	EXPENSE_TYPE_IDS,

@@ -1,6 +1,10 @@
 import React from "react";
 import { createPortal } from "react-dom";
-import { HStack, PlainButton, Stack, Text, Theme, mastercardTheme } from "@excited-live/design-system";
+import { PlainButton, mastercardTheme } from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
+import { Theme } from "@astryxdesign/core/theme";
 
 export interface ModalPageProps {
 	title: string;

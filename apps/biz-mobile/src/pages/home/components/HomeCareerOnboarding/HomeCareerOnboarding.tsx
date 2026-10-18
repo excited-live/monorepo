@@ -1,5 +1,6 @@
 import React from "react";
-import { Button, Text } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { Text } from "@astryxdesign/core/Text";
 import { SectionCard } from "../../../../components/SectionCard";
 
 export interface HomeCareerOnboardingProps {

@@ -1,5 +1,7 @@
 import React from "react";
-import { Badge, Stack, Text } from "@excited-live/design-system";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { BADGE_TONE_CLASS, type Tone } from "../../utils/ui";
 import { EntityThumb } from "../EntityThumb";
 import { ListItemCard } from "../ListItemCard";

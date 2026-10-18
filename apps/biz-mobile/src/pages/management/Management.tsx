@@ -1,5 +1,6 @@
 import React from "react";
-import { SegmentedControl, SegmentedControlItem, Stack } from "@excited-live/design-system";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
+import { Stack } from "@astryxdesign/core/Stack";
 import type {
 	EntityAccount,
 	HardwareAsset,

@@ -1,7 +1,8 @@
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import React from "react";
-import { Theme, mastercardTheme } from "@excited-live/design-system";
+import { mastercardTheme } from "@excited-live/design-system";
+import { Theme } from "@astryxdesign/core/theme";
 import "../../src/styles.css";
 import { BizProvider } from "../../src/application/context/BizContext";
 import type { IStorageAdapter } from "../../src/application/storage/storage.interface";

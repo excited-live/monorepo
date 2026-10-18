@@ -1,5 +1,7 @@
 import React from "react";
-import { Heading, Stack, Text } from "@excited-live/design-system";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { ModalPage } from "../../components";
 import { Signin } from "../signin/Signin";
 import {

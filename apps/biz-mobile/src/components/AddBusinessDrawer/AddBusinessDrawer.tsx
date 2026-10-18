@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Button, Stack, Text } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { InputField } from "../FormField";
 import { ModalPage } from "../ModalPage";
 import type { EntityAccount } from "@excited-live/biz";

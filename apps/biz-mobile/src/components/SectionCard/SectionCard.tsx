@@ -1,5 +1,8 @@
 import React from "react";
-import { Card, HStack, Stack, Text } from "@excited-live/design-system";
+import { Card } from "@astryxdesign/core/Card";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 
 export interface SectionCardProps {
 	/** Uppercase eyebrow shown top-left. */

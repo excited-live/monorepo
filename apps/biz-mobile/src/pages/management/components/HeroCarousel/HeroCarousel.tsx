@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import type { EntityAccount } from "@excited-live/biz";
-import { ChevronLeftIcon, ChevronRightIcon, HStack, PlainButton, Stack } from "@excited-live/design-system";
+import { ChevronLeftIcon, ChevronRightIcon, PlainButton } from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
 import { CapitalHeroCard } from "../CapitalHeroCard";
 
 const PAGER_BTN =

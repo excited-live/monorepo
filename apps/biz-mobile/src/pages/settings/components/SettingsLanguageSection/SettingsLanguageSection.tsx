@@ -1,5 +1,7 @@
 import React from "react";
-import { Badge, Button, HStack } from "@excited-live/design-system";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
 import type { MobileLocale } from "../../../../domain/types";
 import { SectionCard } from "../../../../components/SectionCard";
 

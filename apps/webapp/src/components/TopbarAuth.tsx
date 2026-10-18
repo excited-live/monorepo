@@ -1,4 +1,5 @@
-import { Link, Text } from "@excited-live/design-system"
+import { Link } from "@excited-live/design-system"
+import { Text } from "@astryxdesign/core/Text"
 import { createAuthClient } from "@excited-live/auth/client"
 import { useNavigate } from "@tanstack/react-router"
 import { useLocale } from "../lib/locale-context"

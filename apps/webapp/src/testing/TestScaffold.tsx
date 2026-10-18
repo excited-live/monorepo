@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { useMemo } from "react"
-import { Theme, mastercardTheme } from "@excited-live/design-system"
+import { mastercardTheme } from "@excited-live/design-system"
+import { Theme } from "@astryxdesign/core/theme"
 import {
 	createMemoryHistory,
 	createRootRoute,

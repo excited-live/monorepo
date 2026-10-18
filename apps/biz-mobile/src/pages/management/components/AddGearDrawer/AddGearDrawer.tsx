@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { CheckboxInput, Button, HStack, NativeInput, Stack, Text } from "@excited-live/design-system";
+import { NativeInput } from "@excited-live/design-system";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { FIELD_CLASS, FormField, InputField, SelectField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
 import { ChipButton } from "../../../../components/ChipButton";

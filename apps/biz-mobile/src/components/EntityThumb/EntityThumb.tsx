@@ -1,5 +1,7 @@
 import React from "react";
-import { HStack, Img, Text } from "@excited-live/design-system";
+import { Img } from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
 
 export interface EntityThumbProps {
 	imageUrl?: string;

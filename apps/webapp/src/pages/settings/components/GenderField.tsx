@@ -1,9 +1,6 @@
-import {
-	SegmentedControl,
-	SegmentedControlItem,
-	Stack,
-	Text,
-} from "@excited-live/design-system"
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
 
 export interface GenderFieldProps {
 	value: string

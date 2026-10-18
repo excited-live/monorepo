@@ -1,12 +1,8 @@
-import {
-	Dialog,
-	DialogHeader,
-	Layout,
-	LayoutContent,
-	PlainButton,
-	Stack,
-	Text,
-} from "@excited-live/design-system"
+import { PlainButton } from "@excited-live/design-system"
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog"
+import { Layout, LayoutContent } from "@astryxdesign/core/Layout"
+import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
 import {
 	ASSET_TYPE_IDS,
 	EXPENSE_TYPE_IDS,

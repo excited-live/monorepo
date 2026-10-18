@@ -1,16 +1,13 @@
 import React from "react";
-import {
-	Button,
-	CheckboxInput,
-	Divider,
-	HStack,
-	Heading,
-	Img,
-	Link,
-	Stack,
-	Text,
-	TextInput,
-} from "@excited-live/design-system";
+import { Img, Link } from "@excited-live/design-system";
+import { Button } from "@astryxdesign/core/Button";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Divider } from "@astryxdesign/core/Divider";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import { GoogleIcon } from "./components";
 import { useSignIn } from "./hooks";
 

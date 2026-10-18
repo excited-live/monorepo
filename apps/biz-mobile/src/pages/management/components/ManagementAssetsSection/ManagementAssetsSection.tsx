@@ -1,5 +1,9 @@
 import React from "react";
-import { Badge, Button, HStack, Stack, Text } from "@excited-live/design-system";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { formatMoney } from "../../../../utils/format";
 import type {
 	CapitalTransfer,

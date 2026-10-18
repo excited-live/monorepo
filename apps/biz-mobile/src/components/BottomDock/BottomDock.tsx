@@ -1,5 +1,12 @@
 import React from "react";
-import { HStack, HomeIcon, PlainButton, SettingsIcon, WalletIcon, type IconProps } from "@excited-live/design-system";
+import {
+	HomeIcon,
+	PlainButton,
+	SettingsIcon,
+	WalletIcon,
+	type IconProps,
+} from "@excited-live/design-system";
+import { HStack } from "@astryxdesign/core/HStack";
 import { useBiz } from "../../state";
 import { t } from "../../utils/i18n";
 

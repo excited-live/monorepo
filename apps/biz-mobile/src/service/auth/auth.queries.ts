@@ -61,7 +61,7 @@ export function useSignOut() {
 		mutationFn: () => authApi.signOut(),
 		onSuccess: () => {
 			queryClient.setQueryData(authKeys.session(), null);
-			queryClient.setQueryData(accountingKeys.snapshot(), null);
+			queryClient.removeQueries({ queryKey: accountingKeys.all });
 			queryClient.clear();
 		},
 	});

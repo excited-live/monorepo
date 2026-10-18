@@ -25,7 +25,7 @@ export const AddRevenueDrawer: React.FC<{
 
 	const [name, setName] = useState("");
 	const [amount, setAmount] = useState("");
-	const [frequency, setFrequency] = useState<"monthly" | "yearly" | "one_time">("monthly");
+	const [frequency, setFrequency] = useState<RevenueStream["frequency"]>("monthly");
 	const [source, setSource] = useState<"stripe" | "bank_transfer" | "cash" | "freelance" | "salary" | "other">(
 		isPersonal ? "freelance" : "stripe",
 	);

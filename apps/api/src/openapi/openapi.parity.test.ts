@@ -16,14 +16,54 @@ describe("openapi.json", () => {
 		const operations = Object.entries(doc.paths).flatMap(([path, methods]) =>
 			Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
 		)
-		expect(operations).toContain("GET /api/v1/accounting/snapshot")
-		expect(operations).toContain("PUT /api/v1/accounting/snapshot")
-		for (const entity of ["accounts", "expenses", "assets", "incomes", "liabilities"]) {
-			expect(operations).toContain(`POST /api/v1/accounting/${entity}`)
-			expect(operations).toContain(`PUT /api/v1/accounting/${entity}/{id}`)
-			expect(operations).toContain(`DELETE /api/v1/accounting/${entity}/{id}`)
+		const expected = [
+			"GET /api/v1/accounting/entities",
+			"GET /api/v1/accounting/entities/{id}",
+			"POST /api/v1/accounting/entities",
+			"PATCH /api/v1/accounting/entities/{id}",
+			"DELETE /api/v1/accounting/entities/{id}",
+			"GET /api/v1/accounting/assets",
+			"GET /api/v1/accounting/assets/{id}",
+			"POST /api/v1/accounting/assets",
+			"PATCH /api/v1/accounting/assets/{id}",
+			"DELETE /api/v1/accounting/assets/{id}",
+			"GET /api/v1/accounting/incomes",
+			"GET /api/v1/accounting/incomes/{id}",
+			"POST /api/v1/accounting/incomes",
+			"PATCH /api/v1/accounting/incomes/{id}",
+			"DELETE /api/v1/accounting/incomes/{id}",
+			"POST /api/v1/accounting/incomes/career",
+			"GET /api/v1/accounting/expenses",
+			"GET /api/v1/accounting/expenses/{id}",
+			"POST /api/v1/accounting/expenses",
+			"PATCH /api/v1/accounting/expenses/{id}",
+			"DELETE /api/v1/accounting/expenses/{id}",
+			"GET /api/v1/accounting/liabilities",
+			"GET /api/v1/accounting/liabilities/{id}",
+			"POST /api/v1/accounting/liabilities",
+			"PATCH /api/v1/accounting/liabilities/{id}",
+			"GET /api/v1/accounting/liabilities/{id}/schedule",
+			"DELETE /api/v1/accounting/liabilities/{id}",
+			"GET /api/v1/accounting/transfers",
+			"GET /api/v1/accounting/transfers/{id}",
+			"POST /api/v1/accounting/transfers",
+			"PATCH /api/v1/accounting/transfers/{id}",
+			"DELETE /api/v1/accounting/transfers/{id}",
+			"GET /api/v1/accounting/summary",
+			"GET /api/v1/accounting/ledger/{yearMonth}",
+			"GET /api/v1/accounting/cash-flows",
+			"GET /api/v1/accounting/projection",
+		]
+		for (const operation of expected) expect(operations).toContain(operation)
+		expect(operations.filter((operation) => operation.includes("/api/v1/accounting/"))).toHaveLength(expected.length)
+	})
+
+	it("names the cash-flow and schedule operations", async () => {
+		const doc = (await buildOpenApiDocument()) as {
+			paths: Record<string, Record<string, { operationId?: string }>>
 		}
-		expect(operations).toContain("POST /api/v1/accounting/transfers")
-		expect(operations).toContain("DELETE /api/v1/accounting/transfers/{id}")
+		const ids = Object.values(doc.paths).flatMap((methods) => Object.values(methods).map((op) => op.operationId))
+		expect(ids).toContain("getCashFlows")
+		expect(ids).toContain("getLiabilitySchedule")
 	})
 })

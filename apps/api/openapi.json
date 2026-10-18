@@ -8,7 +8,7 @@
 	"tags": [
 		{
 			"name": "Accounting",
-			"description": "The per-user accounting snapshot: accounts, expenses, assets, incomes, liabilities and transfers."
+			"description": "Per-resource accounting API: entities, assets, incomes, expenses, liabilities and transfers, plus computed summary (wealth and balance sheet), ledger, cash-flows, liability schedules and projection."
 		},
 		{
 			"name": "Plan",
@@ -44,70 +44,11 @@
 			}
 		},
 		"schemas": {
-			"BizSnapshot": {
-				"type": "object",
-				"properties": {
-					"accounts": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/EntityAccount"
-						}
-					},
-					"subscriptions": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/RecurringSubscription"
-						}
-					},
-					"hardware": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/HardwareAsset"
-						}
-					},
-					"revenues": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/RevenueStream"
-						}
-					},
-					"transfers": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/CapitalTransfer"
-						}
-					},
-					"liabilities": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/LiabilityStream"
-						}
-					},
-					"updatedAt": {
-						"description": "ISO timestamp of the last save.",
-						"type": "string"
-					},
-					"isDefault": {
-						"description": "`true` while the user has never saved and seed data is returned.",
-						"type": "boolean"
-					}
-				},
-				"required": [
-					"accounts",
-					"subscriptions",
-					"hardware",
-					"revenues",
-					"transfers",
-					"liabilities"
-				],
-				"description": "Everything a user owns in the biz domain, in one document."
-			},
-			"EntityAccount": {
+			"Entity": {
 				"type": "object",
 				"properties": {
 					"id": {
-						"type": "string",
-						"description": "Client-generated unique id."
+						"type": "string"
 					},
 					"name": {
 						"type": "string"
@@ -119,27 +60,12 @@
 							"business"
 						]
 					},
-					"cashReserve": {
-						"type": "number",
-						"description": "Cash on hand, in `currency`."
-					},
-					"salary": {
-						"type": "number"
-					},
-					"paydayDayOfMonth": {
-						"type": "integer",
-						"minimum": 1,
-						"maximum": 31
-					},
-					"targetSafetyBuffer": {
-						"type": "number"
-					},
 					"currency": {
 						"type": "string",
 						"description": "ISO currency code, typically `THB` or `USD`."
 					},
-					"createdAt": {
-						"type": "string"
+					"targetSafetyBuffer": {
+						"type": "number"
 					},
 					"active": {
 						"type": "boolean"
@@ -150,298 +76,32 @@
 					"imageUrl": {
 						"type": "string"
 					},
-					"careerTitle": {
-						"type": "string"
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
 					},
-					"careerCompany": {
-						"type": "string"
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
 					},
-					"careerImageUrl": {
-						"type": "string"
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
 					}
 				},
 				"required": [
 					"id",
 					"name",
 					"type",
-					"cashReserve",
-					"currency"
+					"currency",
+					"active",
+					"version",
+					"createdAt",
+					"updatedAt"
 				],
 				"description": "A personal or business entity that owns money flows."
-			},
-			"RecurringSubscription": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"entityId": {
-						"type": "string",
-						"description": "Owning `EntityAccount.id`."
-					},
-					"name": {
-						"type": "string"
-					},
-					"amount": {
-						"type": "number"
-					},
-					"cycle": {
-						"type": "string",
-						"enum": [
-							"weekly",
-							"monthly",
-							"quarterly",
-							"semi-annual",
-							"yearly",
-							"one_time"
-						]
-					},
-					"category": {
-						"type": "string"
-					},
-					"nextRenewalDate": {
-						"type": "string",
-						"description": "`YYYY-MM-DD`."
-					},
-					"billingDay": {
-						"type": "integer",
-						"minimum": -9007199254740991,
-						"maximum": 9007199254740991
-					},
-					"active": {
-						"type": "boolean"
-					},
-					"startMonth": {
-						"description": "`YYYY-MM`. First month charged.",
-						"type": "string"
-					},
-					"endMonth": {
-						"description": "`YYYY-MM`. Last month charged; absent = open-ended.",
-						"type": "string"
-					},
-					"notes": {
-						"type": "string"
-					},
-					"imageUrl": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"entityId",
-					"name",
-					"amount",
-					"cycle",
-					"category",
-					"nextRenewalDate",
-					"active"
-				],
-				"description": "A recurring cost (SaaS, rent, insurance…)."
-			},
-			"HardwareAsset": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"entityId": {
-						"type": "string",
-						"description": "Owning `EntityAccount.id`."
-					},
-					"name": {
-						"type": "string"
-					},
-					"cost": {
-						"type": "number"
-					},
-					"lifespanMonths": {
-						"type": "integer",
-						"minimum": -9007199254740991,
-						"maximum": 9007199254740991
-					},
-					"purchaseDate": {
-						"type": "string",
-						"description": "`YYYY-MM-DD` or `YYYY-MM`."
-					},
-					"salvageValue": {
-						"type": "number"
-					},
-					"category": {
-						"type": "string"
-					},
-					"imageUrl": {
-						"type": "string"
-					},
-					"isDefault": {
-						"type": "boolean"
-					}
-				},
-				"required": [
-					"id",
-					"entityId",
-					"name",
-					"cost",
-					"lifespanMonths",
-					"purchaseDate",
-					"category"
-				],
-				"description": "A depreciating asset."
-			},
-			"RevenueStream": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"entityId": {
-						"type": "string",
-						"description": "Owning `EntityAccount.id`."
-					},
-					"name": {
-						"type": "string"
-					},
-					"amount": {
-						"type": "number"
-					},
-					"frequency": {
-						"type": "string",
-						"enum": [
-							"monthly",
-							"yearly",
-							"one_time"
-						]
-					},
-					"source": {
-						"type": "string",
-						"enum": [
-							"stripe",
-							"bank_transfer",
-							"cash",
-							"freelance",
-							"salary",
-							"other"
-						]
-					},
-					"active": {
-						"type": "boolean"
-					},
-					"startMonth": {
-						"description": "`YYYY-MM`.",
-						"type": "string"
-					},
-					"endMonth": {
-						"description": "`YYYY-MM`.",
-						"type": "string"
-					},
-					"notes": {
-						"type": "string"
-					},
-					"imageUrl": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"entityId",
-					"name",
-					"amount",
-					"frequency",
-					"source",
-					"active"
-				],
-				"description": "An income stream."
-			},
-			"CapitalTransfer": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"fromEntityId": {
-						"type": "string"
-					},
-					"toEntityId": {
-						"type": "string"
-					},
-					"amount": {
-						"type": "number"
-					},
-					"date": {
-						"type": "string",
-						"description": "`YYYY-MM-DD` or `YYYY-MM`."
-					},
-					"note": {
-						"type": "string"
-					},
-					"targetAssetId": {
-						"type": "string"
-					},
-					"frequency": {
-						"type": "string",
-						"enum": [
-							"one_time",
-							"monthly"
-						]
-					}
-				},
-				"required": [
-					"id",
-					"fromEntityId",
-					"toEntityId",
-					"amount",
-					"date",
-					"note"
-				],
-				"description": "Money moved between two entities."
-			},
-			"LiabilityStream": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"entityId": {
-						"type": "string",
-						"description": "Owning `EntityAccount.id`."
-					},
-					"name": {
-						"type": "string"
-					},
-					"amount": {
-						"type": "number",
-						"description": "Monthly payment."
-					},
-					"category": {
-						"type": "string",
-						"description": "`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string."
-					},
-					"active": {
-						"type": "boolean"
-					},
-					"startMonth": {
-						"description": "`YYYY-MM`. First month due.",
-						"type": "string"
-					},
-					"endMonth": {
-						"description": "`YYYY-MM`. Last month due; absent = open-ended.",
-						"type": "string"
-					},
-					"notes": {
-						"type": "string"
-					},
-					"imageUrl": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"entityId",
-					"name",
-					"amount",
-					"category",
-					"active"
-				],
-				"description": "A debt payment stream."
 			},
 			"Error": {
 				"type": "object",
@@ -465,6 +125,1067 @@
 				"required": [
 					"ok"
 				]
+			},
+			"Asset": {
+				"oneOf": [
+					{
+						"$ref": "#/components/schemas/CashAsset"
+					},
+					{
+						"$ref": "#/components/schemas/FixedAsset"
+					},
+					{
+						"$ref": "#/components/schemas/InvestmentAsset"
+					}
+				],
+				"description": "An asset, discriminated by `kind`."
+			},
+			"CashAsset": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `Entity.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"category": {
+						"type": "string",
+						"description": "Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock…"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"details": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {},
+						"description": "Display-only extras the engine never reads."
+					},
+					"kind": {
+						"type": "string",
+						"const": "cash"
+					},
+					"balance": {
+						"type": "number",
+						"description": "Balance at the start of `balanceAsOf`."
+					},
+					"balanceAsOf": {
+						"type": "string",
+						"description": "`YYYY-MM`, or `YYYY-MM-DD` for a balance recorded mid-month."
+					},
+					"currency": {
+						"type": "string"
+					},
+					"isDefault": {
+						"type": "boolean",
+						"description": "Where unlinked money of the entity lands. One per entity."
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"category",
+					"active",
+					"details",
+					"kind",
+					"balance",
+					"balanceAsOf",
+					"currency",
+					"isDefault",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "Cash and cash equivalents: bank accounts, e-wallets, cash on hand."
+			},
+			"FixedAsset": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `Entity.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"category": {
+						"type": "string",
+						"description": "Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock…"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"details": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {},
+						"description": "Display-only extras the engine never reads."
+					},
+					"kind": {
+						"type": "string",
+						"const": "fixed"
+					},
+					"cost": {
+						"type": "number"
+					},
+					"acquiredOn": {
+						"type": "string",
+						"description": "`YYYY-MM` or `YYYY-MM-DD`."
+					},
+					"depreciationMethod": {
+						"type": "string",
+						"enum": [
+							"straight_line",
+							"none"
+						]
+					},
+					"usefulLifeMonths": {
+						"description": "Required unless depreciationMethod is `none`.",
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991
+					},
+					"salvageValue": {
+						"type": "number"
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"category",
+					"active",
+					"details",
+					"kind",
+					"cost",
+					"acquiredOn",
+					"depreciationMethod",
+					"salvageValue",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "PP&E bought once and depreciated over its useful life."
+			},
+			"InvestmentAsset": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string",
+						"description": "Owning `Entity.id`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"category": {
+						"type": "string",
+						"description": "Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock…"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"details": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {},
+						"description": "Display-only extras the engine never reads."
+					},
+					"kind": {
+						"type": "string",
+						"const": "investment"
+					},
+					"instrument": {
+						"type": "string"
+					},
+					"symbol": {
+						"type": "string"
+					},
+					"units": {
+						"type": "number"
+					},
+					"costBasis": {
+						"type": "number"
+					},
+					"marketValue": {
+						"type": "number"
+					},
+					"valuedAsOf": {
+						"type": "string",
+						"description": "`YYYY-MM`."
+					},
+					"expectedAnnualReturn": {
+						"description": "Yearly return as a fraction (0.07 = 7%).",
+						"type": "number"
+					},
+					"currency": {
+						"type": "string"
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"category",
+					"active",
+					"details",
+					"kind",
+					"instrument",
+					"costBasis",
+					"marketValue",
+					"valuedAsOf",
+					"currency",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "Valued at market, grown by an expected return, never depreciated."
+			},
+			"Income": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string"
+					},
+					"kind": {
+						"type": "string",
+						"enum": [
+							"employment",
+							"business",
+							"investment",
+							"other"
+						]
+					},
+					"category": {
+						"type": "string",
+						"description": "salary, bonus, freelance, sales, dividend, interest, rent…"
+					},
+					"name": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"cycle": {
+						"type": "string",
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"semi-annual",
+							"yearly",
+							"one_time"
+						]
+					},
+					"dayOfMonth": {
+						"description": "Day the money moves; absent = the flow type's default day.",
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 31
+					},
+					"startMonth": {
+						"type": "string",
+						"description": "`YYYY-MM`. First month the flow happens."
+					},
+					"endMonth": {
+						"description": "`YYYY-MM`. Last month; absent = open-ended.",
+						"type": "string"
+					},
+					"taxCategory": {
+						"type": "string",
+						"enum": [
+							"40_1",
+							"40_2",
+							"40_3",
+							"40_4",
+							"40_5",
+							"40_6",
+							"40_7",
+							"40_8"
+						]
+					},
+					"depositAssetId": {
+						"description": "Cash asset the income lands in; absent = the default cash asset.",
+						"type": "string"
+					},
+					"sourceAssetId": {
+						"description": "Asset that generates it. Investment income only.",
+						"type": "string"
+					},
+					"employment": {
+						"description": "Present only when kind is `employment`.",
+						"type": "object",
+						"properties": {
+							"employer": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							}
+						}
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"details": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {},
+						"description": "Display-only extras the engine never reads."
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"kind",
+					"category",
+					"name",
+					"amount",
+					"cycle",
+					"startMonth",
+					"active",
+					"details",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "An income stream."
+			},
+			"Expense": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"category": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"cycle": {
+						"type": "string",
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"semi-annual",
+							"yearly",
+							"one_time"
+						]
+					},
+					"dayOfMonth": {
+						"description": "Day the money moves; absent = the flow type's default day.",
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 31
+					},
+					"startMonth": {
+						"type": "string",
+						"description": "`YYYY-MM`. First month the flow happens."
+					},
+					"endMonth": {
+						"description": "`YYYY-MM`. Last month; absent = open-ended.",
+						"type": "string"
+					},
+					"paidFromAssetId": {
+						"type": "string"
+					},
+					"paidFromLiabilityId": {
+						"description": "Revolving liability (credit card) it is charged to.",
+						"type": "string"
+					},
+					"assetId": {
+						"description": "Asset this is a cost of owning.",
+						"type": "string"
+					},
+					"incomeId": {
+						"description": "Income this is a cost of earning.",
+						"type": "string"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"details": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {},
+						"description": "Display-only extras the engine never reads."
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"name",
+					"category",
+					"amount",
+					"cycle",
+					"startMonth",
+					"active",
+					"details",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "A recurring or one-time cost."
+			},
+			"Liability": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string"
+					},
+					"kind": {
+						"type": "string",
+						"enum": [
+							"loan",
+							"revolving",
+							"other"
+						]
+					},
+					"name": {
+						"type": "string"
+					},
+					"category": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"cycle": {
+						"type": "string",
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"semi-annual",
+							"yearly",
+							"one_time"
+						]
+					},
+					"dayOfMonth": {
+						"description": "Day the money moves; absent = the flow type's default day.",
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 31
+					},
+					"startMonth": {
+						"type": "string",
+						"description": "`YYYY-MM`. First month the flow happens."
+					},
+					"endMonth": {
+						"description": "`YYYY-MM`. Last month; absent = open-ended.",
+						"type": "string"
+					},
+					"paidFromAssetId": {
+						"type": "string"
+					},
+					"loan": {
+						"$ref": "#/components/schemas/LoanDetails"
+					},
+					"revolving": {
+						"$ref": "#/components/schemas/RevolvingDetails"
+					},
+					"active": {
+						"type": "boolean"
+					},
+					"notes": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"details": {
+						"type": "object",
+						"propertyNames": {
+							"type": "string"
+						},
+						"additionalProperties": {},
+						"description": "Display-only extras the engine never reads."
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"entityId",
+					"kind",
+					"name",
+					"category",
+					"amount",
+					"cycle",
+					"startMonth",
+					"active",
+					"details",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "A debt. The schedule is the planned payment."
+			},
+			"LoanDetails": {
+				"type": "object",
+				"properties": {
+					"principal": {
+						"type": "number"
+					},
+					"annualRate": {
+						"type": "number",
+						"description": "Yearly interest rate as a fraction (0.065 = 6.5%)."
+					},
+					"termMonths": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991
+					},
+					"originatedOn": {
+						"type": "string",
+						"description": "`YYYY-MM` or `YYYY-MM-DD`."
+					},
+					"financedAssetId": {
+						"type": "string"
+					},
+					"proceedsAssetId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"principal",
+					"annualRate",
+					"termMonths",
+					"originatedOn"
+				],
+				"description": "Amortizing loan terms."
+			},
+			"RevolvingDetails": {
+				"type": "object",
+				"properties": {
+					"creditLimit": {
+						"type": "number"
+					},
+					"balance": {
+						"type": "number"
+					},
+					"balanceAsOf": {
+						"type": "string",
+						"description": "`YYYY-MM`."
+					},
+					"annualRate": {
+						"type": "number"
+					}
+				},
+				"required": [
+					"balance",
+					"balanceAsOf"
+				],
+				"description": "Revolving credit: a card or credit line."
+			},
+			"LoanSchedule": {
+				"type": "object",
+				"properties": {
+					"liabilityId": {
+						"type": "string"
+					},
+					"kind": {
+						"type": "string",
+						"const": "loan"
+					},
+					"entries": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/LoanScheduleEntry"
+						}
+					}
+				},
+				"required": [
+					"liabilityId",
+					"kind",
+					"entries"
+				],
+				"description": "Month-by-month loan schedule."
+			},
+			"LoanScheduleEntry": {
+				"type": "object",
+				"properties": {
+					"yearMonth": {
+						"type": "string"
+					},
+					"opening": {
+						"type": "number"
+					},
+					"interest": {
+						"type": "number"
+					},
+					"payment": {
+						"type": "number",
+						"description": "Scheduled payment actually made, capped at what is owed."
+					},
+					"extra": {
+						"type": "number",
+						"description": "Extra payments applied, capped at what is owed after `payment`."
+					},
+					"principal": {
+						"type": "number",
+						"description": "Principal repaid; negative when the balance grows."
+					},
+					"closing": {
+						"type": "number"
+					}
+				},
+				"required": [
+					"yearMonth",
+					"opening",
+					"interest",
+					"payment",
+					"extra",
+					"principal",
+					"closing"
+				],
+				"description": "One month of a loan."
+			},
+			"RevolvingSchedule": {
+				"type": "object",
+				"properties": {
+					"liabilityId": {
+						"type": "string"
+					},
+					"kind": {
+						"type": "string",
+						"const": "revolving"
+					},
+					"entries": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/RevolvingScheduleEntry"
+						}
+					}
+				},
+				"required": [
+					"liabilityId",
+					"kind",
+					"entries"
+				],
+				"description": "Month-by-month revolving balance."
+			},
+			"RevolvingScheduleEntry": {
+				"type": "object",
+				"properties": {
+					"yearMonth": {
+						"type": "string"
+					},
+					"opening": {
+						"type": "number"
+					},
+					"interest": {
+						"type": "number"
+					},
+					"charges": {
+						"type": "number",
+						"description": "Monthly-equivalent card charges that month."
+					},
+					"payment": {
+						"type": "number",
+						"description": "Scheduled payment made, capped at what is owed."
+					},
+					"extra": {
+						"type": "number",
+						"description": "Transfers into the card applied that month, capped at what is still owed."
+					},
+					"payments": {
+						"type": "number",
+						"description": "payment + extra."
+					},
+					"closing": {
+						"type": "number"
+					}
+				},
+				"required": [
+					"yearMonth",
+					"opening",
+					"interest",
+					"charges",
+					"payment",
+					"extra",
+					"payments",
+					"closing"
+				],
+				"description": "One month of a revolving balance."
+			},
+			"Transfer": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"date": {
+						"type": "string",
+						"description": "`YYYY-MM-DD` or `YYYY-MM`."
+					},
+					"cycle": {
+						"type": "string",
+						"enum": [
+							"one_time",
+							"monthly"
+						]
+					},
+					"note": {
+						"type": "string"
+					},
+					"fromAssetId": {
+						"type": "string"
+					},
+					"toAssetId": {
+						"type": "string"
+					},
+					"toLiabilityId": {
+						"type": "string"
+					},
+					"version": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991,
+						"description": "Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."
+					},
+					"createdAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					},
+					"updatedAt": {
+						"type": "string",
+						"description": "ISO timestamp."
+					}
+				},
+				"required": [
+					"id",
+					"amount",
+					"date",
+					"cycle",
+					"note",
+					"fromAssetId",
+					"version",
+					"createdAt",
+					"updatedAt"
+				],
+				"description": "Money moved from an asset to an asset, or onto a liability."
+			},
+			"Summary": {
+				"type": "object",
+				"properties": {
+					"yearMonth": {
+						"type": "string"
+					},
+					"asOf": {
+						"type": "string"
+					},
+					"entities": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"entityId": {
+									"type": "string"
+								},
+								"metrics": {
+									"type": "object",
+									"properties": {
+										"cashAssetsValue": {
+											"type": "number"
+										},
+										"gearAssetsValue": {
+											"type": "number"
+										},
+										"totalAssetsValue": {
+											"type": "number"
+										},
+										"currentLiquid": {
+											"type": "number"
+										},
+										"eomLiquid": {
+											"type": "number"
+										},
+										"currentWealth": {
+											"type": "number"
+										},
+										"eomWealth": {
+											"type": "number"
+										},
+										"liquidPct": {
+											"type": "number"
+										},
+										"gearPct": {
+											"type": "number"
+										},
+										"totalIncome": {
+											"type": "number"
+										},
+										"totalExpense": {
+											"type": "number"
+										},
+										"liabilityMonthly": {
+											"type": "number"
+										},
+										"liabPct": {
+											"type": "number"
+										},
+										"runwayMonths": {
+											"type": [
+												"number",
+												"null"
+											]
+										},
+										"isDefaultAlive": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"cashAssetsValue",
+										"gearAssetsValue",
+										"totalAssetsValue",
+										"currentLiquid",
+										"eomLiquid",
+										"currentWealth",
+										"eomWealth",
+										"liquidPct",
+										"gearPct",
+										"totalIncome",
+										"totalExpense",
+										"liabilityMonthly",
+										"liabPct",
+										"runwayMonths",
+										"isDefaultAlive"
+									]
+								},
+								"balanceSheet": {
+									"$ref": "#/components/schemas/BalanceSheet"
+								}
+							},
+							"required": [
+								"entityId",
+								"metrics",
+								"balanceSheet"
+							]
+						}
+					},
+					"consolidated": {
+						"type": "object",
+						"properties": {
+							"totalTreasury": {
+								"type": "number"
+							},
+							"totalEomTreasury": {
+								"type": "number"
+							},
+							"personalCash": {
+								"type": "number"
+							},
+							"businessCash": {
+								"type": "number"
+							},
+							"balanceSheet": {
+								"$ref": "#/components/schemas/BalanceSheet"
+							}
+						},
+						"required": [
+							"totalTreasury",
+							"totalEomTreasury",
+							"personalCash",
+							"businessCash",
+							"balanceSheet"
+						]
+					}
+				},
+				"required": [
+					"yearMonth",
+					"entities",
+					"consolidated"
+				],
+				"description": "Wealth metrics per entity and consolidated, for one month."
+			},
+			"BalanceSheet": {
+				"type": "object",
+				"properties": {
+					"cash": {
+						"type": "number",
+						"description": "End-of-month treasury of the cash wallets."
+					},
+					"fixedAssets": {
+						"type": "number",
+						"description": "Remaining book value of fixed (non-cash, non-investment) assets."
+					},
+					"investments": {
+						"type": "number",
+						"description": "Value of investment assets."
+					},
+					"totalAssets": {
+						"type": "number",
+						"description": "cash + fixedAssets + investments."
+					},
+					"debt": {
+						"type": "number",
+						"description": "Loan and revolving balances owed."
+					},
+					"netWorth": {
+						"type": "number",
+						"description": "totalAssets - debt."
+					}
+				},
+				"required": [
+					"cash",
+					"fixedAssets",
+					"investments",
+					"totalAssets",
+					"debt",
+					"netWorth"
+				],
+				"description": "Position at the end of one month."
 			},
 			"MonthlyLedger": {
 				"type": "object",
@@ -576,6 +1297,191 @@
 					"actionItems"
 				],
 				"description": "Computed cash ledger for one entity and month."
+			},
+			"CashFlowsResponse": {
+				"type": "object",
+				"properties": {
+					"yearMonth": {
+						"type": "string"
+					},
+					"entityId": {
+						"type": "string"
+					},
+					"items": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CashFlowItem"
+						}
+					},
+					"totals": {
+						"type": "object",
+						"properties": {
+							"moneyIn": {
+								"type": "number",
+								"description": "Cash in, from cash items only."
+							},
+							"moneyOut": {
+								"type": "number",
+								"description": "Cash out, from cash items only."
+							},
+							"spending": {
+								"type": "number",
+								"description": "Sum of spendingAmount over every item."
+							}
+						},
+						"required": [
+							"moneyIn",
+							"moneyOut",
+							"spending"
+						]
+					}
+				},
+				"required": [
+					"yearMonth",
+					"entityId",
+					"items",
+					"totals"
+				],
+				"description": "Cash-flow feed of one entity for one month, with totals over all items."
+			},
+			"CashFlowItem": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Unique within the month's feed."
+					},
+					"sourceType": {
+						"type": "string",
+						"enum": [
+							"income",
+							"expense",
+							"liability",
+							"transfer",
+							"asset",
+							"account"
+						]
+					},
+					"sourceId": {
+						"type": "string",
+						"description": "The record to open when tapped."
+					},
+					"flowType": {
+						"type": "string",
+						"enum": [
+							"income",
+							"expense",
+							"debt_payment",
+							"asset_purchase",
+							"investment",
+							"transfer",
+							"loan_proceeds",
+							"depreciation"
+						]
+					},
+					"direction": {
+						"type": "string",
+						"enum": [
+							"in",
+							"out"
+						]
+					},
+					"date": {
+						"type": "string",
+						"description": "`YYYY-MM-DD`."
+					},
+					"name": {
+						"type": "string"
+					},
+					"amount": {
+						"type": "number"
+					},
+					"isCash": {
+						"type": "boolean",
+						"description": "False for card charges and depreciation: they move no cash."
+					},
+					"spendingAmount": {
+						"type": "number",
+						"description": "The part of the amount that counts as spending."
+					},
+					"cashAssetId": {
+						"type": "string"
+					},
+					"chargedToLiabilityId": {
+						"description": "Revolving liability a card charge lands on.",
+						"type": "string"
+					},
+					"interest": {
+						"description": "Loan payments only.",
+						"type": "number"
+					},
+					"principal": {
+						"description": "Loan payments only.",
+						"type": "number"
+					}
+				},
+				"required": [
+					"id",
+					"sourceType",
+					"sourceId",
+					"flowType",
+					"direction",
+					"date",
+					"name",
+					"amount",
+					"isCash",
+					"spendingAmount"
+				],
+				"description": "One dated money movement in the cash-flow feed."
+			},
+			"Projection": {
+				"type": "object",
+				"properties": {
+					"points": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"offset": {
+									"type": "integer",
+									"minimum": -9007199254740991,
+									"maximum": 9007199254740991
+								},
+								"yearMonth": {
+									"type": "string"
+								},
+								"balance": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"offset",
+								"yearMonth",
+								"balance"
+							]
+						}
+					},
+					"totalIncome": {
+						"type": "number"
+					},
+					"totalExpense": {
+						"type": "number"
+					},
+					"liabilityMonthly": {
+						"type": "number"
+					},
+					"projectedNet": {
+						"type": "number"
+					}
+				},
+				"required": [
+					"points",
+					"totalIncome",
+					"totalExpense",
+					"liabilityMonthly",
+					"projectedNet"
+				],
+				"description": "Treasury balance per month around a centre month."
 			},
 			"CatalogItem": {
 				"type": "object",
@@ -720,21 +1626,24 @@
 				}
 			}
 		},
-		"/api/v1/accounting/snapshot": {
+		"/api/v1/accounting/entities": {
 			"get": {
-				"operationId": "getAccountingSnapshot",
+				"operationId": "listEntities",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Get the full accounting snapshot",
-				"description": "Accounts, expenses, assets, incomes, liabilities and transfers in one document.",
+				"summary": "List entities",
+				"description": "Bootstraps the personal entity and its default wallet on first call.",
 				"responses": {
 					"200": {
-						"description": "The snapshot.",
+						"description": "Entities.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/BizSnapshot"
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/Entity"
+									}
 								}
 							}
 						}
@@ -751,138 +1660,20 @@
 					}
 				}
 			},
-			"put": {
-				"operationId": "replaceAccountingSnapshot",
-				"tags": [
-					"Accounting"
-				],
-				"summary": "Replace the full accounting snapshot",
-				"description": "Replaces full accounting state for import or portability.",
-				"responses": {
-					"200": {
-						"description": "Replaced snapshot.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BizSnapshot"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Validation Error",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				},
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"type": "object",
-								"properties": {
-									"accounts": {
-										"type": "array",
-										"items": {
-											"$ref": "#/components/schemas/EntityAccount"
-										}
-									},
-									"subscriptions": {
-										"type": "array",
-										"items": {
-											"$ref": "#/components/schemas/RecurringSubscription"
-										}
-									},
-									"hardware": {
-										"type": "array",
-										"items": {
-											"$ref": "#/components/schemas/HardwareAsset"
-										}
-									},
-									"revenues": {
-										"type": "array",
-										"items": {
-											"$ref": "#/components/schemas/RevenueStream"
-										}
-									},
-									"transfers": {
-										"type": "array",
-										"items": {
-											"$ref": "#/components/schemas/CapitalTransfer"
-										}
-									},
-									"liabilities": {
-										"type": "array",
-										"items": {
-											"$ref": "#/components/schemas/LiabilityStream"
-										}
-									},
-									"isDefault": {
-										"type": "boolean"
-									}
-								},
-								"required": [
-									"accounts",
-									"subscriptions",
-									"hardware",
-									"revenues",
-									"transfers",
-									"liabilities"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/v1/accounting/accounts": {
 			"post": {
-				"operationId": "createAccount",
+				"operationId": "createEntity",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Create a new business account",
+				"summary": "Create a business entity",
+				"description": "Business only. Also creates its default cash asset, \"<name> Main Wallet\", at ฿0.",
 				"responses": {
 					"201": {
-						"description": "Account created.",
+						"description": "Entity created.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/EntityAccount"
+									"$ref": "#/components/schemas/Entity"
 								}
 							}
 						}
@@ -906,6 +1697,26 @@
 								}
 							}
 						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
 					}
 				},
 				"requestBody": {
@@ -915,18 +1726,43 @@
 							"schema": {
 								"type": "object",
 								"properties": {
+									"id": {
+										"type": "string",
+										"format": "uuid",
+										"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+									},
+									"type": {
+										"description": "Only `business` can be created; the personal entity is created on first use.",
+										"type": "string",
+										"enum": [
+											"personal",
+											"business"
+										]
+									},
+									"asOf": {
+										"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+									},
 									"name": {
 										"type": "string",
 										"minLength": 1
 									},
+									"currency": {
+										"type": "string",
+										"minLength": 1
+									},
+									"targetSafetyBuffer": {
+										"type": "number",
+										"minimum": 0
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
 									"imageUrl": {
-										"type": "string"
-									},
-									"id": {
-										"type": "string"
-									},
-									"asOf": {
-										"description": "`YYYY-MM` (client's local month) the default wallet's ฿0 balance is dated to.",
 										"type": "string"
 									}
 								},
@@ -939,48 +1775,20 @@
 				}
 			}
 		},
-		"/api/v1/accounting/accounts/{id}": {
-			"put": {
-				"operationId": "updateAccount",
+		"/api/v1/accounting/entities/{id}": {
+			"get": {
+				"operationId": "getEntity",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Update account metadata",
+				"summary": "Get an entity",
 				"responses": {
 					"200": {
-						"description": "Account updated.",
+						"description": "The entity.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/EntityAccount"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Validation Error",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
+									"$ref": "#/components/schemas/Entity"
 								}
 							}
 						}
@@ -996,7 +1804,77 @@
 						}
 					},
 					"404": {
-						"description": "Account not found.",
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"patch": {
+				"operationId": "updateEntity",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update an entity",
+				"description": "Partial update. The entity type cannot change.",
+				"responses": {
+					"200": {
+						"description": "Entity updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Entity"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1013,59 +1891,63 @@
 							"schema": {
 								"type": "object",
 								"properties": {
-									"id": {
-										"type": "string",
-										"description": "Client-generated unique id."
-									},
-									"name": {
-										"type": "string"
+									"version": {
+										"description": "Stored version the caller last read; a mismatch returns 409.",
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 9007199254740991
 									},
 									"type": {
+										"description": "Must match the stored type; entity type cannot change.",
 										"type": "string",
 										"enum": [
 											"personal",
 											"business"
 										]
 									},
-									"cashReserve": {
-										"type": "number",
-										"description": "Cash on hand, in `currency`."
-									},
-									"salary": {
-										"type": "number"
-									},
-									"paydayDayOfMonth": {
-										"type": "integer",
-										"minimum": 1,
-										"maximum": 31
-									},
-									"targetSafetyBuffer": {
-										"type": "number"
+									"name": {
+										"type": "string",
+										"minLength": 1
 									},
 									"currency": {
-										"type": "string",
-										"description": "ISO currency code, typically `THB` or `USD`."
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
 									},
-									"createdAt": {
-										"type": "string"
+									"targetSafetyBuffer": {
+										"anyOf": [
+											{
+												"type": "number",
+												"minimum": 0
+											},
+											{
+												"type": "null"
+											}
+										]
 									},
 									"active": {
-										"type": "boolean"
+										"type": [
+											"boolean",
+											"null"
+										]
 									},
 									"notes": {
-										"type": "string"
+										"type": [
+											"string",
+											"null"
+										]
 									},
 									"imageUrl": {
-										"type": "string"
-									},
-									"careerTitle": {
-										"type": "string"
-									},
-									"careerCompany": {
-										"type": "string"
-									},
-									"careerImageUrl": {
-										"type": "string"
+										"type": [
+											"string",
+											"null"
+										]
 									}
 								}
 							}
@@ -1084,18 +1966,29 @@
 				]
 			},
 			"delete": {
-				"operationId": "deleteAccount",
+				"operationId": "deleteEntity",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Delete account and cascade associated records",
+				"summary": "Delete a business entity",
+				"description": "The personal entity cannot be deleted. Deleting cascades to all of its records.",
 				"responses": {
 					"200": {
-						"description": "Account deleted.",
+						"description": "Entity deleted.",
 						"content": {
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}
@@ -1111,7 +2004,7 @@
 						}
 					},
 					"404": {
-						"description": "Account not found.",
+						"description": "Record not found.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1119,250 +2012,9 @@
 								}
 							}
 						}
-					}
-				},
-				"parameters": [
-					{
-						"schema": {
-							"type": "string"
-						},
-						"in": "path",
-						"name": "id",
-						"required": true
-					}
-				]
-			}
-		},
-		"/api/v1/accounting/expenses": {
-			"post": {
-				"operationId": "createExpense",
-				"tags": [
-					"Accounting"
-				],
-				"summary": "Add a recurring expense",
-				"responses": {
-					"201": {
-						"description": "Expense created.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/RecurringSubscription"
-								}
-							}
-						}
 					},
-					"400": {
-						"description": "Validation Error",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				},
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"type": "object",
-								"properties": {
-									"entityId": {
-										"type": "string",
-										"description": "Owning `EntityAccount.id`."
-									},
-									"name": {
-										"type": "string"
-									},
-									"amount": {
-										"type": "number"
-									},
-									"cycle": {
-										"type": "string",
-										"enum": [
-											"weekly",
-											"monthly",
-											"quarterly",
-											"semi-annual",
-											"yearly",
-											"one_time"
-										]
-									},
-									"category": {
-										"type": "string"
-									},
-									"nextRenewalDate": {
-										"type": "string",
-										"description": "`YYYY-MM-DD`."
-									},
-									"billingDay": {
-										"type": "integer",
-										"minimum": -9007199254740991,
-										"maximum": 9007199254740991
-									},
-									"active": {
-										"type": "boolean"
-									},
-									"startMonth": {
-										"description": "`YYYY-MM`. First month charged.",
-										"type": "string"
-									},
-									"endMonth": {
-										"description": "`YYYY-MM`. Last month charged; absent = open-ended.",
-										"type": "string"
-									},
-									"notes": {
-										"type": "string"
-									},
-									"imageUrl": {
-										"type": "string"
-									},
-									"id": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"entityId",
-									"name",
-									"amount",
-									"cycle",
-									"category",
-									"nextRenewalDate",
-									"active"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/v1/accounting/expenses/{id}": {
-			"put": {
-				"operationId": "updateExpense",
-				"tags": [
-					"Accounting"
-				],
-				"summary": "Update recurring expense",
-				"responses": {
-					"200": {
-						"description": "Expense updated.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/RecurringSubscription"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Validation Error",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				},
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RecurringSubscription"
-							}
-						}
-					}
-				},
-				"parameters": [
-					{
-						"schema": {
-							"type": "string"
-						},
-						"in": "path",
-						"name": "id",
-						"required": true
-					}
-				]
-			},
-			"delete": {
-				"operationId": "deleteExpense",
-				"tags": [
-					"Accounting"
-				],
-				"summary": "Delete recurring expense",
-				"responses": {
-					"200": {
-						"description": "Expense deleted.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Ok"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1385,19 +2037,22 @@
 			}
 		},
 		"/api/v1/accounting/assets": {
-			"post": {
-				"operationId": "createAsset",
+			"get": {
+				"operationId": "listAssets",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Add an asset",
+				"summary": "List assets",
 				"responses": {
-					"201": {
-						"description": "Asset created.",
+					"200": {
+						"description": "Assets.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/HardwareAsset"
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/Asset"
+									}
 								}
 							}
 						}
@@ -1432,6 +2087,516 @@
 					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "kind",
+						"schema": {
+							"type": "string",
+							"enum": [
+								"cash",
+								"fixed",
+								"investment"
+							]
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "createAsset",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Create an asset",
+				"description": "Body discriminated by `kind`. Fixed and investment assets accept `paidFrom` (creates the purchase transfer in the same write); fixed assets accept `financing` (creates a loan liability, paid at its level payment unless `amount` is given). A cash asset with `isDefault` clears the entity's other defaults; an entity's first cash asset is always the default.",
+				"responses": {
+					"201": {
+						"description": "Asset created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Asset"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"oneOf": [
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "cash"
+											},
+											"balance": {
+												"description": "Defaults to 0.",
+												"type": "number"
+											},
+											"balanceAsOf": {
+												"description": "Defaults to the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"currency": {
+												"type": "string",
+												"minLength": 1
+											},
+											"isDefault": {
+												"type": "boolean"
+											}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"kind"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "fixed"
+											},
+											"cost": {
+												"type": "number",
+												"minimum": 0
+											},
+											"acquiredOn": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"depreciationMethod": {
+												"type": "string",
+												"enum": [
+													"straight_line",
+													"none"
+												]
+											},
+											"usefulLifeMonths": {
+												"type": "integer",
+												"exclusiveMinimum": 0,
+												"maximum": 9007199254740991
+											},
+											"salvageValue": {
+												"type": "number",
+												"minimum": 0
+											},
+											"paidFrom": {
+												"type": "object",
+												"properties": {
+													"assetId": {
+														"description": "Cash asset to pay from. Takes precedence over entityId.",
+														"type": "string",
+														"minLength": 1
+													},
+													"entityId": {
+														"description": "Entity whose default cash asset pays. Defaults to the asset's entity.",
+														"type": "string",
+														"minLength": 1
+													},
+													"date": {
+														"description": "Defaults to acquiredOn (fixed) or valuedAsOf (investment).",
+														"type": "string",
+														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+													},
+													"amount": {
+														"description": "Defaults to marketValue (investment) or cost (fixed). A financed fixed asset pays cost minus financing.principal (the down payment).",
+														"type": "number",
+														"minimum": 0
+													}
+												}
+											},
+											"financing": {
+												"type": "object",
+												"properties": {
+													"principal": {
+														"type": "number",
+														"minimum": 0
+													},
+													"annualRate": {
+														"type": "number",
+														"minimum": 0
+													},
+													"termMonths": {
+														"type": "integer",
+														"exclusiveMinimum": 0,
+														"maximum": 9007199254740991
+													},
+													"originatedOn": {
+														"description": "Defaults to acquiredOn.",
+														"type": "string",
+														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+													},
+													"amount": {
+														"description": "Monthly payment. Defaults to the level payment: calculateLoanPayment(principal, annualRate, termMonths).",
+														"type": "number",
+														"minimum": 0
+													},
+													"name": {
+														"type": "string",
+														"minLength": 1
+													},
+													"category": {
+														"type": "string",
+														"minLength": 1
+													}
+												},
+												"required": [
+													"principal",
+													"annualRate",
+													"termMonths"
+												]
+											}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"kind",
+											"cost",
+											"acquiredOn"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "investment"
+											},
+											"instrument": {
+												"type": "string",
+												"minLength": 1
+											},
+											"symbol": {
+												"type": "string"
+											},
+											"units": {
+												"type": "number"
+											},
+											"costBasis": {
+												"type": "number",
+												"minimum": 0
+											},
+											"marketValue": {
+												"type": "number",
+												"minimum": 0
+											},
+											"valuedAsOf": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"expectedAnnualReturn": {
+												"type": "number"
+											},
+											"currency": {
+												"type": "string",
+												"minLength": 1
+											},
+											"paidFrom": {
+												"type": "object",
+												"properties": {
+													"assetId": {
+														"description": "Cash asset to pay from. Takes precedence over entityId.",
+														"type": "string",
+														"minLength": 1
+													},
+													"entityId": {
+														"description": "Entity whose default cash asset pays. Defaults to the asset's entity.",
+														"type": "string",
+														"minLength": 1
+													},
+													"date": {
+														"description": "Defaults to acquiredOn (fixed) or valuedAsOf (investment).",
+														"type": "string",
+														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+													},
+													"amount": {
+														"description": "Defaults to marketValue (investment) or cost (fixed). A financed fixed asset pays cost minus financing.principal (the down payment).",
+														"type": "number",
+														"minimum": 0
+													}
+												}
+											}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"kind",
+											"instrument"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/assets/{id}": {
+			"get": {
+				"operationId": "getAsset",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get an asset",
+				"responses": {
+					"200": {
+						"description": "The asset.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Asset"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"patch": {
+				"operationId": "updateAsset",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update an asset",
+				"description": "Partial update. `kind` and `entityId` cannot change.",
+				"responses": {
+					"200": {
+						"description": "Asset updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Asset"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1448,118 +2613,193 @@
 							"schema": {
 								"type": "object",
 								"properties": {
-									"entityId": {
-										"type": "string",
-										"description": "Owning `EntityAccount.id`."
-									},
-									"name": {
-										"type": "string"
-									},
-									"cost": {
-										"type": "number"
-									},
-									"lifespanMonths": {
+									"version": {
+										"description": "Stored version the caller last read; a mismatch returns 409.",
 										"type": "integer",
-										"minimum": -9007199254740991,
+										"minimum": 1,
 										"maximum": 9007199254740991
 									},
-									"purchaseDate": {
+									"name": {
 										"type": "string",
-										"description": "`YYYY-MM-DD` or `YYYY-MM`."
-									},
-									"salvageValue": {
-										"type": "number"
+										"minLength": 1
 									},
 									"category": {
-										"type": "string"
+										"type": "string",
+										"minLength": 1
+									},
+									"active": {
+										"type": [
+											"boolean",
+											"null"
+										]
+									},
+									"notes": {
+										"type": [
+											"string",
+											"null"
+										]
 									},
 									"imageUrl": {
-										"type": "string"
+										"type": [
+											"string",
+											"null"
+										]
+									},
+									"details": {
+										"anyOf": [
+											{
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"balance": {
+										"anyOf": [
+											{
+												"description": "Defaults to 0.",
+												"type": "number"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"balanceAsOf": {
+										"anyOf": [
+											{
+												"description": "Defaults to the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"currency": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
 									},
 									"isDefault": {
-										"type": "boolean"
+										"type": [
+											"boolean",
+											"null"
+										]
 									},
-									"id": {
-										"type": "string"
+									"cost": {
+										"type": "number",
+										"minimum": 0
+									},
+									"acquiredOn": {
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+									},
+									"depreciationMethod": {
+										"anyOf": [
+											{
+												"type": "string",
+												"enum": [
+													"straight_line",
+													"none"
+												]
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"usefulLifeMonths": {
+										"anyOf": [
+											{
+												"type": "integer",
+												"exclusiveMinimum": 0,
+												"maximum": 9007199254740991
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"salvageValue": {
+										"anyOf": [
+											{
+												"type": "number",
+												"minimum": 0
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"instrument": {
+										"type": "string",
+										"minLength": 1
+									},
+									"symbol": {
+										"type": [
+											"string",
+											"null"
+										]
+									},
+									"units": {
+										"type": [
+											"number",
+											"null"
+										]
+									},
+									"costBasis": {
+										"anyOf": [
+											{
+												"type": "number",
+												"minimum": 0
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"marketValue": {
+										"anyOf": [
+											{
+												"type": "number",
+												"minimum": 0
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"valuedAsOf": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"expectedAnnualReturn": {
+										"type": [
+											"number",
+											"null"
+										]
 									}
-								},
-								"required": [
-									"entityId",
-									"name",
-									"cost",
-									"lifespanMonths",
-									"purchaseDate",
-									"category"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/v1/accounting/assets/{id}": {
-			"put": {
-				"operationId": "updateAsset",
-				"tags": [
-					"Accounting"
-				],
-				"summary": "Update asset",
-				"responses": {
-					"200": {
-						"description": "Asset updated.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/HardwareAsset"
 								}
-							}
-						}
-					},
-					"400": {
-						"description": "Validation Error",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				},
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/HardwareAsset"
 							}
 						}
 					}
@@ -1580,7 +2820,8 @@
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Delete asset",
+				"summary": "Delete an asset",
+				"description": "Deleting the default cash asset promotes the oldest remaining cash asset of the entity.",
 				"responses": {
 					"200": {
 						"description": "Asset deleted.",
@@ -1592,8 +2833,38 @@
 							}
 						}
 					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1616,19 +2887,22 @@
 			}
 		},
 		"/api/v1/accounting/incomes": {
-			"post": {
-				"operationId": "createIncome",
+			"get": {
+				"operationId": "listIncomes",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Add an income stream",
+				"summary": "List incomes",
 				"responses": {
-					"201": {
-						"description": "Income created.",
+					"200": {
+						"description": "Incomes.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/RevenueStream"
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/Income"
+									}
 								}
 							}
 						}
@@ -1663,6 +2937,627 @@
 					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "kind",
+						"schema": {
+							"type": "string",
+							"enum": [
+								"employment",
+								"business",
+								"investment",
+								"other"
+							]
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "createIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Create an income",
+				"description": "`employment` only for kind employment; `sourceAssetId` only for kind investment.",
+				"responses": {
+					"201": {
+						"description": "Income created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Income"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"oneOf": [
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"amount": {
+												"type": "number",
+												"minimum": 0
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"taxCategory": {
+												"type": "string",
+												"enum": [
+													"40_1",
+													"40_2",
+													"40_3",
+													"40_4",
+													"40_5",
+													"40_6",
+													"40_7",
+													"40_8"
+												]
+											},
+											"depositAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "employment"
+											},
+											"employment": {
+												"type": "object",
+												"properties": {
+													"employer": {
+														"type": "string"
+													},
+													"title": {
+														"type": "string"
+													}
+												}
+											},
+											"sourceAssetId": {}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"amount",
+											"kind"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"amount": {
+												"type": "number",
+												"minimum": 0
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"taxCategory": {
+												"type": "string",
+												"enum": [
+													"40_1",
+													"40_2",
+													"40_3",
+													"40_4",
+													"40_5",
+													"40_6",
+													"40_7",
+													"40_8"
+												]
+											},
+											"depositAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "business"
+											},
+											"employment": {},
+											"sourceAssetId": {}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"amount",
+											"kind"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"amount": {
+												"type": "number",
+												"minimum": 0
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"taxCategory": {
+												"type": "string",
+												"enum": [
+													"40_1",
+													"40_2",
+													"40_3",
+													"40_4",
+													"40_5",
+													"40_6",
+													"40_7",
+													"40_8"
+												]
+											},
+											"depositAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "investment"
+											},
+											"employment": {},
+											"sourceAssetId": {
+												"description": "Asset that generates the income (dividends, rent, interest).",
+												"type": "string",
+												"minLength": 1
+											}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"amount",
+											"kind"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"amount": {
+												"type": "number",
+												"minimum": 0
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"taxCategory": {
+												"type": "string",
+												"enum": [
+													"40_1",
+													"40_2",
+													"40_3",
+													"40_4",
+													"40_5",
+													"40_6",
+													"40_7",
+													"40_8"
+												]
+											},
+											"depositAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "other"
+											},
+											"employment": {},
+											"sourceAssetId": {}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"amount",
+											"kind"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/incomes/{id}": {
+			"get": {
+				"operationId": "getIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get an income",
+				"responses": {
+					"200": {
+						"description": "The income.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Income"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"patch": {
+				"operationId": "updateIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update an income",
+				"responses": {
+					"200": {
+						"description": "Income updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Income"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1679,133 +3574,155 @@
 							"schema": {
 								"type": "object",
 								"properties": {
-									"entityId": {
-										"type": "string",
-										"description": "Owning `EntityAccount.id`."
+									"version": {
+										"description": "Stored version the caller last read; a mismatch returns 409.",
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 9007199254740991
 									},
 									"name": {
-										"type": "string"
+										"type": "string",
+										"minLength": 1
+									},
+									"category": {
+										"type": "string",
+										"minLength": 1
 									},
 									"amount": {
-										"type": "number"
+										"type": "number",
+										"minimum": 0
 									},
-									"frequency": {
-										"type": "string",
-										"enum": [
-											"monthly",
-											"yearly",
-											"one_time"
+									"cycle": {
+										"anyOf": [
+											{
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											{
+												"type": "null"
+											}
 										]
 									},
-									"source": {
-										"type": "string",
-										"enum": [
-											"stripe",
-											"bank_transfer",
-											"cash",
-											"freelance",
-											"salary",
-											"other"
+									"dayOfMonth": {
+										"anyOf": [
+											{
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"startMonth": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"endMonth": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"taxCategory": {
+										"anyOf": [
+											{
+												"type": "string",
+												"enum": [
+													"40_1",
+													"40_2",
+													"40_3",
+													"40_4",
+													"40_5",
+													"40_6",
+													"40_7",
+													"40_8"
+												]
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"depositAssetId": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
 										]
 									},
 									"active": {
-										"type": "boolean"
-									},
-									"startMonth": {
-										"description": "`YYYY-MM`.",
-										"type": "string"
-									},
-									"endMonth": {
-										"description": "`YYYY-MM`.",
-										"type": "string"
+										"type": [
+											"boolean",
+											"null"
+										]
 									},
 									"notes": {
-										"type": "string"
+										"type": [
+											"string",
+											"null"
+										]
 									},
 									"imageUrl": {
-										"type": "string"
+										"type": [
+											"string",
+											"null"
+										]
 									},
-									"id": {
-										"type": "string"
+									"details": {
+										"anyOf": [
+											{
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"employment": {
+										"type": "object",
+										"properties": {
+											"employer": {
+												"type": "string"
+											},
+											"title": {
+												"type": "string"
+											}
+										}
+									},
+									"sourceAssetId": {
+										"type": "string",
+										"minLength": 1
 									}
-								},
-								"required": [
-									"entityId",
-									"name",
-									"amount",
-									"frequency",
-									"source",
-									"active"
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		"/api/v1/accounting/incomes/{id}": {
-			"put": {
-				"operationId": "updateIncome",
-				"tags": [
-					"Accounting"
-				],
-				"summary": "Update income stream",
-				"responses": {
-					"200": {
-						"description": "Income updated.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/RevenueStream"
 								}
-							}
-						}
-					},
-					"400": {
-						"description": "Validation Error",
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/Error"
-								}
-							}
-						}
-					}
-				},
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RevenueStream"
 							}
 						}
 					}
@@ -1826,7 +3743,7 @@
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Delete income stream",
+				"summary": "Delete an income",
 				"responses": {
 					"200": {
 						"description": "Income deleted.",
@@ -1838,8 +3755,38 @@
 							}
 						}
 					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1867,48 +3814,66 @@
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Set career salary and title",
+				"summary": "Set the career salary",
+				"description": "Updates the entity's primary employment income (earliest startMonth), or creates one when `salary > 0`. A salary of 0 deactivates the primary income.",
 				"responses": {
 					"200": {
-						"description": "Career updated.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/BizSnapshot"
-								}
-							}
-						}
-					},
-					"400": {
-						"description": "Validation Error",
+						"description": "Primary income, or null when none exists.",
 						"content": {
 							"application/json": {
 								"schema": {
 									"type": "object",
 									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
+										"income": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Income"
+												},
+												{
+													"type": "null"
+												}
 											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
+										}
 									},
 									"required": [
-										"success",
-										"error",
-										"data"
+										"income"
 									]
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}
 					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1926,7 +3891,8 @@
 								"type": "object",
 								"properties": {
 									"entityId": {
-										"type": "string"
+										"type": "string",
+										"minLength": 1
 									},
 									"salary": {
 										"type": "number",
@@ -1947,10 +3913,35 @@
 										"type": "string"
 									},
 									"startMonth": {
-										"type": "string"
+										"description": "`YYYY-MM`. Empty string keeps the existing start month.",
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "string",
+												"const": ""
+											}
+										]
 									},
 									"endMonth": {
-										"type": "string"
+										"description": "`YYYY-MM`. Empty string clears the end month.",
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "string",
+												"const": ""
+											}
+										]
+									},
+									"asOf": {
+										"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
 									}
 								},
 								"required": [
@@ -1963,20 +3954,23 @@
 				}
 			}
 		},
-		"/api/v1/accounting/liabilities": {
-			"post": {
-				"operationId": "createLiability",
+		"/api/v1/accounting/expenses": {
+			"get": {
+				"operationId": "listExpenses",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Add a liability debt stream",
+				"summary": "List expenses",
 				"responses": {
-					"201": {
-						"description": "Liability created.",
+					"200": {
+						"description": "Expenses.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/LiabilityStream"
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/Expense"
+									}
 								}
 							}
 						}
@@ -2011,6 +4005,74 @@
 					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "createExpense",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Create an expense",
+				"responses": {
+					"201": {
+						"description": "Expense created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Expense"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2027,31 +4089,74 @@
 							"schema": {
 								"type": "object",
 								"properties": {
+									"id": {
+										"type": "string",
+										"format": "uuid",
+										"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+									},
 									"entityId": {
 										"type": "string",
-										"description": "Owning `EntityAccount.id`."
+										"minLength": 1
+									},
+									"asOf": {
+										"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
 									},
 									"name": {
-										"type": "string"
-									},
-									"amount": {
-										"type": "number",
-										"description": "Monthly payment."
+										"type": "string",
+										"minLength": 1
 									},
 									"category": {
 										"type": "string",
-										"description": "`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string."
+										"minLength": 1
+									},
+									"amount": {
+										"type": "number",
+										"minimum": 0
+									},
+									"cycle": {
+										"type": "string",
+										"enum": [
+											"weekly",
+											"monthly",
+											"quarterly",
+											"semi-annual",
+											"yearly",
+											"one_time"
+										]
+									},
+									"dayOfMonth": {
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 31
+									},
+									"startMonth": {
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}$"
+									},
+									"endMonth": {
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}$"
+									},
+									"paidFromAssetId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"paidFromLiabilityId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"assetId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"incomeId": {
+										"type": "string",
+										"minLength": 1
 									},
 									"active": {
 										"type": "boolean"
-									},
-									"startMonth": {
-										"description": "`YYYY-MM`. First month due.",
-										"type": "string"
-									},
-									"endMonth": {
-										"description": "`YYYY-MM`. Last month due; absent = open-ended.",
-										"type": "string"
 									},
 									"notes": {
 										"type": "string"
@@ -2059,16 +4164,19 @@
 									"imageUrl": {
 										"type": "string"
 									},
-									"id": {
-										"type": "string"
+									"details": {
+										"type": "object",
+										"propertyNames": {
+											"type": "string"
+										},
+										"additionalProperties": {}
 									}
 								},
 								"required": [
 									"entityId",
 									"name",
-									"amount",
 									"category",
-									"active"
+									"amount"
 								]
 							}
 						}
@@ -2076,20 +4184,370 @@
 				}
 			}
 		},
-		"/api/v1/accounting/liabilities/{id}": {
-			"put": {
-				"operationId": "updateLiability",
+		"/api/v1/accounting/expenses/{id}": {
+			"get": {
+				"operationId": "getExpense",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Update liability",
+				"summary": "Get an expense",
 				"responses": {
 					"200": {
-						"description": "Liability updated.",
+						"description": "The expense.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/LiabilityStream"
+									"$ref": "#/components/schemas/Expense"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"patch": {
+				"operationId": "updateExpense",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update an expense",
+				"responses": {
+					"200": {
+						"description": "Expense updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Expense"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"version": {
+										"description": "Stored version the caller last read; a mismatch returns 409.",
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 9007199254740991
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1
+									},
+									"category": {
+										"type": "string",
+										"minLength": 1
+									},
+									"amount": {
+										"type": "number",
+										"minimum": 0
+									},
+									"cycle": {
+										"anyOf": [
+											{
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"dayOfMonth": {
+										"anyOf": [
+											{
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"startMonth": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"endMonth": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"paidFromAssetId": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"paidFromLiabilityId": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"assetId": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"incomeId": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"active": {
+										"type": [
+											"boolean",
+											"null"
+										]
+									},
+									"notes": {
+										"type": [
+											"string",
+											"null"
+										]
+									},
+									"imageUrl": {
+										"type": [
+											"string",
+											"null"
+										]
+									},
+									"details": {
+										"anyOf": [
+											{
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											{
+												"type": "null"
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteExpense",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete an expense",
+				"responses": {
+					"200": {
+						"description": "Expense deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/liabilities": {
+			"get": {
+				"operationId": "listLiabilities",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "List liabilities",
+				"responses": {
+					"200": {
+						"description": "Liabilities.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/Liability"
+									}
 								}
 							}
 						}
@@ -2133,12 +4591,708 @@
 						}
 					}
 				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "kind",
+						"schema": {
+							"type": "string",
+							"enum": [
+								"loan",
+								"revolving",
+								"other"
+							]
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "createLiability",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Create a liability",
+				"description": "Body discriminated by `kind`. A loan without `amount` is paid at its level payment, calculateLoanPayment(principal, annualRate, termMonths), and its payments start in the origination month unless `startMonth` is given.",
+				"responses": {
+					"201": {
+						"description": "Liability created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Liability"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/LiabilityStream"
+								"oneOf": [
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"paidFromAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "loan"
+											},
+											"amount": {
+												"description": "Monthly payment. Defaults to the level payment: calculateLoanPayment(principal, annualRate, termMonths).",
+												"type": "number",
+												"minimum": 0
+											},
+											"loan": {
+												"type": "object",
+												"properties": {
+													"principal": {
+														"type": "number",
+														"minimum": 0
+													},
+													"annualRate": {
+														"description": "Defaults to 0 (0% installment plan).",
+														"type": "number",
+														"minimum": 0
+													},
+													"termMonths": {
+														"type": "integer",
+														"exclusiveMinimum": 0,
+														"maximum": 9007199254740991
+													},
+													"originatedOn": {
+														"type": "string",
+														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+													},
+													"financedAssetId": {
+														"type": "string",
+														"minLength": 1
+													},
+													"proceedsAssetId": {
+														"type": "string",
+														"minLength": 1
+													}
+												},
+												"required": [
+													"principal",
+													"termMonths",
+													"originatedOn"
+												]
+											},
+											"revolving": {}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"kind",
+											"loan"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"paidFromAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "revolving"
+											},
+											"amount": {
+												"type": "number",
+												"minimum": 0,
+												"description": "Monthly payment."
+											},
+											"revolving": {
+												"type": "object",
+												"properties": {
+													"creditLimit": {
+														"type": "number",
+														"minimum": 0
+													},
+													"balance": {
+														"description": "Defaults to 0.",
+														"type": "number"
+													},
+													"balanceAsOf": {
+														"description": "Defaults to the start month.",
+														"type": "string",
+														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+													},
+													"annualRate": {
+														"type": "number",
+														"minimum": 0
+													}
+												}
+											},
+											"loan": {}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"kind",
+											"amount",
+											"revolving"
+										]
+									},
+									{
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "string",
+												"format": "uuid",
+												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+											},
+											"entityId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"asOf": {
+												"description": "Client's current month or day. Default month for startMonth; otherwise the UTC month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"category": {
+												"type": "string",
+												"minLength": 1
+											},
+											"cycle": {
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											"dayOfMonth": {
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											"startMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"endMonth": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											"paidFromAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"notes": {
+												"type": "string"
+											},
+											"imageUrl": {
+												"type": "string"
+											},
+											"details": {
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											"kind": {
+												"type": "string",
+												"const": "other"
+											},
+											"amount": {
+												"type": "number",
+												"minimum": 0
+											},
+											"loan": {},
+											"revolving": {}
+										},
+										"required": [
+											"entityId",
+											"name",
+											"category",
+											"kind",
+											"amount"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/liabilities/{id}": {
+			"get": {
+				"operationId": "getLiability",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get a liability",
+				"responses": {
+					"200": {
+						"description": "The liability.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Liability"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"patch": {
+				"operationId": "updateLiability",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update a liability",
+				"description": "Partial update. `loan` and `revolving` merge shallowly onto the stored details.",
+				"responses": {
+					"200": {
+						"description": "Liability updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Liability"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"version": {
+										"description": "Stored version the caller last read; a mismatch returns 409.",
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 9007199254740991
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1
+									},
+									"category": {
+										"type": "string",
+										"minLength": 1
+									},
+									"cycle": {
+										"anyOf": [
+											{
+												"type": "string",
+												"enum": [
+													"weekly",
+													"monthly",
+													"quarterly",
+													"semi-annual",
+													"yearly",
+													"one_time"
+												]
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"dayOfMonth": {
+										"anyOf": [
+											{
+												"type": "integer",
+												"minimum": 1,
+												"maximum": 31
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"startMonth": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"endMonth": {
+										"anyOf": [
+											{
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}$"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"paidFromAssetId": {
+										"anyOf": [
+											{
+												"type": "string",
+												"minLength": 1
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"active": {
+										"type": [
+											"boolean",
+											"null"
+										]
+									},
+									"notes": {
+										"type": [
+											"string",
+											"null"
+										]
+									},
+									"imageUrl": {
+										"type": [
+											"string",
+											"null"
+										]
+									},
+									"details": {
+										"anyOf": [
+											{
+												"type": "object",
+												"propertyNames": {
+													"type": "string"
+												},
+												"additionalProperties": {}
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"amount": {
+										"type": "number",
+										"minimum": 0
+									},
+									"loan": {
+										"description": "Merged shallowly onto the stored loan details.",
+										"type": "object",
+										"properties": {
+											"principal": {
+												"type": "number",
+												"minimum": 0
+											},
+											"annualRate": {
+												"description": "Defaults to 0 (0% installment plan).",
+												"type": "number",
+												"minimum": 0
+											},
+											"termMonths": {
+												"type": "integer",
+												"exclusiveMinimum": 0,
+												"maximum": 9007199254740991
+											},
+											"originatedOn": {
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"financedAssetId": {
+												"type": "string",
+												"minLength": 1
+											},
+											"proceedsAssetId": {
+												"type": "string",
+												"minLength": 1
+											}
+										}
+									},
+									"revolving": {
+										"description": "Merged shallowly onto the stored revolving details.",
+										"type": "object",
+										"properties": {
+											"creditLimit": {
+												"type": "number",
+												"minimum": 0
+											},
+											"balance": {
+												"description": "Defaults to 0.",
+												"type": "number"
+											},
+											"balanceAsOf": {
+												"description": "Defaults to the start month.",
+												"type": "string",
+												"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+											},
+											"annualRate": {
+												"type": "number",
+												"minimum": 0
+											}
+										}
+									}
+								}
 							}
 						}
 					}
@@ -2159,7 +5313,7 @@
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Delete liability",
+				"summary": "Delete a liability",
 				"responses": {
 					"200": {
 						"description": "Liability deleted.",
@@ -2171,8 +5325,38 @@
 							}
 						}
 					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2194,54 +5378,167 @@
 				]
 			}
 		},
-		"/api/v1/accounting/transfers": {
-			"post": {
-				"operationId": "recordTransfer",
+		"/api/v1/accounting/liabilities/{id}/schedule": {
+			"get": {
+				"operationId": "getLiabilitySchedule",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Record capital transfer injection",
+				"summary": "Get a liability's month-by-month schedule",
+				"description": "Loans: payments, interest and principal per month, including extra-payment transfers. Revolving: opening balance, interest, card charges and payments per month. Liabilities of kind `other` have no schedule (400).",
 				"responses": {
-					"201": {
-						"description": "Transfer recorded.",
+					"200": {
+						"description": "Loan or revolving schedule.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/CapitalTransfer"
+									"oneOf": [
+										{
+											"$ref": "#/components/schemas/LoanSchedule"
+										},
+										{
+											"$ref": "#/components/schemas/RevolvingSchedule"
+										}
+									]
 								}
 							}
 						}
 					},
 					"400": {
-						"description": "Validation Error",
+						"description": "Validation error, or the liability has no schedule.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "object",
-									"properties": {
-										"success": {
-											"type": "boolean",
-											"enum": [
-												false
-											]
-										},
-										"error": {
-											"type": "array",
-											"items": {}
-										},
-										"data": {}
-									},
-									"required": [
-										"success",
-										"error",
-										"data"
-									]
+									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}
 					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Liability not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "through",
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}$"
+						},
+						"description": "Last month `YYYY-MM`. Loans default to the payoff month or the end of the term, whichever comes first (capped at 600 months). Revolving balances default to the current UTC month."
+					},
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/transfers": {
+			"get": {
+				"operationId": "listTransfers",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "List transfers",
+				"responses": {
+					"200": {
+						"description": "Transfers.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/Transfer"
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createTransfer",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Create a transfer",
+				"description": "Source: `fromAssetId` or `fromEntityId` (its default cash asset). Destination: exactly one of `toAssetId`, `toEntityId` (its default cash asset) or `toLiabilityId`.",
+				"responses": {
+					"201": {
+						"description": "Transfer created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Transfer"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2258,42 +5555,55 @@
 							"schema": {
 								"type": "object",
 								"properties": {
-									"fromEntityId": {
-										"type": "string"
-									},
-									"toEntityId": {
-										"type": "string"
+									"id": {
+										"type": "string",
+										"format": "uuid",
+										"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
 									},
 									"amount": {
-										"type": "number"
+										"type": "number",
+										"minimum": 0
 									},
 									"date": {
 										"type": "string",
-										"description": "`YYYY-MM-DD` or `YYYY-MM`."
+										"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
 									},
-									"note": {
-										"type": "string"
-									},
-									"targetAssetId": {
-										"type": "string"
-									},
-									"frequency": {
+									"cycle": {
 										"type": "string",
 										"enum": [
 											"one_time",
 											"monthly"
 										]
 									},
-									"id": {
+									"note": {
 										"type": "string"
+									},
+									"fromAssetId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"fromEntityId": {
+										"description": "Resolves to the entity's default cash asset.",
+										"type": "string",
+										"minLength": 1
+									},
+									"toAssetId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"toEntityId": {
+										"description": "Resolves to the entity's default cash asset.",
+										"type": "string",
+										"minLength": 1
+									},
+									"toLiabilityId": {
+										"type": "string",
+										"minLength": 1
 									}
 								},
 								"required": [
-									"fromEntityId",
-									"toEntityId",
 									"amount",
-									"date",
-									"note"
+									"date"
 								]
 							}
 						}
@@ -2302,25 +5612,35 @@
 			}
 		},
 		"/api/v1/accounting/transfers/{id}": {
-			"delete": {
-				"operationId": "deleteTransfer",
+			"get": {
+				"operationId": "getTransfer",
 				"tags": [
 					"Accounting"
 				],
-				"summary": "Delete capital transfer",
+				"summary": "Get a transfer",
 				"responses": {
 					"200": {
-						"description": "Transfer deleted.",
+						"description": "The transfer.",
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/Ok"
+									"$ref": "#/components/schemas/Transfer"
 								}
 							}
 						}
 					},
 					"401": {
 						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2338,6 +5658,266 @@
 						"in": "path",
 						"name": "id",
 						"required": true
+					}
+				]
+			},
+			"patch": {
+				"operationId": "updateTransfer",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update a transfer",
+				"description": "Partial update. Name a new source or destination to re-resolve that side.",
+				"responses": {
+					"200": {
+						"description": "Transfer updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Transfer"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"version": {
+										"description": "Stored version the caller last read; a mismatch returns 409.",
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 9007199254740991
+									},
+									"amount": {
+										"type": "number",
+										"minimum": 0
+									},
+									"date": {
+										"type": "string",
+										"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
+									},
+									"cycle": {
+										"type": "string",
+										"enum": [
+											"one_time",
+											"monthly"
+										]
+									},
+									"note": {
+										"type": "string"
+									},
+									"fromAssetId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"fromEntityId": {
+										"description": "Resolves to the entity's default cash asset.",
+										"type": "string",
+										"minLength": 1
+									},
+									"toAssetId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"toEntityId": {
+										"description": "Resolves to the entity's default cash asset.",
+										"type": "string",
+										"minLength": 1
+									},
+									"toLiabilityId": {
+										"type": "string",
+										"minLength": 1
+									}
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteTransfer",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete a transfer",
+				"responses": {
+					"200": {
+						"description": "Transfer deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Record not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Version conflict or duplicate id.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/summary": {
+			"get": {
+				"operationId": "getSummary",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get wealth metrics and balance sheet per entity and consolidated",
+				"description": "Per entity: wealth metrics and balance sheet at `month`. Consolidated: metrics plus the balance sheet summed over all entities.",
+				"responses": {
+					"200": {
+						"description": "Summary for the month.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Summary"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "month",
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}$"
+						},
+						"required": true,
+						"description": "`YYYY-MM`."
+					},
+					{
+						"in": "query",
+						"name": "asOf",
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+						},
+						"description": "Today (`YYYY-MM-DD`); current values are as of this day when inside `month`."
 					}
 				]
 			}
@@ -2399,7 +5979,7 @@
 						}
 					},
 					"404": {
-						"description": "Account not found.",
+						"description": "Entity not found.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2424,6 +6004,199 @@
 						"in": "path",
 						"name": "yearMonth",
 						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/cash-flows": {
+			"get": {
+				"operationId": "getCashFlows",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get the cash-flow feed for a month",
+				"description": "Dated money movements of one entity (default: personal) for one month. `direction` filters `items`; `totals` (moneyIn, moneyOut, spending) always cover every item.",
+				"responses": {
+					"200": {
+						"description": "Cash-flow feed and totals.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CashFlowsResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Entity not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "month",
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}$"
+						},
+						"required": true,
+						"description": "`YYYY-MM`."
+					},
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						},
+						"description": "Defaults to the personal entity."
+					},
+					{
+						"in": "query",
+						"name": "direction",
+						"schema": {
+							"type": "string",
+							"enum": [
+								"in",
+								"out"
+							]
+						},
+						"description": "Filters `items` only; `totals` always cover every item."
+					},
+					{
+						"in": "query",
+						"name": "includeDepreciation",
+						"schema": {
+							"type": "string",
+							"enum": [
+								"true",
+								"false"
+							]
+						},
+						"description": "Adds non-cash depreciation items. Defaults to `false`."
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/projection": {
+			"get": {
+				"operationId": "getProjection",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get treasury balance per month around a centre month",
+				"responses": {
+					"200": {
+						"description": "Projection points and waterfall figures.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Projection"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Entity not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string"
+						},
+						"description": "Defaults to the personal entity."
+					},
+					{
+						"in": "query",
+						"name": "month",
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}$"
+						},
+						"description": "Centre month `YYYY-MM`. Defaults to the UTC month."
+					},
+					{
+						"in": "query",
+						"name": "pastMonths",
+						"schema": {
+							"type": "integer",
+							"minimum": 0,
+							"maximum": 120
+						}
+					},
+					{
+						"in": "query",
+						"name": "futureMonths",
+						"schema": {
+							"type": "integer",
+							"minimum": 0,
+							"maximum": 120
+						}
+					},
+					{
+						"in": "query",
+						"name": "asOf",
+						"schema": {
+							"type": "string",
+							"pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+						}
 					}
 				]
 			}

@@ -46,7 +46,7 @@ export const documentation = {
 			"and falls back to a shared `default` bucket.",
 	},
 	tags: [
-		{ name: "Accounting", description: "The per-user accounting snapshot: accounts, expenses, assets, incomes, liabilities and transfers." },
+		{ name: "Accounting", description: "Per-resource accounting API: entities, assets, incomes, expenses, liabilities and transfers, plus computed summary (wealth and balance sheet), ledger, cash-flows, liability schedules and projection." },
 		{ name: "Plan", description: "The user's financial plan document." },
 		{ name: "Settings", description: "Profile settings." },
 		{ name: "Simulation", description: "Stateless plan simulations." },

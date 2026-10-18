@@ -18,27 +18,42 @@ Examples use `$API_URL` for the API base URL and `$TOKEN` for your bearer token.
 | Method | Path | Summary |
 | --- | --- | --- |
 | `GET` | [`/health`](/docs/api/system) | Health check |
-| `GET` | [`/api/v1/accounting/snapshot`](/docs/api/accounting) | Get the full accounting snapshot |
-| `PUT` | [`/api/v1/accounting/snapshot`](/docs/api/accounting) | Replace the full accounting snapshot |
-| `POST` | [`/api/v1/accounting/accounts`](/docs/api/accounting) | Create a new business account |
-| `PUT` | [`/api/v1/accounting/accounts/{id}`](/docs/api/accounting) | Update account metadata |
-| `DELETE` | [`/api/v1/accounting/accounts/{id}`](/docs/api/accounting) | Delete account and cascade associated records |
-| `POST` | [`/api/v1/accounting/expenses`](/docs/api/accounting) | Add a recurring expense |
-| `PUT` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Update recurring expense |
-| `DELETE` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Delete recurring expense |
-| `POST` | [`/api/v1/accounting/assets`](/docs/api/accounting) | Add an asset |
-| `PUT` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Update asset |
-| `DELETE` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Delete asset |
-| `POST` | [`/api/v1/accounting/incomes`](/docs/api/accounting) | Add an income stream |
-| `PUT` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Update income stream |
-| `DELETE` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Delete income stream |
-| `POST` | [`/api/v1/accounting/incomes/career`](/docs/api/accounting) | Set career salary and title |
-| `POST` | [`/api/v1/accounting/liabilities`](/docs/api/accounting) | Add a liability debt stream |
-| `PUT` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Update liability |
-| `DELETE` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Delete liability |
-| `POST` | [`/api/v1/accounting/transfers`](/docs/api/accounting) | Record capital transfer injection |
-| `DELETE` | [`/api/v1/accounting/transfers/{id}`](/docs/api/accounting) | Delete capital transfer |
+| `GET` | [`/api/v1/accounting/entities`](/docs/api/accounting) | List entities |
+| `POST` | [`/api/v1/accounting/entities`](/docs/api/accounting) | Create a business entity |
+| `GET` | [`/api/v1/accounting/entities/{id}`](/docs/api/accounting) | Get an entity |
+| `PATCH` | [`/api/v1/accounting/entities/{id}`](/docs/api/accounting) | Update an entity |
+| `DELETE` | [`/api/v1/accounting/entities/{id}`](/docs/api/accounting) | Delete a business entity |
+| `GET` | [`/api/v1/accounting/assets`](/docs/api/accounting) | List assets |
+| `POST` | [`/api/v1/accounting/assets`](/docs/api/accounting) | Create an asset |
+| `GET` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Get an asset |
+| `PATCH` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Update an asset |
+| `DELETE` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Delete an asset |
+| `GET` | [`/api/v1/accounting/incomes`](/docs/api/accounting) | List incomes |
+| `POST` | [`/api/v1/accounting/incomes`](/docs/api/accounting) | Create an income |
+| `GET` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Get an income |
+| `PATCH` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Update an income |
+| `DELETE` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Delete an income |
+| `POST` | [`/api/v1/accounting/incomes/career`](/docs/api/accounting) | Set the career salary |
+| `GET` | [`/api/v1/accounting/expenses`](/docs/api/accounting) | List expenses |
+| `POST` | [`/api/v1/accounting/expenses`](/docs/api/accounting) | Create an expense |
+| `GET` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Get an expense |
+| `PATCH` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Update an expense |
+| `DELETE` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Delete an expense |
+| `GET` | [`/api/v1/accounting/liabilities`](/docs/api/accounting) | List liabilities |
+| `POST` | [`/api/v1/accounting/liabilities`](/docs/api/accounting) | Create a liability |
+| `GET` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Get a liability |
+| `PATCH` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Update a liability |
+| `DELETE` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Delete a liability |
+| `GET` | [`/api/v1/accounting/liabilities/{id}/schedule`](/docs/api/accounting) | Get a liability's month-by-month schedule |
+| `GET` | [`/api/v1/accounting/transfers`](/docs/api/accounting) | List transfers |
+| `POST` | [`/api/v1/accounting/transfers`](/docs/api/accounting) | Create a transfer |
+| `GET` | [`/api/v1/accounting/transfers/{id}`](/docs/api/accounting) | Get a transfer |
+| `PATCH` | [`/api/v1/accounting/transfers/{id}`](/docs/api/accounting) | Update a transfer |
+| `DELETE` | [`/api/v1/accounting/transfers/{id}`](/docs/api/accounting) | Delete a transfer |
+| `GET` | [`/api/v1/accounting/summary`](/docs/api/accounting) | Get wealth metrics and balance sheet per entity and consolidated |
 | `GET` | [`/api/v1/accounting/ledger/{yearMonth}`](/docs/api/accounting) | Get computed monthly ledger |
+| `GET` | [`/api/v1/accounting/cash-flows`](/docs/api/accounting) | Get the cash-flow feed for a month |
+| `GET` | [`/api/v1/accounting/projection`](/docs/api/accounting) | Get treasury balance per month around a centre month |
 | `GET` | [`/api/v1/auth/me`](/docs/api/auth) | Current session |
 | `GET` | [`/api/v1/catalog/suggest`](/docs/api/catalog) | Search the catalog |
 | `POST` | [`/api/v1/catalog/resolve`](/docs/api/catalog) | Resolve autofill values |

@@ -56,8 +56,7 @@ apps/biz-mobile/features/
 │       ├── business_input_validation_guards.feature              [@P2 @validation]
 │       ├── autofill_manual_touch_protection.feature              [@P2 @autofill]
 │       ├── cancel_deletion_safety.feature                        [@P2 @safety]
-│       ├── bilingual_language_toggle.feature                     [@P2 @i18n]
-│       └── json_data_portability.feature                         [@P2 @portability]
+│       └── bilingual_language_toggle.feature                     [@P2 @i18n]
 │
 ├── wealth_management/
 │   ├── p0/                              # 🔥 Master Core Journeys (Multi-step integration)

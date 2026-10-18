@@ -2,6 +2,7 @@ import {
 	calculateAssetDepreciation,
 	calculateCashAssetBalance,
 	calculateDerivedTreasury,
+	calculateMonthlyEquivalent,
 	calculateRunway,
 	generateMonthlyLedger,
 	isCashAsset,
@@ -14,8 +15,10 @@ import {
 	type RevenueStream,
 } from "@excited-live/biz";
 import type {
+	CashWalletViewModel,
 	ConsolidatedWealthMetrics,
 	EntityWealthMetrics,
+	GearAssetViewModel,
 } from "./types";
 
 /**
@@ -173,6 +176,91 @@ export function calculateConsolidatedWealthMetrics(params: {
 	};
 }
 
+export const calculateConsolidatedWealth = calculateConsolidatedWealthMetrics;
+
+/**
+ * Pure ViewModel Selector: transforms raw cash hardware entries into rich CashWalletViewModels.
+ * Strictly separates Stock (current balance in hand today) from Flow (net monthly operating cash).
+ */
+export function selectCashWalletViewModels(params: {
+	account: EntityAccount;
+	hardware: HardwareAsset[];
+	transfers: CapitalTransfer[];
+	subscriptions: RecurringSubscription[];
+	revenues: RevenueStream[];
+	liabilities: LiabilityStream[];
+	yearMonth?: string;
+}): CashWalletViewModel[] {
+	const {
+		account,
+		hardware,
+		transfers,
+		subscriptions,
+		revenues,
+		liabilities,
+		yearMonth = "2026-10",
+	} = params;
+
+	const cashAssets = hardware.filter((h) => h.entityId === account.id && isCashAsset(h));
+
+	return cashAssets.map((asset) => {
+		const bal = calculateCashAssetBalance({
+			asset,
+			hardware,
+			transfers,
+			account,
+			subscriptions,
+			revenues,
+			liabilities,
+			yearMonth,
+		});
+
+		return {
+			id: asset.id,
+			name: asset.name,
+			openingBalance: bal.baseCost,
+			transfers: bal.assetInjections,
+			currentBalance: bal.currentCashOnHand,
+			monthlyNetFlow: bal.netOperatingCash,
+			projectedEomBalance: bal.effectiveBalance,
+			isDefault: bal.isDefault,
+			imageUrl: asset.imageUrl,
+			raw: asset,
+		};
+	});
+}
+
+/**
+ * Pure ViewModel Selector: transforms raw gear hardware into rich GearAssetViewModels with depreciation math.
+ */
+export function selectGearAssetViewModels(params: {
+	account: EntityAccount;
+	hardware: HardwareAsset[];
+	yearMonth?: string;
+}): GearAssetViewModel[] {
+	const { account, hardware, yearMonth = "2026-10" } = params;
+
+	const gearAssets = hardware.filter((h) => h.entityId === account.id && !isCashAsset(h));
+
+	return gearAssets.map((asset) => {
+		const dep = calculateAssetDepreciation(asset, yearMonth);
+		return {
+			id: asset.id,
+			name: asset.name,
+			category: asset.category,
+			cost: asset.cost,
+			purchaseDate: asset.purchaseDate,
+			lifespanMonths: asset.lifespanMonths,
+			remainingBookValue: dep.remainingBookValue,
+			monthlyDepreciation: dep.monthlyRate,
+			isFullyDepreciated: dep.isFullyDepreciated,
+			completionDate: dep.completionDate,
+			imageUrl: asset.imageUrl,
+			raw: asset,
+		};
+	});
+}
+
 /**
  * Calculates human-readable payday countdown label for a given day of the month.
  */
@@ -245,49 +333,52 @@ export function calculateProjectionBalances(params: {
 			liabilities,
 		}).summary.netCashFlow;
 
-	const baselineLedger = generateMonthlyLedger({
-		account,
-		yearMonth,
-		subscriptions,
-		hardware,
-		revenues,
-		transfers,
-		liabilities,
-	});
+	const entityRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
+	const hasSalaryStream = entityRevenues.some((r) => r.source === "salary");
+	const legacySalary = !hasSalaryStream && account.type === "personal" ? (account.salary ?? 0) : 0;
+	const totalIncome = round2(
+		legacySalary +
+			entityRevenues
+				.filter((r) => r.frequency === "monthly")
+				.reduce((acc, r) => acc + r.amount, 0),
+	);
+	const totalExpense = round2(
+		subscriptions
+			.filter((s) => s.entityId === account.id && s.active)
+			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0),
+	);
+	const liabilityMonthly = round2(
+		liabilities
+			.filter((l) => l.entityId === account.id && l.active)
+			.reduce((acc, l) => acc + l.amount, 0),
+	);
+	const projectedNet = round2(totalIncome - totalExpense - liabilityMonthly);
 
 	const offsets: number[] = [];
-	for (let i = -pastMonths; i <= futureMonths; i++) {
-		offsets.push(i);
-	}
+	for (let m = -pastMonths; m <= futureMonths; m++) offsets.push(m);
 
 	const balances = new Map<number, number>();
-	let running = account.cashReserve;
-	for (let i = -pastMonths; i <= futureMonths; i++) {
-		const targetYm = shiftYearMonth(yearMonth, i);
-		if (i === 0) {
-			running = baselineLedger.summary.endingTreasury;
-		} else if (i < 0) {
-			const pastNet = netOf(targetYm);
-			running = round2(running - pastNet);
-		} else {
-			const futureNet = netOf(targetYm);
-			running = round2(running + futureNet);
-		}
-		balances.set(i, running);
+	balances.set(0, account.cashReserve);
+
+	for (let m = -1; m >= -pastMonths; m--) {
+		balances.set(
+			m,
+			round2((balances.get(m + 1) ?? 0) - netOf(shiftYearMonth(yearMonth, m + 1), { ...account, salary: undefined })),
+		);
+	}
+
+	for (let m = 1; m <= futureMonths; m++) {
+		const ym = shiftYearMonth(yearMonth, m);
+		const ledgerNet = netOf(ym, account);
+		balances.set(m, round2((balances.get(m - 1) ?? 0) + ledgerNet));
 	}
 
 	return {
 		offsets,
 		balances,
-		totalIncome: baselineLedger.summary.totalInflow,
-		totalExpense: baselineLedger.summary.totalCashOutflow,
-		liabilityMonthly: round2(
-			liabilities
-				.filter((l) => l.entityId === account.id && l.active)
-				.reduce((acc, l) => acc + l.amount, 0),
-		),
-		projectedNet: baselineLedger.summary.netCashFlow,
+		totalIncome,
+		totalExpense,
+		liabilityMonthly,
+		projectedNet,
 	};
 }
-
-export const calculateConsolidatedWealth = calculateConsolidatedWealthMetrics;

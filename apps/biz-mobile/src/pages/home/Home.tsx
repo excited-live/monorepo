@@ -2,12 +2,15 @@ import React from "react";
 import { Stack } from "@excited-live/design-system";
 import { AddBusinessDrawer } from "../../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../../components/AddRevenueDrawer";
+import { AddExpenseDrawer } from "../management/components/AddExpenseDrawer";
+import { AddGearDrawer } from "../management/components/AddGearDrawer";
+import { AddLiabilityDrawer } from "../management/components/AddLiabilityDrawer";
 import {
 	CareerDrawer,
 	HomeAppSection,
-	HomeCareerOnboarding,
 	HomeEntitiesSection,
 	HomeHeroBackground,
+	HomeOnboardingChecklist,
 	HomeTreasuryPanel,
 } from "./components";
 import { useHome } from "./hooks";
@@ -20,7 +23,6 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 	const {
 		accounts,
 		lang,
-		needsCareer,
 		totalTreasury,
 		totalEomTreasury,
 		personalCash,
@@ -39,8 +41,28 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 		setIsCareerOpen,
 		careerStream,
 		setCareerStream,
+		isExpenseOpen,
+		setIsExpenseOpen,
+		isGearOpen,
+		setIsGearOpen,
+		selectedGear,
+		setSelectedGear,
+		isLiabilityOpen,
+		setIsLiabilityOpen,
 		setActiveEntityId,
 		setActiveTab,
+		isWalletDone,
+		isCareerDone,
+		isExpenseDone,
+		isAssetsDone,
+		isLiabilityDone,
+		isBusinessDone,
+		handleOpenWalletEdit,
+		handleOpenAddExpense,
+		handleOpenAddAssets,
+		handleOpenAddLiability,
+		handleSkipLiability,
+		handleOpenAddBusiness,
 	} = useHome();
 
 	const handleSelectAccount = (id: string) => {
@@ -65,30 +87,36 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 					lang={lang}
 				/>
 
+				{/* Onboarding Checklist — Guided step-by-step setup */}
+				<HomeOnboardingChecklist
+					onUpdatePersonalWallet={handleOpenWalletEdit}
+					onAddCareer={() => {
+						setActiveEntityId("acc_personal");
+						setIsCareerOpen(true);
+					}}
+					onAddExpense={handleOpenAddExpense}
+					onAddAssets={handleOpenAddAssets}
+					onAddLiability={handleOpenAddLiability}
+					onAddFirstBusiness={handleOpenAddBusiness}
+					isWalletDone={isWalletDone}
+					isCareerDone={isCareerDone}
+					isExpenseDone={isExpenseDone}
+					isAssetsDone={isAssetsDone}
+					isLiabilityDone={isLiabilityDone}
+					isBusinessDone={isBusinessDone}
+				/>
+
 				{/* Entities Section */}
 				<HomeEntitiesSection
 					accounts={accounts}
 					lang={lang}
-					onAddBusiness={() => {
-						setSelectedBiz(null);
-						setIsDrawerOpen(true);
-					}}
+					onAddBusiness={handleOpenAddBusiness}
 					onSelectAccount={handleSelectAccount}
 					onOpenCareerEdit={openCareerEdit}
 					eomTreasury={eomTreasury}
 					formatType={formatType}
 					calculatePaydayCountdown={calculatePaydayCountdown}
 				/>
-
-				{/* Onboarding — add career income when missing */}
-				{needsCareer && (
-					<HomeCareerOnboarding
-						onAddCareer={() => {
-							setActiveEntityId("acc_personal");
-							setIsCareerOpen(true);
-						}}
-					/>
-				)}
 			</HomeAppSection>
 
 			{/* Drawers */}
@@ -108,6 +136,24 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 					setCareerStream(null);
 				}}
 				initialData={careerStream}
+			/>
+			<AddExpenseDrawer
+				isOpen={isExpenseOpen}
+				onClose={() => setIsExpenseOpen(false)}
+			/>
+			<AddGearDrawer
+				isOpen={isGearOpen}
+				onClose={() => {
+					setIsGearOpen(false);
+					setSelectedGear(null);
+				}}
+				initialData={selectedGear}
+			/>
+			<AddLiabilityDrawer
+				isOpen={isLiabilityOpen}
+				onClose={() => setIsLiabilityOpen(false)}
+				canSkip={!isLiabilityDone}
+				onSkip={handleSkipLiability}
 			/>
 		</Stack>
 	);

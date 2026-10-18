@@ -15,7 +15,7 @@ export interface FinancesSlice {
 	revenues: RevenueStream[];
 	liabilities: LiabilityStream[];
 	transfers: CapitalTransfer[];
-	addBusiness: (name: string, imageUrl?: string, startingTreasury?: number) => string;
+	addBusiness: (name: string, imageUrl?: string) => string;
 	updateBusiness: (id: string, name: string, imageUrl?: string) => void;
 	deleteBusiness: (id: string) => void;
 	addSubscription: (sub: Omit<RecurringSubscription, "id">) => void;

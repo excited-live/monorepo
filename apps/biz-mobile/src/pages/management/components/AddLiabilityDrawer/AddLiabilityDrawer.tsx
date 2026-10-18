@@ -7,11 +7,21 @@ import type { LiabilityCategory, LiabilityStream } from "@excited-live/biz";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useBiz } from "../../../../state";
 
-export const AddLiabilityDrawer: React.FC<{
+export interface AddLiabilityDrawerProps {
 	isOpen: boolean;
 	onClose: () => void;
 	initialData?: LiabilityStream | null;
-}> = ({ isOpen, onClose, initialData }) => {
+	canSkip?: boolean;
+	onSkip?: () => void;
+}
+
+export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
+	isOpen,
+	onClose,
+	initialData,
+	canSkip,
+	onSkip,
+}) => {
 	const { activeEntityId, addLiability, updateLiability, deleteLiability, accounts } = useBiz();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
@@ -95,6 +105,20 @@ export const AddLiabilityDrawer: React.FC<{
 						isDisabled={!canSubmit}
 					/>
 
+					{canSkip && !isEditMode && (
+						<Button
+							label="I don't have any liabilities or debts"
+							variant="secondary"
+							size="lg"
+							width="100%"
+							className="h-12"
+							onClick={() => {
+								onSkip?.();
+								dismiss();
+							}}
+						/>
+					)}
+
 					{isEditMode && (
 						<Button label="Delete Liability" size="lg" variant="destructive" width="100%" onClick={handleDelete} />
 					)}
@@ -142,12 +166,12 @@ export const AddLiabilityDrawer: React.FC<{
 				/>
 
 				<FormField label="Monthly Payment (THB)">
-					<CurrencyInput placeholder="0.00" value={amount} onChange={setAmount} required />
+					<CurrencyInput placeholder="0.00" value={amount} onChange={setAmount} />
 				</FormField>
 
 				<InputField
 					label="Notes (Optional)"
-					placeholder="e.g. 24 months remaining, KBank"
+					placeholder="e.g. 3.2% interest, ends 2028"
 					value={notes}
 					onChange={(e) => setNotes(e.target.value)}
 				/>

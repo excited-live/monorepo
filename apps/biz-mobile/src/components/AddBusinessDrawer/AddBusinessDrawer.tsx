@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Stack, Text } from "@excited-live/design-system";
-import { FormField, InputField } from "../FormField";
+import { InputField } from "../FormField";
 import { ModalPage } from "../ModalPage";
-import { CurrencyInput } from "../CurrencyInput";
 import type { EntityAccount } from "@excited-live/biz";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
@@ -20,17 +19,14 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({ isOpen, on
 
 	const [name, setName] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
-	const [startingTreasury, setStartingTreasury] = useState("");
 
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
 			setImageUrl(initialData.imageUrl || "");
-			setStartingTreasury("");
 		} else {
 			setName("");
 			setImageUrl("");
-			setStartingTreasury("");
 		}
 	}, [initialData, isOpen]);
 
@@ -43,8 +39,7 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({ isOpen, on
 		if (initialData) {
 			updateBusiness(initialData.id, name.trim(), imageUrl || undefined);
 		} else {
-			const initCash = Number(startingTreasury) || 0;
-			addBusiness(name.trim(), imageUrl || undefined, initCash > 0 ? initCash : undefined);
+			addBusiness(name.trim(), imageUrl || undefined);
 		}
 
 		dismiss();
@@ -99,13 +94,6 @@ export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({ isOpen, on
 					required
 					autoFocus={!isEditMode}
 				/>
-
-				{!isEditMode && (
-					<FormField label="Starting Treasury / Capital (Optional)">
-						<CurrencyInput placeholder="0.00" value={startingTreasury} onChange={setStartingTreasury} />
-						<Text className="text-[12px] text-slate">Initial liquid bank balance allocated to this business.</Text>
-					</FormField>
-				)}
 
 				<Text className="text-[12px] text-slate">
 					Treasury tracks liquid capital on hand, and projects end-of-month cash = liquid cash + revenues − operational

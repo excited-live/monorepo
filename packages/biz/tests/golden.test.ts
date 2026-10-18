@@ -4,7 +4,9 @@ import {
 	calculateCashAssetBalance,
 	calculateCurrentTreasury,
 	calculateMonthlyEquivalent,
+	calculateWalletBalance,
 	generateMonthlyLedger,
+	hardwareToWallet,
 	round2,
 	SEED_ACCOUNTS,
 	SEED_HARDWARE,
@@ -13,6 +15,7 @@ import {
 	SEED_TRANSFERS,
 	simulateCapitalTransfer,
 	type HardwareAsset,
+	walletToHardware,
 } from "../src";
 
 describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
@@ -329,7 +332,8 @@ describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
 			subscriptions: subs,
 			hardware,
 			revenues: [],
-			transfers: [],		});
+			transfers: [],
+		});
 		expect(octLedger.summary.startingTreasury).toBe(100000);
 		expect(octLedger.summary.endingTreasury).toBe(90000);
 		expect(octLedger.summary.runwayMonths).toBe(10);
@@ -369,5 +373,68 @@ describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
 		});
 		// 100k - (10k * 3 months) = 70k
 		expect(decCash.effectiveBalance).toBe(70000);
+	});
+
+	it("separates Stock (money in hand today) from Flow (month-end forecast) via calculateWalletBalance", () => {
+		const wallet = {
+			id: "wallet_kbank",
+			entityId: "acc_test",
+			name: "KBank Savings",
+			balance: 10000,
+			isDefault: true,
+		};
+
+		const subs = [
+			{
+				id: "sub_1",
+				entityId: "acc_test",
+				name: "Office Rent",
+				amount: 10000,
+				cycle: "monthly" as const,
+				category: "facilities",
+				nextRenewalDate: "2026-10-01",
+				active: true,
+			},
+		];
+
+		const revs = [
+			{
+				id: "rev_salary",
+				entityId: "acc_test",
+				name: "Salary",
+				amount: 75000,
+				frequency: "monthly" as const,
+				source: "salary" as const,
+				active: true,
+			},
+		];
+
+		// User updates KBank Savings to ฿10,000.
+		// Their actual cash in hand TODAY is ฿10,000 (Stock).
+		// Their net operating cash this month is +฿65,000 (Flow).
+		// Their projected EOM balance is ฿75,000 (Forecast).
+		const breakdown = calculateWalletBalance({
+			wallet,
+			wallets: [wallet],
+			transfers: [],
+			subscriptions: subs,
+			revenues: revs,
+			yearMonth: "2026-10",
+		});
+
+		expect(breakdown.openingBalance).toBe(10000);
+		expect(breakdown.currentCashOnHand).toBe(10000);
+		expect(breakdown.netOperatingCash).toBe(65000);
+		expect(breakdown.projectedEomBalance).toBe(75000);
+		expect(breakdown.isDefault).toBe(true);
+
+		// Verify bidirectional converter helpers
+		const hwAdapted = walletToHardware(wallet);
+		expect(hwAdapted.category).toBe("cash");
+		expect(hwAdapted.cost).toBe(10000);
+
+		const walletRestored = hardwareToWallet(hwAdapted);
+		expect(walletRestored.id).toBe(wallet.id);
+		expect(walletRestored.balance).toBe(10000);
 	});
 });

@@ -1,11 +1,19 @@
-import { calculateAssetDepreciation, calculateMonthlyEquivalent, calculateRunway, getYearMonthRange, isCashAsset, round2, shiftYearMonth } from "./math";
+import {
+	calculateAssetDepreciation,
+	calculateMonthlyEquivalent,
+	calculateRunway,
+	getYearMonthRange,
+	hardwareToWallet,
+	isCashAsset,
+	round2,
+	shiftYearMonth,
+} from "./math";
 import type {
 	CapitalTransfer,
+	CashWallet,
 	EntityAccount,
 	HardwareAsset,
-	LedgerActionItem,
 	LiabilityStream,
-	MonthlySummary,
 	RecurringSubscription,
 	RevenueStream,
 } from "./types";
@@ -86,88 +94,83 @@ export function calculateEntityMonthlyOperatingCash(params: {
 	};
 }
 
+export interface WalletBalanceBreakdown {
+	openingBalance: number;
+	assetInjections: number;
+	currentCashOnHand: number;
+	netOperatingCash: number;
+	projectedEomBalance: number;
+	effectiveBalance: number;
+	isDefault: boolean;
+}
+
 /**
- * Resolves the effective balance of a cash asset / wallet:
- *   - Base cost
- *   - Plus targeted capital transfers (or untargeted transfers if this is the default wallet)
- *   - Plus net operating cash (income - expense) if this is the default wallet (deducted if negative)
+ * Pure wallet balance derivation (Stock vs Flow):
+ *   - openingBalance: current recorded base cash
+ *   - currentCashOnHand: openingBalance + net capital transfers (Stock: money in hand today)
+ *   - netOperatingCash: operational cashflow (Flow: monthly income - expense)
+ *   - projectedEomBalance: currentCashOnHand + netOperatingCash (Forecast: end of month)
  */
-export function calculateCashAssetBalance(params: {
-	asset: HardwareAsset;
-	hardware: HardwareAsset[];
+export function calculateWalletBalance(params: {
+	wallet: CashWallet;
+	wallets?: CashWallet[];
 	transfers: CapitalTransfer[];
 	account?: EntityAccount;
 	subscriptions?: RecurringSubscription[];
 	revenues?: RevenueStream[];
 	liabilities?: LiabilityStream[];
 	yearMonth?: string;
-}): {
-	baseCost: number;
-	assetInjections: number;
-	netOperatingCash: number;
-	effectiveBalance: number;
-	isDefault: boolean;
-} {
+	baselineMonth?: string;
+}): WalletBalanceBreakdown {
 	const {
-		asset,
-		hardware,
+		wallet,
+		wallets = [wallet],
 		transfers,
 		account,
 		subscriptions = [],
 		revenues = [],
 		liabilities = [],
 		yearMonth,
+		baselineMonth = "2026-10",
 	} = params;
 
-	const isCash = isCashAsset(asset);
-	if (!isCash) {
-		const dep = calculateAssetDepreciation(asset, yearMonth);
-		return {
-			baseCost: asset.cost,
-			assetInjections: 0,
-			netOperatingCash: 0,
-			effectiveBalance: dep.remainingBookValue,
-			isDefault: false,
-		};
-	}
-
 	// Determine if this is the designated default wallet for the entity
-	const entityCashAssets = hardware.filter((h) => h.entityId === asset.entityId && isCashAsset(h));
 	const isDefaultWallet = Boolean(
-		asset.isDefault ||
-		(!entityCashAssets.some((h) => h.isDefault) && entityCashAssets[0]?.id === asset.id),
+		wallet.isDefault ||
+		(!wallets.some((w) => w.isDefault) && wallets[0]?.id === wallet.id),
 	);
 
-	// Capital transfers: targeted specifically to this asset, plus untargeted transfers if default wallet
+	// Capital transfers: targeted specifically to this wallet, plus untargeted transfers if default wallet
 	const targetedIncoming = transfers
-		.filter((t) => t.toEntityId === asset.entityId && t.targetAssetId === asset.id)
+		.filter((t) => t.toEntityId === wallet.entityId && t.targetAssetId === wallet.id)
 		.reduce((sum, t) => sum + t.amount, 0);
 
 	const untargetedIncoming = isDefaultWallet
 		? transfers
-				.filter((t) => t.toEntityId === asset.entityId && !t.targetAssetId)
+				.filter((t) => t.toEntityId === wallet.entityId && !t.targetAssetId)
 				.reduce((sum, t) => sum + t.amount, 0)
 		: 0;
 
 	const outgoing = isDefaultWallet
 		? transfers
-				.filter((t) => t.fromEntityId === asset.entityId)
+				.filter((t) => t.fromEntityId === wallet.entityId)
 				.reduce((sum, t) => sum + t.amount, 0)
 		: 0;
 
 	const assetInjections = round2(targetedIncoming + untargetedIncoming - outgoing);
+	const currentCashOnHand = round2(wallet.balance + assetInjections);
 
 	// Operating cash: income minus expenses accumulated from baseline month up to yearMonth
 	let netOperatingCash = 0;
 	if (isDefaultWallet && (revenues.length > 0 || subscriptions.length > 0 || liabilities.length > 0 || account?.salary)) {
 		const entityAccount: EntityAccount = account ?? {
-			id: asset.entityId,
-			name: asset.name,
+			id: wallet.entityId,
+			name: wallet.name,
 			type: "business",
 			cashReserve: 0,
 			currency: "THB",
 		};
-		const startYm = asset.purchaseDate ? asset.purchaseDate.slice(0, 7) : "2026-10";
+		const startYm = baselineMonth;
 		const effectiveYm = yearMonth ?? startYm;
 		if (effectiveYm >= startYm) {
 			const monthsToAccumulate = getYearMonthRange(startYm, effectiveYm);
@@ -196,14 +199,92 @@ export function calculateCashAssetBalance(params: {
 		}
 	}
 
-	const effectiveBalance = round2(asset.cost + assetInjections + netOperatingCash);
+	const projectedEomBalance = round2(currentCashOnHand + netOperatingCash);
 
 	return {
-		baseCost: asset.cost,
+		openingBalance: wallet.balance,
 		assetInjections,
+		currentCashOnHand,
 		netOperatingCash,
-		effectiveBalance,
+		projectedEomBalance,
+		effectiveBalance: projectedEomBalance,
 		isDefault: isDefaultWallet,
+	};
+}
+
+/**
+ * Resolves the effective balance of a cash asset / wallet:
+ *   - Base cost
+ *   - Plus targeted capital transfers (or untargeted transfers if this is the default wallet)
+ *   - Plus net operating cash (income - expense) accumulated from baseline month up to yearMonth
+ */
+export function calculateCashAssetBalance(params: {
+	asset: HardwareAsset;
+	hardware: HardwareAsset[];
+	transfers: CapitalTransfer[];
+	account?: EntityAccount;
+	subscriptions?: RecurringSubscription[];
+	revenues?: RevenueStream[];
+	liabilities?: LiabilityStream[];
+	yearMonth?: string;
+}): {
+	baseCost: number;
+	assetInjections: number;
+	currentCashOnHand: number;
+	netOperatingCash: number;
+	effectiveBalance: number;
+	isDefault: boolean;
+} {
+	const {
+		asset,
+		hardware,
+		transfers,
+		account,
+		subscriptions = [],
+		revenues = [],
+		liabilities = [],
+		yearMonth,
+	} = params;
+
+	const isCash = isCashAsset(asset);
+	if (!isCash) {
+		const dep = calculateAssetDepreciation(asset, yearMonth);
+		return {
+			baseCost: asset.cost,
+			assetInjections: 0,
+			currentCashOnHand: dep.remainingBookValue,
+			netOperatingCash: 0,
+			effectiveBalance: dep.remainingBookValue,
+			isDefault: false,
+		};
+	}
+
+	const wallet = hardwareToWallet(asset);
+	const cashWallets = hardware
+		.filter((h) => h.entityId === asset.entityId && isCashAsset(h))
+		.map(hardwareToWallet);
+
+	const baselineMonth = asset.purchaseDate ? asset.purchaseDate.slice(0, 7) : "2026-10";
+
+	const result = calculateWalletBalance({
+		wallet,
+		wallets: cashWallets,
+		transfers,
+		account,
+		subscriptions,
+		revenues,
+		liabilities,
+		yearMonth,
+		baselineMonth,
+	});
+
+	return {
+		baseCost: result.openingBalance,
+		assetInjections: result.assetInjections,
+		currentCashOnHand: result.currentCashOnHand,
+		netOperatingCash: result.netOperatingCash,
+		effectiveBalance: result.effectiveBalance,
+		isDefault: result.isDefault,
 	};
 }
 
@@ -314,8 +395,28 @@ export function generateMonthlyLedger(params: {
 	transfers: CapitalTransfer[];
 	liabilities?: LiabilityStream[];
 }): {
-	summary: MonthlySummary;
-	actions: LedgerActionItem[];
+	actions: Array<{
+		id: string;
+		date: string;
+		description: string;
+		amount: number;
+		direction: "inflow" | "outflow";
+		category: string;
+		counterparty?: string;
+	}>;
+	summary: {
+		entityId?: string;
+		yearMonth?: string;
+		startingTreasury: number;
+		totalInflow: number;
+		totalCashOutflow: number;
+		totalDepreciation: number;
+		netCashFlow: number;
+		endingTreasury: number;
+		runwayMonths?: number | null;
+		isDefaultAlive?: boolean;
+		status: "DEFAULT ALIVE" | "DEFAULT DEAD";
+	};
 } {
 	const {
 		account,
@@ -327,143 +428,130 @@ export function generateMonthlyLedger(params: {
 		liabilities = [],
 	} = params;
 
-	const actions: LedgerActionItem[] = [];
+	const actions: Array<{
+		id: string;
+		date: string;
+		description: string;
+		amount: number;
+		direction: "inflow" | "outflow";
+		category: string;
+		counterparty?: string;
+	}> = [];
 
-	// 1. Inflows (Capital & Revenues)
 	let totalInflow = 0;
+	let totalCashOutflow = 0;
 
-	// Inflows from capital transfers (one_time or monthly recurring)
-	const incomingTransfers = transfers.filter((t) => {
-		if (t.toEntityId !== account.id) return false;
-		if (t.frequency === "monthly") {
-			return t.date.slice(0, 7) <= yearMonth;
-		}
-		return t.date.startsWith(yearMonth);
+	// Inflows: Revenues
+	const activeRevenues = revenues.filter((r) => {
+		if (r.entityId !== account.id || !r.active) return false;
+		if (r.frequency === "one_time") return r.startMonth === yearMonth;
+		if (r.startMonth && yearMonth < r.startMonth) return false;
+		if (r.endMonth && yearMonth > r.endMonth) return false;
+		return true;
 	});
-	for (const t of incomingTransfers) {
-		totalInflow += t.amount;
-		const isRecurring = t.frequency === "monthly";
-		actions.push({
-			id: `action_in_${t.id}_${yearMonth}`,
-			entityId: account.id,
-			date: isRecurring ? `${yearMonth}-01` : t.date,
-			title: isRecurring ? `Recurring Capital Injected: ${t.note}` : `Capital Injected: ${t.note}`,
-			type: "inflow",
-			category: "capital_transfer",
-			reference: t.id,
-			amount: t.amount,
-		});
-	}
 
-	// Inflows from revenue streams (respects start/end month window and one-time specificity)
-	const activeRevenues = revenues.filter(
-		(r) =>
-			r.entityId === account.id &&
-			r.active &&
-			(!r.startMonth || (r.frequency === "one_time" ? yearMonth === r.startMonth : yearMonth >= r.startMonth)) &&
-			(!r.endMonth || yearMonth <= r.endMonth),
-	);
-	for (const r of activeRevenues) {
-		const monthlyAmount =
-			r.frequency === "yearly" ? round2(r.amount / 12) : r.amount;
-		totalInflow += monthlyAmount;
+	for (const rev of activeRevenues) {
+		const amt = rev.frequency === "yearly" ? round2(rev.amount / 12) : rev.amount;
+		totalInflow += amt;
 		actions.push({
-			id: `action_rev_${r.id}`,
-			entityId: account.id,
-			date: `${yearMonth}-15`,
-			title: `Revenue: ${r.name} (${r.source.toUpperCase()})`,
-			type: "inflow",
+			id: rev.id,
+			date: `${yearMonth}-01`,
+			description: rev.name,
+			amount: amt,
+			direction: "inflow",
 			category: "revenue",
-			reference: r.id,
-			amount: monthlyAmount,
 		});
 	}
 
-	// Inflows from career salary (personal or business payroll)
-	// If already configured as a revenue stream with source 'salary', the revenue stream's schedule governs strictly.
-	// Never fall back to legacy account.salary if ANY salary revenue exists or if revenues are configured for this account.
+	// Inflows: Legacy Salary if no salary revenue streams
 	const hasConfiguredSalary = revenues.some(
 		(r) => r.entityId === account.id && (r.source === "salary" || r.id === "rev_career_prame" || r.id.startsWith("rev_career")),
 	);
 	const hasAnyRevenuesForEntity = revenues.some((r) => r.entityId === account.id);
 	if (account.salary && !hasConfiguredSalary && !hasAnyRevenuesForEntity) {
-		const payday = account.paydayDayOfMonth ?? 28;
-		const dateStr = `${yearMonth}-${String(payday).padStart(2, "0")}`;
 		totalInflow += account.salary;
+		const payday = String(account.paydayDayOfMonth || 28).padStart(2, "0");
 		actions.push({
-			id: `action_salary_${account.id}`,
-			entityId: account.id,
-			date: dateStr,
-			title: `Monthly Base Salary (${account.name})`,
-			type: "inflow",
-			category: "salary",
-			reference: "SALARY-PAYDAY",
+			id: "action_salary",
+			date: `${yearMonth}-${payday}`,
+			description: "Career Salary",
 			amount: account.salary,
+			direction: "inflow",
+			category: "salary",
 		});
 	}
 
-	// 2. Outflows (Cash & Subscriptions)
-	let totalCashOutflow = 0;
-
-	// Outflows to capital transfers (one_time or monthly recurring)
-	const outgoingTransfers = transfers.filter((t) => {
-		if (t.fromEntityId !== account.id) return false;
-		if (t.frequency === "monthly") {
-			return t.date.slice(0, 7) <= yearMonth;
-		}
+	// Inflows: Incoming Transfers
+	const incomingTransfers = transfers.filter((t) => {
+		if (t.toEntityId !== account.id) return false;
+		if (t.frequency === "monthly") return t.date.slice(0, 7) <= yearMonth;
 		return t.date.startsWith(yearMonth);
 	});
-	for (const t of outgoingTransfers) {
-		totalCashOutflow += t.amount;
-		const isRecurring = t.frequency === "monthly";
+
+	for (const tx of incomingTransfers) {
+		totalInflow += tx.amount;
 		actions.push({
-			id: `action_out_${t.id}_${yearMonth}`,
-			entityId: account.id,
-			date: isRecurring ? `${yearMonth}-01` : t.date,
-			title: isRecurring ? `Recurring Capital Deployed: ${t.note}` : `Capital Deployed: ${t.note}`,
-			type: "outflow",
-			category: "capital_transfer",
-			reference: t.id,
-			amount: -t.amount,
+			id: tx.id,
+			date: tx.date,
+			description: tx.note || "Capital Transfer In",
+			amount: tx.amount,
+			direction: "inflow",
+			category: "transfer",
+			counterparty: tx.fromEntityId,
 		});
 	}
 
-	// Outflows from subscriptions
-	const entitySubs = subscriptions.filter((s) => {
+	// Outflows: Subscriptions
+	const activeSubs = subscriptions.filter((s) => {
 		if (s.entityId !== account.id || !s.active) return false;
-		if (s.cycle === "one_time") {
-			return s.nextRenewalDate.startsWith(yearMonth);
-		}
+		if (s.cycle === "one_time") return s.nextRenewalDate.startsWith(yearMonth);
 		return true;
 	});
-	for (const s of entitySubs) {
-		const monthlyCost = calculateMonthlyEquivalent(s.amount, s.cycle);
-		totalCashOutflow += monthlyCost;
+
+	for (const sub of activeSubs) {
+		const amt = calculateMonthlyEquivalent(sub.amount, sub.cycle);
+		totalCashOutflow += amt;
 		actions.push({
-			id: `action_sub_${s.id}`,
-			entityId: account.id,
-			date: s.nextRenewalDate.startsWith(yearMonth) ? s.nextRenewalDate : `${yearMonth}-20`,
-			title: `${s.name} (${s.cycle})`,
-			type: "outflow",
-			category: s.category,
-			reference: s.id,
-			amount: -monthlyCost,
+			id: sub.id,
+			date: sub.nextRenewalDate.startsWith(yearMonth) ? sub.nextRenewalDate : `${yearMonth}-${String(sub.billingDay || 1).padStart(2, "0")}`,
+			description: sub.name,
+			amount: amt,
+			direction: "outflow",
+			category: sub.category,
 		});
 	}
 
-	// Outflows from liabilities & debt service
-	const entityLiab = liabilities.filter((l) => l.entityId === account.id && l.active);
-	for (const l of entityLiab) {
-		totalCashOutflow += l.amount;
+	// Outflows: Outgoing Transfers
+	const outgoingTransfers = transfers.filter((t) => {
+		if (t.fromEntityId !== account.id) return false;
+		if (t.frequency === "monthly") return t.date.slice(0, 7) <= yearMonth;
+		return t.date.startsWith(yearMonth);
+	});
+
+	for (const tx of outgoingTransfers) {
+		totalCashOutflow += tx.amount;
 		actions.push({
-			id: `action_liab_${l.id}`,
-			entityId: account.id,
-			date: `${yearMonth}-10`,
-			title: `Debt Service: ${l.name}`,
-			type: "outflow",
+			id: tx.id,
+			date: tx.date,
+			description: tx.note || "Capital Transfer Out",
+			amount: tx.amount,
+			direction: "outflow",
+			category: "transfer",
+			counterparty: tx.toEntityId,
+		});
+	}
+
+	// Outflows: Liabilities
+	const activeLiab = liabilities.filter((l) => l.entityId === account.id && l.active);
+	for (const liab of activeLiab) {
+		totalCashOutflow += liab.amount;
+		actions.push({
+			id: liab.id,
+			date: `${yearMonth}-15`,
+			description: liab.name,
+			amount: liab.amount,
+			direction: "outflow",
 			category: "liability",
-			reference: l.id,
-			amount: -l.amount,
 		});
 	}
 
@@ -475,17 +563,16 @@ export function generateMonthlyLedger(params: {
 		if (dep.monthlyRate > 0) {
 			totalDepreciation += dep.monthlyRate;
 			actions.push({
-				id: `action_hw_${h.id}`,
-				entityId: account.id,
+				id: `action_dep_${h.id}`,
 				date: `${yearMonth}-28`,
-				title: `Depreciation: ${h.name}`,
-				type: "depreciation",
-				category: h.category,
-				reference: h.id,
-				amount: -dep.monthlyRate,
+				description: `Depreciation: ${h.name}`,
+				amount: dep.monthlyRate,
+				direction: "outflow",
+				category: "asset_depreciation",
 			});
 		}
 	}
+	totalDepreciation = round2(totalDepreciation);
 
 	// Sort actions by date ascending
 	actions.sort((a, b) => a.date.localeCompare(b.date));
@@ -556,25 +643,25 @@ export function generateMonthlyLedger(params: {
 	const netCashFlow = round2(totalInflow - totalCashOutflow);
 	const endingTreasury = round2(startingTreasury + netCashFlow);
 
-	// Total monthly burn rate includes subscriptions + liabilities (depreciation is non-cash)
-	const monthlyBurn = totalCashOutflow;
-	const netBurn = Math.max(0, monthlyBurn - totalInflow);
-	const runwayMonths = calculateRunway(startingTreasury, netBurn);
-	const isDefaultAlive = totalInflow > 0 && totalInflow >= monthlyBurn;
+	const netMonthlyBurn = Math.max(0, totalCashOutflow - totalInflow);
+	const runwayMonths = calculateRunway(startingTreasury, netMonthlyBurn);
+	const isDefaultAlive = totalInflow >= totalCashOutflow;
+	const status = isDefaultAlive ? "DEFAULT ALIVE" : "DEFAULT DEAD";
 
 	return {
+		actions,
 		summary: {
 			entityId: account.id,
 			yearMonth,
 			startingTreasury: round2(startingTreasury),
-			endingTreasury: round2(endingTreasury),
 			totalInflow: round2(totalInflow),
 			totalCashOutflow: round2(totalCashOutflow),
-			totalDepreciation: round2(totalDepreciation),
+			totalDepreciation,
 			netCashFlow,
+			endingTreasury: round2(endingTreasury),
 			runwayMonths,
 			isDefaultAlive,
+			status,
 		},
-		actions,
 	};
 }

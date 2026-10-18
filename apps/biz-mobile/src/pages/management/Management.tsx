@@ -44,16 +44,11 @@ export const Management: React.FC = () => {
 	const { entityRev, totalIncome, hasConfiguredSalary } = useAccountIncome(activeAccount, selectedMonth);
 	const { entitySubs, outgoingTransfers, totalMonthlyExpenses } = useAccountExpenses(activeAccount, selectedMonth);
 	const {
-		cashAssets,
+		cashWallets,
 		gearAssets,
 		totalLiquidReserves,
 		totalBookValue,
 		totalDepreciation,
-		hardware,
-		transfers,
-		subscriptions,
-		revenues,
-		liabilities,
 	} = useAccountAssets(activeAccount, selectedMonth);
 	const { entityLiab, totalMonthlyLiabilities } = useAccountLiabilities(activeAccount);
 
@@ -172,17 +167,12 @@ export const Management: React.FC = () => {
 						{activeCapitalSubTab === "assets" && (
 							<ManagementAssetsSection
 								activeAccount={activeAccount}
-								hardware={hardware}
-								transfers={transfers}
-								subscriptions={subscriptions}
-								revenues={revenues}
-								liabilities={liabilities}
-								selectedMonth={selectedMonth}
-								cashAssets={cashAssets}
+								cashWallets={cashWallets}
 								gearAssets={gearAssets}
 								totalLiquidReserves={totalLiquidReserves}
 								totalBookValue={totalBookValue}
 								totalDepreciation={totalDepreciation}
+								selectedMonth={selectedMonth}
 								lang={lang}
 								onAddAsset={() => openGear(null)}
 								onSelectHardware={(hw: HardwareAsset) => openGear(hw)}

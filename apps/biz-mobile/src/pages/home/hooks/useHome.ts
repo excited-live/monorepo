@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
 	calculateDerivedTreasury,
+	isCashAsset,
 	type EntityAccount,
+	type HardwareAsset,
 	type RevenueStream,
 } from "@excited-live/biz";
 import {
@@ -33,7 +35,34 @@ export function useHome() {
 	const [isCareerOpen, setIsCareerOpen] = useState(false);
 	const [careerStream, setCareerStream] = useState<RevenueStream | null>(null);
 
+	// Onboarding drawers state
+	const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+	const [isGearOpen, setIsGearOpen] = useState(false);
+	const [selectedGear, setSelectedGear] = useState<HardwareAsset | null>(null);
+	const [isLiabilityOpen, setIsLiabilityOpen] = useState(false);
+	const [hasSkippedLiability, setHasSkippedLiability] = useState(() => {
+		try {
+			return localStorage.getItem("biz_onboarding_liability_skipped") === "true";
+		} catch {
+			return false;
+		}
+	});
+
 	const personal = accounts.find((a) => a.type === "personal");
+	const personalDefaultWallet =
+		hardware.find((h) => h.entityId === personal?.id && isCashAsset(h) && h.isDefault) ||
+		hardware.find((h) => h.entityId === personal?.id && isCashAsset(h)) ||
+		null;
+
+	const isWalletDone = Boolean(
+		personalDefaultWallet && (personalDefaultWallet.cost > 0 || personalDefaultWallet.name !== "My Living Main Wallet"),
+	);
+	const isCareerDone = Boolean(personal?.salary && personal.salary > 0);
+	const isExpenseDone = subscriptions.some((s) => s.entityId === personal?.id);
+	const isAssetsDone = hardware.some((h) => h.entityId === personal?.id && !isCashAsset(h));
+	const isLiabilityDone = liabilities.some((l) => l.entityId === personal?.id) || hasSkippedLiability;
+	const isBusinessDone = accounts.some((a) => a.type === "business");
+
 	const needsCareer = personal ? !personal.salary : false;
 
 	const { totalTreasury, totalEomTreasury, personalCash, businessCash } =
@@ -66,6 +95,55 @@ export function useHome() {
 		return entityType === "personal" ? t("home.personal", lang) : t("home.businesses", lang);
 	};
 
+	const handleOpenWalletEdit = () => {
+		if (personal) {
+			setActiveEntityId(personal.id);
+			if (personalDefaultWallet) {
+				setSelectedGear(personalDefaultWallet);
+			} else {
+				setSelectedGear({
+					id: `hw_wallet_${Date.now()}`,
+					entityId: personal.id,
+					name: "Kasikorn Main Reserve",
+					cost: 0,
+					lifespanMonths: 0,
+					purchaseDate: "2026-10",
+					category: "cash",
+					isDefault: true,
+				});
+			}
+			setIsGearOpen(true);
+		}
+	};
+
+	const handleOpenAddExpense = () => {
+		if (personal) setActiveEntityId(personal.id);
+		setIsExpenseOpen(true);
+	};
+
+	const handleOpenAddAssets = () => {
+		if (personal) setActiveEntityId(personal.id);
+		setSelectedGear(null);
+		setIsGearOpen(true);
+	};
+
+	const handleOpenAddLiability = () => {
+		if (personal) setActiveEntityId(personal.id);
+		setIsLiabilityOpen(true);
+	};
+
+	const handleSkipLiability = () => {
+		try {
+			localStorage.setItem("biz_onboarding_liability_skipped", "true");
+		} catch {}
+		setHasSkippedLiability(true);
+	};
+
+	const handleOpenAddBusiness = () => {
+		setSelectedBiz(null);
+		setIsDrawerOpen(true);
+	};
+
 	return {
 		accounts,
 		lang,
@@ -89,7 +167,29 @@ export function useHome() {
 		setIsCareerOpen,
 		careerStream,
 		setCareerStream,
+		isExpenseOpen,
+		setIsExpenseOpen,
+		isGearOpen,
+		setIsGearOpen,
+		selectedGear,
+		setSelectedGear,
+		isLiabilityOpen,
+		setIsLiabilityOpen,
+		hasSkippedLiability,
 		setActiveEntityId,
 		setActiveTab,
+		// Onboarding handlers & completion state
+		isWalletDone,
+		isCareerDone,
+		isExpenseDone,
+		isAssetsDone,
+		isLiabilityDone,
+		isBusinessDone,
+		handleOpenWalletEdit,
+		handleOpenAddExpense,
+		handleOpenAddAssets,
+		handleOpenAddLiability,
+		handleSkipLiability,
+		handleOpenAddBusiness,
 	};
 }

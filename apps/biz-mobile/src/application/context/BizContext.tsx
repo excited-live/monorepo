@@ -95,7 +95,7 @@ export interface BizContextType {
 			paydayDayOfMonth?: number;
 		},
 	) => void;
-	addBusiness: (name: string, imageUrl?: string, startingTreasury?: number) => string;
+	addBusiness: (name: string, imageUrl?: string) => string;
 	updateBusiness: (id: string, name: string, imageUrl?: string) => void;
 	deleteBusiness: (id: string) => void;
 	resetToBaseline: () => void;
@@ -537,7 +537,7 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 		setTransfers((prev) => prev.filter((t) => t.id !== id));
 	};
 
-	const addBusiness = (name: string, imageUrl?: string, startingTreasury?: number): string => {
+	const addBusiness = (name: string, imageUrl?: string): string => {
 		const newId = `acc_biz_${Date.now()}`;
 		const newBiz: EntityAccount = {
 			id: newId,
@@ -563,25 +563,6 @@ export const BizProvider: React.FC<BizProviderProps> = ({
 			isDefault: true,
 		};
 		setHardware((prev) => [...prev, defaultWallet]);
-
-		// When starting treasury is entered, record it as a regular CapitalTransfer from personal
-		if (startingTreasury && startingTreasury > 0) {
-			const hasPersonal = rawAccounts.some((a) => a.id === "acc_personal");
-			if (hasPersonal) {
-				const initialTransfer: CapitalTransfer = {
-					id: `tx_${Date.now()}`,
-					fromEntityId: "acc_personal",
-					toEntityId: newId,
-					amount: startingTreasury,
-					date: selectedMonth,
-					note: `${name} Initial Capital`,
-					targetAssetId: walletId,
-				};
-				setTransfers((prev) => [initialTransfer, ...prev]);
-			} else {
-				defaultWallet.cost = startingTreasury;
-			}
-		}
 		return newId;
 	};
 

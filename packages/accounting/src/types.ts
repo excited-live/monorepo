@@ -180,3 +180,38 @@ export interface AccountingSnapshot {
 	isDefault?: boolean;
 }
 export type BizSnapshot = AccountingSnapshot;
+
+export interface EntityWealthMetrics {
+	cashAssetsValue: number;
+	gearAssetsValue: number;
+	totalAssetsValue: number;
+	currentLiquid: number;
+	eomLiquid: number;
+	currentWealth: number;
+	eomWealth: number;
+	liquidPct: number;
+	gearPct: number;
+	totalIncome: number;
+	totalExpense: number;
+	liabilityMonthly: number;
+	liabPct: number;
+	runwayMonths: number | null;
+	isDefaultAlive: boolean;
+}
+
+export interface ConsolidatedWealthMetrics {
+	totalTreasury: number;
+	totalEomTreasury: number;
+	personalCash: number;
+	businessCash: number;
+}
+
+export interface ProjectionBalances {
+	offsets: number[];
+	balances: Map<number, number>;
+	totalIncome: number;
+	totalExpense: number;
+	liabilityMonthly: number;
+	projectedNet: number;
+}
+

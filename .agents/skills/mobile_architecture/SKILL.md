@@ -34,6 +34,8 @@ apps/biz-mobile/src/
 │   ├── providers.tsx          # QueryClientProvider + Astryx Theme
 │   └── locale.tsx             # Bilingual locale provider
 │
+├── i18n/                      # LOCALIZATION: dictionary.ts ({ en, th }) + getTranslator/t on @excited-live/i18n
+│
 ├── components/                # PRESENTATION (SHARED): Components used across 2+ pages
 │   ├── Header/                # Each component has its own folder: <Name>.tsx, index.ts, <Name>.spec.tsx
 │   ├── BottomDock/
@@ -76,6 +78,7 @@ apps/biz-mobile/src/
 4. **Dedicated Folder per Component**: Every component (both in `src/components/` and `src/pages/<page>/components/`) must live in its own folder (`<ComponentName>/<ComponentName>.tsx`, `index.ts`, `<ComponentName>.spec.tsx`).
 5. **Co-locate Page-Specific Components**: If a component or drawer is only used in one page, place it in `src/pages/<page>/components/<ComponentName>/`. Only place components in `src/components/` if they are shared across multiple pages.
 6. **Thin Pages & Page Hooks**: Pages (`Home.tsx`, `Management.tsx`, `Settings.tsx`, `Signin.tsx`) must remain thin and declarative: extract state/selector orchestration into `src/pages/<page>/hooks/use<Page>.ts` and UI sections into `src/pages/<page>/components/<SectionName>/`.
+7. **Localization**: All UI strings go through `@excited-live/i18n` via `src/i18n/dictionary.ts` (EN first, stable keys). In components use `const { t } = useT()` (`application/hooks/useT.ts`); never hardcode user-facing text or write a local `t()`. Locale state and persistence live in `UIProvider`. See the `i18n_platform` skill, section 8b.
 
 ---
 

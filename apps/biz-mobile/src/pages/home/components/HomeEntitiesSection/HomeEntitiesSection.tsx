@@ -10,7 +10,7 @@ import { ListItemCard } from "../../../../components/ListItemCard";
 import type { EntityAccount } from "@excited-live/accounting";
 import { calculatePaydayCountdown as defaultCalculatePaydayCountdown } from "../../../../domain/selectors";
 import { formatMoney } from "../../../../utils/format";
-import { t } from "../../../../utils/i18n";
+import { t } from "../../../../i18n";
 import type { MobileLocale } from "../../../../domain/types";
 
 export interface HomeEntitiesSectionProps {

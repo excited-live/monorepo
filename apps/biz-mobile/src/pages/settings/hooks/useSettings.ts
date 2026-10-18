@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useUserData, useCloudSync, useFinances, useAppUI } from "../../../state";
-import { t } from "../../../utils/i18n";
+import { t } from "../../../i18n";
 
 export function useSettings() {
 	const {

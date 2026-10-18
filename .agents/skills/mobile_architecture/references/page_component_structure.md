@@ -19,13 +19,16 @@ apps/biz-mobile/src/
 │   ├── catalog/                    # Catalog autocomplete queries
 │   └── http/                       # Base URL resolution & RPC clients
 ├── app/                            # Application shell: routing context & UI state
-│   ├── ui-context.tsx              # UI-only state (activeTab, activeEntityId, etc.)
-│   └── locale.tsx
+│   └── ui-context.tsx              # UI-only state (activeTab, activeEntityId, lang, etc.)
+├── i18n/                           # Localization on top of @excited-live/i18n
+│   ├── dictionary.ts               # strings: Dictionary ({ en, th }, EN first, stable keys)
+│   └── index.ts                    # getTranslator, t, resolveInitialLocale, saveLocale
 ├── application/hooks/              # Domain-scoped consumer hooks
 │   ├── useFinances.ts
 │   ├── useAppUI.ts
 │   ├── useUserData.ts
 │   ├── useCloudSync.ts
+│   ├── useT.ts                     # Translator bound to the active locale
 │   └── index.ts
 ├── components/                     # ONLY components shared across 2+ pages
 │   ├── AddBusinessDrawer/
@@ -159,7 +162,14 @@ Every component (both shared and page-scoped) must live in its own PascalCase di
 - **Page hook (`src/pages/<page>/hooks/use<Page>.ts`)**: Encapsulates all state hooks (`useAccounts`, `useCashflow`, `useAppUI`, etc.), modal open/close states, and derived metrics for that page.
 - **Route boundary (`src/routes/index.tsx`)**: Cross-page tab switching (e.g. selecting an entity on Home and navigating to the Capital/Management tab) is wired at the route level via props like `onSelectAccount`, keeping page components decoupled from router navigation.
 
-### Rule 4: Direct Component Mounting in Playwright Visual Tests (No `.story.tsx` or `TestScaffold`)
+### Rule 4: Localization via `@excited-live/i18n`
+- Every user-facing string is a key in `src/i18n/dictionary.ts` with `{ en, th }` (English first). Add the key in the same change that uses it; a missing key renders as the key itself.
+- In components and hooks use `const { t } = useT()` (`application/hooks/useT.ts`). Interpolate with `{name}` placeholders: `t("ledger.actions", { count: String(n), month })`.
+- Do not write a local `t()` or a second dictionary, and do not key logic off translated text (use ids).
+- Locale (`lang`/`setLang`) lives in `UIProvider`: `initialLang` prop (tests), else saved choice, else device language, else `en`; persisted and mirrored to `<html lang>`. Legacy components still take a `lang` prop and call `t(key, lang)` from `src/i18n`; migrate them to `useT()` when touched.
+- Details: `i18n_platform` skill, section 8b.
+
+### Rule 5: Direct Component Mounting in Playwright Visual Tests (No `.story.tsx` or `TestScaffold`)
 - **Do NOT create `.story.tsx` files or `TestScaffold.tsx` wrappers.**
 - `playwright/gallery/main.tsx` automatically discovers all components in `src/components/**` and `src/pages/**` and wraps the mounted root in `<Theme theme={mastercardTheme} mode="light">`, `<QueryClientProvider>` pre-hydrated with fixtures (`src/testing/fixtures.ts`), and `<UIProvider>`.
 - Mount components directly by name (or relative path) and pass props in the second argument of `mount(name, props)`:

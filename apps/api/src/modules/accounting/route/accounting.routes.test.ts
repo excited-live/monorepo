@@ -85,6 +85,22 @@ describe("assets", () => {
 		const deleted = await client.assets[":id"].$delete({ param: { id: savings.id } });
 		expect(await deleted.json()).toEqual({ ok: true });
 	});
+
+	it("refuses to clear the useful life of a straight-line asset", async () => {
+		const me = await personalId();
+		const laptop = await (
+			await client.assets.$post({
+				json: { kind: "fixed", entityId: me, name: "Laptop", category: "laptop", cost: 40000, acquiredOn: "2026-01", usefulLifeMonths: 36 },
+			})
+		).json();
+
+		const cleared = await client.assets[":id"].$patch({ param: { id: laptop.id }, json: { usefulLifeMonths: null, version: 1 } });
+		expect(cleared.status).toBe(400);
+		expect(await cleared.json()).toMatchObject({
+			code: "VALIDATION_ERROR",
+			error: "usefulLifeMonths is required for straight-line depreciation",
+		});
+	});
 });
 
 describe("incomes", () => {
@@ -215,6 +231,9 @@ describe("computed", () => {
 		const ledger = await client.ledger[":yearMonth"].$get({ param: { yearMonth: "2026-10" }, query: {} });
 		expect(ledger.status).toBe(200);
 		expect(await ledger.json()).toMatchObject({ yearMonth: "2026-10", summary: { yearMonth: "2026-10" } });
+
+		const missing = await client.ledger[":yearMonth"].$get({ param: { yearMonth: "2026-10" }, query: { entityId: "missing" } });
+		expect(missing.status).toBe(404);
 
 		const projection = await client.projection.$get({ query: { month: "2026-10", pastMonths: "2", futureMonths: "3" } });
 		expect(projection.status).toBe(200);

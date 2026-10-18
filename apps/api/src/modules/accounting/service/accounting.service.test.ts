@@ -261,6 +261,30 @@ describe("validation rules", () => {
 		).rejects.toThrow("usefulLifeMonths is required");
 	});
 
+	it("keeps a useful life on straight-line assets when a patch clears or zeroes it", async () => {
+		const me = await personalEntity();
+		const laptop = await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Laptop",
+			category: "laptop",
+			cost: 40000,
+			acquiredOn: "2026-01",
+			usefulLifeMonths: 36,
+		});
+
+		const message = "usefulLifeMonths is required for straight-line depreciation";
+		await expect(service.updateAsset(USER, laptop.id, { usefulLifeMonths: null })).rejects.toBeInstanceOf(ValidationError);
+		await expect(service.updateAsset(USER, laptop.id, { usefulLifeMonths: null })).rejects.toThrow(message);
+		await expect(service.updateAsset(USER, laptop.id, { usefulLifeMonths: 0 })).rejects.toThrow(message);
+		expect(await service.getAsset(USER, laptop.id)).toMatchObject({ usefulLifeMonths: 36 });
+
+		// Without depreciation there is no useful life to keep.
+		const cleared = await service.updateAsset(USER, laptop.id, { depreciationMethod: "none", usefulLifeMonths: null });
+		expect(cleared).toMatchObject({ depreciationMethod: "none" });
+		expect(cleared).not.toHaveProperty("usefulLifeMonths");
+	});
+
 	it("rejects unsetting the only default cash asset", async () => {
 		const me = await personalEntity();
 		const wallet = await defaultWallet(me.id);
@@ -447,6 +471,83 @@ describe("asset purchases", () => {
 		});
 	});
 
+	it("pays only the down payment from cash when a fixed asset is also financed", async () => {
+		const me = await personalEntity();
+		const wallet = await defaultWallet(me.id);
+		const house = await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Condo",
+			category: "property",
+			cost: 1000000,
+			acquiredOn: "2026-03-10",
+			depreciationMethod: "none",
+			paidFrom: {},
+			financing: { principal: 800000, annualRate: 0.065, termMonths: 240 },
+		});
+
+		expect(await service.listTransfers(USER)).toEqual([
+			expect.objectContaining({ fromAssetId: wallet.id, toAssetId: house.id, amount: 200000, date: "2026-03-10" }),
+		]);
+		expect(await service.listLiabilities(USER, { kind: "loan" })).toEqual([
+			expect.objectContaining({ loan: expect.objectContaining({ principal: 800000, financedAssetId: house.id }) }),
+		]);
+	});
+
+	it("rounds the down payment to 2 decimals", async () => {
+		const me = await personalEntity();
+		const car = await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Car",
+			category: "vehicle",
+			cost: 100.456,
+			acquiredOn: "2026-03-10",
+			depreciationMethod: "none",
+			paidFrom: {},
+			financing: { principal: 0, annualRate: 0, termMonths: 12 },
+		});
+
+		expect(await service.listTransfers(USER)).toEqual([expect.objectContaining({ toAssetId: car.id, amount: 100.46 })]);
+	});
+
+	it("skips the purchase transfer when the principal covers the whole cost", async () => {
+		const me = await personalEntity();
+		const house = await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Condo",
+			category: "property",
+			cost: 1000000,
+			acquiredOn: "2026-03-10",
+			depreciationMethod: "none",
+			paidFrom: {},
+			financing: { principal: 1000000, annualRate: 0.065, termMonths: 240 },
+		});
+
+		expect(await service.listTransfers(USER)).toEqual([]);
+		expect(await service.listLiabilities(USER, { kind: "loan" })).toEqual([
+			expect.objectContaining({ loan: expect.objectContaining({ financedAssetId: house.id }) }),
+		]);
+	});
+
+	it("uses an explicit paidFrom amount over the computed down payment", async () => {
+		const me = await personalEntity();
+		const house = await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Condo",
+			category: "property",
+			cost: 1000000,
+			acquiredOn: "2026-03-10",
+			depreciationMethod: "none",
+			paidFrom: { amount: 250000 },
+			financing: { principal: 800000, annualRate: 0.065, termMonths: 240 },
+		});
+
+		expect(await service.listTransfers(USER)).toEqual([expect.objectContaining({ toAssetId: house.id, amount: 250000 })]);
+	});
+
 	it("resolves a transfer's entity shortcuts to the default cash assets", async () => {
 		const me = await personalEntity();
 		const wallet = await defaultWallet(me.id);
@@ -562,6 +663,15 @@ describe("computed reads", () => {
 		expect(withDep.totals.moneyOut).toBe(without.totals.moneyOut);
 
 		await expect(service.getCashFlows(USER, { month: "2026-02", entityId: "missing" })).rejects.toBeInstanceOf(NotFoundError);
+	});
+
+	it("reads the ledger of the given entity, defaults to the personal one, and 404s on an unknown entity", async () => {
+		const me = await personalEntity();
+		const acme = await createBusiness();
+
+		expect((await service.getLedger(USER, "2026-10")).summary.entityId).toBe(me.id);
+		expect((await service.getLedger(USER, "2026-10", acme.id)).summary.entityId).toBe(acme.id);
+		await expect(service.getLedger(USER, "2026-10", "missing")).rejects.toBeInstanceOf(NotFoundError);
 	});
 
 	it("schedules a loan to its payoff month by default, counting extra payments", async () => {

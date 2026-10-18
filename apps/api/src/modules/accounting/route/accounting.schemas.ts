@@ -113,7 +113,13 @@ const paidFromSchema = z.object({
 	assetId: z.string().min(1).optional().describe("Cash asset to pay from. Takes precedence over entityId."),
 	entityId: z.string().min(1).optional().describe("Entity whose default cash asset pays. Defaults to the asset's entity."),
 	date: monthOrDate.optional().describe("Defaults to acquiredOn (fixed) or valuedAsOf (investment)."),
-	amount: z.number().min(0).optional().describe("Investment only. Defaults to marketValue; fixed assets always pay cost."),
+	amount: z
+		.number()
+		.min(0)
+		.optional()
+		.describe(
+			"Defaults to marketValue (investment) or cost (fixed). A financed fixed asset pays cost minus financing.principal (the down payment).",
+		),
 });
 
 /** Finances a fixed asset: creates a loan liability in the same write. */

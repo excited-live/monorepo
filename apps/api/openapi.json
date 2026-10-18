@@ -2321,7 +2321,7 @@
 														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
 													},
 													"amount": {
-														"description": "Investment only. Defaults to marketValue; fixed assets always pay cost.",
+														"description": "Defaults to marketValue (investment) or cost (fixed). A financed fixed asset pays cost minus financing.principal (the down payment).",
 														"type": "number",
 														"minimum": 0
 													}
@@ -2466,7 +2466,7 @@
 														"pattern": "^\\d{4}-\\d{2}(-\\d{2})?$"
 													},
 													"amount": {
-														"description": "Investment only. Defaults to marketValue; fixed assets always pay cost.",
+														"description": "Defaults to marketValue (investment) or cost (fixed). A financed fixed asset pays cost minus financing.principal (the down payment).",
 														"type": "number",
 														"minimum": 0
 													}

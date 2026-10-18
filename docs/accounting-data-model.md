@@ -543,7 +543,7 @@ Every endpoint is per user (`getUserId`). Records go over the wire as
 | DELETE | `/entities/:id` | Personal cannot be deleted. Cascades. |
 | GET | `/assets?entityId&kind` | |
 | GET | `/assets/:id` | |
-| POST | `/assets` | Body discriminated by `kind`. Fixed/investment accept `paidFrom: { assetId? , entityId?, date? }` (creates the purchase transfer: fixed → `amount = cost`, `date = acquiredOn`; investment → `amount = paidFrom.amount ?? marketValue`). Fixed accepts `financing` (loan fields → creates a loan liability with `financedAssetId`). Cash with `isDefault` clears the other defaults; an entity's first cash asset is always the default. |
+| POST | `/assets` | Body discriminated by `kind`. Fixed/investment accept `paidFrom: { assetId? , entityId?, date? }` (creates the purchase transfer: fixed → `amount = cost`, or the down payment `cost − financing.principal` when `financing` is also given (no transfer when that is 0), `date = acquiredOn`; investment → `amount = paidFrom.amount ?? marketValue`). Fixed accepts `financing` (loan fields → creates a loan liability with `financedAssetId`). Cash with `isDefault` clears the other defaults; an entity's first cash asset is always the default. |
 | PATCH | `/assets/:id` | `kind` immutable. |
 | DELETE | `/assets/:id` | Deleting the default cash asset promotes the oldest remaining cash asset. |
 | GET/POST | `/incomes`, GET/PATCH/DELETE `/incomes/:id` | `employment` only for kind employment; `sourceAssetId` only for kind investment. |

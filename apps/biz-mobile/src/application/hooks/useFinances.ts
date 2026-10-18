@@ -212,10 +212,12 @@ export function useFinances(): FinancesSlice {
 			const current = hardware.find((h) => h.id === hw.id);
 			if (current?.kind !== undefined && current.kind !== record.kind) {
 				// The API rejects kind changes, so replace the asset. The new record gets a new id.
-				// Deleting the asset also drops the transfers into and out of it (see docs/accounting-data-model.md).
-				deleteAsset.mutate(hw.id, {
-					onSuccess: () => createAsset.mutate({ ...record, id: crypto.randomUUID() }),
-				});
+				// Create first and delete the old asset only once the create succeeds, so a failed create never loses it.
+				// Deleting the asset also drops the transfers into and out of it and unlinks expenses/incomes (see docs/accounting-data-model.md).
+				createAsset.mutate(
+					{ ...record, id: crypto.randomUUID() },
+					{ onSuccess: () => deleteAsset.mutate(hw.id) },
+				);
 				return;
 			}
 			updateAsset.mutate({ id: hw.id, patch: replacing(record, ["notes", "imageUrl"]) });

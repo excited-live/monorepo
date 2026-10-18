@@ -116,6 +116,18 @@ function defaultCash<T extends { isDefault: boolean }>(cash: T[]): T | undefined
 	return cash.find((asset) => asset.isDefault) ?? cash[0];
 }
 
+/** Straight-line depreciation needs a positive useful life; creates and patches both enforce it. */
+function assertUsefulLife(depreciationMethod: string | undefined, usefulLifeMonths: number | undefined): void {
+	if (depreciationMethod === "straight_line" && !(usefulLifeMonths !== undefined && usefulLifeMonths > 0)) {
+		throw new ValidationError("usefulLifeMonths is required for straight-line depreciation");
+	}
+}
+
+/** Rounds a money amount to 2 decimals. */
+function roundCents(value: number): number {
+	return Math.round(value * 100) / 100;
+}
+
 export function createAccountingService(repo: AccountingRepository) {
 	// BOOTSTRAP ----------------------------------------------------------------
 
@@ -332,9 +344,7 @@ export function createAccountingService(repo: AccountingRepository) {
 			};
 		} else if (body.kind === "fixed") {
 			const depreciationMethod = body.depreciationMethod ?? "straight_line";
-			if (depreciationMethod === "straight_line" && body.usefulLifeMonths === undefined) {
-				throw new ValidationError("usefulLifeMonths is required for straight-line depreciation");
-			}
+			assertUsefulLife(depreciationMethod, body.usefulLifeMonths);
 			asset = {
 				...base,
 				kind: "fixed",
@@ -346,17 +356,23 @@ export function createAccountingService(repo: AccountingRepository) {
 			};
 			if (body.paidFrom) {
 				const from = await paidFromCash(userId, body.paidFrom, body.entityId);
-				after.push(
-					insert("transfers", {
-						id: crypto.randomUUID(),
-						amount: body.cost,
-						date: body.paidFrom.date ?? body.acquiredOn,
-						cycle: "one_time",
-						note: "",
-						fromAssetId: from,
-						toAssetId: id,
-					}),
-				);
+				// Financed purchases are paid from cash only for the down payment; without financing, the full cost.
+				const amount =
+					body.paidFrom.amount ??
+					(body.financing ? roundCents(Math.max(0, body.cost - body.financing.principal)) : body.cost);
+				if (amount > 0) {
+					after.push(
+						insert("transfers", {
+							id: crypto.randomUUID(),
+							amount,
+							date: body.paidFrom.date ?? body.acquiredOn,
+							cycle: "one_time",
+							note: "",
+							fromAssetId: from,
+							toAssetId: id,
+						}),
+					);
+				}
 			}
 			if (body.financing) {
 				const f = body.financing;
@@ -419,7 +435,9 @@ export function createAccountingService(repo: AccountingRepository) {
 		await ensureBootstrap(userId, monthOf());
 		const stored = await findOrThrow(userId, "assets", id, "Asset");
 		const { version, ...fields } = patch;
-		const next = parseRecord(CreateAssetBody, applyPatch(plain(stored), fields)) as BookAsset;
+		const merged = applyPatch(plain(stored), fields);
+		if (merged.kind === "fixed") assertUsefulLife(merged.depreciationMethod, merged.usefulLifeMonths);
+		const next = parseRecord(CreateAssetBody, merged) as BookAsset;
 
 		const before: WriteOp[] = [];
 		if (next.kind === "cash" && stored.kind === "cash") {
@@ -951,8 +969,7 @@ export function createAccountingService(repo: AccountingRepository) {
 	async function getLedger(userId: string, yearMonth: string, entityId?: string): Promise<MonthlyLedger> {
 		await ensureBootstrap(userId, monthOf());
 		const snapshot = await loadSnapshot(userId);
-		const account = snapshot.accounts.find((a) => a.id === entityId) ?? snapshot.accounts[0];
-		if (!account) throw new NotFoundError("No account found");
+		const account = accountOrThrow(snapshot.accounts, entityId);
 
 		const raw = generateMonthlyLedger({
 			account,

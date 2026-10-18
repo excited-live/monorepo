@@ -12,7 +12,9 @@ When a user opens the application for the first time, they are guided through a 
 [1. Create Account] -> [2. Add Business] -> [3. Wallet & Assets] -> [4. Add Liability] -> [5. Add Income] -> [6. Add Expense]
 ```
 
-**Completion rules.** Only **Create Account** completes automatically. Every other step is marked done by the user via a **Done** button that stays disabled until the step holds at least one entry. **Add Business**, **Wallet & Assets** and **Add Liability** are skippable ("Skip for now" → "Skipped", reversible via "Set up now"); **Add Income** and **Add Expense** are not. Tapping a completed or skipped step reopens its editor (go back); tapping an entry inside a step opens that entry for editing. Steps record data per entity: the personal entity first and each business below it.
+**Stepper UX.** The checklist renders a horizontal Astryx stepper bar (compact labels, scrollable) plus exactly **one step panel at a time** for the viewed step. Tapping a completed or skipped step in the bar reopens its panel (go back); future steps are disabled. Once every step is done or skipped the whole section disappears from the Homepage.
+
+**Completion rules.** Only **Create Account** completes automatically. Every other step is marked done by the user via a **Done** button that stays disabled until the step holds at least one entry. **Add Business**, **Wallet & Assets** and **Add Liability** are skippable ("Skip for now" → "Skipped", reversible via "Set up now"); **Add Income** and **Add Expense** are not. Tapping an entry inside a panel opens that entry for editing. Steps record data per entity: the personal entity first and each business below it.
 
 ### Phase-by-Phase Transformations:
 

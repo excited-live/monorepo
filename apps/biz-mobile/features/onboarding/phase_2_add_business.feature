@@ -14,9 +14,8 @@ Feature: Onboarding Phase 2 - Add Business (skippable)
       | Business Name | Studio Neon Co., Ltd. |
     And the user submits the business form
     Then the "Add Business" step should still be marked "Up next" on the checklist
-    And the "Add Business" step should offer "Done"
     When the user marks the "Add Business" step done on the checklist
-    Then the "Add Business" step should be marked "Done already" on the checklist
+    Then the "Wallet & Assets" step should be marked "Up next" on the checklist
     And the Homepage Entities section should display 2 accounts: "My Living" and "Studio Neon Co., Ltd."
     When the user taps "Studio Neon Co., Ltd." to switch to Management
     Then the Management hero eyebrow should display "BOOK VALUE" with balance "฿0"
@@ -24,8 +23,9 @@ Feature: Onboarding Phase 2 - Add Business (skippable)
 
   Scenario: Skip the Add Business step and reopen it later
     When the user skips the "Add Business" step on the checklist
+    Then the "Wallet & Assets" step should be marked "Up next" on the checklist
+    When the user taps the "Business" step on the checklist
     Then the "Add Business" step should be marked "Skipped" on the checklist
-    And the "Wallet & Assets" step should be marked "Up next" on the checklist
     When the user taps "Set up now" in the "Add Business" step on the checklist
     Then the "Add Business" drawer should open
     And the "Add Business" step should be marked "Up next" on the checklist

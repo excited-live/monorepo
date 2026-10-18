@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PlainButton } from "@excited-live/design-system";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";
 import { Step, Stepper } from "@astryxdesign/core/Stepper";
@@ -21,8 +20,6 @@ export interface HomeOnboardingChecklistProps {
 	activeIndex: number;
 	isComplete: boolean;
 	completedCount: number;
-	/** Stepper click: reopen the step (works for done, skipped and current steps). */
-	onStepClick: (index: number) => void;
 	onCompleteStep: (id: OnboardingStepId) => void;
 	onSkipStep: (id: OnboardingStepId) => void;
 	/** Clear a skip and jump into the step's editor. */
@@ -44,12 +41,16 @@ const EntryRow: React.FC<{ entry: OnboardingEntryView; onEdit: () => void }> = (
 	</PlainButton>
 );
 
+/**
+ * Horizontal, one-step-at-a-time onboarding stepper. The bar is pure
+ * navigation/progress; below it only the viewed step's panel renders. When
+ * every step is done or skipped the whole section disappears.
+ */
 export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = ({
 	steps,
 	activeIndex,
 	isComplete,
 	completedCount,
-	onStepClick,
 	onCompleteStep,
 	onSkipStep,
 	onReopenStep,
@@ -57,6 +58,22 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 	onEditEntry,
 }) => {
 	const { t } = useT();
+	const [viewOverride, setViewOverride] = useState<number | null>(null);
+	const barRef = useRef<HTMLDivElement | null>(null);
+
+	// The frontier moved (step completed/skipped): follow it, and keep the
+	// active step centered in the (horizontally scrollable) bar.
+	useEffect(() => {
+		setViewOverride(null);
+		const items = barRef.current?.querySelectorAll("li");
+		items?.[activeIndex]?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+	}, [activeIndex]);
+
+	if (isComplete) return null;
+
+	const viewIndex = viewOverride ?? activeIndex;
+	const viewed = steps[viewIndex] ?? steps[Math.max(activeIndex, 0)];
+	if (!viewed) return null;
 
 	const statusText = (status: OnboardingStepStatus) =>
 		status === "done"
@@ -67,42 +84,127 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 					? t("onboarding.status.upNext")
 					: t("onboarding.status.pending");
 
+	const isActive = viewed.status === "active";
+
+	const panel = (
+		<Stack
+			gap={2}
+			width="100%"
+			data-testid="onboarding-step-panel"
+			className="rounded-2xl border border-line/70 bg-lifted/30 p-3"
+		>
+			<HStack width="100%" justify="between" align="center" gap={2}>
+				<Stack gap={0.5} className="min-w-0 flex-1">
+					<Text className="text-[14px] font-semibold text-ink">{viewed.title}</Text>
+					<Text className="text-[11px] text-slate">{statusText(viewed.status)}</Text>
+				</Stack>
+				{viewed.skippable && <Badge variant="neutral" label={t("onboarding.optional")} />}
+			</HStack>
+
+			{viewed.entries.length > 0 && (
+				<Stack gap={1.5} width="100%">
+					{viewed.entries.map((entry) => (
+						<EntryRow key={entry.id} entry={entry} onEdit={() => onEditEntry(viewed.id, entry.id, "")} />
+					))}
+				</Stack>
+			)}
+
+			{viewed.sections.map((section) => (
+				<Stack
+					key={section.entityId}
+					gap={1.5}
+					width="100%"
+					className="rounded-2xl border border-line/60 bg-white/70 p-2.5"
+				>
+					<HStack width="100%" justify="between" align="center">
+						<Text className="text-[12px] font-semibold text-slate">{section.entityName}</Text>
+						{isActive && (
+							<Button
+								label={t("onboarding.action.add")}
+								variant="secondary"
+								size="sm"
+								onClick={() => onAddEntry(viewed.id, section.entityId)}
+							/>
+						)}
+					</HStack>
+					{section.entries.length === 0 ? (
+						<Text className="text-[11px] text-slate">{t("onboarding.empty")}</Text>
+					) : (
+						section.entries.map((entry) => (
+							<EntryRow
+								key={entry.id}
+								entry={entry}
+								onEdit={() => onEditEntry(viewed.id, entry.id, section.entityId)}
+							/>
+						))
+					)}
+				</Stack>
+			))}
+
+			{isActive && viewed.id === "add_business" && (
+				<Button
+					label={t("onboarding.action.add")}
+					variant="secondary"
+					size="sm"
+					onClick={() => onAddEntry(viewed.id, "")}
+				/>
+			)}
+
+			{isActive && !viewed.canComplete && (
+				<Text className="text-[11px] text-slate">{t("onboarding.hint.addFirst")}</Text>
+			)}
+
+			{isActive && (
+				<HStack gap={2}>
+					<Button
+						label={t("onboarding.action.done")}
+						variant="primary"
+						size="sm"
+						isDisabled={!viewed.canComplete}
+						onClick={() => onCompleteStep(viewed.id)}
+					/>
+					{viewed.skippable && (
+						<Button
+							label={t("onboarding.action.skip")}
+							variant="secondary"
+							size="sm"
+							onClick={() => onSkipStep(viewed.id)}
+						/>
+					)}
+				</HStack>
+			)}
+
+			{viewed.status === "skipped" && (
+				<Button
+					label={t("onboarding.action.setupNow")}
+					variant="secondary"
+					size="sm"
+					onClick={() => onReopenStep(viewed.id)}
+				/>
+			)}
+		</Stack>
+	);
+
 	return (
 		<SectionCard
 			title="Onboarding Checklist"
 			badge={<Badge label={`${completedCount} of ${steps.length}`} variant="neutral" />}
 		>
 			<Stack gap={3} width="100%">
-				{isComplete ? (
-					<Card padding={3} className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
-						<HStack gap={3} align="center">
-							<Text weight="bold" className="text-emerald-700 dark:text-emerald-300 text-[14px]">
-								✓ Onboarding Complete! Your Financial OS is Ready.
-							</Text>
-						</HStack>
-					</Card>
-				) : (
-					<Text className="text-[13px] text-slate">
-						Complete these foundational steps to set up your financial operating system.
-					</Text>
-				)}
-
-				<Stepper
-					activeStep={activeIndex === -1 ? steps.length : activeIndex}
-					orientation="vertical"
-					density="compact"
-					label="Onboarding progress"
-					onStepClick={onStepClick}
-				>
-					{steps.map((step, index) => {
-						const isActive = step.status === "active";
-						const isFuture = activeIndex !== -1 && index > activeIndex;
-						return (
+				<div ref={barRef} className="w-full overflow-x-auto pb-1">
+					<Stepper
+						activeStep={activeIndex}
+						orientation="horizontal"
+						density="compact"
+						label="Onboarding progress"
+						className="min-w-[540px] [&_span]:whitespace-nowrap"
+						onStepClick={(index) => setViewOverride(index === activeIndex ? null : index)}
+					>
+						{steps.map((step, index) => (
 							<Step
 								key={step.id}
 								step={index}
-								label={step.title}
-								description={statusText(step.status)}
+								label={step.shortTitle}
 								status={
 									step.status === "done"
 										? "success"
@@ -110,102 +212,13 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 											? "warning"
 											: undefined
 								}
-								isOptional={step.skippable}
-								isDisabled={isFuture}
-							>
-								<Stack gap={2} width="100%" className="pb-1">
-									{step.entries.length > 0 && (
-										<Stack gap={1.5} width="100%">
-											{step.entries.map((entry) => (
-												<EntryRow
-													key={entry.id}
-													entry={entry}
-													onEdit={() => onEditEntry(step.id, entry.id, "")}
-												/>
-											))}
-										</Stack>
-									)}
+								isDisabled={index > activeIndex}
+							/>
+						))}
+					</Stepper>
+				</div>
 
-									{step.sections.map((section) => (
-										<Stack
-											key={section.entityId}
-											gap={1.5}
-											width="100%"
-											className="rounded-2xl border border-line/60 bg-lifted/30 p-2.5"
-										>
-											<HStack width="100%" justify="between" align="center">
-												<Text className="text-[12px] font-semibold text-slate">
-													{section.entityName}
-												</Text>
-												{isActive && (
-													<Button
-														label={t("onboarding.action.add")}
-														variant="secondary"
-														size="sm"
-														onClick={() => onAddEntry(step.id, section.entityId)}
-													/>
-												)}
-											</HStack>
-											{section.entries.length === 0 ? (
-												<Text className="text-[11px] text-slate">{t("onboarding.empty")}</Text>
-											) : (
-												section.entries.map((entry) => (
-													<EntryRow
-														key={entry.id}
-														entry={entry}
-														onEdit={() => onEditEntry(step.id, entry.id, section.entityId)}
-													/>
-												))
-											)}
-										</Stack>
-									))}
-
-									{isActive && step.id === "add_business" && (
-										<Button
-											label={t("onboarding.action.add")}
-											variant="secondary"
-											size="sm"
-											onClick={() => onAddEntry(step.id, "")}
-										/>
-									)}
-
-									{isActive && !step.canComplete && (
-										<Text className="text-[11px] text-slate">{t("onboarding.hint.addFirst")}</Text>
-									)}
-
-									{isActive && (
-										<HStack gap={2}>
-											<Button
-												label={t("onboarding.action.done")}
-												variant="primary"
-												size="sm"
-												isDisabled={!step.canComplete}
-												onClick={() => onCompleteStep(step.id)}
-											/>
-											{step.skippable && (
-												<Button
-													label={t("onboarding.action.skip")}
-													variant="secondary"
-													size="sm"
-													onClick={() => onSkipStep(step.id)}
-												/>
-											)}
-										</HStack>
-									)}
-
-									{step.status === "skipped" && (
-										<Button
-											label={t("onboarding.action.setupNow")}
-											variant="secondary"
-											size="sm"
-											onClick={() => onReopenStep(step.id)}
-										/>
-									)}
-								</Stack>
-							</Step>
-						);
-					})}
-				</Stepper>
+				{panel}
 			</Stack>
 		</SectionCard>
 	);

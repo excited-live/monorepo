@@ -7,6 +7,7 @@ const STEPS: OnboardingStepView[] = [
 	{
 		id: "create_account",
 		title: "Create Account",
+		shortTitle: "Account",
 		skippable: false,
 		status: "done",
 		entryCount: 1,
@@ -17,6 +18,7 @@ const STEPS: OnboardingStepView[] = [
 	{
 		id: "add_business",
 		title: "Add Business",
+		shortTitle: "Business",
 		skippable: true,
 		status: "done",
 		entryCount: 1,
@@ -27,6 +29,7 @@ const STEPS: OnboardingStepView[] = [
 	{
 		id: "assets_wallet",
 		title: "Wallet & Assets",
+		shortTitle: "Assets",
 		skippable: true,
 		status: "skipped",
 		entryCount: 0,
@@ -43,6 +46,7 @@ const STEPS: OnboardingStepView[] = [
 	{
 		id: "add_liability",
 		title: "Add Liability",
+		shortTitle: "Liability",
 		skippable: true,
 		status: "active",
 		entryCount: 1,
@@ -60,6 +64,7 @@ const STEPS: OnboardingStepView[] = [
 	{
 		id: "add_income",
 		title: "Add Income",
+		shortTitle: "Income",
 		skippable: false,
 		status: "pending",
 		entryCount: 1,
@@ -76,6 +81,7 @@ const STEPS: OnboardingStepView[] = [
 	{
 		id: "add_expense",
 		title: "Add Expense",
+		shortTitle: "Expense",
 		skippable: false,
 		status: "pending",
 		entryCount: 0,
@@ -86,19 +92,18 @@ const STEPS: OnboardingStepView[] = [
 ];
 
 test.describe("HomeOnboardingChecklist Visual", () => {
-	test("renders the stepper mid-flow with done, skipped, active and pending steps", async ({ mount }) => {
+	test("renders the horizontal stepper with only the active step panel", async ({ mount }) => {
 		const component = await mount("HomeOnboardingChecklist", {
 			steps: STEPS,
 			activeIndex: 3,
 			isComplete: false,
 			completedCount: 2,
-			onStepClick: noop,
 			onCompleteStep: noop,
 			onSkipStep: noop,
 			onReopenStep: noop,
 			onAddEntry: noop,
 			onEditEntry: noop,
 		});
-		await expect(component).toHaveScreenshot("onboarding-checklist-mid-flow.png");
+		await expect(component).toHaveScreenshot("onboarding-checklist-active-step.png");
 	});
 });

@@ -18,17 +18,19 @@ export type OnboardingStepId =
 export interface OnboardingStepConfig {
 	id: OnboardingStepId;
 	title: string;
+	/** Compact label for the horizontal stepper bar. */
+	shortTitle: string;
 	skippable: boolean;
 }
 
 /** The onboarding journey, in order. */
 export const ONBOARDING_STEPS: readonly OnboardingStepConfig[] = [
-	{ id: "create_account", title: "Create Account", skippable: false },
-	{ id: "add_business", title: "Add Business", skippable: true },
-	{ id: "assets_wallet", title: "Wallet & Assets", skippable: true },
-	{ id: "add_liability", title: "Add Liability", skippable: true },
-	{ id: "add_income", title: "Add Income", skippable: false },
-	{ id: "add_expense", title: "Add Expense", skippable: false },
+	{ id: "create_account", title: "Create Account", shortTitle: "Account", skippable: false },
+	{ id: "add_business", title: "Add Business", shortTitle: "Business", skippable: true },
+	{ id: "assets_wallet", title: "Wallet & Assets", shortTitle: "Assets", skippable: true },
+	{ id: "add_liability", title: "Add Liability", shortTitle: "Liability", skippable: true },
+	{ id: "add_income", title: "Add Income", shortTitle: "Income", skippable: false },
+	{ id: "add_expense", title: "Add Expense", shortTitle: "Expense", skippable: false },
 ];
 
 export type OnboardingStepStatus = "done" | "skipped" | "active" | "pending";

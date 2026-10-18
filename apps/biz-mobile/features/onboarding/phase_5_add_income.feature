@@ -15,12 +15,13 @@ Feature: Onboarding Phase 5 - Add Income (not skippable)
     Then the "Add Income" step should still be marked "Up next" on the checklist
     And the "Add Income" step should not offer "Skip for now"
     When the user marks the "Add Income" step done on the checklist
-    Then the "Add Income" step should be marked "Done already" on the checklist
+    Then the "Add Expense" step should be marked "Up next" on the checklist
     And the Homepage Personal card should display the career card with live payday countdown
     When the user switches to the "capital" tab
     Then the Management hero monthly income should show "+฿150,000/mo"
     And the runway status pill should update to "DEFAULT ALIVE"
 
-  Scenario: Multiple income streams are listed inside the step
+  Scenario: Multiple income streams are listed inside the step panel
     When the user records a second income "Brand Retainer" with amount "20000" THB monthly
+    And the user taps the "Income" step on the checklist
     Then the "Add Income" step should list 2 entries

@@ -63,7 +63,6 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 		isLiabilityResolved,
 		completeStep,
 		skipStep,
-		handleStepClick,
 		handleAddEntry,
 		handleEditEntry,
 		handleReopenStep,
@@ -99,7 +98,6 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 					activeIndex={onboardingActiveIndex}
 					isComplete={onboardingComplete}
 					completedCount={onboardingCompletedCount}
-					onStepClick={handleStepClick}
 					onCompleteStep={completeStep}
 					onSkipStep={skipStep}
 					onReopenStep={handleReopenStep}

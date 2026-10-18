@@ -254,12 +254,6 @@ export function useHome() {
 		}
 	};
 
-	/** Going back to a completed/skipped step reopens its editor. */
-	const handleStepClick = (index: number) => {
-		const step = onboardingSteps[index];
-		if (step) openStepPrimary(step.id);
-	};
-
 	const handleAddEntry = (id: OnboardingStepId, entityId: string) => {
 		switch (id) {
 			case "add_business":
@@ -376,7 +370,6 @@ export function useHome() {
 		isLiabilityResolved,
 		completeStep,
 		skipStep,
-		handleStepClick,
 		handleAddEntry,
 		handleEditEntry,
 		handleReopenStep,

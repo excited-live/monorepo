@@ -105,6 +105,7 @@ export const strings: Dictionary = {
 	"onboarding.action.skip": { en: "Skip for now", th: "ข้ามไปก่อน" },
 	"onboarding.action.setupNow": { en: "Set up now", th: "ตั้งค่าตอนนี้" },
 	"onboarding.action.add": { en: "Add", th: "เพิ่ม" },
+	"onboarding.optional": { en: "Optional", th: "ไม่บังคับ" },
 	"onboarding.hint.addFirst": {
 		en: "Add at least one entry to continue",
 		th: "เพิ่มอย่างน้อยหนึ่งรายการเพื่อดำเนินการต่อ",

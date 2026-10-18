@@ -6,7 +6,9 @@ import {
 	calculateEntityWealthMetrics,
 	calculatePaydayCountdown,
 	calculateProjectionBalances,
+	generateMonthlyLedger,
 	isCashAsset,
+	round2,
 	shiftYearMonth,
 	type CapitalTransfer,
 	type EntityAccount,
@@ -108,4 +110,35 @@ export function selectGearAssetViewModels(params: {
 			raw: asset,
 		};
 	});
+}
+
+/**
+ * Pure ViewModel Selector: cash outflows of one month grouped into waterfall
+ * categories, taken from the ledger so they sum to the ledger's outflow total
+ * (one-time items only in their month, transfers and debt service included).
+ * Sorted largest first.
+ */
+export function selectMonthlyExpenseBreakdown(params: {
+	account: EntityAccount;
+	yearMonth: string;
+	subscriptions: RecurringSubscription[];
+	hardware: HardwareAsset[];
+	revenues: RevenueStream[];
+	transfers: CapitalTransfer[];
+	liabilities: LiabilityStream[];
+}): Array<[string, number]> {
+	const { actions } = generateMonthlyLedger(params);
+	const byCategory = new Map<string, number>();
+	for (const action of actions) {
+		if (action.direction !== "outflow" || action.category === "asset_depreciation") continue;
+		const rawCat = action.category || "Subscriptions";
+		const label =
+			rawCat === "transfer"
+				? "Capital"
+				: rawCat === "liability"
+					? "Liability"
+					: rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
+		byCategory.set(label, round2((byCategory.get(label) ?? 0) + action.amount));
+	}
+	return Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1]);
 }

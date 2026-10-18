@@ -7,7 +7,10 @@ import { FormField, InputField, SelectField } from "../../../../components/FormF
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/accounting";
+import {
+	calculateAvailableCash,
+	isCashAsset,
+	resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
@@ -45,8 +48,18 @@ export const AddExpenseDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: RecurringSubscription | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addSubscription, updateSubscription, deleteSubscription, accounts, hardware, injectCapital } =
-		useFinances();
+	const {
+		addSubscription,
+		updateSubscription,
+		deleteSubscription,
+		accounts,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+		injectCapital,
+	} = useFinances();
 	const { activeEntityId } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
@@ -69,7 +82,17 @@ export const AddExpenseDrawer: React.FC<{
 
 	const targetBiz = accounts.find((a) => a.id === targetBizId) || businessAccounts[0];
 	const targetBizCashAssets = targetBiz ? hardware.filter((h) => h.entityId === targetBiz.id && isCashAsset(h)) : [];
-	const availablePersonalCash = activeAccount.cashReserve;
+	// Cash personal can move this month (capital deploys are saved with today's date)
+	const now = new Date();
+	const availablePersonalCash = calculateAvailableCash({
+		account: activeAccount,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+		yearMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+	});
 
 	const handleTargetBizChange = (newBizId: string) => {
 		setTargetBizId(newBizId);

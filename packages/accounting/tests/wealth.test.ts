@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	calculateConsolidatedWealthMetrics,
+	calculateCurrentTreasury,
 	calculateEntityWealthMetrics,
 	calculatePaydayCountdown,
 	calculateProjectionBalances,
@@ -53,7 +54,7 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 		expect(metrics.isDefaultAlive).toBe(true);
 	});
 
-	it("calculates consolidated wealth across all accounts", () => {
+	it("calculates consolidated wealth from cash assets, ignoring the deprecated cashReserve field", () => {
 		const consolidated = calculateConsolidatedWealthMetrics({
 			accounts: SEED_ACCOUNTS,
 			hardware: SEED_HARDWARE,
@@ -63,9 +64,32 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 			transfers: SEED_TRANSFERS,
 		});
 
+		const personalLiquid = calculateEntityWealthMetrics({
+			account: personalAccount,
+			hardware: SEED_HARDWARE,
+			subscriptions: SEED_SUBSCRIPTIONS,
+			revenues: SEED_REVENUES,
+			liabilities: SEED_LIABILITIES,
+			transfers: SEED_TRANSFERS,
+			yearMonth: "2026-10",
+		}).currentLiquid;
+		const bizLiquid = calculateEntityWealthMetrics({
+			account: bizAccount,
+			hardware: SEED_HARDWARE,
+			subscriptions: SEED_SUBSCRIPTIONS,
+			revenues: SEED_REVENUES,
+			liabilities: SEED_LIABILITIES,
+			transfers: SEED_TRANSFERS,
+			yearMonth: "2026-10",
+		}).currentLiquid;
+
 		expect(consolidated.totalTreasury).toBeGreaterThan(0);
-		expect(consolidated.personalCash).toBe(personalAccount.cashReserve);
-		expect(consolidated.businessCash).toBe(bizAccount.cashReserve);
+		expect(consolidated.personalCash).toBe(personalLiquid);
+		expect(consolidated.businessCash).toBe(bizLiquid);
+		expect(consolidated.totalTreasury).toBe(personalLiquid + bizLiquid);
+		expect(consolidated.totalTreasury).not.toBe(
+			SEED_ACCOUNTS.reduce((acc, a) => acc + a.cashReserve, 0),
+		);
 	});
 
 	it("calculates pure payday countdown without hidden time drift", () => {
@@ -93,7 +117,15 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 		});
 
 		expect(projection.offsets).toHaveLength(10); // -3, -2, -1, 0, 1, 2, 3, 4, 5, 6
-		expect(projection.balances.get(0)).toBe(personalAccount.cashReserve);
+		// The "now" anchor is today's derived treasury, not the deprecated
+		// cashReserve field (always 0).
+		const nowTreasury = calculateCurrentTreasury({
+			account: personalAccount,
+			hardware: SEED_HARDWARE,
+			transfers: SEED_TRANSFERS,
+		});
+		expect(nowTreasury).toBeGreaterThan(0);
+		expect(projection.balances.get(0)).toBe(nowTreasury);
 		expect(projection.balances.size).toBe(10);
 	});
 });

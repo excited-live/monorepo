@@ -1,5 +1,5 @@
 import { calculateAssetDepreciation, calculateMonthlyEquivalent, calculateRunway, isCashAsset, round2, shiftYearMonth } from "./math";
-import { calculateCashAssetBalance, calculateDerivedTreasury, generateMonthlyLedger } from "./ledger";
+import { calculateCashAssetBalance, calculateCurrentTreasury, calculateDerivedTreasury, generateMonthlyLedger } from "./ledger";
 import type {
 	Account,
 	Asset,
@@ -137,16 +137,30 @@ export function calculateConsolidatedWealthMetrics(params: {
 	revenues: Income[];
 	liabilities: Liability[];
 	transfers: Transfer[];
+	yearMonth?: string;
 }): ConsolidatedWealthMetrics {
-	const { accounts, hardware, subscriptions, revenues, liabilities, transfers } = params;
+	const { accounts, hardware, subscriptions, revenues, liabilities, transfers, yearMonth } = params;
+
+	// Spendable cash lives in cash asset rows, so current treasury is the sum
+	// of each entity's derived liquid balance — never the deprecated
+	// `cashReserve` field, which is always 0.
+	const liquidOf = (account: Account): number =>
+		calculateEntityWealthMetrics({
+			account,
+			hardware,
+			subscriptions,
+			revenues,
+			liabilities,
+			transfers,
+			yearMonth,
+		}).currentLiquid;
 
 	const personal = accounts.find((a) => a.type === "personal");
-	const personalCash = personal?.cashReserve ?? 0;
+	const personalCash = personal ? liquidOf(personal) : 0;
 	const businessCash = accounts
 		.filter((a) => a.type === "business")
-		.reduce((acc, a) => acc + a.cashReserve, 0);
+		.reduce((acc, a) => acc + liquidOf(a), 0);
 
-	const totalTreasury = accounts.reduce((acc, a) => acc + a.cashReserve, 0);
 	const totalEomTreasury = accounts.reduce((acc, a) => {
 		const eom = calculateDerivedTreasury({
 			account: a,
@@ -155,12 +169,13 @@ export function calculateConsolidatedWealthMetrics(params: {
 			liabilities,
 			hardware,
 			transfers,
+			yearMonth,
 		});
 		return acc + eom;
 	}, 0);
 
 	return {
-		totalTreasury: round2(totalTreasury),
+		totalTreasury: round2(personalCash + businessCash),
 		totalEomTreasury: round2(totalEomTreasury),
 		personalCash: round2(personalCash),
 		businessCash: round2(businessCash),
@@ -249,7 +264,9 @@ export function calculateProjectionBalances(params: {
 	for (let m = -pastMonths; m <= futureMonths; m++) offsets.push(m);
 
 	const balances = new Map<number, number>();
-	balances.set(0, account.cashReserve);
+	// Anchor the projection at today's derived treasury; `cashReserve` is a
+	// deprecated field that is always 0 now that cash lives in asset rows.
+	balances.set(0, calculateCurrentTreasury({ account, hardware, transfers }));
 
 	for (let m = -1; m >= -pastMonths; m--) {
 		balances.set(

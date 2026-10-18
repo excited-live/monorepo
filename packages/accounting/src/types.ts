@@ -6,6 +6,11 @@ export interface Account {
 	id: string;
 	name: string;
 	type: EntityType;
+	/**
+	 * @deprecated Legacy pre-migration field; always 0 now that spendable cash
+	 * lives in cash `Asset` rows. Read liquidity from
+	 * `calculateCurrentTreasury` or `calculateEntityWealthMetrics` instead.
+	 */
 	cashReserve: number;
 	salary?: number;
 	paydayDayOfMonth?: number;

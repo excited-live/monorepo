@@ -194,6 +194,53 @@ describe("@excited-live/accounting - Pure Commands", () => {
 		expect(afterSalaryDelete.accounts[0]?.salary).toBe(0);
 	});
 
+	it("keeps a projected promotion separate from the current career stream", () => {
+		const base = addIncome(EMPTY_SNAPSHOT, {
+			entityId: "acc_personal",
+			name: "Current salary",
+			amount: 80000,
+			frequency: "monthly",
+			source: "salary",
+			active: true,
+			id: "rev_current",
+		}).snapshot;
+		const withPrimary = setCareerIncome(base, {
+			entityId: "acc_personal",
+			salary: 80000,
+			title: "Engineer",
+		});
+
+		// A promotion is a second, later-dated salary stream.
+		const withPromotion = addIncome(withPrimary, {
+			entityId: "acc_personal",
+			name: "Promotion",
+			amount: 120000,
+			frequency: "monthly",
+			source: "salary",
+			active: true,
+			startMonth: "2027-01",
+			id: "rev_promotion",
+		}).snapshot;
+
+		// Editing the career updates the earliest-starting stream only.
+		const edited = setCareerIncome(withPromotion, {
+			entityId: "acc_personal",
+			salary: 85000,
+			title: "Senior Engineer",
+		});
+		const current = edited.revenues.find((r) => r.id === "rev_current")!;
+		const promotion = edited.revenues.find((r) => r.id === "rev_promotion")!;
+		expect(current.amount).toBe(85000);
+		expect(current.endMonth).toBeUndefined();
+		expect(promotion.amount).toBe(120000);
+		expect(promotion.startMonth).toBe("2027-01");
+
+		// Deleting the promotion leaves the account's current salary intact.
+		const afterPromotionDelete = deleteIncome(edited, "rev_promotion");
+		expect(afterPromotionDelete.accounts[0]?.salary).toBe(85000);
+		expect(afterPromotionDelete.revenues.map((r) => r.id)).toEqual(["rev_current"]);
+	});
+
 	it("manages liabilities (add, update, delete)", () => {
 		const res = addLiability(EMPTY_SNAPSHOT, {
 			entityId: "acc_personal",

@@ -4,6 +4,7 @@ import {
 	calculateEntityWealthMetrics,
 	calculatePaydayCountdown,
 	calculateProjectionBalances,
+	recordTransfer,
 	round2,
 	SEED_ACCOUNTS,
 	SEED_HARDWARE,
@@ -54,7 +55,7 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 		expect(metrics.isDefaultAlive).toBe(true);
 	});
 
-	it("calculates consolidated wealth across all accounts", () => {
+	it("calculates consolidated wealth as cash on hand for the month", () => {
 		const consolidated = calculateConsolidatedWealthMetrics({
 			accounts: SEED_ACCOUNTS,
 			hardware: SEED_HARDWARE,
@@ -64,12 +65,54 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 			transfers: SEED_TRANSFERS,
 		});
 
-		// Opening treasury of 2026-10 = cash wallets at the start of the month
-		expect(consolidated.personalCash).toBe(72130);
-		expect(consolidated.businessCash).toBe(24447.5);
+		// Cash in hand during 2026-10: wallets + transfers dated through the month
+		expect(consolidated.personalCash).toBe(52130);
+		expect(consolidated.businessCash).toBe(44447.5);
 		expect(consolidated.totalTreasury).toBe(96577.5);
 		// End of month reproduces the seeded demo balances (125,000 + 45,000)
 		expect(consolidated.totalEomTreasury).toBe(170000);
+	});
+
+	it("reflects this month's capital transfer in cash on hand, never next month's", () => {
+		const snapshot = {
+			accounts: SEED_ACCOUNTS,
+			hardware: SEED_HARDWARE,
+			subscriptions: SEED_SUBSCRIPTIONS,
+			revenues: SEED_REVENUES,
+			liabilities: SEED_LIABILITIES,
+			transfers: SEED_TRANSFERS,
+		};
+		const consolidatedOf = (s: typeof snapshot) =>
+			calculateConsolidatedWealthMetrics({
+				accounts: s.accounts,
+				hardware: s.hardware,
+				subscriptions: s.subscriptions,
+				revenues: s.revenues,
+				liabilities: s.liabilities,
+				transfers: s.transfers,
+			});
+
+		const transfer = (date: string) =>
+			recordTransfer(
+				{ ...snapshot },
+				{
+					fromEntityId: personalAccount.id,
+					toEntityId: bizAccount.id,
+					amount: 5000,
+					date,
+					note: "Deploy capital",
+				},
+			).snapshot;
+
+		// A transfer dated inside the viewed month moves both sides immediately.
+		const inMonth = consolidatedOf(transfer("2026-10-15"));
+		expect(inMonth.personalCash).toBe(47130);
+		expect(inMonth.businessCash).toBe(49447.5);
+
+		// One dated next month stays out of the current month's cash on hand.
+		const nextMonth = consolidatedOf(transfer("2026-11-15"));
+		expect(nextMonth.personalCash).toBe(52130);
+		expect(nextMonth.businessCash).toBe(44447.5);
 	});
 
 	it("calculates pure payday countdown without hidden time drift", () => {

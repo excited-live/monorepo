@@ -2,6 +2,7 @@ import { calculateAssetDepreciation, isCashAsset, round2, shiftYearMonth } from 
 import {
 	calculateCashAssetBalance,
 	calculateDerivedTreasury,
+	calculateEntityCashOnHand,
 	calculateEntityMonthlyCashFlow,
 	calculateOpeningTreasury,
 	calculateTreasuryAsOf,
@@ -162,21 +163,24 @@ export function calculateConsolidatedWealthMetrics(params: {
 		yearMonth = DEFAULT_BASELINE_MONTH,
 	} = params;
 
-	const opening = new Map(
+	// "Current" is cash in hand: transfers dated through the month are applied
+	// (a capital transfer recorded this month moves the total immediately),
+	// future months are not. The end-of-month figure keeps the projected close.
+	const cashOnHand = new Map(
 		accounts.map((account) => [
 			account.id,
-			calculateOpeningTreasury({ account, hardware, transfers, subscriptions, revenues, liabilities, yearMonth }),
+			calculateEntityCashOnHand({ account, hardware, transfers, subscriptions, revenues, liabilities, yearMonth }),
 		]),
 	);
-	const openingOf = (account: Account) => opening.get(account.id) ?? 0;
+	const cashOnHandOf = (account: Account) => cashOnHand.get(account.id) ?? 0;
 
 	const personal = accounts.find((a) => a.type === "personal");
-	const personalCash = personal ? openingOf(personal) : 0;
+	const personalCash = personal ? cashOnHandOf(personal) : 0;
 	const businessCash = accounts
 		.filter((a) => a.type === "business")
-		.reduce((acc, a) => acc + openingOf(a), 0);
+		.reduce((acc, a) => acc + cashOnHandOf(a), 0);
 
-	const totalTreasury = accounts.reduce((acc, a) => acc + openingOf(a), 0);
+	const totalTreasury = accounts.reduce((acc, a) => acc + cashOnHandOf(a), 0);
 	const totalEomTreasury = accounts.reduce((acc, a) => {
 		const eom = calculateDerivedTreasury({
 			account: a,

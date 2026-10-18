@@ -98,7 +98,8 @@ describe("buildCashFlows", () => {
 			principal: 7884.88,
 			spendingAmount: 1000,
 		});
-		expect(byId.get("out:card_1")).toMatchObject({ flowType: "debt_payment", amount: 500, spendingAmount: 0 });
+		// The card owes only this month's 300 charge, so it pays 300 of its 500 plan.
+		expect(byId.get("out:card_1")).toMatchObject({ flowType: "debt_payment", amount: 300, spendingAmount: 0 });
 		expect(byId.get("out:tx_laptop")).toMatchObject({ flowType: "asset_purchase", amount: 1200, spendingAmount: 0 });
 		expect(byId.get("out:tx_invest")).toMatchObject({ flowType: "investment", amount: 500, spendingAmount: 0 });
 		expect(byId.get("in:tx_withdraw")).toMatchObject({ flowType: "investment", direction: "in", amount: 800, spendingAmount: 0 });
@@ -121,11 +122,11 @@ describe("buildCashFlows", () => {
 
 	it("summarizes spending and the cash totals", () => {
 		// Money in: fee 3000 + withdrawal 800 = 3800.
-		// Money out: tools 200 + mortgage 8884.88 + card 500 + laptop 1200 + ETF 500 = 11284.88.
+		// Money out: tools 200 + mortgage 8884.88 + card 300 + laptop 1200 + ETF 500 = 11084.88.
 		// Spending: tools 200 + card charge 300 + mortgage interest 1000 + depreciation 100 = 1600.
 		expect(summarizeCashFlows(buildCashFlows({ ...args, includeDepreciation: true }))).toEqual({
 			moneyIn: 3800,
-			moneyOut: 11284.88,
+			moneyOut: 11084.88,
 			spending: 1600,
 		});
 		expect(summarizeCashFlows(buildCashFlows(args)).spending).toBe(1500);

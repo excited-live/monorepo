@@ -110,7 +110,7 @@ export function calculateEntityWealthMetrics(params: {
 	const liabilityMonthly = round2(
 		liabilities
 			.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth))
-			.reduce((acc, l) => acc + liabilityPaymentInMonth(l, yearMonth, transfers), 0),
+			.reduce((acc, l) => acc + liabilityPaymentInMonth(l, yearMonth, transfers, subscriptions), 0),
 	);
 
 	const totalIncome = totalInflow;
@@ -262,7 +262,7 @@ export function calculateProjectionBalances(params: {
 	const liabilityMonthly = round2(
 		liabilities
 			.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth))
-			.reduce((acc, l) => acc + liabilityPaymentInMonth(l, yearMonth, transfers), 0),
+			.reduce((acc, l) => acc + liabilityPaymentInMonth(l, yearMonth, transfers, subscriptions), 0),
 	);
 	const totalIncome = selected.inflow;
 	const totalExpense = round2(Math.max(0, selected.outflow - liabilityMonthly));

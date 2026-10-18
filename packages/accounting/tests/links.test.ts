@@ -343,6 +343,22 @@ describe("classification with kind and depreciationMethod", () => {
 		expect(isCashAsset({ ...base, cost: 100, lifespanMonths: 0, category: "other" })).toBe(true);
 	});
 
+	it("a fixed asset without a positive lifespan does not depreciate (and never divides by zero)", () => {
+		const noLife = calculateAssetDepreciation({ ...base, cost: 1200, lifespanMonths: 0, category: "laptop", kind: "fixed" }, YM);
+		expect(noLife).toEqual({
+			monthlyRate: 0,
+			elapsedMonths: 0,
+			remainingMonths: 0,
+			monthsRemaining: 0,
+			remainingBookValue: 1200,
+			isFullyDepreciated: false,
+			completionDate: "N/A",
+		});
+		const negative = calculateAssetDepreciation({ ...base, cost: 1200, lifespanMonths: -12, category: "laptop", kind: "fixed" }, YM);
+		expect(negative.remainingBookValue).toBe(1200);
+		expect(Number.isFinite(negative.monthlyRate)).toBe(true);
+	});
+
 	it("investments and depreciationMethod none (land) do not depreciate", () => {
 		const land = calculateAssetDepreciation({ ...base, cost: 80000, lifespanMonths: 120, category: "other", kind: "fixed", depreciationMethod: "none" }, YM);
 		expect(land).toEqual({

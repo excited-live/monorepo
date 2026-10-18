@@ -8,7 +8,7 @@ import {
 	round2,
 	shiftYearMonth,
 } from "./math";
-import { buildLoanSchedule, loanTransferApplied } from "./liabilities";
+import { buildLoanSchedule, buildRevolvingSchedule, loanTransferApplied, revolvingTransferApplied } from "./liabilities";
 import type {
 	CapitalTransfer,
 	CashWallet,
@@ -107,15 +107,24 @@ export function liabilityBasePaymentInMonth(liability: LiabilityStream, yearMont
 /**
  * Cash a debt payment costs in yearMonth (0 when not due). A loan pays its
  * schedule (interest + principal, capped at the balance, 0 once paid off) from
- * origination on; before that, and for other kinds, the base payment.
+ * origination on. A revolving balance pays its schedule's payment (capped at what
+ * is owed, 0 once cleared) from balanceAsOf on. Before those, and for other kinds,
+ * the base payment.
  */
 export function liabilityPaymentInMonth(
 	liability: LiabilityStream,
 	yearMonth: string,
 	transfers?: CapitalTransfer[],
+	subscriptions?: RecurringSubscription[],
 ): number {
 	if (liability.loan && yearMonth >= liability.loan.originatedOn.slice(0, 7)) {
 		const entry = buildLoanSchedule({ liability, transfers, throughYearMonth: yearMonth }).find(
+			(e) => e.yearMonth === yearMonth,
+		);
+		return entry?.payment ?? 0;
+	}
+	if (liability.revolving && yearMonth >= liability.revolving.balanceAsOf.slice(0, 7)) {
+		const entry = buildRevolvingSchedule({ liability, subscriptions, transfers, yearMonth }).find(
 			(e) => e.yearMonth === yearMonth,
 		);
 		return entry?.payment ?? 0;
@@ -164,20 +173,34 @@ export function transferCashIn(t: CapitalTransfer, entityId: string, hardware: H
 
 /**
  * Cash a capital transfer takes out of entityId. Selling an investment (a
- * non-cash source) takes no cash out. With `loanContext`, a payment into a loan
- * takes only what the loan schedule applies (nothing once it is paid off).
+ * non-cash source) takes no cash out. With `loanContext`, a payment into a loan or
+ * revolving liability takes only what its schedule applies (nothing once it is
+ * paid off or cleared).
  */
 export function transferCashOut(
 	t: CapitalTransfer,
 	entityId: string,
 	hardware: HardwareAsset[] = [],
-	loanContext?: { yearMonth: string; liabilities: LiabilityStream[]; transfers: CapitalTransfer[] },
+	loanContext?: {
+		yearMonth: string;
+		liabilities: LiabilityStream[];
+		transfers: CapitalTransfer[];
+		subscriptions?: RecurringSubscription[];
+	},
 ): number {
 	if (t.fromEntityId !== entityId) return 0;
 	if (!isCashOrUnknown(t.fromAssetId, hardware)) return 0;
 	if (!t.toLiabilityId || !loanContext) return t.amount;
-	const loan = loanContext.liabilities.find((l) => l.id === t.toLiabilityId && l.loan);
-	return loan ? loanTransferApplied(loan, t, loanContext.yearMonth, loanContext.transfers) : t.amount;
+	const liability = loanContext.liabilities.find((l) => l.id === t.toLiabilityId && (l.loan || l.revolving));
+	if (!liability) return t.amount;
+	if (liability.loan) return loanTransferApplied(liability, t, loanContext.yearMonth, loanContext.transfers);
+	return revolvingTransferApplied(
+		liability,
+		t,
+		loanContext.yearMonth,
+		loanContext.transfers,
+		loanContext.subscriptions,
+	);
 }
 
 /** Day-of-month part of a YYYY-MM-DD date, or fallback for YYYY-MM dates. */
@@ -215,6 +238,8 @@ export function calculateEntityMonthlyOperatingCash(params: {
 	legacySalary?: boolean;
 	/** Loans whose proceeds count here (used to split proceeds across wallets); default: all of `liabilities`. */
 	proceedsLiabilities?: LiabilityStream[];
+	/** Subscriptions that size revolving card payments (charges raise what is owed); default: `subscriptions`. */
+	scheduleSubscriptions?: RecurringSubscription[];
 }): {
 	totalIncome: number;
 	totalExpense: number;
@@ -229,6 +254,7 @@ export function calculateEntityMonthlyOperatingCash(params: {
 		transfers = [],
 		legacySalary,
 		proceedsLiabilities = liabilities,
+		scheduleSubscriptions = subscriptions,
 	} = params;
 
 	// Inflows from revenue streams
@@ -267,7 +293,7 @@ export function calculateEntityMonthlyOperatingCash(params: {
 		(l) => l.entityId === account.id && (yearMonth ? isLiabilityInMonth(l, yearMonth) : l.active),
 	);
 	const monthlyLiabilities = activeLiab.reduce((acc, l) => {
-		if (yearMonth) return acc + liabilityPaymentInMonth(l, yearMonth, transfers);
+		if (yearMonth) return acc + liabilityPaymentInMonth(l, yearMonth, transfers, scheduleSubscriptions);
 		return acc + (l.cycle && l.cycle !== "monthly" ? calculateMonthlyEquivalent(l.amount, l.cycle) : l.amount);
 	}, 0);
 
@@ -354,7 +380,12 @@ export function calculateWalletBalance(params: {
 		let delta = 0;
 		const cashIn = transferCashIn(t, wallet.entityId, hardware);
 		if (cashIn > 0 && resolvesHere(t.targetAssetId)) delta += cashIn;
-		const cashOut = transferCashOut(t, wallet.entityId, hardware, { yearMonth: ym, liabilities, transfers });
+		const cashOut = transferCashOut(t, wallet.entityId, hardware, {
+			yearMonth: ym,
+			liabilities,
+			transfers,
+			subscriptions,
+		});
 		if (cashOut > 0 && resolvesHere(t.fromAssetId)) delta -= cashOut;
 		return delta;
 	};
@@ -410,6 +441,7 @@ export function calculateWalletBalance(params: {
 			yearMonth: ym,
 			transfers,
 			legacySalary: legacySalaryOnFull && isDefaultWallet,
+			scheduleSubscriptions: subscriptions,
 		}).netOperatingCash;
 	};
 
@@ -647,7 +679,7 @@ export function calculateEntityMonthlyCashFlow(params: {
 	const monthTransfers = transfers.filter((t) => isTransferInMonth(t, yearMonth));
 	const transferIn = monthTransfers.reduce((acc, t) => acc + transferCashIn(t, account.id, hardware), 0);
 	const transferOut = monthTransfers.reduce(
-		(acc, t) => acc + transferCashOut(t, account.id, hardware, { yearMonth, liabilities, transfers }),
+		(acc, t) => acc + transferCashOut(t, account.id, hardware, { yearMonth, liabilities, transfers, subscriptions }),
 		0,
 	);
 
@@ -964,7 +996,7 @@ export function buildMonthlyActions(params: LedgerParams): {
 	}
 
 	// Outflows: Outgoing Transfers (only the ones that take cash out of this entity)
-	const loanContext = { yearMonth, liabilities, transfers };
+	const loanContext = { yearMonth, liabilities, transfers, subscriptions };
 	const outgoingTransfers = transfers
 		.filter((t) => t.fromEntityId === account.id && isTransferInMonth(t, yearMonth))
 		.map((tx) => ({ tx, amount: transferCashOut(tx, account.id, hardware, loanContext) }))
@@ -994,11 +1026,11 @@ export function buildMonthlyActions(params: LedgerParams): {
 	// Outflows: Liabilities
 	const activeLiab = liabilities.filter((l) => l.entityId === account.id && isLiabilityDue(l, yearMonth));
 	for (const liab of activeLiab) {
-		const amt = liabilityPaymentInMonth(liab, yearMonth, transfers);
+		const amt = liabilityPaymentInMonth(liab, yearMonth, transfers, subscriptions);
+		// A paid-off loan or cleared revolving balance stops charging: no action once its payment is 0.
+		if (amt === 0 && (liab.loan || liab.revolving)) continue;
 		let split: LedgerAction["split"];
 		if (liab.loan) {
-			// A paid-off loan stops charging: no action once its schedule payment is 0.
-			if (amt === 0) continue;
 			const entry = buildLoanSchedule({ liability: liab, transfers, throughYearMonth: yearMonth }).find(
 				(e) => e.yearMonth === yearMonth,
 			);

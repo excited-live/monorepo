@@ -480,8 +480,10 @@ export const RevolvingScheduleEntrySchema = z
 		opening: z.number(),
 		interest: z.number(),
 		charges: z.number().describe("Monthly-equivalent card charges that month."),
-		payments: z.number().describe("Scheduled payment plus transfers into the card."),
-		closing: z.number().describe("A negative balance is a credit."),
+		payment: z.number().describe("Scheduled payment made, capped at what is owed."),
+		extra: z.number().describe("Transfers into the card applied that month, capped at what is still owed."),
+		payments: z.number().describe("payment + extra."),
+		closing: z.number(),
 	})
 	.meta({ id: "RevolvingScheduleEntry", description: "One month of a revolving balance." }) satisfies z.ZodType<RevolvingScheduleEntry>;
 

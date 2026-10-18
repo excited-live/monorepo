@@ -444,9 +444,11 @@ starts at `revolving.balance` at the start of `balanceAsOf`; for each month
 `charges` = Σ monthly-equivalent amounts of expenses with
 `paidFromLiabilityId === id` charged that month (same rule as cash expenses),
 `payments` = the base payment that month + Σ transfers to it,
-`closing = round2(opening + interest + charges - payments)`. Before
-`balanceAsOf` → `balance`. The card's cash payment is the scheduled amount (no
-cap); a negative balance is a credit.
+`closing = round2(opening + interest + charges - payments)`, where the
+scheduled payment and extra transfers are capped at what is owed
+(`max(0, opening + interest + charges)`), so payments stop once the card is
+clear. Before `balanceAsOf` → `balance`. Inactive loans and revolving
+liabilities owe nothing on the balance sheet.
 
 ### 4.6 Investments (`src/investments.ts`)
 
@@ -459,7 +461,9 @@ contributions are transfers with `targetAssetId === id` and withdrawals are
 transfers with `fromAssetId === id` occurring that month. Before
 `valuedAsOf` → `marketValue`. Also returns
 `costBasis = round2(costBasis + Σcontributions - Σwithdrawals)` over the same
-months and `unrealizedGain = round2(value - costBasis)`.
+months and `unrealizedGain = round2(value - costBasis)`. A withdrawal removes
+basis pro rata: `costBasis × min(1, withdrawals / value before the withdrawal)`,
+and value never goes below 0.
 
 Investment income (dividends, rent, interest) is ordinary income with
 `sourceAssetId`; it is cash in like any other income.

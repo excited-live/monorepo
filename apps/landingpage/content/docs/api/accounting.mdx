@@ -1420,8 +1420,10 @@ One month of a revolving balance.
 | `opening` | `number` | yes |  |
 | `interest` | `number` | yes |  |
 | `charges` | `number` | yes | Monthly-equivalent card charges that month. |
-| `payments` | `number` | yes | Scheduled payment plus transfers into the card. |
-| `closing` | `number` | yes | A negative balance is a credit. |
+| `payment` | `number` | yes | Scheduled payment made, capped at what is owed. |
+| `extra` | `number` | yes | Transfers into the card applied that month, capped at what is still owed. |
+| `payments` | `number` | yes | payment + extra. |
+| `closing` | `number` | yes |  |
 
 ### BalanceSheet
 

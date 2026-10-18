@@ -106,8 +106,14 @@ export function calculateAssetDepreciation(
 	asOfYearMonth: string = "2026-10",
 ): DepreciationCalculation {
 	// Cash assets, investments (market value, not depreciated) and fixed assets
-	// marked depreciationMethod "none" (land) never depreciate.
-	if (isCashAsset(asset) || asset.kind === "investment" || asset.depreciationMethod === "none") {
+	// marked depreciationMethod "none" (land) never depreciate. A fixed asset with
+	// no positive lifespan has nothing to spread its cost over, so it does not either.
+	if (
+		isCashAsset(asset) ||
+		asset.kind === "investment" ||
+		asset.depreciationMethod === "none" ||
+		(asset.kind === "fixed" && !(asset.lifespanMonths > 0))
+	) {
 		return {
 			monthlyRate: 0,
 			elapsedMonths: 0,

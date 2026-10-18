@@ -52,7 +52,8 @@ describe("calculateInvestmentValue", () => {
 	});
 
 	it("a withdrawal reduces both value and cost basis", () => {
-		// Oct +5000, Nov +3000 -> 68000 by Nov; Dec: 68000 - 4000 = 64000; cost basis 58000 - 4000 = 54000.
+		// Oct +5000, Nov +3000 -> 68000 by Nov; Dec: 68000 - 4000 = 64000. The withdrawal sells 4000/68000 of the
+		// position, so it takes that share of the basis: 58000 * 4000 / 68000 = 3411.76; basis 58000 - 3411.76 = 54588.24.
 		const flows = [
 			transfer({ id: "tx_c1", amount: 5000, date: "2026-10-15", fromAssetId: "w_main", targetAssetId: "inv_etf" }),
 			transfer({ id: "tx_c2", amount: 3000, date: "2026-11-03", fromAssetId: "w_main", targetAssetId: "inv_etf" }),
@@ -60,8 +61,8 @@ describe("calculateInvestmentValue", () => {
 		];
 		expect(calculateInvestmentValue({ asset: etf, transfers: flows, yearMonth: "2026-12" })).toEqual({
 			value: 64000,
-			costBasis: 54000,
-			unrealizedGain: 10000,
+			costBasis: 54588.24,
+			unrealizedGain: 9411.76,
 		});
 	});
 
@@ -93,6 +94,35 @@ describe("calculateInvestmentValue", () => {
 		expect(calculateInvestmentValue({ asset: plain, yearMonth: "2026-10" })).toEqual({
 			value: 500,
 			costBasis: 500,
+			unrealizedGain: 0,
+		});
+	});
+
+	it("a withdrawal takes its pro rata share of the cost basis", () => {
+		// Basis 100, value 200: selling 100 of value sells half the position, so half the basis goes too.
+		const half: Asset = {
+			...etf,
+			cost: 100,
+			investment: { ...etf.investment!, costBasis: 100, marketValue: 200 },
+		};
+		const sell = [transfer({ id: "tx_w", amount: 100, date: "2026-10-05", fromAssetId: "inv_etf", targetAssetId: "w_main" })];
+		expect(calculateInvestmentValue({ asset: half, transfers: sell, yearMonth: "2026-10" })).toEqual({
+			value: 100,
+			costBasis: 50,
+			unrealizedGain: 50,
+		});
+	});
+
+	it("a withdrawal larger than the value clears the position at zero", () => {
+		const small: Asset = {
+			...etf,
+			cost: 100,
+			investment: { ...etf.investment!, costBasis: 100, marketValue: 200 },
+		};
+		const sell = [transfer({ id: "tx_w", amount: 300, date: "2026-10-05", fromAssetId: "inv_etf", targetAssetId: "w_main" })];
+		expect(calculateInvestmentValue({ asset: small, transfers: sell, yearMonth: "2026-10" })).toEqual({
+			value: 0,
+			costBasis: 0,
 			unrealizedGain: 0,
 		});
 	});

@@ -7,6 +7,12 @@ import type { Asset, CapitalTransfer } from "./types";
  * valuedAsOf grows monthly at the expected annual return; contributions (transfers
  * into the asset) and withdrawals (transfers out of it) land in their month.
  * Assets without investment details are carried at their cost.
+ *
+ * Per month, in order: the value grows at the monthly rate, contributions are added
+ * to both value and costBasis, then withdrawals reduce them. A withdrawal takes its
+ * share of the cost basis pro rata to the value it sells:
+ * `basisOut = withdrawals > 0 ? (valueBeforeWithdrawal > 0 ? costBasis * min(1, withdrawals / valueBeforeWithdrawal) : costBasis) : 0`,
+ * so the basis left behind keeps the same ratio to the value. Value never goes below 0.
  */
 export function calculateInvestmentValue(params: {
 	asset: Asset;
@@ -30,8 +36,18 @@ export function calculateInvestmentValue(params: {
 	for (const ym of months) {
 		const contributions = sumTransfers(transfers, (t) => t.targetAssetId === asset.id, ym);
 		const withdrawals = sumTransfers(transfers, (t) => t.fromAssetId === asset.id, ym);
-		value = round2(value * (1 + monthlyRate) + contributions - withdrawals);
-		costBasis = round2(costBasis + contributions - withdrawals);
+		const valueBeforeWithdrawal = round2(value * (1 + monthlyRate) + contributions);
+		costBasis = round2(costBasis + contributions);
+		// No withdrawal, no basis out (a worthless holding keeps its basis as an unrealized loss).
+		let basisOut = 0;
+		if (withdrawals > 0) {
+			basisOut =
+				valueBeforeWithdrawal > 0
+					? round2(costBasis * Math.min(1, withdrawals / valueBeforeWithdrawal))
+					: costBasis;
+		}
+		costBasis = round2(costBasis - basisOut);
+		value = Math.max(0, round2(valueBeforeWithdrawal - withdrawals));
 	}
 
 	return { value, costBasis, unrealizedGain: round2(value - costBasis) };

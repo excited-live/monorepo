@@ -3,7 +3,9 @@ import {
 	buildMonthlyActions,
 	calculateCashAssetBalance,
 	calculateCurrentTreasury,
+	calculateEntityMonthlyCashFlow,
 	liabilityPaymentInMonth,
+	transferCashOut,
 } from "../src/ledger";
 import {
 	buildLoanSchedule,
@@ -301,7 +303,16 @@ describe("revolving credit (card)", () => {
 	it("October: interest 150 on 10000, charge 300 raises it, payment 500 lowers it", () => {
 		// closing = 10000 + 150 + 300 - 500 = 9950
 		const [oct] = buildRevolvingSchedule({ liability: card, subscriptions: [aiTool], yearMonth: YM });
-		expect(oct).toEqual({ yearMonth: YM, opening: 10000, interest: 150, charges: 300, payments: 500, closing: 9950 });
+		expect(oct).toEqual({
+			yearMonth: YM,
+			opening: 10000,
+			interest: 150,
+			charges: 300,
+			payment: 500,
+			extra: 0,
+			payments: 500,
+			closing: 9950,
+		});
 		expect(calculateRevolvingBalance({ liability: card, subscriptions: [aiTool], yearMonth: YM })).toBe(9950);
 		expect(calculateLiabilityBalance(card, YM, { subscriptions: [aiTool] })).toBe(9950);
 	});
@@ -381,5 +392,156 @@ describe("recurring extra payments into a loan", () => {
 		expect(outflow("2026-12")).toBe(0);
 		// 10000 − 2000 − 1000 = 7000, and it stays there
 		expect(calculateCurrentTreasury({ account: personal, hardware, transfers: [extra], liabilities: [car], yearMonth: "2027-03" })).toBe(7000);
+	});
+});
+
+describe("revolving payments stop when nothing is owed", () => {
+	const card = loan({
+		id: "card_pay",
+		amount: 500,
+		category: "credit_card",
+		kind: "revolving",
+		revolving: { balance: 1000, balanceAsOf: YM, annualRate: 0 },
+	});
+
+	it("pays 500, 500, then nothing", () => {
+		const schedule = buildRevolvingSchedule({ liability: card, yearMonth: "2027-01" });
+		expect(schedule.map((e) => e.payment)).toEqual([500, 500, 0, 0]);
+		expect(schedule.map((e) => e.closing)).toEqual([500, 0, 0, 0]);
+		expect(liabilityPaymentInMonth(card, "2026-12")).toBe(0);
+		expect(calculateRevolvingBalance({ liability: card, yearMonth: "2027-01" })).toBe(0);
+	});
+
+	it("the ledger's cash outflow and the treasury stop once cleared", () => {
+		const flow = (ym: string) => calculateEntityMonthlyCashFlow({ account: personal, transfers: [], liabilities: [card], yearMonth: ym });
+		expect(flow(YM).outflow).toBe(500);
+		expect(flow("2026-11").outflow).toBe(500);
+		expect(flow("2026-12").outflow).toBe(0);
+		expect(flow("2027-03").outflow).toBe(0);
+
+		const cardOnly = buildMonthlyActions({
+			account: personal,
+			yearMonth: "2026-12",
+			subscriptions: [],
+			hardware: [],
+			revenues: [],
+			transfers: [],
+			liabilities: [card],
+		});
+		expect(cardOnly.actions.some((a) => a.id === "card_pay")).toBe(false);
+	});
+
+	it("a card charged each month keeps paying min(500, due)", () => {
+		const aiTool: Expense = {
+			id: "sub_ai",
+			entityId: "acc_p",
+			name: "AI tool",
+			amount: 300,
+			cycle: "monthly",
+			category: "tools",
+			nextRenewalDate: "2026-10-10",
+			active: true,
+			paidFromLiabilityId: "card_pay",
+		};
+		const charged = { ...card, revolving: { balance: 1000, balanceAsOf: YM, annualRate: 0 } };
+		// Oct: 1000 + 300 = 1300 due, pays 500 -> 800. Nov: 1100 due -> 600. Dec: 900 -> 400. Jan: 700 -> 200.
+		// Feb: 500 due -> 0. Mar and Apr: only the 300 charge is due.
+		const schedule = buildRevolvingSchedule({ liability: charged, subscriptions: [aiTool], yearMonth: "2027-04" });
+		expect(schedule.map((e) => e.payment)).toEqual([500, 500, 500, 500, 500, 300, 300]);
+		expect(schedule.map((e) => e.closing)).toEqual([800, 600, 400, 200, 0, 0, 0]);
+		expect(liabilityPaymentInMonth(charged, "2027-03", [], [aiTool])).toBe(300);
+		expect(liabilityPaymentInMonth(charged, "2026-10", [], [aiTool])).toBe(500);
+	});
+
+	it("a transfer into the card takes only the share the schedule applies", () => {
+		// 1000 owed, 500 scheduled: a 2000 transfer applies only 500 (the rest of the balance is 500 after the payment).
+		const payIn = transfer({ id: "tx_card", amount: 2000, date: "2026-10-05", fromAssetId: "w_main", toLiabilityId: "card_pay" });
+		const [oct] = buildRevolvingSchedule({ liability: card, transfers: [payIn], yearMonth: YM });
+		expect(oct).toMatchObject({ payment: 500, extra: 500, payments: 1000, closing: 0 });
+		expect(transferCashOut(payIn, "acc_p", [], { yearMonth: YM, liabilities: [card], transfers: [payIn] })).toBe(500);
+		// Nothing is applied once the card is cleared.
+		expect(transferCashOut(payIn, "acc_p", [], { yearMonth: "2026-11", liabilities: [card], transfers: [payIn] })).toBe(0);
+	});
+});
+
+describe("inactive liabilities owe nothing", () => {
+	it("an inactive loan or revolving liability has a zero balance", () => {
+		const inactiveLoan = loan({
+			id: "loan_off",
+			amount: 1000,
+			active: false,
+			loan: { principal: 5000, annualRate: 0.05, termMonths: 12, originatedOn: "2026-01" },
+		});
+		const inactiveCard = loan({
+			id: "card_off",
+			amount: 500,
+			active: false,
+			category: "credit_card",
+			kind: "revolving",
+			revolving: { balance: 3000, balanceAsOf: YM, annualRate: 0.18 },
+		});
+		expect(calculateLiabilityBalance(inactiveLoan, YM)).toBe(0);
+		expect(calculateLiabilityBalance(inactiveCard, YM)).toBe(0);
+		expect(calculateLiabilityBalance({ ...inactiveCard, active: true }, YM)).toBeGreaterThan(0);
+	});
+});
+
+describe("schedule memoization", () => {
+	const mortgage = loan({
+		id: "mort_memo",
+		amount: 1000,
+		loan: { principal: 100000, annualRate: 0.06, termMonths: 120, originatedOn: "2026-10" },
+	});
+	const extra = transfer({ id: "tx_memo", amount: 1000, date: "2026-10-05", frequency: "monthly", fromAssetId: "w_main", toLiabilityId: "mort_memo" });
+	const card = loan({
+		id: "card_memo",
+		amount: 500,
+		category: "credit_card",
+		kind: "revolving",
+		revolving: { balance: 4000, balanceAsOf: YM, annualRate: 0.18 },
+	});
+	const aiTool: Expense = {
+		id: "sub_memo",
+		entityId: "acc_p",
+		name: "AI tool",
+		amount: 300,
+		cycle: "monthly",
+		category: "tools",
+		nextRenewalDate: "2026-10-10",
+		active: true,
+		paidFromLiabilityId: "card_memo",
+	};
+
+	it("loan schedules: a longer or shorter request reuses the cache and matches an uncached computation", () => {
+		const transfers = [extra];
+		const through = (ym: string, liability: Liability = mortgage) =>
+			buildLoanSchedule({ liability, transfers, throughYearMonth: ym });
+
+		const first = through("2027-01");
+		const longer = through("2027-06");
+		const shorter = through("2026-12");
+		// A fresh object copy has no cache entry, so it is computed from scratch.
+		expect(longer).toEqual(through("2027-06", { ...mortgage }));
+		expect(first).toEqual(through("2027-01", { ...mortgage }));
+		expect(shorter).toEqual(through("2026-12", { ...mortgage }));
+		expect(shorter).toEqual(longer.slice(0, 3));
+		expect(through("2026-09")).toEqual([]);
+	});
+
+	it("revolving schedules: keyed by subscriptions too, and identical to an uncached computation", () => {
+		const through = (ym: string, liability: Liability, subs?: Expense[]) =>
+			buildRevolvingSchedule({ liability, subscriptions: subs, yearMonth: ym });
+
+		const first = through("2027-01", card, [aiTool]);
+		const longer = through("2027-06", card, [aiTool]);
+		const shorter = through("2026-11", card, [aiTool]);
+		expect(longer).toEqual(through("2027-06", { ...card }, [aiTool]));
+		expect(first).toEqual(through("2027-01", { ...card }, [aiTool]));
+		expect(shorter).toEqual(longer.slice(0, 2));
+		// Without subscriptions there are no charges, so the same liability and transfers give a different schedule.
+		const noCharges = through("2027-01", card, undefined);
+		expect(noCharges).not.toEqual(first);
+		expect(noCharges[0]?.charges).toBe(0);
+		expect(noCharges).toEqual(through("2027-01", { ...card }, undefined));
 	});
 });

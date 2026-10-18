@@ -928,13 +928,20 @@
 						"type": "number",
 						"description": "Monthly-equivalent card charges that month."
 					},
+					"payment": {
+						"type": "number",
+						"description": "Scheduled payment made, capped at what is owed."
+					},
+					"extra": {
+						"type": "number",
+						"description": "Transfers into the card applied that month, capped at what is still owed."
+					},
 					"payments": {
 						"type": "number",
-						"description": "Scheduled payment plus transfers into the card."
+						"description": "payment + extra."
 					},
 					"closing": {
-						"type": "number",
-						"description": "A negative balance is a credit."
+						"type": "number"
 					}
 				},
 				"required": [
@@ -942,6 +949,8 @@
 					"opening",
 					"interest",
 					"charges",
+					"payment",
+					"extra",
 					"payments",
 					"closing"
 				],

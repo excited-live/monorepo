@@ -1,7 +1,7 @@
 import React from "react";
 import { Stack } from "@astryxdesign/core/Stack";
 import "../hero.css";
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 
 export type HeroVariant = "home" | "capital" | "register" | "ledger";
 

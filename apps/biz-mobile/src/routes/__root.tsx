@@ -6,7 +6,8 @@ import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { Header } from "../components/Header";
 import { BottomDock } from "../components/BottomDock";
-import { BizProvider, useUserData } from "../state";
+import { UIProvider } from "../app/ui-context";
+import { useUserData } from "../state";
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -40,8 +41,8 @@ function AppShell() {
 
 function RootComponent() {
 	return (
-		<BizProvider>
+		<UIProvider>
 			<AppShell />
-		</BizProvider>
+		</UIProvider>
 	);
 }

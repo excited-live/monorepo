@@ -68,17 +68,6 @@
 			}
 		},
 		"schemas": {
-			"Error": {
-				"type": "object",
-				"properties": {
-					"error": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"error"
-				]
-			},
 			"BizSnapshot": {
 				"type": "object",
 				"properties": {
@@ -462,6 +451,17 @@
 				],
 				"description": "A debt payment stream."
 			},
+			"Error": {
+				"type": "object",
+				"properties": {
+					"error": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"error"
+				]
+			},
 			"Ok": {
 				"type": "object",
 				"properties": {
@@ -726,6 +726,1694 @@
 						}
 					}
 				}
+			}
+		},
+		"/api/v1/accounting/snapshot": {
+			"get": {
+				"operationId": "getAccountingSnapshot",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get the full accounting snapshot",
+				"description": "Accounts, expenses, assets, incomes, liabilities and transfers in one document.",
+				"responses": {
+					"200": {
+						"description": "The snapshot.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BizSnapshot"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"operationId": "replaceAccountingSnapshot",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Replace the full accounting snapshot",
+				"description": "Replaces full accounting state for import or portability.",
+				"responses": {
+					"200": {
+						"description": "Replaced snapshot.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BizSnapshot"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"accounts": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/EntityAccount"
+										}
+									},
+									"subscriptions": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/RecurringSubscription"
+										}
+									},
+									"hardware": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/HardwareAsset"
+										}
+									},
+									"revenues": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/RevenueStream"
+										}
+									},
+									"transfers": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/CapitalTransfer"
+										}
+									},
+									"liabilities": {
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/LiabilityStream"
+										}
+									},
+									"isDefault": {
+										"type": "boolean"
+									}
+								},
+								"required": [
+									"accounts",
+									"subscriptions",
+									"hardware",
+									"revenues",
+									"transfers",
+									"liabilities"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/accounts": {
+			"post": {
+				"operationId": "createAccount",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Create a new business account",
+				"responses": {
+					"201": {
+						"description": "Account created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/EntityAccount"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string",
+										"minLength": 1
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"name"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/accounts/{id}": {
+			"put": {
+				"operationId": "updateAccount",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update account metadata",
+				"responses": {
+					"200": {
+						"description": "Account updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/EntityAccount"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Account not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "string",
+										"description": "Client-generated unique id."
+									},
+									"name": {
+										"type": "string"
+									},
+									"type": {
+										"type": "string",
+										"enum": [
+											"personal",
+											"business"
+										]
+									},
+									"cashReserve": {
+										"type": "number",
+										"description": "Cash on hand, in `currency`."
+									},
+									"salary": {
+										"type": "number"
+									},
+									"paydayDayOfMonth": {
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 31
+									},
+									"targetSafetyBuffer": {
+										"type": "number"
+									},
+									"currency": {
+										"type": "string",
+										"description": "ISO currency code, typically `THB` or `USD`."
+									},
+									"createdAt": {
+										"type": "string"
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"careerTitle": {
+										"type": "string"
+									},
+									"careerCompany": {
+										"type": "string"
+									},
+									"careerImageUrl": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteAccount",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete account and cascade associated records",
+				"responses": {
+					"200": {
+						"description": "Account deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Account not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/expenses": {
+			"post": {
+				"operationId": "createExpense",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Add a recurring expense",
+				"responses": {
+					"201": {
+						"description": "Expense created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringSubscription"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number"
+									},
+									"cycle": {
+										"type": "string",
+										"enum": [
+											"weekly",
+											"monthly",
+											"quarterly",
+											"semi-annual",
+											"yearly",
+											"one_time"
+										]
+									},
+									"category": {
+										"type": "string"
+									},
+									"nextRenewalDate": {
+										"type": "string",
+										"description": "`YYYY-MM-DD`."
+									},
+									"billingDay": {
+										"type": "integer",
+										"minimum": -9007199254740991,
+										"maximum": 9007199254740991
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"entityId",
+									"name",
+									"amount",
+									"cycle",
+									"category",
+									"nextRenewalDate",
+									"active"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/expenses/{id}": {
+			"put": {
+				"operationId": "updateExpense",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update recurring expense",
+				"responses": {
+					"200": {
+						"description": "Expense updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringSubscription"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RecurringSubscription"
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteExpense",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete recurring expense",
+				"responses": {
+					"200": {
+						"description": "Expense deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/assets": {
+			"post": {
+				"operationId": "createAsset",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Add an asset",
+				"responses": {
+					"201": {
+						"description": "Asset created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HardwareAsset"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"cost": {
+										"type": "number"
+									},
+									"lifespanMonths": {
+										"type": "integer",
+										"minimum": -9007199254740991,
+										"maximum": 9007199254740991
+									},
+									"purchaseDate": {
+										"type": "string",
+										"description": "`YYYY-MM-DD` or `YYYY-MM`."
+									},
+									"salvageValue": {
+										"type": "number"
+									},
+									"category": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"isDefault": {
+										"type": "boolean"
+									},
+									"id": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"entityId",
+									"name",
+									"cost",
+									"lifespanMonths",
+									"purchaseDate",
+									"category"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/assets/{id}": {
+			"put": {
+				"operationId": "updateAsset",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update asset",
+				"responses": {
+					"200": {
+						"description": "Asset updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HardwareAsset"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/HardwareAsset"
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteAsset",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete asset",
+				"responses": {
+					"200": {
+						"description": "Asset deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/incomes": {
+			"post": {
+				"operationId": "createIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Add an income stream",
+				"responses": {
+					"201": {
+						"description": "Income created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RevenueStream"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number"
+									},
+									"frequency": {
+										"type": "string",
+										"enum": [
+											"monthly",
+											"yearly",
+											"one_time"
+										]
+									},
+									"source": {
+										"type": "string",
+										"enum": [
+											"stripe",
+											"bank_transfer",
+											"cash",
+											"freelance",
+											"salary",
+											"other"
+										]
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"startMonth": {
+										"description": "`YYYY-MM`.",
+										"type": "string"
+									},
+									"endMonth": {
+										"description": "`YYYY-MM`.",
+										"type": "string"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"entityId",
+									"name",
+									"amount",
+									"frequency",
+									"source",
+									"active"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/incomes/{id}": {
+			"put": {
+				"operationId": "updateIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update income stream",
+				"responses": {
+					"200": {
+						"description": "Income updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RevenueStream"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RevenueStream"
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete income stream",
+				"responses": {
+					"200": {
+						"description": "Income deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/incomes/career": {
+			"post": {
+				"operationId": "setCareerIncome",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Set career salary and title",
+				"responses": {
+					"200": {
+						"description": "Career updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BizSnapshot"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"entityId": {
+										"type": "string"
+									},
+									"salary": {
+										"type": "number",
+										"minimum": 0
+									},
+									"paydayDayOfMonth": {
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 31
+									},
+									"title": {
+										"type": "string"
+									},
+									"company": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"startMonth": {
+										"type": "string"
+									},
+									"endMonth": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"entityId",
+									"salary"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/liabilities": {
+			"post": {
+				"operationId": "createLiability",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Add a liability debt stream",
+				"responses": {
+					"201": {
+						"description": "Liability created.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/LiabilityStream"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"entityId": {
+										"type": "string",
+										"description": "Owning `EntityAccount.id`."
+									},
+									"name": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number",
+										"description": "Monthly payment."
+									},
+									"category": {
+										"type": "string",
+										"description": "`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string."
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"notes": {
+										"type": "string"
+									},
+									"imageUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"entityId",
+									"name",
+									"amount",
+									"category",
+									"active"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/liabilities/{id}": {
+			"put": {
+				"operationId": "updateLiability",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Update liability",
+				"responses": {
+					"200": {
+						"description": "Liability updated.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/LiabilityStream"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/LiabilityStream"
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			},
+			"delete": {
+				"operationId": "deleteLiability",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete liability",
+				"responses": {
+					"200": {
+						"description": "Liability deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/transfers": {
+			"post": {
+				"operationId": "recordTransfer",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Record capital transfer injection",
+				"responses": {
+					"201": {
+						"description": "Transfer recorded.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CapitalTransfer"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"fromEntityId": {
+										"type": "string"
+									},
+									"toEntityId": {
+										"type": "string"
+									},
+									"amount": {
+										"type": "number"
+									},
+									"date": {
+										"type": "string",
+										"description": "`YYYY-MM-DD` or `YYYY-MM`."
+									},
+									"note": {
+										"type": "string"
+									},
+									"targetAssetId": {
+										"type": "string"
+									},
+									"frequency": {
+										"type": "string",
+										"enum": [
+											"one_time",
+											"monthly"
+										]
+									},
+									"id": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"fromEntityId",
+									"toEntityId",
+									"amount",
+									"date",
+									"note"
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/accounting/transfers/{id}": {
+			"delete": {
+				"operationId": "deleteTransfer",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Delete capital transfer",
+				"responses": {
+					"200": {
+						"description": "Transfer deleted.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
+					}
+				]
+			}
+		},
+		"/api/v1/accounting/ledger/{yearMonth}": {
+			"get": {
+				"operationId": "getComputedLedger",
+				"tags": [
+					"Accounting"
+				],
+				"summary": "Get computed monthly ledger",
+				"responses": {
+					"200": {
+						"description": "Monthly ledger.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MonthlyLedger"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": {
+											"type": "boolean",
+											"enum": [
+												false
+											]
+										},
+										"error": {
+											"type": "array",
+											"items": {}
+										},
+										"data": {}
+									},
+									"required": [
+										"success",
+										"error",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Account not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"in": "query",
+						"name": "entityId",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "yearMonth",
+						"required": true
+					}
+				]
 			}
 		},
 		"/api/v1/auth/me": {

@@ -3,6 +3,7 @@
 	"pages": [
 		"index",
 		"system",
+		"accounting",
 		"auth",
 		"biz",
 		"accounts",

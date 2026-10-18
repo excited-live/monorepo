@@ -2,8 +2,8 @@
 
 > **Status**: Ship Priority #1 — Active Top-of-Funnel Consumer App (Updated 2026-10-17)  
 > **Target Package**: [`apps/biz-mobile`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/biz-mobile)  
-> **Core Engine**: [`packages/biz`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/biz) (Pure TypeScript math engine + Python recompute gate)  
-> **API & Agent Surface**: [`apps/api/src/routes/biz.ts`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/api/src/routes/biz.ts) (`/api/v1/biz` + MCP tools)  
+> **Core Engine**: [`packages/accounting`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/accounting) (`@excited-live/accounting` pure TypeScript math & command engine)  
+> **API & Agent Surface**: [`apps/api/src/modules/accounting/`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/api/src/modules/accounting/) (`/api/v1/accounting` hexagonal module + MCP tools)  
 > **Design Tokens**: Canonical Mastercard Design System ([`DESIGN.md`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/DESIGN.md) & [`@excited-live/design-system`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/design-system))  
 > **Native Framework**: Tauri v2 Mobile (Android first, iOS ready — identical pattern to [`apps/tax-mobile`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/tax-mobile))
 
@@ -18,15 +18,15 @@ It is a luxury, local-first + cloud-synced mobile spend, slip-capture, revenue, 
 ### Strategic Funnel Role
 1. **Do One Simple Job Effortlessly on Mobile (Free Top-of-Funnel)**: Help users know their exact cash reserve, monthly burn, hardware depreciation, and daily slip spend in seconds.
 2. **Proactive Data Capture (MeowJot / เหมียวจด Style)**: Eliminate manual bookkeeping friction by reading Thai bank transfer e-slips (via OS Share Sheet, gallery scan, or personal AI agent) and turning them into structured ledger entries automatically.
-3. **Agent-First Open Access (`API` + `MCP`)**: Everything captured in `biz-mobile` syncs to `/api/v1/biz` so the user's external personal AI agents (Claude, ChatGPT, Hermes, LINE/Telegram bots) can query burn/runway or log transactions on their behalf.
-4. **Channel Users to the Detailed Web Planner (`apps/webapp`)**: Once users love tracking their present cashflow and runway on mobile, we channel them into the paid detailed web application (`apps/webapp`) to simulate the next 50 years of their life—carrying their `biz` numbers straight into their long-term plan.
+3. **Agent-First Open Access (`API` + `MCP`)**: Everything captured in `biz-mobile` syncs to `/api/v1/accounting` so the user's external personal AI agents (Claude, ChatGPT, Hermes, LINE/Telegram bots) can query burn/runway or log transactions on their behalf.
+4. **Channel Users to the Detailed Web Planner (`apps/webapp`)**: Once users love tracking their present cashflow and runway on mobile, we channel them into the paid detailed web application (`apps/webapp`) to simulate the next 50 years of their life—carrying their `accounting` numbers straight into their long-term plan.
 5. **Foundation for the Time Management Pillar**: Because `biz-mobile` already maps the user's career (`fulltime_job`), ventures (`business`), commute (`BTS`), and recurring activities, attaching weekly hours to these exact entities powers the upcoming Time Management planner with zero cold-start setup.
 
 ### The Problem
 Traditional accounting software (FlowAccount, ERPNext, QuickBooks) is bloated with compliance overhead (tax invoices, VAT filing, WHT certificates, general ledgers) that personal creators and solo founders do not need for day-to-day burn awareness. Meanwhile, basic slip-tracking bots (like MeowJot on LINE) trap data inside chat threads without modeling recurring burn, hardware depreciation, multi-entity business runways, or open MCP access for the user's own AI agents.
 
 ### The Solution: Multi-Entity Solopreneur Engine + Slip Capture
-**`excited.live` launches directly as a native mobile application (`apps/biz-mobile` powered by Tauri v2 and React 19)** backed by `/api/v1/biz`. It models:
+**`excited.live` launches directly as a native mobile application (`apps/biz-mobile` powered by Tauri v2 and React 19)** backed by `/api/v1/accounting`. It models:
 1. **Personal**: Core living cash reserve (asset-derived treasury), recurring subscriptions, daily slip expenses, hardware register, and burn runway.
 2. **Fulltime Job (Career Card)**: Salary/cashflow stream with an **"UNTIL"** countdown metric (days until next payday + months until solopreneur freedom buffer) instead of a burn runway.
 3. **Business (Multi-Business Support)**: Multiple independent side-hustles/ventures (e.g. `FromSukong`), each with its own cash reserve, revenue stream, SaaS subscriptions, hardware register, and independent runway.
@@ -180,7 +180,7 @@ graph TD
 **Acceptance Criteria:**
 - [ ] **Slip Ingestion Channels**:
   1. **In-App & OS Share Target**: Share an e-slip image from K Plus / SCB EASY / Krungthai NEXT / Bangkok Bank directly to `excited.live` or pick from the device's bank-slip folder.
-  2. **API / MCP Endpoint (`POST /api/v1/biz/slips`)**: External personal agents can submit either a raw slip image/payload or pre-extracted slip fields.
+  2. **API / MCP Endpoint (`POST /api/v1/accounting/slips`)**: External personal agents can submit either a raw slip image/payload or pre-extracted slip fields.
 - [ ] **Deterministic QR + OCR Extraction**:
   - Parses Thai EMVCo / Bank of Thailand mini-QR payload on the slip for tamper-proof `transactionRef` (deduplication key) and bank code, paired with vision/OCR extraction for `amount`, `timestamp`, `sender`, `recipientName`, and `memo`.
   - Duplicate uploads of the same `transactionRef` are idempotently ignored.
@@ -190,9 +190,9 @@ graph TD
   - **Promote to Gear / Recurring / Capital Transfer**: One tap in the review drawer converts a slip into a depreciated `HardwareAsset`, a new `RecurringSubscription`, or an inter-entity `CapitalTransfer`.
 
 ### US-BIZ-010: External Personal Agent & MCP Access (BYOA First) `[in progress — REST live, MCP/Scoped Keys next]`
-**Description:** As a user living in the agentic era, I want my own AI agent (Claude, ChatGPT, Hermes, custom Telegram/LINE bot) to read my `biz` accounts, log slips/expenses, and answer runway questions on my behalf without waiting for an in-app chatbot.  
+**Description:** As a user living in the agentic era, I want my own AI agent (Claude, ChatGPT, Hermes, custom Telegram/LINE bot) to read my `accounting` accounts, log slips/expenses, and answer runway questions on my behalf without waiting for an in-app chatbot.  
 **Acceptance Criteria:**
-- [x] REST endpoints live at `/api/v1/biz` (`GET/PUT /`, `/accounts`, `/subscriptions`, `/hardware`, `/revenues`, `/transfers`, `/ledger/:yearMonth`).
+- [x] REST endpoints live at `/api/v1/accounting` (`GET /snapshot`, `PUT /snapshot`, `/accounts`, `/expenses`, `/assets`, `/incomes`, `/liabilities`, `/transfers`, `/ledger/:yearMonth`).
 - [ ] **Scoped API Keys (`packages/auth`)**: Users can generate a revocable API key in Settings with granular scopes (`biz:read`, `biz:write`, `slip:write`).
 - [ ] **MCP Server & OpenAPI Spec**: Expose tools (`get_runway_summary`, `list_upcoming_bills`, `record_slip_transaction`, `add_subscription`, `simulate_capital_transfer`) so any MCP-compatible agent connects in one step.
 - [ ] **Audit Tagging**: Agent-created entries record `source: "agent"` in the monthly ledger with one-tap undo.
@@ -201,7 +201,7 @@ graph TD
 **Description:** As a `biz-mobile` user who has tracked my personal burn, salary, and business cashflow, I want to open the detailed 50-year web planner (`apps/webapp`) with my real numbers pre-populated so I don't have to re-enter my financial life.  
 **Acceptance Criteria:**
 - [ ] Subtle "Simulate your 50-year life plan →" card in `biz-mobile` Forecast / Settings.
-- [ ] Maps `biz` state into `packages/sim` `PlanInput`: Career salary + net business revenue → `Income` period rows; Personal smoothed burn → `Expenses` rows; Personal + Business cash reserves → initial wallet balances.
+- [ ] Maps `accounting` state into `packages/sim` `PlanInput`: Career salary + net business revenue → `Income` period rows; Personal smoothed burn → `Expenses` rows; Personal + Business cash reserves → initial wallet balances.
 - [ ] Prompts the user to start their **7-day free trial** of the $109/year `apps/webapp` planner.
 
 ---
@@ -213,19 +213,18 @@ excited.live/
 ├── apps/
 │   ├── biz-mobile/               # Day One Native Mobile App (Tauri v2 + Vite + React 19)
 │   │   ├── src/                  # Clean Architecture screens, Astryx UI, Mastercard theme
+│   │   ├── src/service/          # Type-safe Hono RPC & TanStack Query service layer
 │   │   ├── src-tauri/            # Rust native wrapper, Android / iOS manifest, permissions
 │   │   └── package.json          # @excited-live/biz-mobile
 │   ├── api/                      # Hono BFF on Cloudflare Workers + D1
-│   │   └── src/routes/biz.ts     # /api/v1/biz REST + agent endpoints
+│   │   └── src/modules/accounting/ # Hexagonal /api/v1/accounting (route, service, domain, repo)
 │   └── tax-mobile/               # Reference Tauri v2 mobile app
 ├── packages/
-│   ├── biz/                      # Pure Business Math, Multi-Entity & Ledger Engine
-│   │   ├── src/                  # types.ts, math.ts, ledger.ts, seed.ts
-│   │   └── tests/golden.test.ts  # Verification suite
+│   ├── accounting/               # Pure Accounting Math, Commands & Wealth Engine (@excited-live/accounting)
+│   │   ├── src/                  # types, wealth.ts, commands/, catalog.ts
+│   │   └── tests/                # Verification suites
 │   ├── auth/                     # Better Auth (Bearer tokens for mobile + API Keys for agents)
 │   └── design-system/            # Mastercard Design System & Astryx components
-└── scripts/
-    └── recompute-biz.py          # Independent Python math verification gate
 ```
 
 ---

@@ -15,9 +15,9 @@ import {
 	type CapitalTransfer,
 	round2,
 	simulateCapitalTransfer,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
-import { useBiz } from "../../../../state";
+import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
 
 export const CapitalDrawer: React.FC<{
@@ -33,9 +33,8 @@ export const CapitalDrawer: React.FC<{
 		injectCapital,
 		updateCapitalTransfer,
 		deleteCapitalTransfer,
-		activeEntityId,
-		selectedMonth,
-	} = useBiz();
+	} = useFinances();
+	const { activeEntityId, selectedMonth } = useAppUI();
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 

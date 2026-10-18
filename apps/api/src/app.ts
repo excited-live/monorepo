@@ -6,6 +6,7 @@ import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
 import { documentation, jsonResponse } from "./openapi/docs"
+import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
 import { createBizRouter } from "./routes/biz"
 import { createCatalogRouter } from "./routes/catalog"
@@ -89,19 +90,22 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	// otherwise. Runs before the routers so biz/plan/settings see the pinned id.
 	app.use("/api/v1/*", createIdentityMiddleware())
 
-	const apiV1 = new Hono<ApiEnv>()
-	apiV1.route("/auth", createAuthRouter())
-	apiV1.route("/biz", createBizRouter())
-	apiV1.route("/catalog", createCatalogRouter())
-	apiV1.route("/plan", createPlanRouter())
-	apiV1.route("/settings", createSettingsRouter())
-	apiV1.route("/sim", simRouter)
-
-	app.route("/api/v1", apiV1)
+	const routes = app
+		.route("/api/v1/accounting", createAccountingRouter())
+		.route("/api/v1/auth", createAuthRouter())
+		.route("/api/v1/biz", createBizRouter())
+		.route("/api/v1/catalog", createCatalogRouter())
+		.route("/api/v1/plan", createPlanRouter())
+		.route("/api/v1/settings", createSettingsRouter())
+		.route("/api/v1/sim", simRouter)
 
 	// The OpenAPI document, generated from the route annotations above. Mounted
 	// outside /api/v1 so it stays public like /health.
 	app.get("/openapi.json", openAPIRouteHandler(app, { documentation }))
 
-	return app
+	return routes
 }
+
+export type AppType = ReturnType<typeof createApp>
+
+

@@ -5,7 +5,7 @@ import {
 	type CapitalTransfer,
 	type EntityAccount,
 	type RecurringSubscription,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import { useFinances } from "../../../state";
 
 export interface AccountExpensesSlice {

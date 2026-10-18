@@ -1,7 +1,7 @@
 import React from "react";
-import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/biz";
+import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/accounting";
 import { calculateProjectionBalances } from "../../../../domain/selectors";
-import { useBiz } from "../../../../state";
+import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../utils/i18n";
 import { HeroShell } from "../HeroShell";
@@ -22,7 +22,8 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 	yearMonth,
 	onTap,
 }) => {
-	const { subscriptions, hardware, revenues, liabilities, transfers, lang } = useBiz();
+	const { subscriptions, hardware, revenues, liabilities, transfers } = useFinances();
+	const { lang } = useAppUI();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const {

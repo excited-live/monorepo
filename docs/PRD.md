@@ -14,7 +14,7 @@ As software shifts from manual CRUD dashboards to personal AI agents (Claude, Ch
 `excited.live` bridges that gap with a **4-Layer Agentic OS Kernel**:
 
 1. **Proactive Zero-Friction Capture (Sensor Layer)**: Get real-world user data into the system as seamlessly as possible—starting with **MeowJot (เหมียวจด) style Thai bank e-slip reading** on mobile/API for Money, activity-duration tagging on existing spend/career items for Time, and **Cal AI style photo/multimodal logging** for Health.
-2. **Pure Deterministic Engines (`packages/*`)**: Zero-hallucination TypeScript math engines (`@excited-live/biz`, `@excited-live/tax`, `@excited-live/sim`, and future `@excited-live/time` & `@excited-live/health`) verified against independent Python recompute gates.
+2. **Pure Deterministic Engines (`packages/*`)**: Zero-hallucination TypeScript math engines (`@excited-live/accounting`, `@excited-live/tax`, `@excited-live/sim`, and future `@excited-live/time` & `@excited-live/health`) verified against independent Python recompute gates.
 3. **Open Agent Surface — Bring Your Own Agent (`apps/api` + MCP + Scoped Keys)**: Instead of forcing users into an isolated in-app chatbot, we prioritize **opening the platform (`REST API` + `MCP` + `OpenAPI` + `llms.txt`)** with scoped Better Auth API keys so the **user's own personal AI agents** can read their numbers, ingest slips/events, run simulations, and stage actions on their behalf.
 4. **High-Trust Human Cockpits (`apps/*` Mobile & Web)**: Fast, tactile mobile companions (`apps/biz-mobile`, `apps/tax-mobile`) for daily capture and instant runway awareness, channeling users into deep web workspaces (`apps/webapp`, `apps/tax-webapp`) for 50-year life visualization and decision sign-off.
 
@@ -72,10 +72,10 @@ graph LR
 
 ### 3.1 External Personal Agents First (BYOA > Built-in Chat)
 - **Deprioritize Built-in Agent UI**: We do **not** compete to be the user's primary chat window. The in-app `AssistantRail` and automated multi-step agent workflows (e.g., autonomous tax/plan check-ins) are secondary and sequenced **after** core data connection.
-- **Open Protocol Surface (`apps/api` + MCP)**: Every domain (`biz`, `tax`, `sim`, and later `time`, `health`) exposes clean, versioned endpoints (`/api/v1/*`), an **MCP server**, OpenAPI specs, and `llms.txt` authenticated via **Better Auth scoped API keys** (`packages/auth`).
+- **Open Protocol Surface (`apps/api` + MCP)**: Every domain (`accounting`, `tax`, `sim`, and later `time`, `health`) exposes clean, versioned endpoints (`/api/v1/*`), an **MCP server**, OpenAPI specs, and `llms.txt` authenticated via **Better Auth scoped API keys** (`packages/auth`).
 - **Core Agent Jobs**:
   1. **Ingest**: User forwards a bank e-slip, receipt, or voice note to their personal agent → Agent writes the structured slip/transaction into `excited.live`.
-  2. **Query & Explain**: User asks their agent *"How much runway does FromSukong have left?"* or *"How much did I spend on food this month?"* → Agent reads deterministic summaries from `/api/v1/biz` and `/api/v1/sim`.
+  2. **Query & Explain**: User asks their agent *"How much runway does FromSukong have left?"* or *"How much did I spend on food this month?"* → Agent reads deterministic summaries from `/api/v1/accounting` and `/api/v1/sim`.
   3. **Simulate & Propose**: User asks *"Can I buy a ฿45,000 MacBook or quit my job in 6 months?"* → Agent runs stateless simulations and stages a proposal for human visual review.
 
 ### 3.2 Two-Tier Agent Mutation Policy
@@ -107,7 +107,7 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 ## 5. PRD Corpus Map (Document Index)
 
 1. **[PRD.md](PRD.md) (This file)** — Master Business Vision, Agentic OS Architecture, 3-Pillar Roadmap (Money → Time → Health), Consumer Funnel, and Global Principles.
-2. **[prd-biz-mobile.md](prd-biz-mobile.md) (Current Ship Priority #1)** — `apps/biz-mobile` + `packages/biz` + `/api/v1/biz`: Multi-entity solopreneur cash/burn/runway, straight-line gear depreciation, capital transfers, **MeowJot-style e-slip ingestion**, and Agent/MCP endpoints.
+2. **[prd-biz-mobile.md](prd-biz-mobile.md) (Current Ship Priority #1)** — `apps/biz-mobile` + `packages/accounting` + `/api/v1/accounting`: Multi-entity solopreneur cash/burn/runway, straight-line gear depreciation, capital transfers, **MeowJot-style e-slip ingestion**, and Agent/MCP endpoints.
 3. **[prd-mvp.md](prd-mvp.md) (Math & Sheet Baseline)** — The Google Sheet spec that proved the 50-year simulation and TH 2026 tax optimizer formulas (`packages/sim` + `packages/tax`).
 4. **[prd-mlp.md](prd-mlp.md) (Detailed Web App — Paid Conversion Core)** — `apps/webapp`: 5-minute onboarding wizard, 50-year life-story chart, Monte Carlo P10–P90 bands, scenario toggles, what-if sliders, and external agent MCP/API integration.
 5. **[prd-post-mlp.md](prd-post-mlp.md) (Phased Expansion & Backlog)** — Trigger-based roadmap: Time OS (Pillar 2), Health OS / Cal AI (Pillar 3), Built-in Proactive Agent Workflows, Real Exit-Tax Modeling, US Tax, and Deferred B2B Advisor / White-Label tier.

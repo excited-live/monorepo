@@ -8,17 +8,17 @@ import { FIELD_CLASS, FormField, InputField } from "../../../../components/FormF
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import { resolveCatalogAmount } from "@excited-live/biz";
+import { resolveCatalogAmount } from "@excited-live/accounting";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
-import { useBiz } from "../../../../state";
+import { useFinances } from "../../../../state";
 import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 
 export const CareerDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
 }> = ({ isOpen, onClose }) => {
-	const { accounts, revenues, setCareerIncome } = useBiz();
+	const { accounts, revenues, setCareerIncome } = useFinances();
 	const personal = accounts.find((a) => a.type === "personal") || accounts[0]!;
 	const currency = personal.currency || "THB";
 

@@ -5,7 +5,7 @@ import {
 	type EntityAccount,
 	type HardwareAsset,
 	type RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import {
 	calculateConsolidatedWealth,
 	calculatePaydayCountdown,

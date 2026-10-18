@@ -10,10 +10,10 @@ import { ModalPage } from "../../../../components/ModalPage";
 import { ChipButton } from "../../../../components/ChipButton";
 import { SectionCard } from "../../../../components/SectionCard";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import type { HardwareAsset } from "@excited-live/biz";
+import type { HardwareAsset } from "@excited-live/accounting";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
-import { useBiz } from "../../../../state";
+import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
 
 export const AddGearDrawer: React.FC<{
@@ -21,7 +21,8 @@ export const AddGearDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: HardwareAsset | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addHardware, updateHardware, deleteHardware, activeEntityId, selectedMonth } = useBiz();
+	const { addHardware, updateHardware, deleteHardware } = useFinances();
+	const { activeEntityId, selectedMonth } = useAppUI();
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 

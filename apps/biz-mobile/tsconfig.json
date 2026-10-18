@@ -20,6 +20,12 @@
 		"paths": {
 			"~/*": [
 				"./src/*"
+			],
+			"@excited-live/api/client": [
+				"../api/src/client.ts"
+			],
+			"@excited-live/api": [
+				"../api/src/index.ts"
 			]
 		},
 		"noUncheckedIndexedAccess": true

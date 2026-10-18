@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { round2, type EntityAccount, type LiabilityStream } from "@excited-live/biz";
+import { round2, type EntityAccount, type LiabilityStream } from "@excited-live/accounting";
 import { useFinances } from "../../../state";
 
 export interface AccountLiabilitiesSlice {

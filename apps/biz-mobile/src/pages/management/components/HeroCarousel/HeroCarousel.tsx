@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 import { ChevronLeftIcon, ChevronRightIcon, PlainButton } from "@excited-live/design-system";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";

@@ -7,11 +7,11 @@ import { FormField, InputField, SelectField } from "../../../../components/FormF
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/biz";
+import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
-import { useBiz } from "../../../../state";
+import { useFinances, useAppUI } from "../../../../state";
 import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 
 const PERSONAL_CATEGORIES = [
@@ -45,8 +45,9 @@ export const AddExpenseDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: RecurringSubscription | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { activeEntityId, addSubscription, updateSubscription, deleteSubscription, accounts, hardware, injectCapital } =
-		useBiz();
+	const { addSubscription, updateSubscription, deleteSubscription, accounts, hardware, injectCapital } =
+		useFinances();
+	const { activeEntityId } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 	const businessAccounts = accounts.filter((a) => a.type === "business");

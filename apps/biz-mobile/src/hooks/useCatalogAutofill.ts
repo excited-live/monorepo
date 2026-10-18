@@ -4,8 +4,8 @@ import {
 	resolveCatalogAmount,
 	searchCatalog,
 	type CatalogItem,
-} from "@excited-live/biz";
-import { catalogApi } from "../lib/api-client";
+} from "@excited-live/accounting";
+import { catalogApi } from "../service/catalog";
 
 export interface TouchedFields {
 	amount?: boolean;
@@ -136,7 +136,7 @@ export function useCatalogAutofill({
 						setMatchedItem(null);
 					}
 				} catch {
-					// 2. Offline / local fallback to pure @excited-live/biz catalog
+					// 2. Offline / local fallback to pure @excited-live/accounting catalog
 					const localSuggestions = searchCatalog(trimmed, type);
 					setSuggestions(localSuggestions);
 

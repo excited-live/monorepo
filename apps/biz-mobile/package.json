@@ -18,16 +18,18 @@
 	"dependencies": {
 		"@astryxdesign/core": "catalog:",
 		"@choochmeque/tauri-plugin-google-auth-api": "0.5.1",
-		"@excited-live/biz": "workspace:*",
+		"@excited-live/accounting": "workspace:*",
 		"@excited-live/design-system": "workspace:*",
 		"@tanstack/react-query": "catalog:",
 		"@tanstack/react-router": "catalog:",
 		"@tauri-apps/api": "^2.3.0",
 		"@tauri-apps/plugin-opener": "^2.7.1",
+		"hono": "^4.7.4",
 		"react": "catalog:",
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
+		"@excited-live/api": "workspace:*",
 		"@playwright/test": "^1.63.0",
 		"@tailwindcss/vite": "catalog:",
 		"@tanstack/router-plugin": "catalog:",

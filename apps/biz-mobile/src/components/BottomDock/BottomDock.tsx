@@ -7,11 +7,12 @@ import {
 	type IconProps,
 } from "@excited-live/design-system";
 import { HStack } from "@astryxdesign/core/HStack";
-import { useBiz } from "../../state";
+import { useFinances, useAppUI } from "../../state";
 import { t } from "../../utils/i18n";
 
 export const BottomDock: React.FC = () => {
-	const { activeTab, setActiveTab, accounts, activeEntityId, lang } = useBiz();
+	const { accounts } = useFinances();
+	const { activeTab, setActiveTab, activeEntityId, lang } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0];
 	const isPersonal = activeAccount?.type === "personal";
 

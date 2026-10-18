@@ -12,7 +12,7 @@ The spec is generated from the code: each route carries a `describeRoute()`
 annotation (`src/openapi/docs.ts`, schemas in `src/openapi/schemas.ts`) and the
 app serves the result at `GET /openapi.json` (public, like `/health`).
 Annotations are documentation only — they never validate or change a request.
-Entity schemas are `satisfies`-checked against `@excited-live/biz`, so engine
+Entity schemas are `satisfies`-checked against `@excited-live/accounting`, so engine
 changes break typecheck instead of drifting.
 
 ```bash

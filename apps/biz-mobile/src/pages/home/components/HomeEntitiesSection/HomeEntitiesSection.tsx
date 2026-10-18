@@ -7,7 +7,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../../../../components/EntityThumb";
 import { ListItemCard } from "../../../../components/ListItemCard";
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 import { calculatePaydayCountdown as defaultCalculatePaydayCountdown } from "../../../../domain/selectors";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../utils/i18n";

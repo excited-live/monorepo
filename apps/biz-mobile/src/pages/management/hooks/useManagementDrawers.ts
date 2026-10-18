@@ -6,7 +6,7 @@ import type {
 	LiabilityStream,
 	RecurringSubscription,
 	RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 
 export interface ManagementDrawersSlice {
 	isCapitalOpen: boolean;

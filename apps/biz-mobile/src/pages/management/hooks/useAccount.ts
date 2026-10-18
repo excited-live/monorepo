@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 import { useFinances, useAppUI } from "../../../state";
 
 export interface AccountSlice {

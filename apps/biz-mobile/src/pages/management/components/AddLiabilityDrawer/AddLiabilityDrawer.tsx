@@ -5,9 +5,9 @@ import { Text } from "@astryxdesign/core/Text";
 import { FormField, InputField, SelectField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import type { LiabilityCategory, LiabilityStream } from "@excited-live/biz";
+import type { LiabilityCategory, LiabilityStream } from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
-import { useBiz } from "../../../../state";
+import { useFinances, useAppUI } from "../../../../state";
 
 export interface AddLiabilityDrawerProps {
 	isOpen: boolean;
@@ -24,7 +24,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 	canSkip,
 	onSkip,
 }) => {
-	const { activeEntityId, addLiability, updateLiability, deleteLiability, accounts } = useBiz();
+	const { addLiability, updateLiability, deleteLiability, accounts } = useFinances();
+	const { activeEntityId } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 

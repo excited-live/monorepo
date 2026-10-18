@@ -1,4 +1,4 @@
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 import { useAccountLedger, type AccountLedgerSlice } from "./useAccountLedger";
 import { useAccountIncome, type AccountIncomeSlice } from "./useAccountIncome";
 import { useAccountExpenses, type AccountExpensesSlice } from "./useAccountExpenses";

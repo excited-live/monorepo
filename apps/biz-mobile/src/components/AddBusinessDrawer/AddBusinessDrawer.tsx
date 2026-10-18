@@ -4,10 +4,10 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { InputField } from "../FormField";
 import { ModalPage } from "../ModalPage";
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
-import { useBiz } from "../../state";
+import { useFinances } from "../../state";
 
 interface AddBusinessDrawerProps {
 	isOpen: boolean;
@@ -16,7 +16,7 @@ interface AddBusinessDrawerProps {
 }
 
 export const AddBusinessDrawer: React.FC<AddBusinessDrawerProps> = ({ isOpen, onClose, initialData }) => {
-	const { addBusiness, updateBusiness, deleteBusiness } = useBiz();
+	const { addBusiness, updateBusiness, deleteBusiness } = useFinances();
 	const { dismiss } = useModalBack(isOpen, onClose);
 
 	const [name, setName] = useState("");

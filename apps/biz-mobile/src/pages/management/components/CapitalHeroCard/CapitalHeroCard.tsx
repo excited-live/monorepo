@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { type EntityAccount, round2 } from "@excited-live/biz";
+import { type EntityAccount, round2 } from "@excited-live/accounting";
 import { TuneIcon, UserIcon } from "@excited-live/design-system";
 import { calculateEntityWealthMetrics } from "../../../../domain/selectors";
-import { useBiz } from "../../../../state";
+import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../utils/i18n";
 import { HeroShell } from "../HeroShell";
@@ -20,7 +20,8 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	onPersonalSettings,
 	onTap,
 }) => {
-	const { revenues, subscriptions, liabilities, hardware, transfers, selectedMonth, lang } = useBiz();
+	const { revenues, subscriptions, liabilities, hardware, transfers } = useFinances();
+	const { selectedMonth, lang } = useAppUI();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const [showEom, setShowEom] = useState(false);

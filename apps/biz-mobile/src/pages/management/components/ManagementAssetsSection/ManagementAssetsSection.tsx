@@ -12,7 +12,7 @@ import type {
 	LiabilityStream,
 	RecurringSubscription,
 	RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type { CashWalletViewModel, GearAssetViewModel } from "../../../../domain/types";
 import { selectCashWalletViewModels, selectGearAssetViewModels } from "../../../../domain/selectors";
 import { EmptyCard, ItemRow, SectionHeader } from "../../../../components";

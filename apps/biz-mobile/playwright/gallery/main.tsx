@@ -3,51 +3,19 @@ import { createRoot, type Root } from "react-dom/client";
 import React from "react";
 import { mastercardTheme } from "@excited-live/design-system";
 import { Theme } from "@astryxdesign/core/theme";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "../../src/styles.css";
-import { BizProvider } from "../../src/application/context/BizContext";
-import type { IStorageAdapter } from "../../src/application/storage/storage.interface";
+import { UIProvider } from "../../src/app/ui-context";
+import { accountingKeys } from "../../src/service/accounting/accounting.keys";
+import { authKeys } from "../../src/service/auth/auth.queries";
 import {
-	FIXTURE_ACCOUNTS,
-	FIXTURE_HARDWARE,
-	FIXTURE_LIABILITIES,
-	FIXTURE_REVENUES,
-	FIXTURE_SUBSCRIPTIONS,
-	FIXTURE_TRANSFERS,
+	FIXTURE_SNAPSHOT,
 	FIXTURE_USER_SESSION,
 } from "../../src/testing/fixtures";
 import {
-	LANDING_ACCOUNTS,
-	LANDING_HARDWARE,
-	LANDING_LIABILITIES,
-	LANDING_REVENUES,
-	LANDING_SUBSCRIPTIONS,
-	LANDING_TRANSFERS,
+	LANDING_SNAPSHOT,
 	LANDING_USER_SESSION,
 } from "../../src/testing/landing-fixtures";
-
-class MemoryStorageAdapter implements IStorageAdapter {
-	private store = new Map<string, string>();
-	getItem<T>(key: string, defaultValue: T): T {
-		const val = this.store.get(key);
-		if (!val) return defaultValue;
-		try {
-			return JSON.parse(val) as T;
-		} catch {
-			return defaultValue;
-		}
-	}
-	setItem<T>(key: string, value: T): void {
-		this.store.set(key, JSON.stringify(value));
-	}
-	removeItem(key: string): void {
-		this.store.delete(key);
-	}
-	clear(): void {
-		this.store.clear();
-	}
-}
-
-const storage = new MemoryStorageAdapter();
 
 const componentModules = import.meta.glob([
 	"../../src/**/*.{tsx,jsx}",
@@ -136,23 +104,35 @@ window.mount = async ({
 	}
 
 	const demo = window.__EXL_FIXTURES__ === "landing";
+	const snapshot = demo ? LANDING_SNAPSHOT : FIXTURE_SNAPSHOT;
+	const userSession = demo ? LANDING_USER_SESSION : FIXTURE_USER_SESSION;
 
-	// Always wrap component in BizProvider & Theme for full standalone testing capability
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+				gcTime: Infinity,
+				staleTime: Infinity,
+			},
+		},
+	});
+
+	queryClient.setQueryData(accountingKeys.snapshot(), snapshot);
+	queryClient.setQueryData(authKeys.session(), {
+		id: userSession.id,
+		email: userSession.email,
+		name: userSession.name,
+		image: userSession.avatarUrl,
+	});
+
 	flushSync(() => {
 		root?.render(
 			<Theme theme={mastercardTheme} mode="light">
-				<BizProvider
-					storage={storage}
-					initialAccounts={demo ? LANDING_ACCOUNTS : FIXTURE_ACCOUNTS}
-					initialHardware={demo ? LANDING_HARDWARE : FIXTURE_HARDWARE}
-					initialSubscriptions={demo ? LANDING_SUBSCRIPTIONS : FIXTURE_SUBSCRIPTIONS}
-					initialRevenues={demo ? LANDING_REVENUES : FIXTURE_REVENUES}
-					initialLiabilities={demo ? LANDING_LIABILITIES : FIXTURE_LIABILITIES}
-					initialTransfers={demo ? LANDING_TRANSFERS : FIXTURE_TRANSFERS}
-					initialUserSession={demo ? LANDING_USER_SESSION : FIXTURE_USER_SESSION}
-				>
-					<Component {...props} />
-				</BizProvider>
+				<QueryClientProvider client={queryClient}>
+					<UIProvider initialEntityId={snapshot.accounts[0]?.id}>
+						<Component {...props} />
+					</UIProvider>
+				</QueryClientProvider>
 			</Theme>,
 		);
 	});

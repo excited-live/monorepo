@@ -1,7 +1,7 @@
 import React from "react";
 import { Img } from "@excited-live/design-system";
 import { Stack } from "@astryxdesign/core/Stack";
-import type { EntityAccount } from "@excited-live/biz";
+import type { EntityAccount } from "@excited-live/accounting";
 import type { UserSession } from "../../../../domain/types";
 import { CapitalHeroCard } from "../CapitalHeroCard";
 import { LedgerHeroCard } from "../LedgerHeroCard";

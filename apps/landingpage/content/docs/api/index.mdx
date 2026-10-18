@@ -18,6 +18,27 @@ Examples use `$API_URL` for the API base URL and `$TOKEN` for your bearer token.
 | Method | Path | Summary |
 | --- | --- | --- |
 | `GET` | [`/health`](/docs/api/system) | Health check |
+| `GET` | [`/api/v1/accounting/snapshot`](/docs/api/accounting) | Get the full accounting snapshot |
+| `PUT` | [`/api/v1/accounting/snapshot`](/docs/api/accounting) | Replace the full accounting snapshot |
+| `POST` | [`/api/v1/accounting/accounts`](/docs/api/accounting) | Create a new business account |
+| `PUT` | [`/api/v1/accounting/accounts/{id}`](/docs/api/accounting) | Update account metadata |
+| `DELETE` | [`/api/v1/accounting/accounts/{id}`](/docs/api/accounting) | Delete account and cascade associated records |
+| `POST` | [`/api/v1/accounting/expenses`](/docs/api/accounting) | Add a recurring expense |
+| `PUT` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Update recurring expense |
+| `DELETE` | [`/api/v1/accounting/expenses/{id}`](/docs/api/accounting) | Delete recurring expense |
+| `POST` | [`/api/v1/accounting/assets`](/docs/api/accounting) | Add an asset |
+| `PUT` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Update asset |
+| `DELETE` | [`/api/v1/accounting/assets/{id}`](/docs/api/accounting) | Delete asset |
+| `POST` | [`/api/v1/accounting/incomes`](/docs/api/accounting) | Add an income stream |
+| `PUT` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Update income stream |
+| `DELETE` | [`/api/v1/accounting/incomes/{id}`](/docs/api/accounting) | Delete income stream |
+| `POST` | [`/api/v1/accounting/incomes/career`](/docs/api/accounting) | Set career salary and title |
+| `POST` | [`/api/v1/accounting/liabilities`](/docs/api/accounting) | Add a liability debt stream |
+| `PUT` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Update liability |
+| `DELETE` | [`/api/v1/accounting/liabilities/{id}`](/docs/api/accounting) | Delete liability |
+| `POST` | [`/api/v1/accounting/transfers`](/docs/api/accounting) | Record capital transfer injection |
+| `DELETE` | [`/api/v1/accounting/transfers/{id}`](/docs/api/accounting) | Delete capital transfer |
+| `GET` | [`/api/v1/accounting/ledger/{yearMonth}`](/docs/api/accounting) | Get computed monthly ledger |
 | `GET` | [`/api/v1/auth/me`](/docs/api/auth) | Current session |
 | `GET` | [`/api/v1/biz`](/docs/api/biz) | Get the full biz snapshot |
 | `PUT` | [`/api/v1/biz`](/docs/api/biz) | Replace the full biz snapshot |

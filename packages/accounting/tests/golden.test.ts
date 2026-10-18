@@ -18,7 +18,7 @@ import {
 	walletToHardware,
 } from "../src";
 
-describe("@excited-live/biz - Pure Solopreneur Math Engine", () => {
+describe("@excited-live/accounting - Pure Solopreneur Math Engine", () => {
 	it("reproduces exact baseline recurring subscriptions: ฿2,577.50/mo", () => {
 		const totalMonthly = SEED_SUBSCRIPTIONS.reduce((acc, sub) => {
 			return acc + calculateMonthlyEquivalent(sub.amount, sub.cycle);

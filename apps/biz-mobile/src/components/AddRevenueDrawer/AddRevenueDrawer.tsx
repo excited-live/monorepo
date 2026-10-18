@@ -5,17 +5,18 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { FormField, InputField, SelectField } from "../FormField";
 import { ModalPage } from "../ModalPage";
 import { CurrencyInput } from "../CurrencyInput";
-import type { RevenueStream } from "@excited-live/biz";
+import type { RevenueStream } from "@excited-live/accounting";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
-import { useBiz } from "../../state";
+import { useFinances, useAppUI } from "../../state";
 
 export const AddRevenueDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
 	initialData?: RevenueStream | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { activeEntityId, addRevenue, updateRevenue, deleteRevenue, accounts, setCareerIncome } = useBiz();
+	const { addRevenue, updateRevenue, deleteRevenue, accounts, setCareerIncome } = useFinances();
+	const { activeEntityId } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 

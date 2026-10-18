@@ -1,4 +1,0 @@
-name = "excited-live-tax"
-compatibility_date = "2026-08-30"
-compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = "dist/client"

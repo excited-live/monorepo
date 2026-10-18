@@ -19,47 +19,44 @@ Workflows live in `.github/workflows/`. All build and deploy workflows use Node 
 
 **Tier 1: PR previews (automatic).** On every `pull_request`, apps are built and deployed as aliases on Cloudflare Pages:
 - Main webapp: `preview.yml` → project `excited-live`, jobs `preview-mock` (`VITE_API_MODE=mock`) and `preview-live` (`VITE_API_MODE=live`). Aliases `<sanitized-branch>-mock` and `<sanitized-branch>-live` on `*.excited-live.pages.dev`.
-- Tax app: `tax-preview.yml` → project `excited-live-tax`, same mock/live pair. Path-filtered to `apps/tax-webapp/**`, `packages/tax/**`, `pnpm-lock.yaml`, `turbo.json`, `.github/workflows/tax-*.yml`.
 - Landing site: `landing-preview.yml` → project `excited-live-landing-preview`, single `preview` job, alias is the sanitized branch or `pr` when it comes out empty. Path-filtered to `apps/landingpage/**` plus the lockfile/turbo/workflow files.
 
 The sanitized branch name: lowercased, every non `[a-z0-9-]` character becomes `-`, dashes trimmed, cut to 23 characters so a `-mock` / `-live` suffix still fits Cloudflare's 28-character alias limit.
 
 **Tier 2: prelive (on push to `main`).**
 - `prelive.yml` → `excited-live-prelive` (main webapp, `VITE_API_MODE=live`).
-- `tax-prelive.yml` → `excited-live-tax-prelive` (path-filtered like tax-preview).
 - `landing-prelive.yml` → `excited-live-landing-prelive` (path-filtered like landing-preview).
 
 All three deploy with `--branch=main`.
 
 **Tier 3: production (manual only).**
 - `production.yml` → `excited-live` (app.excited.live). Triggered by `workflow_dispatch` with a `confirm` input that must be typed as `PROD`; the job checks `github.event.inputs.confirm == 'PROD'`.
-- `tax-production.yml` → `excited-live-tax`, same `PROD` confirm, and its checkout is pinned to `ref: main` so a selected non-main ref cannot be built for production.
 - `landing-production.yml` → `excited-live-landing`, plain `workflow_dispatch` (no confirm field as of this audit; treat it extra carefully).
 
 Agents never trigger production workflows, for any reason, including "just testing". Merges are Prame's call too.
 
 ## 2. The workflow set (15 files)
 
-- Deploy tiers: `preview.yml` / `prelive.yml` / `production.yml` (main webapp), `tax-preview.yml` / `tax-prelive.yml` / `tax-production.yml`, `landing-preview.yml` / `landing-prelive.yml` / `landing-production.yml`.
+- Deploy tiers: `preview.yml` / `prelive.yml` / `production.yml` (main webapp), `landing-preview.yml` / `landing-prelive.yml` / `landing-production.yml`.
 - `pr-tests.yml` ("PR Checks"): PR lint + affected-package tests (section 3).
-- Preview metadata: `pr-description.yml`, `tax-pr-description.yml`, `landing-pr-description.yml`. They run on `workflow_run` completion of the matching preview workflow and write the preview URLs into the PR body between the `AUTO-PREVIEWS` (main webapp), `AUTO-TAX-PREVIEWS` (tax), and `AUTO-LANDING-PREVIEWS` (landing) markers.
-- Cleanup: `pr-cleanup.yml` removes preview deployments for the branch on `pull_request` closed, for both `excited-live` and `excited-live-landing-preview`; `tax-pr-cleanup.yml` does the same for `excited-live-tax` (and is path-filtered to tax changes).
+- Preview metadata: `pr-description.yml`, `landing-pr-description.yml`. They run on `workflow_run` completion of the matching preview workflow and write the preview URLs into the PR body between the `AUTO-PREVIEWS` (main webapp), and `AUTO-LANDING-PREVIEWS` (landing) markers.
+- Cleanup: `pr-cleanup.yml` removes preview deployments for the branch on `pull_request` closed, for both `excited-live` and `excited-live-landing-preview`.
 
 ## 3. What CI enforces (pr-tests.yml)
 
 - **Lint**: whole-repo `pnpm lint --max-warnings=0` (flat config `eslint.config.mjs`). The warning budget is zero, so a local warning blocks the PR.
 - **Tests**: only packages affected by the PR. The `detect` job diffs against the merge base and feeds a matrix; packages with a real test script run, packages without one are skipped. Root-level changes (lockfile, configs, `turbo.json`) trigger all packages that have tests.
 - Runs on PR `opened`, `synchronize`, and `reopened`, with cancel-in-progress concurrency.
-- **No app builds in PR Checks; turbo may still build upstream dependency packages for tested packages**. Builds happen inside the deploy workflows: main webapp runs `pnpm --filter @excited-live/webapp^... build && pnpm build` in `apps/webapp`; tax runs `pnpm exec turbo run build --filter=@excited-live/tax-webapp`; landing runs `pnpm exec turbo run build --filter=@excited-live/landingpage` (turbo builds the dependency chain first, which the tax app needs because it resolves `@excited-live/tax` from `packages/tax/dist`).
+- **No app builds in PR Checks; turbo may still build upstream dependency packages for tested packages**. Builds happen inside the deploy workflows: main webapp runs `pnpm --filter @excited-live/webapp^... build && pnpm build` in `apps/webapp`; landing runs `pnpm exec turbo run build --filter=@excited-live/landingpage` (turbo builds the dependency chain first).
 - On a docs-only PR expect: lint runs, test job skipped ("affected packages with tests: none").
 
 ## 4. The sanitize algorithm: 11 copies across 8 workflow files
 
 The branch-name sanitization block is copy-pasted and must stay in sync. Verified audit (2026-10-04):
-- Python copies: `preview.yml` (2: mock and live jobs), `tax-preview.yml` (2), `landing-preview.yml` (2: deploy step and comment step), `pr-cleanup.yml` (1), `tax-pr-cleanup.yml` (1).
-- JS copies: `pr-description.yml` (1), `tax-pr-description.yml` (1), `landing-pr-description.yml` (1).
+- Python copies: `preview.yml` (2: mock and live jobs), `landing-preview.yml` (2: deploy step and comment step), `pr-cleanup.yml` (1).
+- JS copies: `pr-description.yml` (1), `landing-pr-description.yml` (1).
 
-`DEVELOPMENT.md` says the algorithm "lives in FOUR copies (preview.yml, tax-preview.yml, pr-cleanup.yml, tax-pr-cleanup.yml) plus the JS copy in each pr-description workflow". That text predates the landing workflows (`landing-preview.yml` was added later) and does not count the mock/live duplication inside the preview files. The audit above is the current reality. When you change the algorithm, update every copy and verify with:
+`DEVELOPMENT.md` says the algorithm "lives in several copies (preview.yml, landing-preview.yml, pr-cleanup.yml) plus the JS copy in each pr-description workflow". That text predates the landing workflows (`landing-preview.yml` was added later) and does not count the mock/live duplication inside the preview files. The audit above is the current reality. When you change the algorithm, update every copy and verify with:
 
 ```bash
 grep -rln "SANITIZED_BRANCH\|sanitize" .github/workflows/
@@ -95,7 +92,7 @@ grep -rln "SANITIZED_BRANCH\|sanitize" .github/workflows/
 ## 9. Source of truth and known drift
 
 Ground truth is `DEVELOPMENT.md` plus the workflow files themselves. Verified drift as of 2026-10-04:
-- `DEVELOPMENT.md` documents the main webapp and tax pipelines in detail but has no landing section, even though the landing tier (three workflows, plus cleanup and description) exists.
+- `DEVELOPMENT.md` documents the main webapp pipeline in detail but has no landing section, even though the landing tier (three workflows, plus cleanup and description) exists.
 - Its sanitize section misses the landing copies and the mock/live duplication (section 4).
 - Everything else it states was verified accurate: projects, alias limits, the `PROD` gate, path filters, and the tax build-through-turbo note.
 

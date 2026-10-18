@@ -72,17 +72,13 @@ GitHub Actions (`.github/workflows/`), direct-upload pattern (Cloudflare does NO
 
 **Custom domain — the app lives on `app.excited.live`, NOT the apex (2026-09-06):** the root `excited.live` is reserved for the marketing/landing site; this webapp serves `https://app.excited.live`. One-time setup in the Cloudflare dashboard (Pages project `excited-live` → Custom domains → add `app.excited.live`; DNS is auto-managed since the zone is on the same account). WorkOS AuthKit production Redirect URIs must use the same origin: `https://app.excited.live/api/auth/callback`.
 
-**Tax webapp** (`apps/tax-webapp` → Pages projects `excited-live-tax` + `excited-live-tax-prelive`): same 3-tier model via `tax-preview.yml` / `tax-prelive.yml` / `tax-production.yml` (paths-filtered to `apps/tax-webapp/**` and `packages/tax/**`, preview aliases on `*.excited-live-tax.pages.dev`). Tax previews are cleaned up by `tax-pr-cleanup.yml` and advertised in the PR body by `tax-pr-description.yml` — same shape as the main-app `pr-cleanup.yml` / `pr-description.yml`. The tax app imports `@excited-live/tax` (resolves to `packages/tax/dist`), so its CI builds with `pnpm exec turbo run build --filter=@excited-live/tax-webapp` (turbo builds the dependency chain first) instead of a bare in-app `pnpm build`.
-
-Required repo secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (shared by both pipelines).
-
-Note: the tax app has no backend yet (all computation is client-side), so its mock/live preview builds are currently identical; the `VITE_API_MODE` split exists for pipeline symmetry and matters once a backend lands.
+Required repo secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (shared by all pipelines).
 
 Pitfalls:
 - Must use wrangler@4 (v3 esbuild can't compile the SSR function — `with {type: json}` syntax)
-- The Pages Functions (`apps/webapp/functions/[[path]].ts`, `apps/tax-webapp/functions/[[path]].ts`) bundle `dist/server/server.js` — deploy jobs must run inside the app dir where both `functions/` and `dist/` exist
-- CF projects need `nodejs_compat` compatibility flag (set on all four projects: `excited-live`, `excited-live-prelive`, `excited-live-tax`, `excited-live-tax-prelive`)
-- The branch-name sanitization algorithm now lives in FOUR copies that must stay in sync (preview.yml, tax-preview.yml, pr-cleanup.yml, tax-pr-cleanup.yml) plus the JS copy in each pr-description workflow — if you change one, change all
+- The Pages Functions (`apps/webapp/functions/[[path]].ts`) bundle `dist/server/server.js` — deploy jobs must run inside the app dir where both `functions/` and `dist/` exist
+- CF projects need `nodejs_compat` compatibility flag (set on both projects: `excited-live` and `excited-live-prelive`)
+- The branch-name sanitization algorithm lives in several copies that must stay in sync (preview.yml, landing-preview.yml, pr-cleanup.yml) plus the JS copy in each pr-description workflow — if you change one, change all
 
 ## Conventions for agents (Hermes)
 

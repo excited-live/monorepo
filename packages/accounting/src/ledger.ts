@@ -1,6 +1,7 @@
 import {
 	calculateAssetDepreciation,
 	calculateMonthlyEquivalent,
+	daysInMonth,
 	getYearMonthRange,
 	hardwareToWallet,
 	isCashAsset,
@@ -23,15 +24,60 @@ export const DEFAULT_BASELINE_MONTH = "2026-10";
 /** How far ahead runway looks before declaring an entity Default Alive. */
 export const RUNWAY_HORIZON_MONTHS = 120;
 
-/** A wallet's balance is recorded as of the start of its purchase month. */
+/**
+ * A wallet's balance is true as of its purchaseDate: `YYYY-MM` means the start
+ * of that month, `YYYY-MM-DD` the start of that day.
+ */
 export function walletBaselineMonth(purchaseDate?: string): string {
 	return purchaseDate && /^\d{4}-\d{2}/.test(purchaseDate) ? purchaseDate.slice(0, 7) : DEFAULT_BASELINE_MONTH;
+}
+
+/** The as-of day of a wallet balance recorded mid-month, if any. */
+function walletBaselineDay(purchaseDate?: string): string | undefined {
+	return purchaseDate && /^\d{4}-\d{2}-\d{2}/.test(purchaseDate) ? purchaseDate.slice(0, 10) : undefined;
 }
 
 /** One-time transfers hit their own month; monthly ones recur from their start month. */
 export function isTransferInMonth(transfer: CapitalTransfer, yearMonth: string): boolean {
 	if (transfer.frequency === "monthly") return transfer.date.slice(0, 7) <= yearMonth;
 	return transfer.date.startsWith(yearMonth);
+}
+
+/** Inside the optional [startMonth, endMonth] window; missing bounds are open. */
+function isWithinMonths(item: { startMonth?: string; endMonth?: string }, yearMonth: string): boolean {
+	if (item.startMonth && yearMonth < item.startMonth) return false;
+	if (item.endMonth && yearMonth > item.endMonth) return false;
+	return true;
+}
+
+/** Active income counted in yearMonth: one-time income only in its start month. */
+export function isRevenueInMonth(revenue: RevenueStream, yearMonth: string): boolean {
+	if (!revenue.active) return false;
+	if (revenue.frequency === "one_time") return revenue.startMonth === yearMonth;
+	return isWithinMonths(revenue, yearMonth);
+}
+
+/** Active expense charged in yearMonth: one-time expenses only in their charge month. */
+export function isSubscriptionInMonth(subscription: RecurringSubscription, yearMonth: string): boolean {
+	if (!subscription.active) return false;
+	if (subscription.cycle === "one_time") return subscription.nextRenewalDate.startsWith(yearMonth);
+	return isWithinMonths(subscription, yearMonth);
+}
+
+/** Active debt payment due in yearMonth. */
+export function isLiabilityInMonth(liability: LiabilityStream, yearMonth: string): boolean {
+	return liability.active && isWithinMonths(liability, yearMonth);
+}
+
+/** Day-of-month part of a YYYY-MM-DD date, or fallback for YYYY-MM dates. */
+function dayOfMonth(date: string, fallback: number): number {
+	return /^\d{4}-\d{2}-\d{2}/.test(date) ? Number(date.slice(8, 10)) : fallback;
+}
+
+/** `YYYY-MM-DD` for a day in yearMonth, clamped to the month's length (31 → 28 in Feb). */
+function dateInMonth(yearMonth: string, day: number): string {
+	const clamped = Math.min(Math.max(1, day), daysInMonth(yearMonth));
+	return `${yearMonth}-${String(clamped).padStart(2, "0")}`;
 }
 
 /**
@@ -60,15 +106,9 @@ export function calculateEntityMonthlyOperatingCash(params: {
 	} = params;
 
 	// Inflows from revenue streams
-	const activeRevenues = revenues.filter((r) => {
-		if (r.entityId !== account.id || !r.active) return false;
-		if (yearMonth) {
-			if (r.frequency === "one_time") return r.startMonth === yearMonth;
-			if (r.startMonth && yearMonth < r.startMonth) return false;
-			if (r.endMonth && yearMonth > r.endMonth) return false;
-		}
-		return true;
-	});
+	const activeRevenues = revenues.filter(
+		(r) => r.entityId === account.id && (yearMonth ? isRevenueInMonth(r, yearMonth) : r.active),
+	);
 
 	const hasConfiguredSalary = revenues.some(
 		(r) => r.entityId === account.id && (r.source === "salary" || r.id === "rev_career_prame" || r.id.startsWith("rev_career")),
@@ -84,20 +124,18 @@ export function calculateEntityMonthlyOperatingCash(params: {
 	);
 
 	// Outflows from subscriptions
-	const activeSubs = subscriptions.filter((s) => {
-		if (s.entityId !== account.id || !s.active) return false;
-		if (yearMonth && s.cycle === "one_time") {
-			return s.nextRenewalDate.startsWith(yearMonth);
-		}
-		return true;
-	});
+	const activeSubs = subscriptions.filter(
+		(s) => s.entityId === account.id && (yearMonth ? isSubscriptionInMonth(s, yearMonth) : s.active),
+	);
 	const monthlySubscriptions = activeSubs.reduce(
 		(acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle),
 		0,
 	);
 
 	// Outflows from liabilities
-	const activeLiab = liabilities.filter((l) => l.entityId === account.id && l.active);
+	const activeLiab = liabilities.filter(
+		(l) => l.entityId === account.id && (yearMonth ? isLiabilityInMonth(l, yearMonth) : l.active),
+	);
 	const monthlyLiabilities = activeLiab.reduce((acc, l) => acc + l.amount, 0);
 
 	const totalExpense = round2(monthlySubscriptions + monthlyLiabilities);
@@ -137,6 +175,11 @@ export function calculateWalletBalance(params: {
 	liabilities?: LiabilityStream[];
 	yearMonth?: string;
 	baselineMonth?: string;
+	/**
+	 * YYYY-MM-DD inside baselineMonth when the balance was recorded mid-month:
+	 * it then already includes this wallet's movements dated before that day.
+	 */
+	baselineDay?: string;
 }): WalletBalanceBreakdown {
 	const {
 		wallet,
@@ -147,7 +190,8 @@ export function calculateWalletBalance(params: {
 		revenues = [],
 		liabilities = [],
 		yearMonth,
-		baselineMonth = "2026-10",
+		baselineMonth = DEFAULT_BASELINE_MONTH,
+		baselineDay,
 	} = params;
 
 	// Determine if this is the designated default wallet for the entity
@@ -159,17 +203,17 @@ export function calculateWalletBalance(params: {
 	// Capital transfers land on their target wallet; untargeted ones (or ones whose
 	// target no longer exists) land on the default wallet, which also funds outgoing ones.
 	const walletIds = new Set(wallets.map((w) => w.id));
+	const transferShare = (t: CapitalTransfer): number => {
+		let delta = 0;
+		if (t.toEntityId === wallet.entityId) {
+			const isTargeted = Boolean(t.targetAssetId && walletIds.has(t.targetAssetId));
+			if (isTargeted ? t.targetAssetId === wallet.id : isDefaultWallet) delta += t.amount;
+		}
+		if (t.fromEntityId === wallet.entityId && isDefaultWallet) delta -= t.amount;
+		return delta;
+	};
 	const transferDelta = (ym: string): number =>
-		transfers.reduce((sum, t) => {
-			if (!isTransferInMonth(t, ym)) return sum;
-			let delta = 0;
-			if (t.toEntityId === wallet.entityId) {
-				const isTargeted = Boolean(t.targetAssetId && walletIds.has(t.targetAssetId));
-				if (isTargeted ? t.targetAssetId === wallet.id : isDefaultWallet) delta += t.amount;
-			}
-			if (t.fromEntityId === wallet.entityId && isDefaultWallet) delta -= t.amount;
-			return sum + delta;
-		}, 0);
+		transfers.reduce((sum, t) => (isTransferInMonth(t, ym) ? sum + transferShare(t) : sum), 0);
 
 	const entityAccount: EntityAccount = account ?? {
 		id: wallet.entityId,
@@ -205,6 +249,31 @@ export function calculateWalletBalance(params: {
 	for (const ym of months) {
 		assetInjections = round2(assetInjections + sign * transferDelta(ym));
 		netOperatingCash = round2(netOperatingCash + sign * operatingDelta(ym));
+	}
+
+	// A balance recorded mid-month already reflects this wallet's movements dated
+	// before that day; take them out so they are not applied twice.
+	if (baselineDay && baselineDay.startsWith(startYm) && baselineDay.slice(0, 10) > `${startYm}-01`) {
+		const transfersById = new Map(transfers.map((t) => [t.id, t]));
+		const { actions } = buildMonthlyActions({
+			account: entityAccount,
+			yearMonth: startYm,
+			subscriptions,
+			hardware: [],
+			revenues,
+			transfers,
+			liabilities,
+		});
+		for (const action of actions) {
+			if (action.date >= baselineDay.slice(0, 10)) continue;
+			if (action.category === "transfer") {
+				const tx = transfersById.get(action.id);
+				if (tx) assetInjections = round2(assetInjections - transferShare(tx));
+			} else if (isDefaultWallet) {
+				const signed = action.direction === "inflow" ? action.amount : -action.amount;
+				netOperatingCash = round2(netOperatingCash - signed);
+			}
+		}
 	}
 
 	const currentCashOnHand = round2(wallet.balance + assetInjections);
@@ -283,6 +352,7 @@ export function calculateCashAssetBalance(params: {
 		liabilities,
 		yearMonth,
 		baselineMonth: walletBaselineMonth(asset.purchaseDate),
+		baselineDay: walletBaselineDay(asset.purchaseDate),
 	});
 
 	return {
@@ -402,7 +472,8 @@ export function calculateEntityMonthlyCashFlow(params: {
  * interpolated within the month the balance crosses zero. One-off items and
  * streams that start/end later are all accounted for; a burn that outlasts the
  * horizon is extrapolated at the horizon's steady-state rate. An entity that is
- * already overdrawn has 0 months. Returns null runway when cash never runs out;
+ * overdrawn and stays below zero after this month's flow has 0 months; a dip
+ * that recovers within the month does not count. Returns null runway when cash never runs out;
  * that counts as Default Alive only if the entity has any inflow (an empty
  * account is neither alive nor dead).
  */
@@ -417,17 +488,19 @@ export function calculateRunwayProjection(
 	const flowAt = (i: number) => calculateEntityMonthlyCashFlow({ ...params, yearMonth: shiftYearMonth(yearMonth, i) });
 
 	let balance = params.openingTreasury ?? calculateOpeningTreasury(params);
-	if (balance < 0) return { runwayMonths: 0, isDefaultAlive: false };
 
 	let hasInflow = false;
 	for (let i = 0; i < horizonMonths; i++) {
 		const flow = flowAt(i);
 		if (flow.inflow > 0) hasInflow = true;
-		if (flow.net < 0 && balance + flow.net < 0) {
-			const runwayMonths = balance <= 0 ? i : round2(i + balance / -flow.net);
+		const next = balance + flow.net;
+		if (next < 0) {
+			// Runs out inside this month (interpolated), or was already overdrawn and
+			// this month's flow does not bring it back above zero.
+			const runwayMonths = balance > 0 && flow.net < 0 ? round2(i + balance / -flow.net) : i;
 			return { runwayMonths, isDefaultAlive: false };
 		}
-		balance = round2(balance + flow.net);
+		balance = round2(next);
 	}
 
 	const steadyState = flowAt(horizonMonths);
@@ -437,13 +510,44 @@ export function calculateRunwayProjection(
 	return { runwayMonths: null, isDefaultAlive: hasInflow };
 }
 
+/** Signed cash movements of one month (depreciation excluded), in date order. */
+function monthlyCashMovements(params: EntityFlowParams & { yearMonth: string }): Array<{ date: string; delta: number }> {
+	const { subscriptions = [], revenues = [], liabilities = [] } = params;
+	return buildMonthlyActions({ ...params, subscriptions, revenues, liabilities })
+		.actions.filter((a) => a.category !== "asset_depreciation")
+		.map((a) => ({ date: a.date, delta: a.direction === "inflow" ? a.amount : -a.amount }));
+}
+
 /**
- * Cash an entity can spend in yearMonth without going negative: the lower of
- * its opening and end-of-month treasury, so income that has not landed yet is
- * never counted as available.
+ * Treasury at the end of a given day (YYYY-MM-DD): the month's opening
+ * treasury plus every cash movement dated on or before that day (salary on
+ * payday, expenses on their charge day, transfers on their date). This is the
+ * hero card's "NOW" for the current month.
  */
-export function calculateAvailableCash(params: EntityFlowParams & { yearMonth: string }): number {
-	return Math.min(calculateOpeningTreasury(params), calculateTreasuryAtEndOfMonth(params));
+export function calculateTreasuryAsOf(params: EntityFlowParams & { asOfDate: string }): number {
+	const day = params.asOfDate.slice(0, 10);
+	const yearMonth = day.slice(0, 7);
+	const moved = monthlyCashMovements({ ...params, yearMonth })
+		.filter((m) => m.date <= day)
+		.reduce((acc, m) => acc + m.delta, 0);
+	return round2(calculateOpeningTreasury({ ...params, yearMonth }) + moved);
+}
+
+/**
+ * Cash an entity can spend on asOfDate without going negative later in the
+ * month: the lowest running balance from that day to month end, so neither
+ * income that has not landed yet nor a dip before payday counts as available.
+ */
+export function calculateAvailableCash(params: EntityFlowParams & { asOfDate: string }): number {
+	const day = params.asOfDate.slice(0, 10);
+	const yearMonth = day.slice(0, 7);
+	let balance = calculateOpeningTreasury({ ...params, yearMonth });
+	let lowest = Number.POSITIVE_INFINITY;
+	for (const m of monthlyCashMovements({ ...params, yearMonth })) {
+		if (m.date > day && balance < lowest) lowest = balance;
+		balance = round2(balance + m.delta);
+	}
+	return round2(Math.min(lowest, balance));
 }
 
 /**
@@ -476,10 +580,17 @@ export function calculateDerivedTreasury(params: {
 	return calculateTreasuryAtEndOfMonth({ ...params, yearMonth: params.yearMonth ?? DEFAULT_BASELINE_MONTH });
 }
 
-/**
- * Pure ledger derivation engine for a specific entity and month.
- */
-export function generateMonthlyLedger(params: {
+export interface LedgerAction {
+	id: string;
+	date: string;
+	description: string;
+	amount: number;
+	direction: "inflow" | "outflow";
+	category: string;
+	counterparty?: string;
+}
+
+interface LedgerParams {
 	account: EntityAccount;
 	yearMonth: string;
 	subscriptions: RecurringSubscription[];
@@ -487,29 +598,18 @@ export function generateMonthlyLedger(params: {
 	revenues: RevenueStream[];
 	transfers: CapitalTransfer[];
 	liabilities?: LiabilityStream[];
-}): {
-	actions: Array<{
-		id: string;
-		date: string;
-		description: string;
-		amount: number;
-		direction: "inflow" | "outflow";
-		category: string;
-		counterparty?: string;
-	}>;
-	summary: {
-		entityId?: string;
-		yearMonth?: string;
-		startingTreasury: number;
-		totalInflow: number;
-		totalCashOutflow: number;
-		totalDepreciation: number;
-		netCashFlow: number;
-		endingTreasury: number;
-		runwayMonths?: number | null;
-		isDefaultAlive?: boolean;
-		status: "DEFAULT ALIVE" | "DEFAULT DEAD";
-	};
+}
+
+/**
+ * Every dated movement of one entity in one month (cash plus non-cash
+ * depreciation), sorted by date, with the month's cash totals. Pure: no
+ * treasury or runway, so it is cheap to call per month.
+ */
+export function buildMonthlyActions(params: LedgerParams): {
+	actions: LedgerAction[];
+	totalInflow: number;
+	totalCashOutflow: number;
+	totalDepreciation: number;
 } {
 	const {
 		account,
@@ -521,34 +621,22 @@ export function generateMonthlyLedger(params: {
 		liabilities = [],
 	} = params;
 
-	const actions: Array<{
-		id: string;
-		date: string;
-		description: string;
-		amount: number;
-		direction: "inflow" | "outflow";
-		category: string;
-		counterparty?: string;
-	}> = [];
+	const actions: LedgerAction[] = [];
 
 	let totalInflow = 0;
 	let totalCashOutflow = 0;
 
 	// Inflows: Revenues
-	const activeRevenues = revenues.filter((r) => {
-		if (r.entityId !== account.id || !r.active) return false;
-		if (r.frequency === "one_time") return r.startMonth === yearMonth;
-		if (r.startMonth && yearMonth < r.startMonth) return false;
-		if (r.endMonth && yearMonth > r.endMonth) return false;
-		return true;
-	});
+	const activeRevenues = revenues.filter((r) => r.entityId === account.id && isRevenueInMonth(r, yearMonth));
 
 	for (const rev of activeRevenues) {
 		const amt = rev.frequency === "yearly" ? round2(rev.amount / 12) : rev.amount;
 		totalInflow += amt;
+		// Salary lands on payday; other income on the 1st
+		const day = rev.source === "salary" ? account.paydayDayOfMonth || 28 : 1;
 		actions.push({
 			id: rev.id,
-			date: `${yearMonth}-01`,
+			date: dateInMonth(yearMonth, day),
 			description: rev.name,
 			amount: amt,
 			direction: "inflow",
@@ -563,10 +651,9 @@ export function generateMonthlyLedger(params: {
 	const hasAnyRevenuesForEntity = revenues.some((r) => r.entityId === account.id);
 	if (account.salary && !hasConfiguredSalary && !hasAnyRevenuesForEntity) {
 		totalInflow += account.salary;
-		const payday = String(account.paydayDayOfMonth || 28).padStart(2, "0");
 		actions.push({
 			id: "action_salary",
-			date: `${yearMonth}-${payday}`,
+			date: dateInMonth(yearMonth, account.paydayDayOfMonth || 28),
 			description: "Career Salary",
 			amount: account.salary,
 			direction: "inflow",
@@ -583,7 +670,7 @@ export function generateMonthlyLedger(params: {
 		totalInflow += tx.amount;
 		actions.push({
 			id: tx.id,
-			date: tx.date,
+			date: dateInMonth(yearMonth, dayOfMonth(tx.date, 1)),
 			description: tx.note || "Capital Transfer In",
 			amount: tx.amount,
 			direction: "inflow",
@@ -593,18 +680,16 @@ export function generateMonthlyLedger(params: {
 	}
 
 	// Outflows: Subscriptions
-	const activeSubs = subscriptions.filter((s) => {
-		if (s.entityId !== account.id || !s.active) return false;
-		if (s.cycle === "one_time") return s.nextRenewalDate.startsWith(yearMonth);
-		return true;
-	});
+	const activeSubs = subscriptions.filter((s) => s.entityId === account.id && isSubscriptionInMonth(s, yearMonth));
 
 	for (const sub of activeSubs) {
 		const amt = calculateMonthlyEquivalent(sub.amount, sub.cycle);
 		totalCashOutflow += amt;
 		actions.push({
 			id: sub.id,
-			date: sub.nextRenewalDate.startsWith(yearMonth) ? sub.nextRenewalDate : `${yearMonth}-${String(sub.billingDay || 1).padStart(2, "0")}`,
+			date: sub.nextRenewalDate.startsWith(yearMonth)
+				? sub.nextRenewalDate
+				: dateInMonth(yearMonth, sub.billingDay || dayOfMonth(sub.nextRenewalDate, 1)),
 			description: sub.name,
 			amount: amt,
 			direction: "outflow",
@@ -621,7 +706,7 @@ export function generateMonthlyLedger(params: {
 		totalCashOutflow += tx.amount;
 		actions.push({
 			id: tx.id,
-			date: tx.date,
+			date: dateInMonth(yearMonth, dayOfMonth(tx.date, 1)),
 			description: tx.note || "Capital Transfer Out",
 			amount: tx.amount,
 			direction: "outflow",
@@ -631,12 +716,12 @@ export function generateMonthlyLedger(params: {
 	}
 
 	// Outflows: Liabilities
-	const activeLiab = liabilities.filter((l) => l.entityId === account.id && l.active);
+	const activeLiab = liabilities.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth));
 	for (const liab of activeLiab) {
 		totalCashOutflow += liab.amount;
 		actions.push({
 			id: liab.id,
-			date: `${yearMonth}-15`,
+			date: dateInMonth(yearMonth, 15),
 			description: liab.name,
 			amount: liab.amount,
 			direction: "outflow",
@@ -653,7 +738,7 @@ export function generateMonthlyLedger(params: {
 			totalDepreciation += dep.monthlyRate;
 			actions.push({
 				id: `action_dep_${h.id}`,
-				date: `${yearMonth}-28`,
+				date: dateInMonth(yearMonth, 28),
 				description: `Depreciation: ${h.name}`,
 				amount: dep.monthlyRate,
 				direction: "outflow",
@@ -666,27 +751,43 @@ export function generateMonthlyLedger(params: {
 	// Sort actions by date ascending
 	actions.sort((a, b) => a.date.localeCompare(b.date));
 
-	const startingTreasury = calculateOpeningTreasury({
-		account,
-		hardware,
-		transfers,
-		subscriptions,
-		revenues,
-		liabilities,
-		yearMonth,
-	});
+	return {
+		actions,
+		totalInflow: round2(totalInflow),
+		totalCashOutflow: round2(totalCashOutflow),
+		totalDepreciation,
+	};
+}
 
+/**
+ * Pure ledger derivation engine for a specific entity and month: the month's
+ * dated actions plus opening/ending treasury and forward-looking runway.
+ */
+export function generateMonthlyLedger(params: LedgerParams): {
+	actions: LedgerAction[];
+	summary: {
+		entityId?: string;
+		yearMonth?: string;
+		startingTreasury: number;
+		totalInflow: number;
+		totalCashOutflow: number;
+		totalDepreciation: number;
+		netCashFlow: number;
+		endingTreasury: number;
+		runwayMonths?: number | null;
+		isDefaultAlive?: boolean;
+		status: "DEFAULT ALIVE" | "DEFAULT DEAD";
+	};
+} {
+	const { account, yearMonth } = params;
+	const { actions, totalInflow, totalCashOutflow, totalDepreciation } = buildMonthlyActions(params);
+
+	const startingTreasury = calculateOpeningTreasury(params);
 	const netCashFlow = round2(totalInflow - totalCashOutflow);
 	const endingTreasury = round2(startingTreasury + netCashFlow);
 
 	const { runwayMonths, isDefaultAlive } = calculateRunwayProjection({
-		account,
-		hardware,
-		transfers,
-		subscriptions,
-		revenues,
-		liabilities,
-		yearMonth,
+		...params,
 		openingTreasury: startingTreasury,
 	});
 	const status = isDefaultAlive ? "DEFAULT ALIVE" : "DEFAULT DEAD";
@@ -697,11 +798,11 @@ export function generateMonthlyLedger(params: {
 			entityId: account.id,
 			yearMonth,
 			startingTreasury: round2(startingTreasury),
-			totalInflow: round2(totalInflow),
-			totalCashOutflow: round2(totalCashOutflow),
+			totalInflow,
+			totalCashOutflow,
 			totalDepreciation,
 			netCashFlow,
-			endingTreasury: round2(endingTreasury),
+			endingTreasury,
 			runwayMonths,
 			isDefaultAlive,
 			status,

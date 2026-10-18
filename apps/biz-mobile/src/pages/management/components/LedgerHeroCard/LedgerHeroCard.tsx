@@ -23,7 +23,7 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 	onTap,
 }) => {
 	const { subscriptions, hardware, revenues, liabilities, transfers } = useFinances();
-	const { lang } = useAppUI();
+	const { lang, today } = useAppUI();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const {
@@ -41,6 +41,7 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 		liabilities,
 		pastMonths: PAST_MONTHS,
 		futureMonths: FUTURE_MONTHS,
+		asOfDate: today,
 	});
 
 	// Expense breakdown for the selected month, from the same ledger as the net

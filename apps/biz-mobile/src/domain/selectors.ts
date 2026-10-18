@@ -6,7 +6,7 @@ import {
 	calculateEntityWealthMetrics,
 	calculatePaydayCountdown,
 	calculateProjectionBalances,
-	generateMonthlyLedger,
+	buildMonthlyActions,
 	isCashAsset,
 	round2,
 	shiftYearMonth,
@@ -127,7 +127,7 @@ export function selectMonthlyExpenseBreakdown(params: {
 	transfers: CapitalTransfer[];
 	liabilities: LiabilityStream[];
 }): Array<[string, number]> {
-	const { actions } = generateMonthlyLedger(params);
+	const { actions } = buildMonthlyActions(params);
 	const byCategory = new Map<string, number>();
 	for (const action of actions) {
 		if (action.direction !== "outflow" || action.category === "asset_depreciation") continue;

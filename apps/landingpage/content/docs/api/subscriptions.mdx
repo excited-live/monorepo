@@ -72,6 +72,8 @@ Type: `object`
 | `nextRenewalDate` | `string` | no | `YYYY-MM-DD`. |
 | `billingDay` | `integer` | no |  |
 | `active` | `boolean` | no |  |
+| `startMonth` | `string` | no | `YYYY-MM`. First month charged. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month charged; absent = open-ended. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
 
@@ -126,6 +128,8 @@ A recurring cost (SaaS, rent, insurance…).
 | `nextRenewalDate` | `string` | yes | `YYYY-MM-DD`. |
 | `billingDay` | `integer` | no |  |
 | `active` | `boolean` | yes |  |
+| `startMonth` | `string` | no | `YYYY-MM`. First month charged. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month charged; absent = open-ended. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
 

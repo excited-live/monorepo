@@ -11,7 +11,7 @@ import { CurrencyInput } from "../../../../components/CurrencyInput";
 import { resolveCatalogAmount } from "@excited-live/accounting";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
-import { useFinances } from "../../../../state";
+import { useAppUI, useFinances } from "../../../../state";
 import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 
 export const CareerDrawer: React.FC<{
@@ -19,6 +19,8 @@ export const CareerDrawer: React.FC<{
 	onClose: () => void;
 }> = ({ isOpen, onClose }) => {
 	const { accounts, revenues, setCareerIncome } = useFinances();
+	const { today } = useAppUI();
+	const currentMonth = today.slice(0, 7);
 	const personal = accounts.find((a) => a.type === "personal") || accounts[0]!;
 	const currency = personal.currency || "THB";
 
@@ -59,14 +61,14 @@ export const CareerDrawer: React.FC<{
 			setTitle(personal.careerTitle || "");
 			setSalary(personal.salary ? String(personal.salary) : "");
 			setPayday(String(personal.paydayDayOfMonth ?? 28));
-			setStartMonth(careerRev?.startMonth || "");
+			setStartMonth(careerRev?.startMonth || currentMonth);
 			setEndMonth(careerRev?.endMonth || "");
 			setCoverImageUrl(personal.careerImageUrl || "");
 			resetTouched();
 			if (personal.salary) markTouched("amount");
 			if (personal.careerImageUrl) markTouched("imageUrl");
 		}
-	}, [isOpen, personal, careerRev, markTouched, resetTouched]);
+	}, [isOpen, personal, careerRev, currentMonth, markTouched, resetTouched]);
 
 	if (!isOpen) return null;
 
@@ -97,13 +99,14 @@ export const CareerDrawer: React.FC<{
 			title.trim() || undefined,
 			company.trim() || undefined,
 			coverImageUrl.trim() || undefined,
-			startMonth || undefined,
+			startMonth,
 			endMonth || undefined,
 		);
 		dismiss();
 	};
 
-	const canSubmit = Number(salary) > 0;
+	// Salary needs a start month; the end month is optional (open-ended)
+	const canSubmit = Number(salary) > 0 && Boolean(startMonth) && (!endMonth || endMonth >= startMonth);
 
 	return (
 		<ModalPage
@@ -200,16 +203,18 @@ export const CareerDrawer: React.FC<{
 				<HStack wrap="wrap" gap={3} width="100%">
 					<InputField
 						fieldClassName="flex-1 basis-[150px]"
-						label="Start Month (Optional)"
+						label="Start Month"
 						type="month"
 						value={startMonth}
 						onChange={(e) => setStartMonth(e.target.value)}
+						required
 					/>
 					<InputField
 						fieldClassName="flex-1 basis-[150px]"
 						label="End Month (Optional)"
 						type="month"
 						value={endMonth}
+						min={startMonth || undefined}
 						onChange={(e) => setEndMonth(e.target.value)}
 					/>
 				</HStack>

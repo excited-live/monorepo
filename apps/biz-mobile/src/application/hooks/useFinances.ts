@@ -131,7 +131,10 @@ export function useFinances(): FinancesSlice {
 	const addBusiness = useCallback(
 		(name: string, imageUrl?: string): string => {
 			const id = `acc_biz_${Date.now()}`;
-			addAccountMutation.mutate({ id, name, imageUrl });
+			const now = new Date();
+			// Date the new ฿0 wallet to the user's local month, not the server's UTC one
+			const asOf = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+			addAccountMutation.mutate({ id, name, imageUrl, asOf });
 			return id;
 		},
 		[addAccountMutation],

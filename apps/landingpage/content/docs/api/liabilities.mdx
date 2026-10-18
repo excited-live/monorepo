@@ -69,6 +69,8 @@ Type: `object`
 | `amount` | `number` | no | Monthly payment. |
 | `category` | `string` | no | `mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string. |
 | `active` | `boolean` | no |  |
+| `startMonth` | `string` | no | `YYYY-MM`. First month due. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month due; absent = open-ended. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
 
@@ -120,6 +122,8 @@ A debt payment stream.
 | `amount` | `number` | yes | Monthly payment. |
 | `category` | `string` | yes | `mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string. |
 | `active` | `boolean` | yes |  |
+| `startMonth` | `string` | no | `YYYY-MM`. First month due. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month due; absent = open-ended. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
 

@@ -1,6 +1,7 @@
 import {
 	commands,
 	generateMonthlyLedger,
+	normalizeSnapshot,
 	type Account,
 	type AccountingSnapshot,
 	type Asset,
@@ -35,7 +36,7 @@ export const createEmptySnapshot = (): AccountingSnapshot => ({
 export interface AccountingService {
 	getSnapshot(userId: string): Promise<AccountingSnapshot>;
 	replaceSnapshot(userId: string, snapshot: Omit<AccountingSnapshot, "updatedAt">): Promise<AccountingSnapshot>;
-	addAccount(userId: string, input: { name: string; imageUrl?: string; id?: string }): Promise<Account>;
+	addAccount(userId: string, input: { name: string; imageUrl?: string; id?: string; asOf?: string }): Promise<Account>;
 	updateAccount(userId: string, id: string, update: Partial<Account>): Promise<Account>;
 	deleteAccount(userId: string, id: string): Promise<{ ok: boolean }>;
 	addExpense(userId: string, input: Omit<Expense, "id"> & { id?: string }): Promise<Expense>;
@@ -83,7 +84,9 @@ export interface AccountingService {
 export function createAccountingService(repo: AccountingRepository): AccountingService {
 	async function loadOrEmpty(userId: string): Promise<StoredSnapshot> {
 		const stored = await repo.load(userId);
-		if (stored) return stored;
+		// Backfill missing start months / wallet as-of dates on every read, so the
+		// next save persists them.
+		if (stored) return { ...stored, snapshot: normalizeSnapshot(stored.snapshot) };
 		return {
 			snapshot: createEmptySnapshot(),
 			version: 0,
@@ -102,17 +105,26 @@ export function createAccountingService(repo: AccountingRepository): AccountingS
 			snapshot: Omit<AccountingSnapshot, "updatedAt">,
 		): Promise<AccountingSnapshot> {
 			const current = await loadOrEmpty(userId);
-			const fullSnapshot: AccountingSnapshot = {
+			// Date imported records now, so their backfilled months don't drift with later saves
+			const fullSnapshot: AccountingSnapshot = normalizeSnapshot({
 				...snapshot,
+				updatedAt: new Date().toISOString(),
 				isDefault: false,
-			};
+			});
 			const saved = await repo.save(userId, fullSnapshot, current.version);
 			return saved.snapshot;
 		},
 
-		async addAccount(userId: string, input: { name: string; imageUrl?: string; id?: string }): Promise<Account> {
+		async addAccount(
+			userId: string,
+			input: { name: string; imageUrl?: string; id?: string; asOf?: string },
+		): Promise<Account> {
 			const current = await loadOrEmpty(userId);
-			const res = commands.addAccount(current.snapshot, input);
+			// The new business's wallet starts at ฿0 as of the client's month (UTC fallback)
+			const res = commands.addAccount(current.snapshot, {
+				...input,
+				asOf: input.asOf ?? new Date().toISOString().slice(0, 7),
+			});
 			await repo.save(userId, res.snapshot, current.version);
 			return res.account;
 		},

@@ -16,6 +16,7 @@ export const CreateAccountSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	imageUrl: z.string().optional(),
 	id: z.string().optional(),
+	asOf: z.string().optional().describe("`YYYY-MM` (client's local month) the default wallet's ฿0 balance is dated to."),
 });
 
 export const UpdateAccountSchema = EntityAccountSchema.partial();

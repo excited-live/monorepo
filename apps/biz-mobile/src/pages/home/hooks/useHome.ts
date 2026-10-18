@@ -28,6 +28,7 @@ export function useHome() {
 		setActiveEntityId,
 		setActiveTab,
 		selectedMonth,
+		today,
 		lang,
 	} = useAppUI();
 
@@ -123,7 +124,7 @@ export function useHome() {
 					name: "Kasikorn Main Reserve",
 					cost: 0,
 					lifespanMonths: 0,
-					purchaseDate: "2026-10",
+					purchaseDate: today,
 					category: "cash",
 					isDefault: true,
 				});

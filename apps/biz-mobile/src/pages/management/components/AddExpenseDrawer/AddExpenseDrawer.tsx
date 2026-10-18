@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
@@ -60,7 +61,7 @@ export const AddExpenseDrawer: React.FC<{
 		transfers,
 		injectCapital,
 	} = useFinances();
-	const { activeEntityId } = useAppUI();
+	const { activeEntityId, today } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 	const businessAccounts = accounts.filter((a) => a.type === "business");
@@ -74,7 +75,9 @@ export const AddExpenseDrawer: React.FC<{
 	const [cycle, setCycle] = useState<BillingCycle>("monthly");
 	const [category, setCategory] = useState(defaultCategory);
 	const [targetBizId, setTargetBizId] = useState(businessAccounts[0]?.id || "");
-	const [renewalDate, setRenewalDate] = useState("2026-11-01");
+	const [renewalDate, setRenewalDate] = useState(today);
+	const [startMonth, setStartMonth] = useState(today.slice(0, 7));
+	const [endMonth, setEndMonth] = useState("");
 	const [notes, setNotes] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
 	const [targetAssetId, setTargetAssetId] = useState("");
@@ -82,8 +85,8 @@ export const AddExpenseDrawer: React.FC<{
 
 	const targetBiz = accounts.find((a) => a.id === targetBizId) || businessAccounts[0];
 	const targetBizCashAssets = targetBiz ? hardware.filter((h) => h.entityId === targetBiz.id && isCashAsset(h)) : [];
-	// Cash personal can move this month (capital deploys are saved with today's date)
-	const now = new Date();
+	// Cash personal can move today without dipping below zero later this month
+	// (capital deploys are saved with today's date)
 	const availablePersonalCash = calculateAvailableCash({
 		account: activeAccount,
 		hardware,
@@ -91,7 +94,7 @@ export const AddExpenseDrawer: React.FC<{
 		revenues,
 		liabilities,
 		transfers,
-		yearMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+		asOfDate: today,
 	});
 
 	const handleTargetBizChange = (newBizId: string) => {
@@ -125,6 +128,8 @@ export const AddExpenseDrawer: React.FC<{
 			setCycle(initialData.cycle);
 			setCategory(initialData.category);
 			setRenewalDate(initialData.nextRenewalDate);
+			setStartMonth(initialData.startMonth || today.slice(0, 7));
+			setEndMonth(initialData.endMonth || "");
 			setNotes(initialData.notes || "");
 			setImageUrl(initialData.imageUrl || "");
 			markTouched("amount");
@@ -136,7 +141,9 @@ export const AddExpenseDrawer: React.FC<{
 			setAmount("");
 			setCycle("monthly");
 			setCategory(isPersonal ? "housing" : "dev_tool");
-			setRenewalDate("2026-11-01");
+			setRenewalDate(today);
+			setStartMonth(today.slice(0, 7));
+			setEndMonth("");
 			setNotes("");
 			setImageUrl("");
 			if (firstBizId) {
@@ -147,7 +154,7 @@ export const AddExpenseDrawer: React.FC<{
 			setFrequency("one_time");
 			resetTouched();
 		}
-	}, [initialData, isOpen, isPersonal, firstBizId, hardware, markTouched, resetTouched]);
+	}, [initialData, isOpen, isPersonal, firstBizId, hardware, today, markTouched, resetTouched]);
 
 	if (!isOpen) return null;
 
@@ -194,9 +201,16 @@ export const AddExpenseDrawer: React.FC<{
 			return;
 		}
 
+		// One-time charges start (and end) in their charge month
+		const months =
+			cycle === "one_time"
+				? { startMonth: renewalDate.slice(0, 7), endMonth: undefined }
+				: { startMonth, endMonth: endMonth || undefined };
+
 		if (initialData) {
 			updateSubscription({
 				...initialData,
+				...months,
 				name: name.trim(),
 				amount: num,
 				cycle,
@@ -208,6 +222,7 @@ export const AddExpenseDrawer: React.FC<{
 		} else {
 			addSubscription({
 				entityId: activeEntityId,
+				...months,
 				name: name.trim(),
 				amount: num,
 				cycle,
@@ -233,7 +248,10 @@ export const AddExpenseDrawer: React.FC<{
 	const isDeploy = category === "capital_deploy" && isPersonal;
 	const canSubmit = isDeploy
 		? Number(amount) > 0 && Number(amount) <= availablePersonalCash
-		: name.trim().length > 0 && Number(amount) > 0;
+		: name.trim().length > 0 &&
+			Number(amount) > 0 &&
+			// Recurring expenses need a start month; the end month is optional
+			(cycle === "one_time" || (Boolean(startMonth) && (!endMonth || endMonth >= startMonth)));
 	const isEditMode = Boolean(initialData);
 
 	return (
@@ -417,6 +435,27 @@ export const AddExpenseDrawer: React.FC<{
 							onChange={(e) => setRenewalDate(e.target.value)}
 							required
 						/>
+
+						{cycle !== "one_time" && (
+							<HStack wrap="wrap" gap={2} width="100%">
+								<InputField
+									fieldClassName="flex-1 basis-[150px]"
+									label="Start Month"
+									type="month"
+									value={startMonth}
+									onChange={(e) => setStartMonth(e.target.value)}
+									required
+								/>
+								<InputField
+									fieldClassName="flex-1 basis-[150px]"
+									label="End Month (Optional)"
+									type="month"
+									value={endMonth}
+									min={startMonth || undefined}
+									onChange={(e) => setEndMonth(e.target.value)}
+								/>
+							</HStack>
+						)}
 
 						<InputField
 							label="Notes (Optional)"

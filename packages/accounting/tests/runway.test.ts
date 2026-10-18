@@ -5,7 +5,10 @@ import {
 	calculateEntityWealthMetrics,
 	calculateProjectionBalances,
 	calculateRunwayProjection,
+	calculateTreasuryAsOf,
 	generateMonthlyLedger,
+	normalizeSnapshot,
+	type AccountingSnapshot,
 	type CapitalTransfer,
 	type EntityAccount,
 	type HardwareAsset,
@@ -168,7 +171,7 @@ describe("cashflow projection & runway", () => {
 		).toEqual({ runwayMonths: 200, isDefaultAlive: false });
 	});
 
-	it("reports 0 months for an already-overdrawn entity even without burn", () => {
+	it("reports 0 months for an overdrawn entity that stays below zero", () => {
 		const params = { ...base, subscriptions: [{ ...rent, amount: 50000 }], transfers: [] };
 		expect(
 			calculateRunwayProjection({ account: personal, yearMonth: "2026-10", ...params, openingTreasury: -20000 }),
@@ -176,9 +179,83 @@ describe("cashflow projection & runway", () => {
 	});
 
 	it("never counts income that has not landed yet as available cash", () => {
-		// Oct: opens 300k, ends 320k → 300k available
-		expect(calculateAvailableCash({ account: personal, yearMonth: "2026-10", ...base })).toBe(300000);
-		// Dec: opens 300k, ends 240k (laptop) → 240k available
-		expect(calculateAvailableCash({ account: personal, yearMonth: "2026-12", ...base })).toBe(240000);
+		const paid: EntityAccount = { ...personal, paydayDayOfMonth: 25 };
+		const params = { ...base, subscriptions: [rent, { ...laptop, nextRenewalDate: "2026-10-20" }], transfers: [] };
+		// Oct 18: 300k − rent 30k (5th) = 270k now, then laptop 80k on the 20th before
+		// salary on the 25th → only 190k can move without dipping below zero
+		expect(calculateAvailableCash({ account: paid, asOfDate: "2026-10-18", ...params })).toBe(190000);
+		// After payday nothing is pending: available = today's balance
+		expect(calculateAvailableCash({ account: paid, asOfDate: "2026-10-26", ...params })).toBe(240000);
+	});
+
+	it("treats a balance typed mid-month as already including earlier movements", () => {
+		const paid: EntityAccount = { ...personal, paydayDayOfMonth: 25 };
+		// Bank shows 50k on Oct 18, after rent (5th); salary still to come on the 25th
+		const typed: HardwareAsset = { ...wallet, cost: 50000, purchaseDate: "2026-10-18" };
+		const params = { ...base, hardware: [typed], subscriptions: [rent], transfers: [] };
+		expect(calculateTreasuryAsOf({ account: paid, asOfDate: "2026-10-18", ...params })).toBe(50000);
+		const oct = generateMonthlyLedger({ account: paid, yearMonth: "2026-10", ...params });
+		expect(oct.summary.startingTreasury).toBe(80000); // rent not yet paid on the 1st
+		expect(oct.summary.endingTreasury).toBe(100000); // 50k + salary
+	});
+
+	it("does not call a dip that recovers within the month overdrawn", () => {
+		const params = { ...base, subscriptions: [rent], transfers: [] };
+		expect(
+			calculateRunwayProjection({ account: personal, yearMonth: "2026-10", ...params, openingTreasury: -1000 }),
+		).toEqual({ runwayMonths: null, isDefaultAlive: true });
+	});
+
+	it("clamps paydays past the month's last day", () => {
+		const paid: EntityAccount = { ...personal, paydayDayOfMonth: 31 };
+		const { actions } = generateMonthlyLedger({ account: paid, yearMonth: "2027-02", ...base });
+		expect(actions.find((a) => a.id === "rev_salary")?.date).toBe("2027-02-28");
+	});
+
+	it("only charges expenses and liabilities inside their start/end months", () => {
+		const gym: RecurringSubscription = { ...rent, id: "sub_gym", amount: 2000, startMonth: "2026-11", endMonth: "2026-12" };
+		const loan = { id: "l_car", entityId: "acc_p", name: "Car", amount: 9000, category: "car_loan", active: true, startMonth: "2026-12" };
+		const params = { ...base, subscriptions: [gym], revenues: [], transfers: [], liabilities: [loan] };
+		const outOf = (ym: string) => generateMonthlyLedger({ account: personal, yearMonth: ym, ...params }).summary.totalCashOutflow;
+		expect(outOf("2026-10")).toBe(0);
+		expect(outOf("2026-11")).toBe(2000);
+		expect(outOf("2026-12")).toBe(11000);
+		expect(outOf("2027-01")).toBe(9000); // gym ended, loan open-ended
+	});
+
+	it("computes NOW as of today: only movements dated on or before the day", () => {
+		const personalPayday: EntityAccount = { ...personal, paydayDayOfMonth: 25 };
+		const params = { ...base, subscriptions: [rent], transfers: [{ ...seedTransfer, date: "2026-10-10" }] };
+		const asOf = (day: string) => calculateTreasuryAsOf({ account: personalPayday, asOfDate: day, ...params });
+		expect(asOf("2026-10-01")).toBe(300000); // nothing moved yet
+		expect(asOf("2026-10-05")).toBe(270000); // rent on the 5th
+		expect(asOf("2026-10-18")).toBe(230000); // + transfer out on the 10th
+		expect(asOf("2026-10-31")).toBe(280000); // + salary on payday (25th) = end of month
+	});
+
+	it("backfills start months and wallet as-of dates on old snapshots", () => {
+		const snapshot: AccountingSnapshot = {
+			accounts: [personal],
+			hardware: [{ ...wallet, purchaseDate: "Historical" }, { ...wallet, id: "hw_old_gear", category: "laptop", lifespanMonths: 36, purchaseDate: "Historical" }],
+			subscriptions: [{ ...rent }, { ...laptop }],
+			revenues: [{ ...salary(), startMonth: undefined }, { ...salary(), id: "rev_dated", startMonth: "2025-01" }],
+			transfers: [],
+			liabilities: [{ id: "l1", entityId: "acc_p", name: "Loan", amount: 1, category: "other", active: true }],
+			updatedAt: "2026-09-14T08:00:00.000Z",
+		};
+		const n = normalizeSnapshot(snapshot);
+		expect(n.hardware[0]!.purchaseDate).toBe("2026-09"); // undated wallet → last saved month
+		expect(n.hardware[1]!.purchaseDate).toBe("Historical"); // gear keeps its meaning
+		expect(n.subscriptions[0]!.startMonth).toBe("2026-09"); // tracking start
+		expect(n.subscriptions[1]!.startMonth).toBe("2026-12"); // one-time → its charge month
+		expect(n.revenues[0]!.startMonth).toBe("2026-09");
+		expect(n.revenues[1]!.startMonth).toBe("2025-01"); // already dated: untouched
+		expect(n.liabilities![0]!.startMonth).toBe("2026-09");
+		expect(n.subscriptions[0]!.endMonth).toBeUndefined(); // end stays open
+		expect(normalizeSnapshot(n)).toEqual(n); // idempotent
+
+		// An earlier transfer pulls the undated wallet's month back so it still counts
+		const withTransfer = normalizeSnapshot({ ...snapshot, transfers: [{ ...seedTransfer, date: "2026-08-10" }] });
+		expect(withTransfer.hardware[0]!.purchaseDate).toBe("2026-08");
 	});
 });

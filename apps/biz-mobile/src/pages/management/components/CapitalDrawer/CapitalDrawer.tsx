@@ -19,11 +19,6 @@ import { useModalBack } from "../../../../hooks/useModalBack";
 import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
 
-const todayIso = () => {
-	const now = new Date();
-	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-};
-
 export const CapitalDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
@@ -40,7 +35,7 @@ export const CapitalDrawer: React.FC<{
 		updateCapitalTransfer,
 		deleteCapitalTransfer,
 	} = useFinances();
-	const { activeEntityId, selectedMonth } = useAppUI();
+	const { activeEntityId, selectedMonth, today } = useAppUI();
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -89,7 +84,7 @@ export const CapitalDrawer: React.FC<{
 		fromEntityId: personalAccount.id,
 		toEntityId: targetBiz.id,
 		amount: transferAmount,
-		date: initialData?.date ?? todayIso(),
+		date: initialData?.date ?? today,
 		note,
 		frequency,
 		...(targetAssetId && targetAssetId !== "primary_cash" ? { targetAssetId } : {}),
@@ -104,12 +99,12 @@ export const CapitalDrawer: React.FC<{
 	const bizRunway = runwayOf(targetBiz, transfers);
 	const bizNewRunway = runwayOf(targetBiz, simulatedTransfers);
 
-	// Cash personal can move in the transfer's month without this transfer
+	// Cash personal can move on the transfer's date without dipping below zero later that month
 	const availablePersonalCash = calculateAvailableCash({
 		account: personalAccount,
 		transfers: otherTransfers,
 		...flowParams,
-		yearMonth: draftTransfer.date.slice(0, 7),
+		asOfDate: draftTransfer.date,
 	});
 
 	const handleSubmit = (e: React.FormEvent) => {

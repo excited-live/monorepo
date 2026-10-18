@@ -1,140 +1,217 @@
 import type {
-	CapitalTransfer,
+	BookAsset,
+	BookCashAsset,
+	BookEntity,
+	BookExpense,
+	BookFixedAsset,
+	BookIncome,
+	BookInvestmentAsset,
+	BookLiability,
+	BookLoanDetails,
+	BookRevolvingDetails,
+	BookTransfer,
 	CatalogItem,
-	EntityAccount,
-	HardwareAsset,
-	LiabilityStream,
 	MonthlyLedger,
-	RecurringSubscription,
-	RevenueStream,
+	Stored,
 } from "@excited-live/accounting"
 import { z } from "zod"
 
 /**
  * Wire schemas for the OpenAPI document.
  *
- * These describe the API for docs and generated clients; they are NOT used to
- * validate requests (handlers keep their current behaviour). Each entity
- * schema is checked against its `@excited-live/accounting` type with `satisfies`, so
- * adding or renaming a field in the engine breaks the typecheck here instead of
- * silently drifting from the published spec.
+ * These describe the API for docs and generated clients. The accounting record
+ * schemas below are response shapes only: every stored record goes over the wire
+ * as `Stored<Book…>` (the record plus `version`, `createdAt`, `updatedAt`).
+ * Request bodies are validated by each module's own `*.schemas.ts`, not here.
+ * Each record schema is checked against its `@excited-live/accounting` type with
+ * `satisfies`, so renaming a field in the engine breaks the typecheck here instead
+ * of silently drifting from the published spec. The data model is described in
+ * docs/accounting-data-model.md.
  */
 
 const billingCycle = z.enum(["weekly", "monthly", "quarterly", "semi-annual", "yearly", "one_time"])
+const details = z.record(z.string(), z.unknown()).describe("Display-only extras the engine never reads.")
+const dayOfMonth = z.number().int().min(1).max(31)
 
-export const EntityAccountSchema = z
+const storedMeta = z.object({
+	version: z.number().int().describe("Starts at 1; every update bumps it. PATCH may send it back to detect conflicts."),
+	createdAt: z.string().describe("ISO timestamp."),
+	updatedAt: z.string().describe("ISO timestamp."),
+})
+
+/** A personal or business ledger. Every user has exactly one personal entity. */
+export const EntitySchema = z
 	.object({
-		id: z.string().describe("Client-generated unique id."),
+		id: z.string(),
 		name: z.string(),
 		type: z.enum(["personal", "business"]),
-		cashReserve: z.number().describe("Cash on hand, in `currency`."),
-		salary: z.number().optional(),
-		paydayDayOfMonth: z.number().int().min(1).max(31).optional(),
-		targetSafetyBuffer: z.number().optional(),
 		currency: z.string().describe("ISO currency code, typically `THB` or `USD`."),
-		createdAt: z.string().optional(),
-		active: z.boolean().optional(),
-		notes: z.string().optional(),
-		imageUrl: z.string().optional(),
-		careerTitle: z.string().optional(),
-		careerCompany: z.string().optional(),
-		careerImageUrl: z.string().optional(),
-	})
-	.meta({ id: "EntityAccount", description: "A personal or business entity that owns money flows." }) satisfies z.ZodType<EntityAccount>
-
-export const RecurringSubscriptionSchema = z
-	.object({
-		id: z.string(),
-		entityId: z.string().describe("Owning `EntityAccount.id`."),
-		name: z.string(),
-		amount: z.number(),
-		cycle: billingCycle,
-		category: z.string(),
-		nextRenewalDate: z.string().describe("`YYYY-MM-DD`."),
-		billingDay: z.number().int().optional(),
+		targetSafetyBuffer: z.number().optional(),
 		active: z.boolean(),
-		startMonth: z.string().optional().describe("`YYYY-MM`. First month charged."),
-		endMonth: z.string().optional().describe("`YYYY-MM`. Last month charged; absent = open-ended."),
 		notes: z.string().optional(),
 		imageUrl: z.string().optional(),
 	})
-	.meta({ id: "RecurringSubscription", description: "A recurring cost (SaaS, rent, insurance…)." }) satisfies z.ZodType<RecurringSubscription>
+	.extend(storedMeta.shape)
+	.meta({ id: "Entity", description: "A personal or business entity that owns money flows." }) satisfies z.ZodType<Stored<BookEntity>>
 
-export const HardwareAssetSchema = z
+const assetBase = {
+	id: z.string(),
+	entityId: z.string().describe("Owning `Entity.id`."),
+	name: z.string(),
+	category: z.string().describe("Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock…"),
+	active: z.boolean(),
+	notes: z.string().optional(),
+	imageUrl: z.string().optional(),
+	details,
+}
+
+export const CashAssetSchema = z
 	.object({
-		id: z.string(),
-		entityId: z.string().describe("Owning `EntityAccount.id`."),
-		name: z.string(),
+		...assetBase,
+		kind: z.literal("cash"),
+		balance: z.number().describe("Balance at the start of `balanceAsOf`."),
+		balanceAsOf: z.string().describe("`YYYY-MM`, or `YYYY-MM-DD` for a balance recorded mid-month."),
+		currency: z.string(),
+		isDefault: z.boolean().describe("Where unlinked money of the entity lands. One per entity."),
+	})
+	.extend(storedMeta.shape)
+	.meta({ id: "CashAsset", description: "Cash and cash equivalents: bank accounts, e-wallets, cash on hand." }) satisfies z.ZodType<Stored<BookCashAsset>>
+
+export const FixedAssetSchema = z
+	.object({
+		...assetBase,
+		kind: z.literal("fixed"),
 		cost: z.number(),
-		lifespanMonths: z.number().int(),
-		purchaseDate: z.string().describe("`YYYY-MM-DD` or `YYYY-MM`."),
-		salvageValue: z.number().optional(),
+		acquiredOn: z.string().describe("`YYYY-MM` or `YYYY-MM-DD`."),
+		depreciationMethod: z.enum(["straight_line", "none"]),
+		usefulLifeMonths: z.number().int().optional().describe("Required unless depreciationMethod is `none`."),
+		salvageValue: z.number(),
+	})
+	.extend(storedMeta.shape)
+	.meta({ id: "FixedAsset", description: "PP&E bought once and depreciated over its useful life." }) satisfies z.ZodType<Stored<BookFixedAsset>>
+
+export const InvestmentAssetSchema = z
+	.object({
+		...assetBase,
+		kind: z.literal("investment"),
+		instrument: z.string(),
+		symbol: z.string().optional(),
+		units: z.number().optional(),
+		costBasis: z.number(),
+		marketValue: z.number(),
+		valuedAsOf: z.string().describe("`YYYY-MM`."),
+		expectedAnnualReturn: z.number().optional().describe("Yearly return as a fraction (0.07 = 7%)."),
+		currency: z.string(),
+	})
+	.extend(storedMeta.shape)
+	.meta({ id: "InvestmentAsset", description: "Valued at market, grown by an expected return, never depreciated." }) satisfies z.ZodType<Stored<BookInvestmentAsset>>
+
+export const AssetSchema = z
+	.discriminatedUnion("kind", [CashAssetSchema, FixedAssetSchema, InvestmentAssetSchema])
+	.meta({ id: "Asset", description: "An asset, discriminated by `kind`." }) satisfies z.ZodType<Stored<BookAsset>>
+
+const scheduleFields = {
+	amount: z.number(),
+	cycle: billingCycle,
+	dayOfMonth: dayOfMonth.optional().describe("Day the money moves; absent = the flow type's default day."),
+	startMonth: z.string().describe("`YYYY-MM`. First month the flow happens."),
+	endMonth: z.string().optional().describe("`YYYY-MM`. Last month; absent = open-ended."),
+}
+
+export const IncomeSchema = z
+	.object({
+		id: z.string(),
+		entityId: z.string(),
+		kind: z.enum(["employment", "business", "investment", "other"]),
+		category: z.string().describe("salary, bonus, freelance, sales, dividend, interest, rent…"),
+		name: z.string(),
+		...scheduleFields,
+		taxCategory: z.enum(["40_1", "40_2", "40_3", "40_4", "40_5", "40_6", "40_7", "40_8"]).optional(),
+		depositAssetId: z.string().optional().describe("Cash asset the income lands in; absent = the default cash asset."),
+		sourceAssetId: z.string().optional().describe("Asset that generates it. Investment income only."),
+		employment: z
+			.object({ employer: z.string().optional(), title: z.string().optional() })
+			.optional()
+			.describe("Present only when kind is `employment`."),
+		active: z.boolean(),
+		notes: z.string().optional(),
+		imageUrl: z.string().optional(),
+		details,
+	})
+	.extend(storedMeta.shape)
+	.meta({ id: "Income", description: "An income stream." }) satisfies z.ZodType<Stored<BookIncome>>
+
+export const ExpenseSchema = z
+	.object({
+		id: z.string(),
+		entityId: z.string(),
+		name: z.string(),
 		category: z.string(),
-		imageUrl: z.string().optional(),
-		isDefault: z.boolean().optional(),
-	})
-	.meta({ id: "HardwareAsset", description: "A depreciating asset." }) satisfies z.ZodType<HardwareAsset>
-
-export const RevenueStreamSchema = z
-	.object({
-		id: z.string(),
-		entityId: z.string().describe("Owning `EntityAccount.id`."),
-		name: z.string(),
-		amount: z.number(),
-		frequency: z.enum(["monthly", "yearly", "one_time"]),
-		source: z.enum(["stripe", "bank_transfer", "cash", "freelance", "salary", "other"]),
+		...scheduleFields,
+		paidFromAssetId: z.string().optional(),
+		paidFromLiabilityId: z.string().optional().describe("Revolving liability (credit card) it is charged to."),
+		assetId: z.string().optional().describe("Asset this is a cost of owning."),
+		incomeId: z.string().optional().describe("Income this is a cost of earning."),
 		active: z.boolean(),
-		startMonth: z.string().optional().describe("`YYYY-MM`."),
-		endMonth: z.string().optional().describe("`YYYY-MM`."),
 		notes: z.string().optional(),
 		imageUrl: z.string().optional(),
+		details,
 	})
-	.meta({ id: "RevenueStream", description: "An income stream." }) satisfies z.ZodType<RevenueStream>
+	.extend(storedMeta.shape)
+	.meta({ id: "Expense", description: "A recurring or one-time cost." }) satisfies z.ZodType<Stored<BookExpense>>
 
-export const LiabilityStreamSchema = z
+export const LoanDetailsSchema = z
+	.object({
+		principal: z.number(),
+		annualRate: z.number().describe("Yearly interest rate as a fraction (0.065 = 6.5%)."),
+		termMonths: z.number().int(),
+		originatedOn: z.string().describe("`YYYY-MM` or `YYYY-MM-DD`."),
+		financedAssetId: z.string().optional(),
+		proceedsAssetId: z.string().optional(),
+	})
+	.meta({ id: "LoanDetails", description: "Amortizing loan terms." }) satisfies z.ZodType<BookLoanDetails>
+
+export const RevolvingDetailsSchema = z
+	.object({
+		creditLimit: z.number().optional(),
+		balance: z.number(),
+		balanceAsOf: z.string().describe("`YYYY-MM`."),
+		annualRate: z.number().optional(),
+	})
+	.meta({ id: "RevolvingDetails", description: "Revolving credit: a card or credit line." }) satisfies z.ZodType<BookRevolvingDetails>
+
+export const LiabilitySchema = z
 	.object({
 		id: z.string(),
-		entityId: z.string().describe("Owning `EntityAccount.id`."),
+		entityId: z.string(),
+		kind: z.enum(["loan", "revolving", "other"]),
 		name: z.string(),
-		amount: z.number().describe("Monthly payment."),
-		category: z
-			.string()
-			.describe(
-				"`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string.",
-			),
+		category: z.string(),
+		...scheduleFields,
+		paidFromAssetId: z.string().optional(),
+		loan: LoanDetailsSchema.optional().describe("Present only when kind is `loan`."),
+		revolving: RevolvingDetailsSchema.optional().describe("Present only when kind is `revolving`."),
 		active: z.boolean(),
-		startMonth: z.string().optional().describe("`YYYY-MM`. First month due."),
-		endMonth: z.string().optional().describe("`YYYY-MM`. Last month due; absent = open-ended."),
 		notes: z.string().optional(),
 		imageUrl: z.string().optional(),
+		details,
 	})
-	.meta({ id: "LiabilityStream", description: "A debt payment stream." }) satisfies z.ZodType<LiabilityStream>
+	.extend(storedMeta.shape)
+	.meta({ id: "Liability", description: "A debt. The schedule is the planned payment." }) satisfies z.ZodType<Stored<BookLiability>>
 
-export const CapitalTransferSchema = z
+export const TransferSchema = z
 	.object({
 		id: z.string(),
-		fromEntityId: z.string(),
-		toEntityId: z.string(),
 		amount: z.number(),
 		date: z.string().describe("`YYYY-MM-DD` or `YYYY-MM`."),
+		cycle: z.enum(["one_time", "monthly"]),
 		note: z.string(),
-		targetAssetId: z.string().optional(),
-		frequency: z.enum(["one_time", "monthly"]).optional(),
+		fromAssetId: z.string(),
+		toAssetId: z.string().optional(),
+		toLiabilityId: z.string().optional(),
 	})
-	.meta({ id: "CapitalTransfer", description: "Money moved between two entities." }) satisfies z.ZodType<CapitalTransfer>
-
-export const BizSnapshotSchema = z
-	.object({
-		accounts: z.array(EntityAccountSchema),
-		subscriptions: z.array(RecurringSubscriptionSchema),
-		hardware: z.array(HardwareAssetSchema),
-		revenues: z.array(RevenueStreamSchema),
-		transfers: z.array(CapitalTransferSchema),
-		liabilities: z.array(LiabilityStreamSchema),
-		updatedAt: z.string().optional().describe("ISO timestamp of the last save."),
-		isDefault: z.boolean().optional().describe("`true` while the user has never saved and seed data is returned."),
-	})
-	.meta({ id: "BizSnapshot", description: "Everything a user owns in the biz domain, in one document." })
+	.extend(storedMeta.shape)
+	.meta({ id: "Transfer", description: "Money moved from an asset to an asset, or onto a liability." }) satisfies z.ZodType<Stored<BookTransfer>>
 
 export const MonthlyLedgerSchema = z
 	.object({

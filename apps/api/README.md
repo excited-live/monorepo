@@ -4,7 +4,10 @@ Standalone Hono API behind the webapp. The webapp's BFF (`apps/webapp/src/routes
 proxies `/api/v1/*` here and injects the authenticated user as `x-user-id`.
 
 Routes: `GET /health`, `GET|PUT /api/v1/plan`, `GET|PUT /api/v1/settings`,
-`POST /api/v1/sim/monte-carlo`, `POST /api/v1/sim/simulate`.
+`POST /api/v1/sim/monte-carlo`, `POST /api/v1/sim/simulate`, and the accounting
+book under `/api/v1/accounting` (entities, assets, incomes, expenses, liabilities,
+transfers, summary, ledger, projection). The accounting data model, its tables and
+the write rules are in [`docs/accounting-data-model.md`](../../docs/accounting-data-model.md).
 
 ## OpenAPI + docs
 
@@ -24,8 +27,8 @@ The same command runs `apps/landingpage/scripts/gen-api-docs.mjs`, which renders
 `apps/landingpage/content/docs/api/*.mdx` (the `/docs/api` reference). New route?
 Add `route({...})` to it, run the command, commit all three outputs.
 
-Only the biz entities (accounts, subscriptions, hardware, revenues, liabilities,
-transfers), plan, settings, sim, catalog and `auth/me` are documented. Better
+Only the accounting book (see `docs/accounting-data-model.md`), plan, settings, sim,
+catalog and `auth/me` are documented. Better
 Auth's own tables (user, session, api key…) are deliberately not exposed as CRUD.
 
 ## Persistence — Cloudflare D1

@@ -257,53 +257,94 @@ describe("unchanged endpoints", () => {
 })
 
 describe("api/v1/accounting domain errors", () => {
-	it("creates an asset then updates it via PUT", async () => {
-		const { app, db } = await openApi(tempDbFile())
+	/** The user's personal entity id (the first read bootstraps it). */
+	async function personalId(app: Hono<ApiEnv>, userId: string): Promise<string> {
+		const res = await app.request("/api/v1/accounting/entities", jsonRequest("GET", userId));
+		const entities = (await res.json()) as Array<{ id: string; type: string }>;
+		const personal = entities.find((entity) => entity.type === "personal");
+		if (!personal) throw new Error("no personal entity");
+		return personal.id;
+	}
 
-		const asset = {
-			entityId: "acc_personal",
-			name: "Kasikorn Main Reserve",
-			cost: 250000,
-			lifespanMonths: 0,
-			purchaseDate: "2026-10",
-			category: "cash",
-			isDefault: true,
-		}
+	it("creates a cash asset then patches it", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const entityId = await personalId(app, "user-acc-1");
 
-		const created = await app.request("/api/v1/accounting/assets", jsonRequest("POST", "user-acc-1", asset))
-		expect(created.status).toBe(201)
-		const saved = (await created.json()) as { id: string }
+		const created = await app.request(
+			"/api/v1/accounting/assets",
+			jsonRequest("POST", "user-acc-1", {
+				kind: "cash",
+				entityId,
+				name: "Kasikorn Main Reserve",
+				category: "bank",
+				balance: 250000,
+				balanceAsOf: "2026-10",
+				isDefault: true,
+			}),
+		);
+		expect(created.status).toBe(201);
+		const saved = (await created.json()) as { id: string };
 
-		const updated = await app.request(
+		const patched = await app.request(
 			`/api/v1/accounting/assets/${saved.id}`,
-			jsonRequest("PUT", "user-acc-1", { ...saved, ...asset, name: "Kasikorn Main Reserve (edited)" }),
-		)
-		expect(updated.status).toBe(200)
-		const updatedAsset = (await updated.json()) as { name: string }
-		expect(updatedAsset.name).toBe("Kasikorn Main Reserve (edited)")
+			jsonRequest("PATCH", "user-acc-1", { name: "Kasikorn Main Reserve (edited)", version: 1 }),
+		);
+		expect(patched.status).toBe(200);
+		expect(await patched.json()).toMatchObject({ name: "Kasikorn Main Reserve (edited)", version: 2 });
 
-		db.driver.close()
-	})
+		db.driver.close();
+	});
 
-	it("maps a missing asset update to 404 instead of 500", async () => {
-		const { app, db } = await openApi(tempDbFile())
+	it("maps a missing asset patch to 404 instead of 500", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const id = crypto.randomUUID();
 
 		const res = await app.request(
-			"/api/v1/accounting/assets/hw_ghost",
-			jsonRequest("PUT", "user-acc-2", {
-				id: "hw_ghost",
-				entityId: "acc_personal",
-				name: "Ghost",
-				cost: 0,
-				lifespanMonths: 0,
-				purchaseDate: "2026-10",
-				category: "cash",
-			}),
-		)
+			`/api/v1/accounting/assets/${id}`,
+			jsonRequest("PATCH", "user-acc-2", { name: "Ghost" }),
+		);
 
-		expect(res.status).toBe(404)
-		expect(await res.json()).toEqual({ error: "Asset hw_ghost not found", code: "NOT_FOUND" })
+		expect(res.status).toBe(404);
+		expect(await res.json()).toEqual({ error: `Asset ${id} not found`, code: "NOT_FOUND" });
 
-		db.driver.close()
-	})
-})
+		db.driver.close();
+	});
+
+	it("maps a stale version to 409", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const entityId = await personalId(app, "user-acc-3");
+		const created = await app.request(
+			"/api/v1/accounting/assets",
+			jsonRequest("POST", "user-acc-3", { kind: "cash", entityId, name: "Wallet", category: "cash" }),
+		);
+		const saved = (await created.json()) as { id: string };
+		await app.request(
+			`/api/v1/accounting/assets/${saved.id}`,
+			jsonRequest("PATCH", "user-acc-3", { name: "Wallet 2", version: 1 }),
+		);
+
+		const stale = await app.request(
+			`/api/v1/accounting/assets/${saved.id}`,
+			jsonRequest("PATCH", "user-acc-3", { name: "Wallet 3", version: 1 }),
+		);
+
+		expect(stale.status).toBe(409);
+		expect(await stale.json()).toMatchObject({ code: "VERSION_CONFLICT" });
+
+		db.driver.close();
+	});
+
+	it("maps a rejected body to 400", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const entityId = await personalId(app, "user-acc-4");
+
+		const res = await app.request(
+			"/api/v1/accounting/assets",
+			jsonRequest("POST", "user-acc-4", { kind: "cash", entityId, name: "", category: "cash" }),
+		);
+
+		expect(res.status).toBe(400);
+
+		db.driver.close();
+	});
+});

@@ -44,7 +44,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 			origin: (origin) => origin || "*",
 			allowHeaders: ["Content-Type", "Authorization", "x-user-id"],
 			exposeHeaders: ["set-auth-token"],
-			allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			credentials: true,
 		}),
 	)

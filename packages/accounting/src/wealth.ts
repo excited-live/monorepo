@@ -9,6 +9,7 @@ import {
 	DEFAULT_BASELINE_MONTH,
 	generateMonthlyLedger,
 	isLiabilityInMonth,
+	liabilityPaymentInMonth,
 } from "./ledger";
 import type {
 	Account,
@@ -108,7 +109,7 @@ export function calculateEntityWealthMetrics(params: {
 	const liabilityMonthly = round2(
 		liabilities
 			.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth))
-			.reduce((acc, l) => acc + l.amount, 0),
+			.reduce((acc, l) => acc + liabilityPaymentInMonth(l, yearMonth, transfers), 0),
 	);
 
 	const totalIncome = totalInflow;
@@ -252,7 +253,7 @@ export function calculateProjectionBalances(params: {
 	} = params;
 
 	const flowOf = (ym: string) =>
-		calculateEntityMonthlyCashFlow({ account, transfers, subscriptions, revenues, liabilities, yearMonth: ym });
+		calculateEntityMonthlyCashFlow({ account, transfers, subscriptions, revenues, liabilities, hardware, yearMonth: ym });
 
 	// Waterfall figures for the selected month, straight from the ledger so the
 	// bars add up to the same net the balance line uses.
@@ -260,7 +261,7 @@ export function calculateProjectionBalances(params: {
 	const liabilityMonthly = round2(
 		liabilities
 			.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth))
-			.reduce((acc, l) => acc + l.amount, 0),
+			.reduce((acc, l) => acc + liabilityPaymentInMonth(l, yearMonth, transfers), 0),
 	);
 	const totalIncome = selected.inflow;
 	const totalExpense = round2(Math.max(0, selected.outflow - liabilityMonthly));

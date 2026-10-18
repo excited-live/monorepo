@@ -7,4 +7,4 @@ export * from "./wealth";
 export * from "./normalize";
 export * as commands from "./commands";
 export * from "./commands";
-export * from "./book/types";
+export * from "./book";

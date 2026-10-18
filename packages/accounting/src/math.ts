@@ -65,6 +65,8 @@ export function calculateMonthlyEquivalent(amount: number, cycle: BillingCycle):
  * they hold their full value. A zero/absent lifespan is treated the same way.
  */
 export function isCashAsset(asset: HardwareAsset): boolean {
+	// book: an explicit kind decides on its own.
+	if (asset.kind) return asset.kind === "cash";
 	return asset.category === "cash" || asset.lifespanMonths <= 0;
 }
 
@@ -103,7 +105,9 @@ export function calculateAssetDepreciation(
 	asset: HardwareAsset,
 	asOfYearMonth: string = "2026-10",
 ): DepreciationCalculation {
-	if (isCashAsset(asset)) {
+	// Cash assets, investments (market value, not depreciated) and fixed assets
+	// marked depreciationMethod "none" (land) never depreciate.
+	if (isCashAsset(asset) || asset.kind === "investment" || asset.depreciationMethod === "none") {
 		return {
 			monthlyRate: 0,
 			elapsedMonths: 0,

@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS accounting_fixed_assets (
 	depreciation_method TEXT NOT NULL DEFAULT 'straight_line',
 	useful_life_months INTEGER,
 	salvage_value REAL NOT NULL DEFAULT 0,
-	CHECK (depreciation_method = 'none' OR useful_life_months > 0),
+	CHECK (depreciation_method = 'none' OR (useful_life_months IS NOT NULL AND useful_life_months > 0)),
 	FOREIGN KEY (asset_id, kind) REFERENCES accounting_assets (id, kind) ON DELETE CASCADE
 );
 

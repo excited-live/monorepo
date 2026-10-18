@@ -1,4 +1,4 @@
-import type { SqlDriver, SqlValue } from "./types"
+import type { SqlDriver, SqlStatement, SqlValue } from "./types"
 
 /**
  * Kept in a variable on purpose: esbuild (through tsup) rewrites a literal
@@ -26,8 +26,13 @@ export async function createNodeSqliteDriver(file: string): Promise<SqlDriver> {
 	const { dirname } = (await import(PATH_MODULE)) as typeof import("node:path")
 	const { DatabaseSync: SqliteDatabase } = (await import(SQLITE_MODULE)) as typeof import("node:sqlite")
 
-	mkdirSync(dirname(file), { recursive: true })
+	// ":memory:" (tests) has no directory to create.
+	if (file !== ":memory:") {
+		mkdirSync(dirname(file), { recursive: true })
+	}
 	const db = new SqliteDatabase(file)
+	// SQLite leaves foreign keys off by default; D1 enforces them, so match it.
+	db.exec("PRAGMA foreign_keys = ON")
 
 	return {
 		kind: "node-sqlite",
@@ -43,8 +48,26 @@ export async function createNodeSqliteDriver(file: string): Promise<SqlDriver> {
 		async first<T>(sql: string, params: readonly SqlValue[] = []): Promise<T | null> {
 			return (db.prepare(sql).get(...params) ?? null) as T | null
 		},
-		async run(sql: string, params: readonly SqlValue[] = []): Promise<void> {
-			db.prepare(sql).run(...params)
+		async run(sql: string, params: readonly SqlValue[] = []): Promise<{ changes: number }> {
+			const result = db.prepare(sql).run(...params)
+			return { changes: Number(result.changes) }
+		},
+		async batch(statements: readonly SqlStatement[]): Promise<void> {
+			// Synchronous from BEGIN to COMMIT, so no other query can interleave.
+			db.exec("BEGIN")
+			try {
+				for (const statement of statements) {
+					db.prepare(statement.sql).run(...(statement.params ?? []))
+				}
+				db.exec("COMMIT")
+			} catch (error) {
+				try {
+					db.exec("ROLLBACK")
+				} catch {
+					// Already rolled back by SQLite (e.g. the COMMIT itself failed).
+				}
+				throw error
+			}
 		},
 		close(): void {
 			db.close()

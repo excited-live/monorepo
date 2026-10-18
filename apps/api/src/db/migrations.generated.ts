@@ -28,8 +28,9 @@ export const MIGRATION_FILES: readonly MigrationFile[] = [
 --
 -- Consolidated 2026-10 from the pre-release 0001–0005 set (nothing is
 -- deployed yet): plans + settings, the Better Auth schema, and the
--- accounting snapshot store. The legacy biz_snapshots table retired
--- together with the /api/v1/biz API.
+-- accounting store, now normalized tables (one per resource plus its detail
+-- tables; see docs/accounting-data-model.md). The legacy biz_snapshots table
+-- retired together with the /api/v1/biz API.
 
 CREATE TABLE IF NOT EXISTS plans (
 	user_id TEXT PRIMARY KEY,
@@ -121,14 +122,235 @@ create index "oauthConsent_userId_idx" on "oauthConsent" ("userId");
 create unique index "oauthClientResource_clientId_resourceId_uidx" on "oauthClientResource" ("clientId", "resourceId");
 -- END BETTER AUTH SCHEMA
 
--- Accounting snapshot store with optimistic versioning.
+-- Accounting store: normalized tables, one per resource (base table plus one
+-- detail table per kind). Every base table carries user_id and a version for
+-- optimistic locking. Enum-like columns are validated by the API, not CHECKed.
 
-CREATE TABLE IF NOT EXISTS accounting_snapshots (
-	user_id TEXT PRIMARY KEY,
-	snapshot_json TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS accounting_entities (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	name TEXT NOT NULL,
+	type TEXT NOT NULL,
+	currency TEXT NOT NULL DEFAULT 'THB',
+	target_safety_buffer REAL,
+	active INTEGER NOT NULL DEFAULT 1,
+	notes TEXT,
+	image_url TEXT,
 	version INTEGER NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS accounting_entities_one_personal_uidx ON accounting_entities (user_id) WHERE type = 'personal';
+
+CREATE INDEX IF NOT EXISTS accounting_entities_user_idx ON accounting_entities (user_id);
+
+CREATE TABLE IF NOT EXISTS accounting_assets (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	entity_id TEXT NOT NULL REFERENCES accounting_entities (id) ON DELETE CASCADE,
+	kind TEXT NOT NULL,
+	name TEXT NOT NULL,
+	category TEXT NOT NULL,
+	active INTEGER NOT NULL DEFAULT 1,
+	notes TEXT,
+	image_url TEXT,
+	details TEXT,
+	version INTEGER NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	UNIQUE (id, kind)
+);
+
+CREATE TABLE IF NOT EXISTS accounting_cash_assets (
+	asset_id TEXT PRIMARY KEY,
+	kind TEXT NOT NULL DEFAULT 'cash' CHECK (kind = 'cash'),
+	balance REAL NOT NULL DEFAULT 0,
+	balance_as_of TEXT NOT NULL,
+	currency TEXT NOT NULL DEFAULT 'THB',
+	is_default INTEGER NOT NULL DEFAULT 0,
+	FOREIGN KEY (asset_id, kind) REFERENCES accounting_assets (id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS accounting_fixed_assets (
+	asset_id TEXT PRIMARY KEY,
+	kind TEXT NOT NULL DEFAULT 'fixed' CHECK (kind = 'fixed'),
+	cost REAL NOT NULL,
+	acquired_on TEXT NOT NULL,
+	depreciation_method TEXT NOT NULL DEFAULT 'straight_line',
+	useful_life_months INTEGER,
+	salvage_value REAL NOT NULL DEFAULT 0,
+	CHECK (depreciation_method = 'none' OR (useful_life_months IS NOT NULL AND useful_life_months > 0)),
+	FOREIGN KEY (asset_id, kind) REFERENCES accounting_assets (id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS accounting_investment_assets (
+	asset_id TEXT PRIMARY KEY,
+	kind TEXT NOT NULL DEFAULT 'investment' CHECK (kind = 'investment'),
+	instrument TEXT NOT NULL,
+	symbol TEXT,
+	units REAL,
+	cost_basis REAL NOT NULL DEFAULT 0,
+	market_value REAL NOT NULL DEFAULT 0,
+	valued_as_of TEXT NOT NULL,
+	expected_annual_return REAL,
+	currency TEXT NOT NULL DEFAULT 'THB',
+	FOREIGN KEY (asset_id, kind) REFERENCES accounting_assets (id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS accounting_liabilities (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	entity_id TEXT NOT NULL REFERENCES accounting_entities (id) ON DELETE CASCADE,
+	kind TEXT NOT NULL,
+	name TEXT NOT NULL,
+	category TEXT NOT NULL,
+	amount REAL NOT NULL,
+	cycle TEXT NOT NULL DEFAULT 'monthly',
+	day_of_month INTEGER,
+	start_month TEXT NOT NULL,
+	end_month TEXT,
+	paid_from_asset_id TEXT REFERENCES accounting_cash_assets (asset_id) ON DELETE SET NULL,
+	active INTEGER NOT NULL DEFAULT 1,
+	notes TEXT,
+	image_url TEXT,
+	details TEXT,
+	version INTEGER NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	UNIQUE (id, kind)
+);
+
+CREATE TABLE IF NOT EXISTS accounting_loan_liabilities (
+	liability_id TEXT PRIMARY KEY,
+	kind TEXT NOT NULL DEFAULT 'loan' CHECK (kind = 'loan'),
+	principal REAL NOT NULL,
+	annual_rate REAL NOT NULL DEFAULT 0,
+	term_months INTEGER NOT NULL CHECK (term_months > 0),
+	originated_on TEXT NOT NULL,
+	financed_asset_id TEXT REFERENCES accounting_assets (id) ON DELETE SET NULL,
+	proceeds_asset_id TEXT REFERENCES accounting_cash_assets (asset_id) ON DELETE SET NULL,
+	FOREIGN KEY (liability_id, kind) REFERENCES accounting_liabilities (id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS accounting_revolving_liabilities (
+	liability_id TEXT PRIMARY KEY,
+	kind TEXT NOT NULL DEFAULT 'revolving' CHECK (kind = 'revolving'),
+	credit_limit REAL,
+	balance REAL NOT NULL DEFAULT 0,
+	balance_as_of TEXT NOT NULL,
+	annual_rate REAL,
+	FOREIGN KEY (liability_id, kind) REFERENCES accounting_liabilities (id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS accounting_incomes (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	entity_id TEXT NOT NULL REFERENCES accounting_entities (id) ON DELETE CASCADE,
+	kind TEXT NOT NULL,
+	category TEXT NOT NULL,
+	name TEXT NOT NULL,
+	amount REAL NOT NULL,
+	cycle TEXT NOT NULL DEFAULT 'monthly',
+	day_of_month INTEGER,
+	start_month TEXT NOT NULL,
+	end_month TEXT,
+	tax_category TEXT,
+	deposit_asset_id TEXT REFERENCES accounting_cash_assets (asset_id) ON DELETE SET NULL,
+	source_asset_id TEXT REFERENCES accounting_assets (id) ON DELETE CASCADE,
+	active INTEGER NOT NULL DEFAULT 1,
+	notes TEXT,
+	image_url TEXT,
+	details TEXT,
+	version INTEGER NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	CHECK (kind = 'investment' OR source_asset_id IS NULL),
+	UNIQUE (id, kind)
+);
+
+CREATE TABLE IF NOT EXISTS accounting_employment_incomes (
+	income_id TEXT PRIMARY KEY,
+	kind TEXT NOT NULL DEFAULT 'employment' CHECK (kind = 'employment'),
+	employer TEXT,
+	title TEXT,
+	FOREIGN KEY (income_id, kind) REFERENCES accounting_incomes (id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS accounting_expenses (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	entity_id TEXT NOT NULL REFERENCES accounting_entities (id) ON DELETE CASCADE,
+	name TEXT NOT NULL,
+	category TEXT NOT NULL,
+	amount REAL NOT NULL,
+	cycle TEXT NOT NULL DEFAULT 'monthly',
+	day_of_month INTEGER,
+	start_month TEXT NOT NULL,
+	end_month TEXT,
+	paid_from_asset_id TEXT REFERENCES accounting_cash_assets (asset_id) ON DELETE SET NULL,
+	paid_from_liability_id TEXT REFERENCES accounting_revolving_liabilities (liability_id) ON DELETE SET NULL,
+	asset_id TEXT REFERENCES accounting_assets (id) ON DELETE SET NULL,
+	income_id TEXT REFERENCES accounting_incomes (id) ON DELETE SET NULL,
+	active INTEGER NOT NULL DEFAULT 1,
+	notes TEXT,
+	image_url TEXT,
+	details TEXT,
+	version INTEGER NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	CHECK (paid_from_asset_id IS NULL OR paid_from_liability_id IS NULL)
+);
+
+CREATE TABLE IF NOT EXISTS accounting_transfers (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL,
+	amount REAL NOT NULL,
+	date TEXT NOT NULL,
+	cycle TEXT NOT NULL DEFAULT 'one_time',
+	note TEXT NOT NULL DEFAULT '',
+	from_asset_id TEXT NOT NULL REFERENCES accounting_assets (id) ON DELETE CASCADE,
+	to_asset_id TEXT REFERENCES accounting_assets (id) ON DELETE CASCADE,
+	to_liability_id TEXT REFERENCES accounting_liabilities (id) ON DELETE CASCADE,
+	version INTEGER NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	CHECK ((to_asset_id IS NULL) <> (to_liability_id IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS accounting_assets_user_id_entity_id_idx ON accounting_assets (user_id, entity_id);
+
+CREATE INDEX IF NOT EXISTS accounting_incomes_user_id_entity_id_idx ON accounting_incomes (user_id, entity_id);
+
+CREATE INDEX IF NOT EXISTS accounting_expenses_user_id_entity_id_idx ON accounting_expenses (user_id, entity_id);
+
+CREATE INDEX IF NOT EXISTS accounting_liabilities_user_id_entity_id_idx ON accounting_liabilities (user_id, entity_id);
+
+CREATE INDEX IF NOT EXISTS accounting_transfers_user_id_idx ON accounting_transfers (user_id);
+
+CREATE INDEX IF NOT EXISTS accounting_incomes_deposit_asset_id_idx ON accounting_incomes (deposit_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_incomes_source_asset_id_idx ON accounting_incomes (source_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_expenses_paid_from_asset_id_idx ON accounting_expenses (paid_from_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_expenses_paid_from_liability_id_idx ON accounting_expenses (paid_from_liability_id);
+
+CREATE INDEX IF NOT EXISTS accounting_expenses_asset_id_idx ON accounting_expenses (asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_expenses_income_id_idx ON accounting_expenses (income_id);
+
+CREATE INDEX IF NOT EXISTS accounting_liabilities_paid_from_asset_id_idx ON accounting_liabilities (paid_from_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_loan_liabilities_financed_asset_id_idx ON accounting_loan_liabilities (financed_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_loan_liabilities_proceeds_asset_id_idx ON accounting_loan_liabilities (proceeds_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_transfers_from_asset_id_idx ON accounting_transfers (from_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_transfers_to_asset_id_idx ON accounting_transfers (to_asset_id);
+
+CREATE INDEX IF NOT EXISTS accounting_transfers_to_liability_id_idx ON accounting_transfers (to_liability_id);
 `,
 	},
 ]

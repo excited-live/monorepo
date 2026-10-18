@@ -27,7 +27,12 @@ export interface D1SqliteStub {
 
 export function createD1SqliteStub(file: string): D1SqliteStub {
 	const db = new DatabaseSync(file)
+	// D1 enforces foreign keys on every database; so does the double.
+	db.exec("PRAGMA foreign_keys = ON")
 	const calls: string[] = []
+	// Synchronous runner behind each prepared statement, so a batch can run its
+	// statements back to back without another query interleaving.
+	const runners = new WeakMap<D1PreparedStatementLike, () => { changes: number }>()
 
 	const binding: D1DatabaseLike = {
 		async exec(sql: string): Promise<void> {
@@ -60,11 +65,34 @@ export function createD1SqliteStub(file: string): D1SqliteStub {
 				async first<T = Record<string, unknown>>(): Promise<T | null> {
 					return (db.prepare(sql).get(...params) ?? null) as T | null
 				},
-				async run(): Promise<unknown> {
-					return db.prepare(sql).run(...params)
+				async run(): Promise<{ meta: { changes: number } }> {
+					return { meta: runSync() }
 				},
 			}
+			const runSync = (): { changes: number } => {
+				const result = db.prepare(sql).run(...params)
+				return { changes: Number(result.changes) }
+			}
+			runners.set(statement, runSync)
 			return statement
+		},
+		async batch(statements: D1PreparedStatementLike[]): Promise<unknown[]> {
+			calls.push(`batch ${statements.length}`)
+			// Same contract as D1: one transaction, all or nothing.
+			db.exec("BEGIN")
+			try {
+				const results: unknown[] = []
+				for (const statement of statements) {
+					const runner = runners.get(statement)
+					if (!runner) throw new Error("D1 stub: batch only accepts statements from this binding")
+					results.push({ success: true, meta: { changes: runner().changes } })
+				}
+				db.exec("COMMIT")
+				return results
+			} catch (error) {
+				db.exec("ROLLBACK")
+				throw error
+			}
 		},
 	}
 

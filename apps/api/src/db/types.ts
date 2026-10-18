@@ -15,6 +15,12 @@
 /** Parameter types accepted by both drivers (D1 also allows blobs — unused here). */
 export type SqlValue = string | number | null
 
+/** One parameterised statement, as part of an atomic batch. */
+export interface SqlStatement {
+	sql: string
+	params?: readonly SqlValue[]
+}
+
 export interface SqlDriver {
 	/** Which backend this driver talks to — surfaced in logs and health. */
 	readonly kind: "d1" | "node-sqlite"
@@ -24,8 +30,13 @@ export interface SqlDriver {
 	all<T>(sql: string, params?: readonly SqlValue[]): Promise<T[]>
 	/** The first row, or null when there is none. */
 	first<T>(sql: string, params?: readonly SqlValue[]): Promise<T | null>
-	/** Run a parameterised write. */
-	run(sql: string, params?: readonly SqlValue[]): Promise<void>
+	/** Run a parameterised write; `changes` is the number of rows it touched. */
+	run(sql: string, params?: readonly SqlValue[]): Promise<{ changes: number }>
+	/**
+	 * Run several statements in one transaction: all of them commit, or none
+	 * does (the first failure rolls the whole batch back and rethrows).
+	 */
+	batch(statements: readonly SqlStatement[]): Promise<void>
 	/** Release the underlying handle (no-op for D1). */
 	close(): void
 }
@@ -35,12 +46,14 @@ export interface D1PreparedStatementLike {
 	bind(...values: SqlValue[]): D1PreparedStatementLike
 	all<T = Record<string, unknown>>(): Promise<{ results?: T[] }>
 	first<T = Record<string, unknown>>(): Promise<T | null>
-	run(): Promise<unknown>
+	run(): Promise<{ meta?: { changes?: number } }>
 }
 
 export interface D1DatabaseLike {
 	prepare(sql: string): D1PreparedStatementLike
 	exec(sql: string): Promise<unknown>
+	/** Runs the statements atomically (D1 wraps a batch in a transaction). */
+	batch(statements: D1PreparedStatementLike[]): Promise<unknown[]>
 }
 
 /** Narrow an unknown binding (e.g. `c.env.DB`) to a D1 database. */

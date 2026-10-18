@@ -1,4 +1,4 @@
-import type { D1DatabaseLike, SqlDriver, SqlValue } from "./types"
+import type { D1DatabaseLike, SqlDriver, SqlStatement, SqlValue } from "./types"
 
 /**
  * Driver for a real Cloudflare D1 binding (Workers / `wrangler dev`).
@@ -28,8 +28,15 @@ export function createD1Driver(binding: D1DatabaseLike): SqlDriver {
 		async first<T>(sql: string, params: readonly SqlValue[] = []): Promise<T | null> {
 			return await binding.prepare(sql).bind(...params).first<T>()
 		},
-		async run(sql: string, params: readonly SqlValue[] = []): Promise<void> {
-			await binding.prepare(sql).bind(...params).run()
+		async run(sql: string, params: readonly SqlValue[] = []): Promise<{ changes: number }> {
+			const result = await binding.prepare(sql).bind(...params).run()
+			return { changes: result.meta?.changes ?? 0 }
+		},
+		async batch(statements: readonly SqlStatement[]): Promise<void> {
+			// One D1 batch is one transaction: all statements commit or none does.
+			await binding.batch(
+				statements.map((statement) => binding.prepare(statement.sql).bind(...(statement.params ?? []))),
+			)
 		},
 		close(): void {
 			// D1 connections are managed by the platform.

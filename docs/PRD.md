@@ -125,7 +125,7 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 - **P4 (Agent-Ready by Default)**: Every feature and data model added to `excited.live` must be queryable and operable by the user's external AI agent via `/api/v1/*` and MCP using scoped Better Auth API keys—not trapped inside UI-only state.
 - **P5 (Two-Tier Mutation Safety)**: Daily ledger capture (slips, subscriptions, time/meal logs) supports direct authenticated agent writes with audit tags; structural 50-year life-plan edits require staged proposal diffs accepted by the human.
 - **P6 (Bilingual EN/TH Everywhere)**: All user-facing strings use `@excited-live/i18n` `{ en, th }` dictionaries, English first, natural spoken Thai second.
-- **P7 (Mastercard Design System & Astryx-First)**: Muted Canvas Cream (`#F3F0EE`), Lifted Cream (`#FCFBFA`), Ink Black (`#141413`), and Signal Orange (`#CF4500`). Raw HTML elements are banned in `apps/webapp/src` and `apps/biz-mobile/src` in favor of `@excited-live/design-system`.
+- **P7 (Mastercard Design System & Astryx-First)**: Muted Canvas Cream (`#F3F0EE`), Lifted Cream (`#FCFBFA`), Ink Black (`#141413`), and Signal Orange (`#CF4500`). Raw HTML elements are banned in `apps/webapp/src` and `apps/biz-mobile/src` in favor of Astryx components (`@astryxdesign/core`) themed by `@excited-live/design-system`, which owns the Mastercard theme, icons, and zero-style native/brand primitives.
 - **P8 (TH Tax First, ThaiESG Only)**: Thailand 2026 personal income tax is the active user-facing tax engine (US engine stays hidden in code until triggered). Discontinued SSF is never shown in new UI—ThaiESG and RMF only.
 - **P9 (PRD Is the Single Source of Truth)**: No feature ships without being recorded in the PRD corpus first.
 

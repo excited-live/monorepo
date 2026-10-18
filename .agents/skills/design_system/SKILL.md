@@ -2,16 +2,16 @@
 name: design_system
 description: >-
   How packages/design-system (@excited-live/design-system) works: the Mastercard theme token pipeline,
-  the public component surface app code must use, the no-raw-HTML lint rule, and the Dialog/Layout
-  quirks. Use this skill when styling or building UI in apps/webapp, editing the
-  Mastercard theme, or when ESLint blocks a raw element.
+  the zero-style brand/native primitives app code must use, the no-raw-HTML lint rule, and the
+  Dialog/Layout quirks. Use this skill when styling or building UI in apps/webapp or apps/biz-mobile,
+  editing the Mastercard theme, importing Astryx components, or when ESLint blocks a raw element.
 ---
 
 # Design System Skill
 
-`packages/design-system` is the single UI surface for excited.live apps: the Mastercard theme (tokens plus generated CSS), zero-style primitives, and one re-export surface for Astryx so app code imports from one place.
+`packages/design-system` is the brand layer for excited.live apps: the Mastercard theme (tokens plus generated CSS), zero-style native/brand primitives, the stroke icon set, and the Astryx `TextInput` type widening. It does **not** re-export Astryx components — app code imports those directly from `@astryxdesign/core/<Component>`.
 
-Consumers today: `apps/webapp`. The Astro landing app (`apps/landingpage`) does NOT use this package; it has its own styling.
+Consumers today: `apps/webapp` and `apps/biz-mobile`. The Astro landing app (`apps/landingpage`) does NOT use this package; it has its own styling.
 
 ---
 
@@ -52,28 +52,28 @@ Why the built files matter: `src/index.ts` exports `mastercardTheme` from `./mas
   import "@excited-live/design-system/mastercard-theme.css"
   import "../styles.css"
   ```
-- The theme object is applied in `apps/webapp/src/routes/_layout.tsx`: `<Theme theme={mastercardTheme} mode="light">` wraps the dashboard.
+- The theme object is applied in `apps/webapp/src/routes/_layout.tsx`: `<Theme theme={mastercardTheme} mode="light">` wraps the dashboard. `Theme` and Astryx components come from `@astryxdesign/core`; `mastercardTheme` comes from this package.
 - `AppDocument` (from this package) renders the html/head/body shell in `__root.tsx`. It defaults to `theme="dark"`; the webapp passes `theme="light"` explicitly. Light-only is the current product decision.
 - The theme names Sofia Sans but does not load it (the build warns about this). The app loads it in `__root.tsx` via Google Fonts links (`wght@400;450;500;600;700`). If the brand font silently disappears from the UI, check that link first.
 
 ## 3. The public surface (what actually exists)
 
-Everything app code needs is exported from `packages/design-system/src/index.ts`:
+Everything this package exports lives in `packages/design-system/src/index.ts`:
 
-- Zero-style primitives, styled from app CSS: `AppDocument` (document shell), `Img`, `PlainButton` (defaults `type="button"`), and the SVG building blocks `Svg`, `SvgLine`, `SvgPath`, `SvgCircle`, `SvgDefs`, `SvgGradientStop`, `SvgRect`.
-- Icons: `SvgIcon` plus the stroke set: `FeyMark`, `ChatIcon`, `MoonIcon`, `SunIcon`, `LinkIcon`, `CompassIcon`, `CalendarIcon`, `BookmarkIcon`, `ChartIcon`, `PresentationIcon`, `SettingsIcon`, `ArrowRightIcon`, `SendIcon`, `MinimizeIcon`.
-- Astryx re-exports (themed by the Mastercard theme): layout `Stack`, `HStack`, `Grid`, `Card`; text `Text`, `Heading`; actions `Button`, `IconButton`, `Badge`; inputs `TextInput`, `NumberInput`, `DateInput`, `Selector`, `SegmentedControl` and `SegmentedControlItem`; overlays `Dialog`, `DialogHeader`; `Layout`, `LayoutContent`, `LayoutFooter`; data `Table` plus `proportional`, `pixel`, `useTableRowExpansion`; tabs `TabList`, `Tab`; chat `ChatComposer`, `ChatMessage`, `ChatMessageBubble`, `ChatMessageList`, `ChatToolCalls`, `ChatLayout`; and `Theme`.
+- Zero-style primitives, styled from app CSS: `AppDocument` (document shell), `Img`, `Link` (router-external anchors), `PlainButton` (defaults `type="button"`), `NativeInput`/`NativeSelect`/`NativeTextArea` (OS-native form controls), and the SVG building blocks `Svg`, `SvgLine`, `SvgPath`, `SvgCircle`, `SvgDefs`, `SvgGradientStop`, `SvgRect`.
+- Icons: `SvgIcon` plus the stroke set: `FeyMark`, `ChatIcon`, `MoonIcon`, `SunIcon`, `LinkIcon`, `CompassIcon`, `CalendarIcon`, `BookmarkIcon`, `ChartIcon`, `HomeIcon`, `WalletIcon`, `ChevronLeftIcon`, `ChevronRightIcon`, `TuneIcon`, `UserIcon`, `LedgerIcon`, `PresentationIcon`, `SettingsIcon`, `ArrowRightIcon`, `SendIcon`, `MinimizeIcon`.
 - Theme object: `mastercardTheme`.
+- Side effect: `astryxAugment.ts` widens Astryx `TextInputProps` with `autoComplete`, `minLength`, and `required` (module augmentation, active whenever any app file imports this package).
 
-Drift warning: `packages/design-system/README.md` still mentions `Box` and `neutralTheme`; the ESLint hint mentions `Box`. Neither is exported by `index.ts` today (`neutralTheme` is a landing-app concern, and there is no `Box` export). For containers use `Stack`, `HStack`, `Grid`, or `Card`, or add a primitive to this package. When the README and `index.ts` disagree, `index.ts` is reality.
+Astryx components are **not** exported here. Import them directly by subpath — e.g. `import { Stack } from "@astryxdesign/core/Stack"`, `import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog"`, `import { Table, proportional, pixel, useTableRowExpansion } from "@astryxdesign/core/Table"`, `import { Theme } from "@astryxdesign/core/theme"`. Each subpath also exports its props types (`StackProps`, `ButtonProps`, …).
 
-See `references/component_inventory.md` for the full export list with when-to-use notes.
+See `references/component_inventory.md` for the full surface with when-to-use notes.
 
 ## 4. The no-raw-HTML rule
 
 `eslint.config.mjs` (flat config at the repo root) bans a list of raw elements in webapp code via `react/forbid-elements`. The rule message, quoted:
 
-> Raw HTML is not allowed in app code. Use a component instead: Astryx components or primitives from @excited-live/design-system (Box, Text, Heading, PlainButton, Svg/SvgLine/SvgPath, SvgIcon, AppDocument). If no primitive fits, add one to packages/design-system.
+> Raw HTML is not allowed in app code. Use a component instead: Astryx components (@astryxdesign/core/<Component>) or primitives from @excited-live/design-system (AppDocument, Img, Link, PlainButton, NativeInput/NativeSelect/NativeTextArea, Svg/SvgLine/SvgPath, SvgIcon). If no primitive fits, add one to packages/design-system.
 
 - Banned elements include div, span, p, headings, button, a, lists, img, form controls, table, and the svg primitives; the full list is the `FORBIDDEN_HTML` array in `eslint.config.mjs`.
 - Allowed home: raw elements live in this package ("packages/design-system itself is the allowed home for raw elements"). If no primitive fits your case, add one here, the way `Img` and `AppDocument` were added, instead of disabling the rule in app code.
@@ -109,6 +109,6 @@ pnpm lint --max-warnings=0                               # repo lint from the ro
 - Editing `mastercardTheme.ts` without rebuilding leaves the app on stale CSS and JS. Always run `theme:build` and commit `mastercard-theme.css`, `mastercard.js`, and `mastercard.d.ts` together.
 - Do not hand-edit the three generated files; change the source and rebuild.
 - Keep `family` unquoted for families with spaces (the doubled-quote bug above).
-- The built module is what `index.ts` re-exports. A stale `mastercard.js` silently overrides your expectations.
+- The built module is what `index.ts` exports as `mastercardTheme` (from `./mastercard`). A stale `mastercard.js` silently overrides your expectations.
 - `theme:check` is not enforced by CI, so nothing blocks a stale-token PR. Reviewers should look for rebuilt outputs on token changes.
 - The package resolves from TS source (`exports` points at `./src/index.ts`), so apps do not need it pre-built for preview builds. Keep it that way.

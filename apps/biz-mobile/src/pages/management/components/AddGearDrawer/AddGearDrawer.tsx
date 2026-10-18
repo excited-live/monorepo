@@ -21,7 +21,7 @@ export const AddGearDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: HardwareAsset | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addHardware, updateHardware, deleteHardware } = useFinances();
+	const { addHardware, updateHardware, deleteHardware, hardware } = useFinances();
 	const { activeEntityId, selectedMonth, today } = useAppUI();
 
 
@@ -61,6 +61,13 @@ export const AddGearDrawer: React.FC<{
 		setIsAsOfTouched(false);
 	}, [initialData, isOpen, selectedMonth, today]);
 
+	// `initialData` can be a locally proposed placeholder (the default wallet
+	// fabricated by the onboarding flow) that does not exist server-side yet.
+	// Only treat it as editable state when the loaded snapshot really has it;
+	// otherwise saving must create the asset (POST), not update it (PUT).
+	const existingAsset =
+		initialData && hardware.some((h) => h.id === initialData.id) ? initialData : null;
+
 	if (!isOpen) return null;
 
 	const isCash = category === "cash";
@@ -72,9 +79,9 @@ export const AddGearDrawer: React.FC<{
 		if (!name.trim() || !numCost) return;
 		if (!isCash && !numLife) return;
 
-		if (initialData) {
+		if (existingAsset) {
 			updateHardware({
-				...initialData,
+				...existingAsset,
 				name: name.trim(),
 				cost: numCost,
 				lifespanMonths: numLife,
@@ -85,7 +92,8 @@ export const AddGearDrawer: React.FC<{
 			});
 		} else {
 			addHardware({
-				entityId: activeEntityId,
+				id: initialData?.id,
+				entityId: initialData?.entityId ?? activeEntityId,
 				name: name.trim(),
 				cost: numCost,
 				lifespanMonths: numLife,
@@ -100,9 +108,9 @@ export const AddGearDrawer: React.FC<{
 	};
 
 	const handleDelete = () => {
-		if (!initialData) return;
-		if (confirm(`Remove asset "${initialData.name}"?`)) {
-			deleteHardware(initialData.id);
+		if (!existingAsset) return;
+		if (confirm(`Remove asset "${existingAsset.name}"?`)) {
+			deleteHardware(existingAsset.id);
 			dismiss();
 		}
 	};
@@ -111,7 +119,7 @@ export const AddGearDrawer: React.FC<{
 	const numLife = Math.max(1, Number(lifespanMonths) || 1);
 	const monthlyRate = Math.round(numCost / numLife);
 	const canSubmit = name.trim().length > 0 && numCost > 0;
-	const isEditMode = Boolean(initialData);
+	const isEditMode = Boolean(existingAsset);
 	const assetNoun = isCash ? "Cash Asset" : "Hardware Asset";
 
 	return (

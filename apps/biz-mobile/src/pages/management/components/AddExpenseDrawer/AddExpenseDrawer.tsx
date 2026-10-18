@@ -342,6 +342,7 @@ export const AddExpenseDrawer: React.FC<{
 							<Text className="text-[12px] font-bold uppercase tracking-[0.04em] text-slate">Transfer Schedule</Text>
 							<SegmentedControl
 								label="Transfer Schedule"
+								layout="fill"
 								value={frequency}
 								onChange={(v) => setFrequency(v as "one_time" | "monthly")}
 							>

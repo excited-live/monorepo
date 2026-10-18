@@ -15,7 +15,7 @@ export const AddRevenueDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: RevenueStream | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addRevenue, updateRevenue, deleteRevenue, accounts, setCareerIncome } = useFinances();
+	const { addRevenue, updateRevenue, deleteRevenue, accounts, revenues, setCareerIncome } = useFinances();
 	const { activeEntityId, today } = useAppUI();
 	const currentMonth = today.slice(0, 7);
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
@@ -85,7 +85,14 @@ export const AddRevenueDrawer: React.FC<{
 			});
 		}
 
-		if (source === "salary" && isPersonal) {
+		// Mirror the career identity onto the account only when this salary is (or
+		// edits) the primary career stream. A projected promotion is a second,
+		// future-dated salary stream: syncing it here would overwrite the current
+		// salary and its start/end months.
+		const hasOtherSalaryStream = revenues.some(
+			(r) => r.entityId === activeEntityId && r.source === "salary" && r.id !== initialData?.id,
+		);
+		if (source === "salary" && isPersonal && !hasOtherSalaryStream) {
 			setCareerIncome(
 				activeEntityId,
 				num,

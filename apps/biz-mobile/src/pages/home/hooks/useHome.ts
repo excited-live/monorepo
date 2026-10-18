@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
 	calculateDerivedTreasury,
-	calculateOpeningTreasury,
+	calculateEntityCashOnHand,
 	type EntityAccount,
 	type HardwareAsset,
 	type LiabilityStream,
@@ -42,9 +42,13 @@ export function useHome() {
 	const {
 		setActiveEntityId,
 		setActiveTab,
-		selectedMonth,
+		today,
 		lang,
 	} = useAppUI();
+
+	// Home always reports the CURRENT month: a month picked in the Management
+	// month-stepper must not leak future-dated streams or transfers into it.
+	const currentMonth = today.slice(0, 7);
 
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [selectedBiz, setSelectedBiz] = useState<EntityAccount | null>(null);
@@ -76,22 +80,25 @@ export function useHome() {
 			revenues,
 			liabilities,
 			transfers,
-			yearMonth: selectedMonth,
+			yearMonth: currentMonth,
 		});
 
-	/** Treasury at the start of the selected month for a single account */
-	const openingTreasury = (acc: EntityAccount) =>
-		calculateOpeningTreasury({
+	/**
+	 * Cash in hand today for a single account: this month's transfers already
+	 * applied, next month's never. Deploying capital moves this immediately.
+	 */
+	const cashOnHand = (acc: EntityAccount) =>
+		calculateEntityCashOnHand({
 			account: acc,
 			subscriptions,
 			revenues,
 			liabilities,
 			hardware,
 			transfers,
-			yearMonth: selectedMonth,
+			yearMonth: currentMonth,
 		});
 
-	/** End-of-month treasury for a single account */
+	/** End-of-month treasury for a single account (current month) */
 	const eomTreasury = (acc: EntityAccount) =>
 		calculateDerivedTreasury({
 			account: acc,
@@ -100,7 +107,7 @@ export function useHome() {
 			liabilities,
 			hardware,
 			transfers,
-			yearMonth: selectedMonth,
+			yearMonth: currentMonth,
 		});
 
 	// --- Onboarding step state -------------------------------------------------
@@ -332,7 +339,7 @@ export function useHome() {
 		totalEomTreasury,
 		personalCash,
 		businessCash,
-		openingTreasury,
+		cashOnHand,
 		eomTreasury,
 		openCareerEdit,
 		formatType,

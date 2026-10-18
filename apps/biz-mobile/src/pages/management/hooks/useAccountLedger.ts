@@ -23,7 +23,7 @@ export function useAccountLedger(
 			};
 		}
 
-		const monthActions = generateMonthlyLedger({
+		const rawActions = generateMonthlyLedger({
 			account: activeAccount,
 			yearMonth: selectedMonth,
 			subscriptions,
@@ -32,6 +32,18 @@ export function useAccountLedger(
 			transfers,
 			liabilities,
 		}).actions;
+
+		const monthActions: LedgerActionItem[] = rawActions.map((a) => ({
+			id: a.id,
+			entityId: activeAccount.id,
+			yearMonth: selectedMonth,
+			title: a.description,
+			date: a.date,
+			amount: a.direction === "inflow" ? a.amount : -a.amount,
+			type: a.direction,
+			category: a.category,
+			reference: a.counterparty,
+		}));
 
 		return {
 			monthActions,

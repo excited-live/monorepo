@@ -1,4 +1,4 @@
-import type { BillingCycle, DepreciationCalculation, HardwareAsset } from "./types";
+import type { BillingCycle, CashWallet, DepreciationCalculation, HardwareAsset } from "./types";
 
 export function round2(num: number): number {
 	return Math.round((num + Number.EPSILON) * 100) / 100;
@@ -25,13 +25,13 @@ export function shiftYearMonth(ym: string, delta: number): string {
 	return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
 }
 
-export function getYearMonthRange(fromYm: string, toYm: string): string[] {
-	if (fromYm > toYm) return [];
+export function getYearMonthRange(start: string, end: string): string[] {
+	if (start > end) return [];
 	const months: string[] = [];
-	let current = fromYm;
-	while (current <= toYm) {
-		months.push(current);
-		current = shiftYearMonth(current, 1);
+	let curr = start;
+	while (curr <= end) {
+		months.push(curr);
+		curr = shiftYearMonth(curr, 1);
 	}
 	return months;
 }
@@ -59,6 +59,37 @@ export function calculateMonthlyEquivalent(amount: number, cycle: BillingCycle):
  */
 export function isCashAsset(asset: HardwareAsset): boolean {
 	return asset.category === "cash" || asset.lifespanMonths <= 0;
+}
+
+/**
+ * Adapts a cash-type HardwareAsset to a pure CashWallet domain model.
+ */
+export function hardwareToWallet(hw: HardwareAsset): CashWallet {
+	return {
+		id: hw.id,
+		entityId: hw.entityId,
+		name: hw.name,
+		balance: round2(hw.cost),
+		isDefault: hw.isDefault,
+		imageUrl: hw.imageUrl,
+	};
+}
+
+/**
+ * Adapts a CashWallet back to HardwareAsset representation for storage/snapshot compatibility.
+ */
+export function walletToHardware(wallet: CashWallet): HardwareAsset {
+	return {
+		id: wallet.id,
+		entityId: wallet.entityId,
+		name: wallet.name,
+		cost: round2(wallet.balance),
+		lifespanMonths: 0,
+		purchaseDate: "Historical",
+		category: "cash",
+		isDefault: wallet.isDefault,
+		imageUrl: wallet.imageUrl,
+	};
 }
 
 export function calculateAssetDepreciation(

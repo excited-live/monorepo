@@ -33,7 +33,14 @@ export const AddGearDrawer: React.FC<{
 			setName(initialData.name);
 			setCost(String(initialData.cost));
 			setLifespanMonths(String(initialData.lifespanMonths));
-			setPurchaseDate(initialData.purchaseDate === "Historical" ? "2024-01" : initialData.purchaseDate);
+			const isCashItem = initialData.category === "cash" || initialData.lifespanMonths <= 0;
+			setPurchaseDate(
+				initialData.purchaseDate === "Historical"
+					? "2024-01"
+					: isCashItem && initialData.purchaseDate < selectedMonth
+						? selectedMonth
+						: initialData.purchaseDate,
+			);
 			setCategory(initialData.category);
 			setImageUrl(initialData.imageUrl || "");
 			setIsDefault(Boolean(initialData.isDefault));

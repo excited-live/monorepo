@@ -1,5 +1,6 @@
 import type {
 	CapitalTransfer,
+	CashWallet,
 	EntityAccount,
 	HardwareAsset,
 	LiabilityStream,
@@ -9,6 +10,7 @@ import type {
 
 export type {
 	CapitalTransfer,
+	CashWallet,
 	EntityAccount,
 	HardwareAsset,
 	LiabilityStream,
@@ -32,6 +34,34 @@ export interface UserSession {
 export type MobileTab = "home" | "capital" | "settings";
 export type CapitalSubTab = "capital" | "income" | "expense" | "assets" | "liability" | "ledger";
 export type MobileLocale = "en" | "th";
+
+export interface CashWalletViewModel {
+	id: string;
+	name: string;
+	openingBalance: number;
+	transfers: number;
+	currentBalance: number; // Stock: verified money in hand today
+	monthlyNetFlow: number; // Flow: operational cashflow for evaluated month
+	projectedEomBalance: number; // Forecast: projected end-of-month balance
+	isDefault: boolean;
+	imageUrl?: string;
+	raw: HardwareAsset;
+}
+
+export interface GearAssetViewModel {
+	id: string;
+	name: string;
+	category: string;
+	cost: number;
+	purchaseDate: string;
+	lifespanMonths: number;
+	remainingBookValue: number;
+	monthlyDepreciation: number;
+	isFullyDepreciated: boolean;
+	completionDate: string;
+	imageUrl?: string;
+	raw: HardwareAsset;
+}
 
 export interface EntityWealthMetrics {
 	cashAssetsValue: number;

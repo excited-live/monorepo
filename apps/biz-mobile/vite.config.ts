@@ -43,7 +43,16 @@ export default defineConfig({
 				}
 			: undefined,
 		watch: {
-			ignored: ["**/src-tauri/**"],
+			ignored: [
+				"**/src-tauri/**",
+				"**/__snapshots__/**",
+				"**/*.spec.tsx",
+				"**/*.spec.ts",
+				"**/*.test.ts",
+				"**/features/**",
+				"**/playwright-report/**",
+				"**/test-results/**",
+			],
 		},
 	},
 	preview: {

@@ -45,6 +45,20 @@ export interface RecurringSubscription {
 	imageUrl?: string;
 }
 
+export type HardwareCategory =
+	| "laptop"
+	| "phone"
+	| "tablet"
+	| "workstation"
+	| "display"
+	| "audio"
+	| "wearable"
+	| "furniture"
+	| "vehicle"
+	| "cash"
+	| "other"
+	| (string & {});
+
 export interface HardwareAsset {
 	id: string;
 	entityId: string;
@@ -53,9 +67,20 @@ export interface HardwareAsset {
 	lifespanMonths: number;
 	purchaseDate: string; // YYYY-MM-DD or YYYY-MM
 	salvageValue?: number;
-	category: string;
+	category: HardwareCategory;
 	imageUrl?: string;
 	isDefault?: boolean;
+}
+
+export interface CashWallet {
+	id: string;
+	entityId: string;
+	name: string;
+	balance: number; // Opening or recorded liquid cash balance
+	currency?: "THB" | "USD" | (string & {});
+	isDefault?: boolean;
+	updatedAt?: string;
+	imageUrl?: string;
 }
 
 export interface RevenueStream {
@@ -143,6 +168,7 @@ export interface BizSnapshot {
 	revenues: RevenueStream[];
 	transfers: CapitalTransfer[];
 	liabilities?: LiabilityStream[];
+	wallets?: CashWallet[];
 	updatedAt?: string;
 	isDefault?: boolean;
 }

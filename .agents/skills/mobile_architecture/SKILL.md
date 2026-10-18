@@ -97,7 +97,7 @@ useEffect(() => {
 
 **Good (Clean Architecture):**
 ```tsx
-// Pure memoized derivation in BizContext.tsx
+// Pure memoized derivation or selector
 const accounts = useMemo(() => {
   return rawAccounts.map((acc) => ({
     ...acc,
@@ -122,7 +122,7 @@ Visual regression testing in `apps/biz-mobile` uses Playwright native component 
 ### Direct Component Mounting (No `.story.tsx` or `TestScaffold`)
 - **Do NOT create `.story.tsx` files or `TestScaffold.tsx` wrappers.**
 - **Gallery Server**: `vite.config.ct.ts` runs on IPv4 port `5174` (`strictPort: true`).
-- **Auto-Discovery & Providers**: `playwright/gallery/main.tsx` automatically globs all `*.tsx` components in `src/components/**` and `src/pages/**` (excluding `.spec.tsx`) and wraps every mounted component in `<Theme theme={mastercardTheme} mode="light">` and `<BizProvider>` initialized with deterministic fixtures (`src/testing/fixtures.ts`).
+- **Auto-Discovery & Providers**: `playwright/gallery/main.tsx` automatically globs all `*.tsx` components in `src/components/**` and `src/pages/**` (excluding `.spec.tsx`) and wraps every mounted component in `<Theme theme={mastercardTheme} mode="light">`, `<QueryClientProvider>` pre-hydrated with fixtures (`src/testing/fixtures.ts`), and `<UIProvider>`.
 - **Tight Component Bounding Box**: `#root` is styled with `display: inline-block; width: 100%` so screenshots capture the exact height of the mounted component without empty viewport padding.
 
 ### Writing Component & Page Visual Tests
@@ -130,7 +130,7 @@ Visual regression testing in `apps/biz-mobile` uses Playwright native component 
 Every visual component and every page (`Home.tsx`, `Management.tsx`, `Settings.tsx`, `Signin.tsx`) has a co-located `<Name>.spec.tsx` that mounts the component directly and captures a screenshot:
 
 ```tsx
-// Component test without props (uses default props / BizProvider fixtures)
+// Component test without props (uses default props / pre-seeded QueryClient fixtures)
 import { test, expect } from "@playwright/test";
 
 test.describe("Header Component Visual", () => {
@@ -173,8 +173,8 @@ To maintain production reliability while maximizing feature velocity:
    - **Component & Page Visual Tests (Fast / 10s)**: Catch visual regressions, button truncation, and responsive shifts across devices.
    - **End-to-End Smoke Tests (Targeted / 60s)**: Verify core journeys (e.g. create business, inject capital).
 
-2. **Storage Decoupling**:
-   - Always access persistence through `IStorageAdapter`. This allows unit tests and visual test mounts to inject `MemoryStorageAdapter` without touching `localStorage` or disk.
+2. **Server-Authoritative State & Zero Offline Storage**:
+   - All network and accounting data operations go through `src/service/accounting/` using typed Hono RPC and TanStack Query mutations with optimistic UI updates. No local SQLite or offline storage sync loops.
 
 3. **Tauri Native Boundary Protection**:
    - Shield native plugins (`@tauri-apps/api`, `@choochmeque/tauri-plugin-google-auth-api`) behind application service boundaries so the UI can run seamlessly in browser dev mode (`pnpm dev`) and Vite component test galleries.

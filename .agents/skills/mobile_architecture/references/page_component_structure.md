@@ -13,20 +13,20 @@ apps/biz-mobile/src/
 ├── domain/                         # Pure business logic & types (no React/DOM)
 │   ├── types.ts
 │   └── selectors.ts
-├── application/                    # Application state, adapters, domain-sliced hooks
-│   ├── auth/
-│   ├── storage/
-│   ├── context/
-│   │   ├── BizContext.tsx
-│   │   └── useBiz.ts
-│   └── hooks/                      # Domain-scoped consumer hooks
-│       ├── useAccounts.ts
-│       ├── useAppUI.ts
-│       ├── useCashflow.ts
-│       ├── useCloudSync.ts
-│       ├── useHardwareAssets.ts
-│       ├── useUserData.ts
-│       └── index.ts
+├── service/                        # Strict I/O boundary: API client, queries, mutations
+│   ├── accounting/                 # Hono RPC client, keys, queries, mutations
+│   ├── auth/                       # Token store & auth mutations
+│   ├── catalog/                    # Catalog autocomplete queries
+│   └── http/                       # Base URL resolution & RPC clients
+├── app/                            # Application shell: routing context & UI state
+│   ├── ui-context.tsx              # UI-only state (activeTab, activeEntityId, etc.)
+│   └── locale.tsx
+├── application/hooks/              # Domain-scoped consumer hooks
+│   ├── useFinances.ts
+│   ├── useAppUI.ts
+│   ├── useUserData.ts
+│   ├── useCloudSync.ts
+│   └── index.ts
 ├── components/                     # ONLY components shared across 2+ pages
 │   ├── AddBusinessDrawer/
 │   │   ├── AddBusinessDrawer.tsx
@@ -161,7 +161,7 @@ Every component (both shared and page-scoped) must live in its own PascalCase di
 
 ### Rule 4: Direct Component Mounting in Playwright Visual Tests (No `.story.tsx` or `TestScaffold`)
 - **Do NOT create `.story.tsx` files or `TestScaffold.tsx` wrappers.**
-- `playwright/gallery/main.tsx` automatically discovers all components in `src/components/**` and `src/pages/**` and wraps the mounted root in `<Theme theme={mastercardTheme} mode="light">` and `<BizProvider>` seeded with deterministic fixtures (`src/testing/fixtures.ts`).
+- `playwright/gallery/main.tsx` automatically discovers all components in `src/components/**` and `src/pages/**` and wraps the mounted root in `<Theme theme={mastercardTheme} mode="light">`, `<QueryClientProvider>` pre-hydrated with fixtures (`src/testing/fixtures.ts`), and `<UIProvider>`.
 - Mount components directly by name (or relative path) and pass props in the second argument of `mount(name, props)`:
 
 ```tsx

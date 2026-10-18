@@ -37,8 +37,18 @@ export function deleteIncome(
 	const rev = snapshot.revenues.find((r) => r.id === id);
 	let accounts = snapshot.accounts;
 	if (rev && (rev.source === "salary" || rev.id === "rev_career_prame")) {
+		// Deleting a projected promotion must not zero the current salary: fall
+		// back to the earliest-starting salary stream that remains.
+		const remainingPrimary = snapshot.revenues
+			.filter(
+				(r) =>
+					r.id !== id &&
+					r.entityId === rev.entityId &&
+					(r.source === "salary" || r.id === "rev_career_prame"),
+			)
+			.sort((a, b) => (a.startMonth ?? "").localeCompare(b.startMonth ?? ""))[0];
 		accounts = accounts.map((acc) =>
-			acc.id === rev.entityId ? { ...acc, salary: 0 } : acc,
+			acc.id === rev.entityId ? { ...acc, salary: remainingPrimary?.amount ?? 0 } : acc,
 		);
 	}
 
@@ -86,11 +96,22 @@ export function setCareerIncome(
 			: acc,
 	);
 
-	const existingIdx = snapshot.revenues.findIndex(
-		(r) =>
-			r.entityId === entityId &&
-			(r.source === "salary" || r.id === "rev_career_prame"),
-	);
+	// The primary career stream starts earliest (no startMonth sorts first, i.e.
+	// it has always been active). A later-dated promotion stream is a separate
+	// revenue and must never be overwritten by a career edit.
+	const primarySalary = snapshot.revenues
+		.map((revenue, index) => ({ revenue, index }))
+		.filter(
+			({ revenue }) =>
+				revenue.entityId === entityId &&
+				(revenue.source === "salary" || revenue.id === "rev_career_prame"),
+		)
+		.sort(
+			(a, b) =>
+				(a.revenue.startMonth ?? "").localeCompare(b.revenue.startMonth ?? "") ||
+				a.index - b.index,
+		)[0];
+	const existingIdx = primarySalary ? primarySalary.index : -1;
 
 	let revenues = [...snapshot.revenues];
 	if (existingIdx >= 0) {

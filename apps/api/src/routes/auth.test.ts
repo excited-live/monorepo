@@ -70,13 +70,7 @@ async function signInToken(app: Hono<ApiEnv>): Promise<string> {
 	return token as string;
 }
 
-const EMPTY_SNAPSHOT = {
-	accounts: [],
-	subscriptions: [],
-	hardware: [],
-	revenues: [],
-	transfers: [],
-};
+const SETTINGS_BODY = { profileName: "Alex Designer", gender: "female" };
 
 describe("api/v1/auth (unconfigured)", () => {
 	it("answers 503 on /me and keeps x-user-id passthrough on data routes", async () => {
@@ -85,17 +79,17 @@ describe("api/v1/auth (unconfigured)", () => {
 		const me = await app.request("/api/v1/auth/me");
 		expect(me.status).toBe(503);
 
-		const put = await app.request("/api/v1/biz", {
+		const put = await app.request("/api/v1/settings", {
 			method: "PUT",
 			headers: { "content-type": "application/json", "x-user-id": "user-a" },
-			body: JSON.stringify(EMPTY_SNAPSHOT),
+			body: JSON.stringify(SETTINGS_BODY),
 		});
 		expect(put.status).toBe(200);
 
-		const get = await app.request("/api/v1/biz", { headers: { "x-user-id": "user-a" } });
+		const get = await app.request("/api/v1/settings", { headers: { "x-user-id": "user-a" } });
 		expect(get.status).toBe(200);
-		const data = (await get.json()) as { accounts: unknown[] };
-		expect(data.accounts).toEqual([]);
+		const data = (await get.json()) as { profileName: string };
+		expect(data.profileName).toBe("Alex Designer");
 	});
 });
 
@@ -125,28 +119,28 @@ describe("api/v1/auth (configured)", () => {
 		const app = configuredApp();
 		const token = await signInToken(app);
 
-		const put = await app.request("/api/v1/biz", {
+		const put = await app.request("/api/v1/settings", {
 			method: "PUT",
 			headers: {
 				"content-type": "application/json",
 				Authorization: `Bearer ${token}`,
 				"x-user-id": "attacker",
 			},
-			body: JSON.stringify(EMPTY_SNAPSHOT),
+			body: JSON.stringify(SETTINGS_BODY),
 		});
 		expect(put.status).toBe(200);
 
 		// The write landed in the session user's bucket (token wins over header).
-		const own = await app.request("/api/v1/biz", {
+		const own = await app.request("/api/v1/settings", {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 		expect(own.status).toBe(200);
-		const ownData = (await own.json()) as { accounts: unknown[] };
-		expect(ownData.accounts).toEqual([]);
+		const ownData = (await own.json()) as { profileName: string };
+		expect(ownData.profileName).toBe("Alex Designer");
 
 		// Tokenless calls are rejected while auth is configured — the
 		// x-user-id trust hole is gone.
-		const anonymous = await app.request("/api/v1/biz", {
+		const anonymous = await app.request("/api/v1/settings", {
 			headers: { "x-user-id": "attacker" },
 		});
 		expect(anonymous.status).toBe(401);

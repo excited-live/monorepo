@@ -256,57 +256,53 @@ describe("unchanged endpoints", () => {
 	})
 })
 
-describe("api/v1/biz", () => {
-	it("returns default seed snapshot for an unknown user", async () => {
+describe("api/v1/accounting domain errors", () => {
+	it("creates an asset then updates it via PUT", async () => {
 		const { app, db } = await openApi(tempDbFile())
 
-		const res = await app.request("/api/v1/biz", { headers: { "x-user-id": "user-biz-1" } })
-		expect(res.status).toBe(200)
-		const data = await res.json()
-		expect(data.accounts.length).toBeGreaterThan(0)
-		expect(data.subscriptions.length).toBeGreaterThan(0)
-		expect(data.hardware.length).toBeGreaterThan(0)
+		const asset = {
+			entityId: "acc_personal",
+			name: "Kasikorn Main Reserve",
+			cost: 250000,
+			lifespanMonths: 0,
+			purchaseDate: "2026-10",
+			category: "cash",
+			isDefault: true,
+		}
+
+		const created = await app.request("/api/v1/accounting/assets", jsonRequest("POST", "user-acc-1", asset))
+		expect(created.status).toBe(201)
+		const saved = (await created.json()) as { id: string }
+
+		const updated = await app.request(
+			`/api/v1/accounting/assets/${saved.id}`,
+			jsonRequest("PUT", "user-acc-1", { ...saved, ...asset, name: "Kasikorn Main Reserve (edited)" }),
+		)
+		expect(updated.status).toBe(200)
+		const updatedAsset = (await updated.json()) as { name: string }
+		expect(updatedAsset.name).toBe("Kasikorn Main Reserve (edited)")
 
 		db.driver.close()
 	})
 
-	it("round-trips custom entities and subscriptions via PUT snapshot and single POST", async () => {
+	it("maps a missing asset update to 404 instead of 500", async () => {
 		const { app, db } = await openApi(tempDbFile())
 
-		const newSub = {
-			id: "sub_test_1",
-			entityId: "acc_personal",
-			name: "Figma Pro",
-			amount: 540,
-			cycle: "monthly",
-			category: "Design",
-			nextRenewalDate: "2026-10-25",
-			billingDay: 25,
-			active: true,
-			imageUrl: "https://images.unsplash.com/photo-figma",
-		}
-
-		const postRes = await app.request(
-			"/api/v1/biz/subscriptions",
-			jsonRequest("POST", "user-biz-2", newSub),
+		const res = await app.request(
+			"/api/v1/accounting/assets/hw_ghost",
+			jsonRequest("PUT", "user-acc-2", {
+				id: "hw_ghost",
+				entityId: "acc_personal",
+				name: "Ghost",
+				cost: 0,
+				lifespanMonths: 0,
+				purchaseDate: "2026-10",
+				category: "cash",
+			}),
 		)
-		expect(postRes.status).toBe(201)
 
-		const getRes = await app.request(
-			"/api/v1/biz/subscriptions",
-			{ headers: { "x-user-id": "user-biz-2" } },
-		)
-		const subs = await getRes.json()
-		expect(subs.some((s: { id: string }) => s.id === "sub_test_1")).toBe(true)
-
-		const ledgerRes = await app.request(
-			"/api/v1/biz/ledger/2026-10?entityId=acc_personal",
-			{ headers: { "x-user-id": "user-biz-2" } },
-		)
-		expect(ledgerRes.status).toBe(200)
-		const ledger = await ledgerRes.json()
-		expect(ledger.summary).toBeDefined()
-		expect(ledger.actions).toBeDefined()
+		expect(res.status).toBe(404)
+		expect(await res.json()).toEqual({ error: "Asset hw_ghost not found", code: "NOT_FOUND" })
 
 		db.driver.close()
 	})

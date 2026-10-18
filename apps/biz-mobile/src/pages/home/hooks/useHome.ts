@@ -1,18 +1,33 @@
 import { useState } from "react";
 import {
 	calculateDerivedTreasury,
-	calculateOpeningTreasury,
-	isCashAsset,
+	calculateEntityCashOnHand,
 	type EntityAccount,
 	type HardwareAsset,
+	type LiabilityStream,
+	type RecurringSubscription,
 	type RevenueStream,
 } from "@excited-live/accounting";
 import {
 	calculateConsolidatedWealth,
 	calculatePaydayCountdown,
 } from "../../../domain/selectors";
+import {
+	countCompletedSteps,
+	deriveOnboardingSteps,
+	isOnboardingComplete,
+	loadOnboardingProgress,
+	ONBOARDING_STEPS,
+	persistOnboardingProgress,
+	type OnboardingEntryView,
+	type OnboardingEntitySectionView,
+	type OnboardingProgress,
+	type OnboardingStepId,
+	type OnboardingStepView,
+} from "../../../domain/onboarding";
 import { useFinances, useAppUI } from "../../../state";
 import { t } from "../../../i18n";
+import { formatMoney } from "../../../utils/format";
 
 export function useHome() {
 	const {
@@ -27,10 +42,13 @@ export function useHome() {
 	const {
 		setActiveEntityId,
 		setActiveTab,
-		selectedMonth,
 		today,
 		lang,
 	} = useAppUI();
+
+	// Home always reports the CURRENT month: a month picked in the Management
+	// month-stepper must not leak future-dated streams or transfers into it.
+	const currentMonth = today.slice(0, 7);
 
 	const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 	const [selectedBiz, setSelectedBiz] = useState<EntityAccount | null>(null);
@@ -40,31 +58,17 @@ export function useHome() {
 
 	// Onboarding drawers state
 	const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+	const [selectedExpense, setSelectedExpense] = useState<RecurringSubscription | null>(null);
 	const [isGearOpen, setIsGearOpen] = useState(false);
 	const [selectedGear, setSelectedGear] = useState<HardwareAsset | null>(null);
 	const [isLiabilityOpen, setIsLiabilityOpen] = useState(false);
-	const [hasSkippedLiability, setHasSkippedLiability] = useState(() => {
-		try {
-			return localStorage.getItem("biz_onboarding_liability_skipped") === "true";
-		} catch {
-			return false;
-		}
-	});
+	const [selectedLiability, setSelectedLiability] = useState<LiabilityStream | null>(null);
+
+	const [progress, setProgress] = useState<OnboardingProgress>(() => loadOnboardingProgress());
 
 	const personal = accounts.find((a) => a.type === "personal");
-	const personalDefaultWallet =
-		hardware.find((h) => h.entityId === personal?.id && isCashAsset(h) && h.isDefault) ||
-		hardware.find((h) => h.entityId === personal?.id && isCashAsset(h)) ||
-		null;
-
-	const isWalletDone = Boolean(
-		personalDefaultWallet && (personalDefaultWallet.cost > 0 || personalDefaultWallet.name !== "My Living Main Wallet"),
-	);
-	const isCareerDone = Boolean(personal?.salary && personal.salary > 0);
-	const isExpenseDone = subscriptions.some((s) => s.entityId === personal?.id);
-	const isAssetsDone = hardware.some((h) => h.entityId === personal?.id && !isCashAsset(h));
-	const isLiabilityDone = liabilities.some((l) => l.entityId === personal?.id) || hasSkippedLiability;
-	const isBusinessDone = accounts.some((a) => a.type === "business");
+	const personalId = personal?.id ?? "";
+	const businessAccounts = accounts.filter((a) => a.type === "business");
 
 	const needsCareer = personal ? !personal.salary : false;
 
@@ -76,22 +80,25 @@ export function useHome() {
 			revenues,
 			liabilities,
 			transfers,
-			yearMonth: selectedMonth,
+			yearMonth: currentMonth,
 		});
 
-	/** Treasury at the start of the selected month for a single account */
-	const openingTreasury = (acc: EntityAccount) =>
-		calculateOpeningTreasury({
+	/**
+	 * Cash in hand today for a single account: this month's transfers already
+	 * applied, next month's never. Deploying capital moves this immediately.
+	 */
+	const cashOnHand = (acc: EntityAccount) =>
+		calculateEntityCashOnHand({
 			account: acc,
 			subscriptions,
 			revenues,
 			liabilities,
 			hardware,
 			transfers,
-			yearMonth: selectedMonth,
+			yearMonth: currentMonth,
 		});
 
-	/** End-of-month treasury for a single account */
+	/** End-of-month treasury for a single account (current month) */
 	const eomTreasury = (acc: EntityAccount) =>
 		calculateDerivedTreasury({
 			account: acc,
@@ -100,8 +107,212 @@ export function useHome() {
 			liabilities,
 			hardware,
 			transfers,
-			yearMonth: selectedMonth,
+			yearMonth: currentMonth,
 		});
+
+	// --- Onboarding step state -------------------------------------------------
+
+	const activeOf = <T extends { active?: boolean }>(list: T[]): T[] =>
+		list.filter((entry) => entry.active !== false);
+
+	const assetEntries = (entityId: string): OnboardingEntryView[] =>
+		hardware
+			.filter((h) => h.entityId === entityId)
+			.map((h) => ({ id: h.id, label: h.name, meta: formatMoney(h.cost) }));
+	const incomeEntries = (entityId: string): OnboardingEntryView[] =>
+		activeOf(revenues)
+			.filter((r) => r.entityId === entityId)
+			.map((r) => ({ id: r.id, label: r.name, meta: formatMoney(r.amount) }));
+	const expenseEntries = (entityId: string): OnboardingEntryView[] =>
+		activeOf(subscriptions)
+			.filter((s) => s.entityId === entityId)
+			.map((s) => ({ id: s.id, label: s.name, meta: formatMoney(s.amount) }));
+	const liabilityEntries = (entityId: string): OnboardingEntryView[] =>
+		activeOf(liabilities)
+			.filter((l) => l.entityId === entityId)
+			.map((l) => ({ id: l.id, label: l.name, meta: formatMoney(l.amount) }));
+
+	const entitySections = (
+		entriesFor: (entityId: string) => OnboardingEntryView[],
+	): OnboardingEntitySectionView[] =>
+		[personal, ...businessAccounts]
+			.filter((account): account is EntityAccount => Boolean(account))
+			.map((account) => ({
+				entityId: account.id,
+				entityName: account.name,
+				entries: entriesFor(account.id),
+			}));
+
+	const stepEntryCounts: Record<OnboardingStepId, number> = {
+		create_account: 1,
+		add_business: businessAccounts.length,
+		assets_wallet: personalId ? hardware.filter((h) => h.entityId === personalId).length : 0,
+		add_liability: personalId ? liabilityEntries(personalId).length : 0,
+		add_income: personalId ? incomeEntries(personalId).length : 0,
+		add_expense: personalId ? expenseEntries(personalId).length : 0,
+	};
+
+	const onboardingSteps: OnboardingStepView[] = deriveOnboardingSteps(stepEntryCounts, progress).map(
+		(step) => ({
+			...step,
+			entries:
+				step.id === "add_business"
+					? businessAccounts.map((biz) => ({ id: biz.id, label: biz.name }))
+					: [],
+			sections:
+				step.id === "assets_wallet"
+					? entitySections(assetEntries)
+					: step.id === "add_liability"
+						? entitySections(liabilityEntries)
+						: step.id === "add_income"
+							? entitySections(incomeEntries)
+							: step.id === "add_expense"
+								? entitySections(expenseEntries)
+								: [],
+		}),
+	);
+
+	const onboardingActiveIndex = onboardingSteps.findIndex((step) => step.status === "active");
+	const onboardingComplete = isOnboardingComplete(onboardingSteps);
+	const onboardingCompletedCount = countCompletedSteps(onboardingSteps);
+	const isLiabilityResolved = onboardingSteps.some(
+		(step) => step.id === "add_liability" && (step.status === "done" || step.status === "skipped"),
+	);
+
+	const updateProgress = (mutate: (current: OnboardingProgress) => OnboardingProgress) => {
+		setProgress((current) => {
+			const next = mutate(current);
+			persistOnboardingProgress(next);
+			return next;
+		});
+	};
+
+	const completeStep = (id: OnboardingStepId) => {
+		updateProgress((current) => ({
+			done: [...new Set([...current.done, id])],
+			skipped: current.skipped.filter((skipped) => skipped !== id),
+		}));
+	};
+
+	const skipStep = (id: OnboardingStepId) => {
+		if (!ONBOARDING_STEPS.find((step) => step.id === id)?.skippable) return;
+		updateProgress((current) => ({
+			done: current.done.filter((done) => done !== id),
+			skipped: [...new Set([...current.skipped, id])],
+		}));
+	};
+
+	// --- Drawer openers --------------------------------------------------------
+
+	const openBusinessEditor = (biz: EntityAccount | null) => {
+		setSelectedBiz(biz);
+		setIsDrawerOpen(true);
+	};
+
+	const openAssetEditor = (entityId: string, asset: HardwareAsset | null) => {
+		setActiveEntityId(entityId);
+		setSelectedGear(asset);
+		setIsGearOpen(true);
+	};
+
+	const openIncomeEditor = (entityId: string, revenue: RevenueStream | null) => {
+		setActiveEntityId(entityId);
+		setCareerStream(revenue);
+		setIsRevenueOpen(true);
+	};
+
+	const openExpenseEditor = (entityId: string, expense: RecurringSubscription | null) => {
+		setActiveEntityId(entityId);
+		setSelectedExpense(expense);
+		setIsExpenseOpen(true);
+	};
+
+	const openLiabilityEditor = (entityId: string, liability: LiabilityStream | null) => {
+		setActiveEntityId(entityId);
+		setSelectedLiability(liability);
+		setIsLiabilityOpen(true);
+	};
+
+	const openStepPrimary = (id: OnboardingStepId) => {
+		switch (id) {
+			case "add_business":
+				openBusinessEditor(businessAccounts[0] ?? null);
+				break;
+			case "assets_wallet":
+				openAssetEditor(personalId, hardware.find((h) => h.entityId === personalId) ?? null);
+				break;
+			case "add_liability":
+				openLiabilityEditor(
+					personalId,
+					activeOf(liabilities).find((l) => l.entityId === personalId) ?? null,
+				);
+				break;
+			case "add_income":
+				openIncomeEditor(personalId, activeOf(revenues).find((r) => r.entityId === personalId) ?? null);
+				break;
+			case "add_expense":
+				openExpenseEditor(
+					personalId,
+					activeOf(subscriptions).find((s) => s.entityId === personalId) ?? null,
+				);
+				break;
+			case "create_account":
+				break;
+		}
+	};
+
+	const handleAddEntry = (id: OnboardingStepId, entityId: string) => {
+		switch (id) {
+			case "add_business":
+				openBusinessEditor(null);
+				break;
+			case "assets_wallet":
+				openAssetEditor(entityId, null);
+				break;
+			case "add_liability":
+				openLiabilityEditor(entityId, null);
+				break;
+			case "add_income":
+				openIncomeEditor(entityId, null);
+				break;
+			case "add_expense":
+				openExpenseEditor(entityId, null);
+				break;
+			case "create_account":
+				break;
+		}
+	};
+
+	const handleEditEntry = (id: OnboardingStepId, entryId: string, entityId: string) => {
+		switch (id) {
+			case "add_business":
+				openBusinessEditor(businessAccounts.find((biz) => biz.id === entryId) ?? null);
+				break;
+			case "assets_wallet":
+				openAssetEditor(entityId, hardware.find((h) => h.id === entryId) ?? null);
+				break;
+			case "add_liability":
+				openLiabilityEditor(entityId, liabilities.find((l) => l.id === entryId) ?? null);
+				break;
+			case "add_income":
+				openIncomeEditor(entityId, revenues.find((r) => r.id === entryId) ?? null);
+				break;
+			case "add_expense":
+				openExpenseEditor(entityId, subscriptions.find((s) => s.id === entryId) ?? null);
+				break;
+			case "create_account":
+				break;
+		}
+	};
+
+	/** Reopen a skipped step: clear the skip and jump into its editor. */
+	const handleReopenStep = (id: OnboardingStepId) => {
+		updateProgress((current) => ({
+			done: current.done.filter((done) => done !== id),
+			skipped: current.skipped.filter((skipped) => skipped !== id),
+		}));
+		openStepPrimary(id);
+	};
 
 	const openCareerEdit = (acc: EntityAccount) => {
 		setActiveEntityId(acc.id);
@@ -112,55 +323,12 @@ export function useHome() {
 		return entityType === "personal" ? t("home.personal", lang) : t("home.businesses", lang);
 	};
 
-	const handleOpenWalletEdit = () => {
-		if (personal) {
-			setActiveEntityId(personal.id);
-			if (personalDefaultWallet) {
-				setSelectedGear(personalDefaultWallet);
-			} else {
-				setSelectedGear({
-					id: `hw_wallet_${Date.now()}`,
-					entityId: personal.id,
-					name: "Kasikorn Main Reserve",
-					cost: 0,
-					lifespanMonths: 0,
-					purchaseDate: today,
-					category: "cash",
-					isDefault: true,
-				});
-			}
-			setIsGearOpen(true);
-		}
-	};
-
-	const handleOpenAddExpense = () => {
-		if (personal) setActiveEntityId(personal.id);
-		setIsExpenseOpen(true);
-	};
-
-	const handleOpenAddAssets = () => {
-		if (personal) setActiveEntityId(personal.id);
-		setSelectedGear(null);
-		setIsGearOpen(true);
-	};
-
-	const handleOpenAddLiability = () => {
-		if (personal) setActiveEntityId(personal.id);
-		setIsLiabilityOpen(true);
+	const handleOpenAddBusiness = () => {
+		openBusinessEditor(null);
 	};
 
 	const handleSkipLiability = () => {
-		try {
-			localStorage.setItem("biz_onboarding_liability_skipped", "true");
-		} catch {
-			// localStorage unavailable — nothing to persist
-		}
-		setHasSkippedLiability(true);
-	};
-
-	const handleOpenAddBusiness = () => {
-		setSelectedBiz(null);
-		setIsDrawerOpen(true);
+		skipStep("add_liability");
 	};
 
 	return {
@@ -171,7 +339,7 @@ export function useHome() {
 		totalEomTreasury,
 		personalCash,
 		businessCash,
-		openingTreasury,
+		cashOnHand,
 		eomTreasury,
 		openCareerEdit,
 		formatType,
@@ -189,27 +357,30 @@ export function useHome() {
 		setCareerStream,
 		isExpenseOpen,
 		setIsExpenseOpen,
+		selectedExpense,
+		setSelectedExpense,
 		isGearOpen,
 		setIsGearOpen,
 		selectedGear,
 		setSelectedGear,
 		isLiabilityOpen,
 		setIsLiabilityOpen,
-		hasSkippedLiability,
+		selectedLiability,
+		setSelectedLiability,
 		setActiveEntityId,
 		setActiveTab,
-		// Onboarding handlers & completion state
-		isWalletDone,
-		isCareerDone,
-		isExpenseDone,
-		isAssetsDone,
-		isLiabilityDone,
-		isBusinessDone,
-		handleOpenWalletEdit,
-		handleOpenAddExpense,
-		handleOpenAddAssets,
-		handleOpenAddLiability,
-		handleSkipLiability,
+		// Onboarding
+		onboardingSteps,
+		onboardingActiveIndex,
+		onboardingComplete,
+		onboardingCompletedCount,
+		isLiabilityResolved,
+		completeStep,
+		skipStep,
+		handleAddEntry,
+		handleEditEntry,
+		handleReopenStep,
 		handleOpenAddBusiness,
+		handleSkipLiability,
 	};
 }

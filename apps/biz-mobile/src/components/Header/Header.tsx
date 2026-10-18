@@ -8,14 +8,14 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../EntityThumb";
 import { useModalBack } from "../../hooks/useModalBack";
-import { calculateOpeningTreasury } from "@excited-live/accounting";
+import { calculateEntityCashOnHand } from "@excited-live/accounting";
 import { useFinances, useAppUI } from "../../state";
 import { formatMoney } from "../../utils/format";
 import { GLASS_PILL } from "../../utils/ui";
 
 export const Header: React.FC = () => {
 	const { accounts, hardware, subscriptions, revenues, liabilities, transfers } = useFinances();
-	const { activeEntityId, setActiveEntityId, activeTab, selectedMonth } = useAppUI();
+	const { activeEntityId, setActiveEntityId, activeTab, today } = useAppUI();
 	const [isOpen, setIsOpen] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
 
@@ -85,7 +85,7 @@ export const Header: React.FC = () => {
 
 			{/* Entity Switcher Sheet */}
 			<BottomSheet label="Switch Account" isOpen={isOpen} onOpenChange={(open) => !open && dismiss()}>
-				<Stack gap={4} className="px-6 pt-2 pb-[max(32px,env(safe-area-inset-bottom))]">
+				<Stack gap={4} className="px-6 pt-5 pb-[max(32px,env(safe-area-inset-bottom))]">
 					<Stack gap={0.5}>
 						<Heading level={3} className="text-[18px] font-bold text-ink">
 							Switch Account
@@ -117,14 +117,14 @@ export const Header: React.FC = () => {
 									<Stack gap={0.5} align="end" className="shrink-0">
 										<Text className="text-[14px] font-bold text-ink">฿
 											{formatMoney(
-												calculateOpeningTreasury({
+												calculateEntityCashOnHand({
 													account: acc,
 													hardware,
 													subscriptions,
 													revenues,
 													liabilities,
 													transfers,
-													yearMonth: selectedMonth,
+													yearMonth: today.slice(0, 7),
 												}),
 											)}</Text>
 										<Text className="text-[11px] text-slate">THB</Text>

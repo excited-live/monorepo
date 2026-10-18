@@ -559,6 +559,49 @@ export function calculateCurrentTreasury(params: EntityFlowParams & { yearMonth?
 }
 
 /**
+ * Cash in hand (as of yearMonth) for one entity: the sum of its cash wallets'
+ * current balances — capital transfers dated through `yearMonth` are already
+ * applied, future months and future days are not. Operational income/expenses
+ * stay out of this number; they show up in the end-of-month treasury.
+ *
+ * Use this for "today's balance" surfaces (Home, entity switcher): a capital
+ * transfer recorded this month moves this number immediately, while next
+ * month's scheduled items never touch it.
+ */
+export function calculateEntityCashOnHand(params: EntityFlowParams & { yearMonth?: string }): number {
+	const {
+		account,
+		hardware,
+		transfers,
+		subscriptions = [],
+		revenues = [],
+		liabilities = [],
+		yearMonth,
+	} = params;
+
+	const cashAssets = hardware.filter((h) => h.entityId === account.id && isCashAsset(h));
+	if (cashAssets.length === 0) return 0;
+
+	return round2(
+		cashAssets.reduce(
+			(sum, h) =>
+				sum +
+				calculateCashAssetBalance({
+					asset: h,
+					hardware,
+					transfers,
+					account,
+					subscriptions,
+					revenues,
+					liabilities,
+					yearMonth,
+				}).currentCashOnHand,
+			0,
+		),
+	);
+}
+
+/**
  * End-of-month treasury = opening treasury + income − expenses ± transfers:
  *
  *   treasury = cash assets + net capital transfers + income − expenses

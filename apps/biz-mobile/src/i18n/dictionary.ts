@@ -96,6 +96,22 @@ export const strings: Dictionary = {
 	"settings.verified": { en: "Account verified", th: "ยืนยันบัญชีแล้ว" },
 	"settings.localDevice": { en: "Local device", th: "อุปกรณ์นี้ (Local)" },
 
+	// Onboarding checklist
+	"onboarding.status.done": { en: "Done already", th: "ทำแล้ว" },
+	"onboarding.status.upNext": { en: "Up next", th: "ขั้นถัดไป" },
+	"onboarding.status.skipped": { en: "Skipped", th: "ข้ามไว้ก่อน" },
+	"onboarding.status.pending": { en: "Pending", th: "รอดำเนินการ" },
+	"onboarding.action.done": { en: "Done", th: "เสร็จแล้ว" },
+	"onboarding.action.skip": { en: "Skip for now", th: "ข้ามไปก่อน" },
+	"onboarding.action.setupNow": { en: "Set up now", th: "ตั้งค่าตอนนี้" },
+	"onboarding.action.add": { en: "Add", th: "เพิ่ม" },
+	"onboarding.optional": { en: "Optional", th: "ไม่บังคับ" },
+	"onboarding.hint.addFirst": {
+		en: "Add at least one entry to continue",
+		th: "เพิ่มอย่างน้อยหนึ่งรายการเพื่อดำเนินการต่อ",
+	},
+	"onboarding.empty": { en: "No entries yet", th: "ยังไม่มีรายการ" },
+
 	// Common
 	"common.edit": { en: "Edit", th: "แก้ไข" },
 	"common.delete": { en: "Delete", th: "ลบ" },

@@ -2,13 +2,14 @@ import { Hono } from "hono"
 import { describeRoute, openAPIRouteHandler } from "hono-openapi"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import type { ContentfulStatusCode } from "hono/utils/http-status"
+import { DomainError } from "./modules/accounting/domain/errors"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
 import { documentation, jsonResponse } from "./openapi/docs"
 import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
-import { createBizRouter } from "./routes/biz"
 import { createCatalogRouter } from "./routes/catalog"
 import { createPlanRouter } from "./routes/plan"
 import { createSettingsRouter } from "./routes/settings"
@@ -47,6 +48,19 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 			credentials: true,
 		}),
 	)
+
+	// Domain errors carry their own HTTP status (404/409/400), so they are
+	// mapped here rather than in router middleware: Hono's composer catches a
+	// handler's throw at that handler's own dispatch level and calls this
+	// handler directly, so a `try { await next() } catch` in a router never
+	// sees it.
+	app.onError((err, c) => {
+		if (err instanceof DomainError) {
+			return c.json({ error: err.message, code: err.code }, err.status as ContentfulStatusCode)
+		}
+		console.error(err)
+		return c.text("Internal Server Error", 500)
+	})
 
 	app.get(
 		"/health",
@@ -87,13 +101,12 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 
 	// Resolve identity from a Bearer session (Better Auth tokens mount); 401s
 	// unauthenticated calls while auth is configured, x-user-id passthrough
-	// otherwise. Runs before the routers so biz/plan/settings see the pinned id.
+	// otherwise. Runs before the routers so plan/settings see the pinned id.
 	app.use("/api/v1/*", createIdentityMiddleware())
 
 	const routes = app
 		.route("/api/v1/accounting", createAccountingRouter())
 		.route("/api/v1/auth", createAuthRouter())
-		.route("/api/v1/biz", createBizRouter())
 		.route("/api/v1/catalog", createCatalogRouter())
 		.route("/api/v1/plan", createPlanRouter())
 		.route("/api/v1/settings", createSettingsRouter())

@@ -16,10 +16,14 @@ describe("openapi.json", () => {
 		const operations = Object.entries(doc.paths).flatMap(([path, methods]) =>
 			Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
 		)
-		for (const entity of ["accounts", "subscriptions", "hardware", "revenues", "liabilities", "transfers"]) {
-			expect(operations).toContain(`GET /api/v1/biz/${entity}`)
-			expect(operations).toContain(`POST /api/v1/biz/${entity}`)
-			expect(operations).toContain(`DELETE /api/v1/biz/${entity}/{id}`)
+		expect(operations).toContain("GET /api/v1/accounting/snapshot")
+		expect(operations).toContain("PUT /api/v1/accounting/snapshot")
+		for (const entity of ["accounts", "expenses", "assets", "incomes", "liabilities"]) {
+			expect(operations).toContain(`POST /api/v1/accounting/${entity}`)
+			expect(operations).toContain(`PUT /api/v1/accounting/${entity}/{id}`)
+			expect(operations).toContain(`DELETE /api/v1/accounting/${entity}/{id}`)
 		}
+		expect(operations).toContain("POST /api/v1/accounting/transfers")
+		expect(operations).toContain("DELETE /api/v1/accounting/transfers/{id}")
 	})
 })

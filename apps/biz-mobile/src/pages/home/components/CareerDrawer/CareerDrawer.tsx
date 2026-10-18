@@ -26,9 +26,11 @@ export const CareerDrawer: React.FC<{
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
-	const careerRev = revenues.find(
-		(r) => r.entityId === personal.id && (r.source === "salary" || r.id === "rev_career_prame"),
-	);
+	// The current career is the earliest-starting salary stream; a projected
+	// promotion is a later-dated salary stream and must not be edited here.
+	const careerRev = revenues
+		.filter((r) => r.entityId === personal.id && (r.source === "salary" || r.id === "rev_career_prame"))
+		.sort((a, b) => (a.startMonth ?? "").localeCompare(b.startMonth ?? ""))[0];
 
 	const [company, setCompany] = useState("");
 	const [title, setTitle] = useState("");

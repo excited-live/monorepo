@@ -1,6 +1,6 @@
 import { describeRoute, resolver, type ContentWithResolver, type DescribeRouteOptions } from "hono-openapi"
 import type { z } from "zod"
-import { ErrorSchema, OkSchema } from "./schemas"
+import { ErrorSchema } from "./schemas"
 
 /**
  * Helpers that attach OpenAPI metadata to routes via `describeRoute()`.
@@ -34,58 +34,6 @@ export function route(options: DescribeRouteOptions) {
 	})
 }
 
-/**
- * The four CRUD operations over one entity collection that lives inside the
- * per-user biz snapshot (`/api/v1/biz/<collection>`).
- */
-export function crudDocs(config: {
-	tag: string
-	singular: string
-	plural: string
-	schema: z.ZodObject
-	/** Lowercase noun phrase for prose; defaults to `singular`. */
-	label?: string
-}) {
-	const { tag, singular, plural, schema } = config
-	const label = config.label ?? singular.toLowerCase()
-	const a = `${/^[aeiou]/i.test(label) ? "an" : "a"} ${label}`
-	const idParam = { name: "id", in: "path", required: true, description: `The ${label}'s \`id\`.`, schema: { type: "string" } } as const
-	return {
-		list: route({
-			tags: [tag],
-			operationId: `list${plural}`,
-			summary: `List ${plural.toLowerCase()}`,
-			description: `Returns every ${label} the caller owns. A user who never saved gets the seed data.`,
-			responses: { 200: jsonResponse(`All ${plural.toLowerCase()}.`, schema.array()) },
-		}),
-		create: route({
-			tags: [tag],
-			operationId: `create${singular}`,
-			summary: `Create ${a}`,
-			description: "The client supplies the `id`. The record is appended to the caller's snapshot.",
-			requestBody: jsonBody(schema),
-			responses: { 201: jsonResponse(`The created ${label}.`, schema) },
-		}),
-		update: route({
-			tags: [tag],
-			operationId: `update${singular}`,
-			summary: `Update ${a}`,
-			description: `Shallow-merges the body into the ${label} with this id. Unknown ids are a silent no-op.`,
-			parameters: [idParam],
-			requestBody: jsonBody(schema.partial(), "Any subset of the fields."),
-			responses: { 200: jsonResponse("Updated.", OkSchema) },
-		}),
-		remove: route({
-			tags: [tag],
-			operationId: `delete${singular}`,
-			summary: `Delete ${a}`,
-			description: `Removes the ${label} with this id. Unknown ids are a silent no-op.`,
-			parameters: [idParam],
-			responses: { 200: jsonResponse("Deleted.", OkSchema) },
-		}),
-	}
-}
-
 export const documentation = {
 	openapi: "3.1.0",
 	info: {
@@ -98,13 +46,7 @@ export const documentation = {
 			"and falls back to a shared `default` bucket.",
 	},
 	tags: [
-		{ name: "Accounts", description: "Personal and business entities." },
-		{ name: "Subscriptions", description: "Recurring costs." },
-		{ name: "Hardware", description: "Depreciating assets." },
-		{ name: "Revenues", description: "Income streams." },
-		{ name: "Liabilities", description: "Debt payment streams." },
-		{ name: "Transfers", description: "Capital moved between entities." },
-		{ name: "Biz", description: "Whole-snapshot access and computed ledger." },
+		{ name: "Accounting", description: "The per-user accounting snapshot: accounts, expenses, assets, incomes, liabilities and transfers." },
 		{ name: "Plan", description: "The user's financial plan document." },
 		{ name: "Settings", description: "Profile settings." },
 		{ name: "Simulation", description: "Stateless plan simulations." },

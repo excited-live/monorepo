@@ -31,7 +31,6 @@ import {
 } from "./accounting.schemas";
 import { createAccountingService, type AccountingService } from "../service/accounting.service";
 import { createSqlAccountingRepository } from "../repository/sql-accounting.repository";
-import { DomainError } from "../domain/errors";
 
 export interface AccountingRouterOptions {
 	service?: AccountingService;
@@ -39,18 +38,6 @@ export interface AccountingRouterOptions {
 
 export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 	const router = new Hono<ApiEnv>();
-
-	// Error handling middleware for DomainError
-	router.use("*", async (c, next) => {
-		try {
-			await next();
-		} catch (err) {
-			if (err instanceof DomainError) {
-				return c.json({ error: err.message, code: err.code }, err.status as 400 | 404 | 409);
-			}
-			throw err;
-		}
-	});
 
 	const getService = (c: { get: (key: "db") => ApiEnv["Variables"]["db"] }): AccountingService => {
 		if (options.service) return options.service;

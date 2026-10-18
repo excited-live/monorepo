@@ -16,7 +16,7 @@ export class NotFoundError extends DomainError {
 }
 
 export class VersionConflictError extends DomainError {
-	constructor(message = "Snapshot was updated by another request. Please reload.") {
+	constructor(message = "The record was updated by another request. Please reload.") {
 		super(message, "VERSION_CONFLICT", 409);
 	}
 }
@@ -24,5 +24,11 @@ export class VersionConflictError extends DomainError {
 export class ValidationError extends DomainError {
 	constructor(message: string) {
 		super(message, "VALIDATION_ERROR", 400);
+	}
+}
+
+export class DuplicateError extends DomainError {
+	constructor(message = "A record with this id already exists") {
+		super(message, "DUPLICATE", 409);
 	}
 }

@@ -1,5 +1,17 @@
 import { Given, When, Then } from "@cucumber/cucumber";
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+
+// ---------------------------------------------------------------------------
+// Onboarding stepper helpers
+//
+// The checklist renders Astryx Stepper steps as <li> cards; action buttons
+// ("Done", "Skip for now", "Set up now", "Add") live inside the step card.
+// ---------------------------------------------------------------------------
+
+const stepCard = (page: Page, title: string) => page.locator("li").filter({ hasText: title }).first();
+
+const stepButton = (page: Page, title: string, label: string) =>
+	stepCard(page, title).getByRole("button", { name: label, exact: true });
 
 // =========================================================================
 // ACCOUNT MANAGEMENT & ONBOARDING STEP DEFINITIONS
@@ -38,8 +50,80 @@ Then("the {string} section should be displayed", async function (sectionTitle: s
 
 Then("the user should land on the {string} tab and see the Onboarding Checklist:", async function (tabName: string, dataTable) {
 	for (const row of dataTable.hashes()) {
-		await expect(this.page.getByText(row.Step)).toBeVisible();
+		const card = stepCard(this.page, row.Step);
+		await expect(card).toBeVisible();
+		await expect(card).toContainText(row.Status);
 	}
+});
+
+Then("the {string} step should be marked {string} on the checklist", async function (title: string, status: string) {
+	await expect(stepCard(this.page, title)).toContainText(status);
+});
+
+Then("the {string} step should offer {string}", async function (title: string, label: string) {
+	await expect(stepButton(this.page, title, label)).toBeVisible();
+});
+
+Then("the {string} step should not offer {string}", async function (title: string, label: string) {
+	await expect(stepButton(this.page, title, label)).toHaveCount(0);
+});
+
+Then("the {string} step should offer a disabled {string} button", async function (title: string, label: string) {
+	await expect(stepButton(this.page, title, label)).toBeDisabled();
+});
+
+Then("the {string} step should list {int} entries", async function (title: string, count: number) {
+	const entries = stepCard(this.page, title)
+		.locator("button")
+		.filter({ hasNotText: /^(Add|Done|Skip for now|Set up now)$/ });
+	await expect(entries).toHaveCount(count);
+});
+
+Then(
+	"the {string} step should list the entity sections {string} first, then {string}",
+	async function (title: string, first: string, second: string) {
+		const card = stepCard(this.page, title);
+		const firstSection = card.getByText(first, { exact: false }).first();
+		const secondSection = card.getByText(second, { exact: false }).first();
+		await expect(firstSection).toBeVisible();
+		await expect(secondSection).toBeVisible();
+		const firstBox = await firstSection.boundingBox();
+		const secondBox = await secondSection.boundingBox();
+		if (!firstBox || !secondBox) throw new Error("entity sections not measurable");
+		expect(firstBox.y).toBeLessThan(secondBox.y);
+	},
+);
+
+When("the user marks the {string} step done on the checklist", async function (title: string) {
+	await stepButton(this.page, title, "Done").click();
+});
+
+When("the user skips the {string} step on the checklist", async function (title: string) {
+	await stepButton(this.page, title, "Skip for now").click();
+});
+
+When("the user taps {string} in the {string} step on the checklist", async function (label: string, title: string) {
+	await stepButton(this.page, title, label).click();
+});
+
+When("the user taps the {string} step on the checklist", async function (title: string) {
+	await stepCard(this.page, title).getByText(title, { exact: true }).first().click();
+});
+
+When("the user taps the entry {string} in the {string} step on the checklist", async function (entry: string, title: string) {
+	await stepCard(this.page, title)
+		.getByRole("button", { name: new RegExp(entry) })
+		.first()
+		.click();
+});
+
+Then("the {string} drawer should not open", async function () {
+	await expect(this.page.getByRole("dialog")).toBeHidden();
+});
+
+Then("the {string} drawer should open with {string} prefilled", async function (_drawer: string, value: string) {
+	await expect(this.page.getByRole("dialog")).toBeVisible();
+	await expect(this.page.getByRole("dialog")).toContainText(value);
 });
 
 Then("the Homepage should display:", async function (dataTable) {

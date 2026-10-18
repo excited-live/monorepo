@@ -43,26 +43,31 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 		setCareerStream,
 		isExpenseOpen,
 		setIsExpenseOpen,
+		selectedExpense,
+		setSelectedExpense,
 		isGearOpen,
 		setIsGearOpen,
 		selectedGear,
 		setSelectedGear,
 		isLiabilityOpen,
 		setIsLiabilityOpen,
+		selectedLiability,
+		setSelectedLiability,
 		setActiveEntityId,
 		setActiveTab,
-		isWalletDone,
-		isCareerDone,
-		isExpenseDone,
-		isAssetsDone,
-		isLiabilityDone,
-		isBusinessDone,
-		handleOpenWalletEdit,
-		handleOpenAddExpense,
-		handleOpenAddAssets,
-		handleOpenAddLiability,
-		handleSkipLiability,
+		onboardingSteps,
+		onboardingActiveIndex,
+		onboardingComplete,
+		onboardingCompletedCount,
+		isLiabilityResolved,
+		completeStep,
+		skipStep,
+		handleStepClick,
+		handleAddEntry,
+		handleEditEntry,
+		handleReopenStep,
 		handleOpenAddBusiness,
+		handleSkipLiability,
 	} = useHome();
 
 	const handleSelectAccount = (id: string) => {
@@ -87,23 +92,18 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 					lang={lang}
 				/>
 
-				{/* Onboarding Checklist — Guided step-by-step setup */}
+				{/* Onboarding Stepper — guided setup with back / skip per step */}
 				<HomeOnboardingChecklist
-					onUpdatePersonalWallet={handleOpenWalletEdit}
-					onAddCareer={() => {
-						setActiveEntityId("acc_personal");
-						setIsCareerOpen(true);
-					}}
-					onAddExpense={handleOpenAddExpense}
-					onAddAssets={handleOpenAddAssets}
-					onAddLiability={handleOpenAddLiability}
-					onAddFirstBusiness={handleOpenAddBusiness}
-					isWalletDone={isWalletDone}
-					isCareerDone={isCareerDone}
-					isExpenseDone={isExpenseDone}
-					isAssetsDone={isAssetsDone}
-					isLiabilityDone={isLiabilityDone}
-					isBusinessDone={isBusinessDone}
+					steps={onboardingSteps}
+					activeIndex={onboardingActiveIndex}
+					isComplete={onboardingComplete}
+					completedCount={onboardingCompletedCount}
+					onStepClick={handleStepClick}
+					onCompleteStep={completeStep}
+					onSkipStep={skipStep}
+					onReopenStep={handleReopenStep}
+					onAddEntry={handleAddEntry}
+					onEditEntry={handleEditEntry}
 				/>
 
 				{/* Entities Section */}
@@ -139,7 +139,11 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 			/>
 			<AddExpenseDrawer
 				isOpen={isExpenseOpen}
-				onClose={() => setIsExpenseOpen(false)}
+				onClose={() => {
+					setIsExpenseOpen(false);
+					setSelectedExpense(null);
+				}}
+				initialData={selectedExpense}
 			/>
 			<AddGearDrawer
 				isOpen={isGearOpen}
@@ -151,8 +155,12 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 			/>
 			<AddLiabilityDrawer
 				isOpen={isLiabilityOpen}
-				onClose={() => setIsLiabilityOpen(false)}
-				canSkip={!isLiabilityDone}
+				onClose={() => {
+					setIsLiabilityOpen(false);
+					setSelectedLiability(null);
+				}}
+				initialData={selectedLiability}
+				canSkip={!isLiabilityResolved}
 				onSkip={handleSkipLiability}
 			/>
 		</Stack>

@@ -1,18 +1,27 @@
 @mobile @onboarding @phase_6 @smoke @e2e
-Feature: Onboarding Phase 6 - Add Liability or Skip
+Feature: Onboarding Phase 6 - Add Expense (not skippable)
   As a user
-  I want to register debt or select "I don't have liabilities"
-  So that debt service is factored in or the step is cleanly completed
+  I want to register baseline recurring living expenses
+  So that Homepage and Management display monthly burn and net cashflow
 
   Background:
     Given the user has completed Steps 1 through 5
 
-  Scenario: Register debt liability or skip and verify Management debt split
-    When the user taps "Add Liability (or option to say I dont have)" on the checklist
-    Then the liability options modal should display "Register Liability" and "I don't have any liabilities or debts"
-    When the user selects "Register Liability" and enters "Auto Loan" with monthly payment 9000 THB
-    And the user submits the liability form
-    Then Step 6 "Add Liability (or option to say I dont have)" should be marked completed
+  Scenario: Add living expense and verify Homepage monthly burn and Management net cashflow
+    When the user taps "Add" in the "Add Expense" step on the checklist
+    Then the "Add Outflow / Expense" drawer should open for "My Living"
+    When the user enters expense "Condo Rent" under "Housing & Rent" with amount "22000" THB monthly
+    And the user saves the expense
+    Then the "Add Expense" step should still be marked "Up next" on the checklist
+    And the "Add Expense" step should not offer "Skip for now"
+    When the user marks the "Add Expense" step done on the checklist
+    Then the "Add Expense" step should be marked "Done already" on the checklist
+    And the Homepage should show recurring monthly burn "-฿22,000/mo"
     When the user switches to the "capital" tab
-    Then the Management hero should display debt service "-฿9,000/mo"
-    And Net Cashflow should update to "+฿119,000/mo" (150k - 22k - 9k)
+    Then the Management hero should display net cashflow "+฿119,000/mo" (150k - 22k - 9k)
+    And the Expense subtab should list "Condo Rent" with "-฿22,000"
+    And the Onboarding Complete card should be visible on the Homepage
+
+  Scenario: Multiple expenses are listed inside the step across entities
+    When the user records a second expense "Cloud Server Hosting" for "Studio Neon Co., Ltd." with amount "1200" THB monthly
+    Then the "Add Expense" step should list 2 entries

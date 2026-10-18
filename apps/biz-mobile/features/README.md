@@ -6,23 +6,24 @@ Comprehensive Behavioral-Driven Development (BDD) End-to-End test suite specific
 
 ## 🧭 The 7-Step Onboarding Flow & Screen Transformations
 
-When a user opens the application for the first time, they are guided through a 7-step onboarding journey where **Homepage** and **Management** evolve at every step:
+When a user opens the application for the first time, they are guided through a 6-step onboarding stepper where **Homepage** and **Management** evolve at every step:
 
 ```
-[1. Create Account] -> [2. Personal Wallet] -> [3. Career] -> [4. Expense] -> [5. Assets] -> [6. Liability] -> [7. First Business]
+[1. Create Account] -> [2. Add Business] -> [3. Wallet & Assets] -> [4. Add Liability] -> [5. Add Income] -> [6. Add Expense]
 ```
+
+**Completion rules.** Only **Create Account** completes automatically. Every other step is marked done by the user via a **Done** button that stays disabled until the step holds at least one entry. **Add Business**, **Wallet & Assets** and **Add Liability** are skippable ("Skip for now" → "Skipped", reversible via "Set up now"); **Add Income** and **Add Expense** are not. Tapping a completed or skipped step reopens its editor (go back); tapping an entry inside a step opens that entry for editing. Steps record data per entity: the personal entity first and each business below it.
 
 ### Phase-by-Phase Transformations:
 
 | Step # | User Action | Homepage State Change | Management State Change |
 | :--- | :--- | :--- | :--- |
-| **Step 1**<br>`[Done already]` | App cold launch bootstrap | Auto-provisions Personal account `"My Living"` with ฿0 reserve. Onboarding Checklist banner appears. | Hero eyebrow displays `PERSONAL WEALTH`, balance ฿0, status `SETUP NEEDED`. |
-| **Step 2** | Update Detail for Personal Default Wallet | Consolidated Treasury updates from ฿0 $\rightarrow$ ฿250,000. Personal card displays wallet name. | Hero balance updates to ฿250,000 with 100% Liquid Cash allocation. |
-| **Step 3** | Add Career (`Agoda`, ฿150k/mo, Payday 25th) | Personal card embeds Career subcard with live dynamic payday countdown badge. | Monthly Inflow updates to `+฿150,000/mo`. Runway status switches to `DEFAULT ALIVE`. |
-| **Step 4** | Add Expense (Living Rent ฿22k/mo) | Homepage displays recurring monthly living burn `-฿22,000/mo`. | Hero displays Net Cashflow `+฿128,000/mo`. Expense subtab lists itemized costs. |
-| **Step 5** | Add Assets (MacBook Pro ฿72k, 36 mos) | Home assets summary reflects active computing gear. | Hero total wealth updates to ฿322,000. Asset split bar shows 78% Liquid / 22% Gear. |
-| **Step 6** | Add Liability (Auto Loan ฿9k/mo or Skip) | Homepage reflects active debt service obligations. | Hero displays Debt Split Bar (฿9,000/mo). Net Cashflow recalculates to `+฿119,000/mo`. |
-| **Step 7** | Add First Business *(No Starting Treasury!)* | Entities list updates to 2 accounts (`My Living` & `Studio Neon`). Entity is switchable. | Switch to Business displays `BOOK VALUE` with ฿0 treasury. Default wallet auto-created. All 7 steps complete! |
+| **Step 1**<br>`[Auto]` | App cold launch bootstrap | Auto-provisions Personal account `"My Living"` with ฿0 cash. Onboarding stepper appears with Step 1 done. | Hero eyebrow displays `PERSONAL WEALTH`, balance ฿0, status `SETUP NEEDED`. |
+| **Step 2**<br>`[skippable]` | Add Business (`Studio Neon Co., Ltd.`, manual Done) | Entities list updates to 2 accounts (`My Living` & `Studio Neon`). Entity is switchable. | Switch to Business displays `BOOK VALUE` with ฿0 treasury. Default wallet auto-created. |
+| **Step 3**<br>`[skippable, merged]` | Wallet & Assets (Kasikorn Reserve ฿250k + MacBook Pro ฿72k, manual Done) | Consolidated Treasury updates from ฿0 to ฿250,000; personal card shows the wallet name; gear listed under personal and below it per business. | Hero total wealth updates to ฿322,000. Asset split bar shows 78% Liquid / 22% Gear. |
+| **Step 4**<br>`[skippable]` | Add Liability (Auto Loan ฿9k/mo, manual Done) | Homepage reflects active debt service obligations. | Hero displays Debt Split Bar (฿9,000/mo). |
+| **Step 5**<br>`[required]` | Add Income (`Agoda Salary` ฿150k/mo, manual Done; multiple streams supported) | Personal card embeds Career subcard with live dynamic payday countdown badge. | Monthly Inflow updates to `+฿150,000/mo`. Runway status switches to `DEFAULT ALIVE`. |
+| **Step 6**<br>`[required]` | Add Expense (Living Rent ฿22k/mo, manual Done; multiple entries across entities) | Homepage displays recurring monthly living burn `-฿22,000/mo`. | Hero displays Net Cashflow `+฿119,000/mo`. Expense subtab lists itemized costs. All 6 steps complete! |
 
 > **⚠️ Architectural Invariant**: **Starting Treasury / Capital has been completely eliminated**. Businesses are registered with legal identity and logo only; capital is deployed via genuine bank cash assets, founder capital injections, or real client revenue.
 
@@ -34,12 +35,12 @@ When a user opens the application for the first time, they are guided through a 
 apps/biz-mobile/features/
 ├── onboarding/                          # 🚀 Dedicated Phase-by-Phase Onboarding Specs
 │   ├── phase_1_account_created.feature          [@onboarding @phase_1]
-│   ├── phase_2_update_personal_wallet.feature   [@onboarding @phase_2]
-│   ├── phase_3_add_career.feature               [@onboarding @phase_3]
-│   ├── phase_4_add_expense.feature              [@onboarding @phase_4]
-│   ├── phase_5_add_assets.feature               [@onboarding @phase_5]
-│   ├── phase_6_add_liability_or_skip.feature    [@onboarding @phase_6]
-│   └── phase_7_add_first_business.feature       [@onboarding @phase_7]
+│   ├── phase_2_add_business.feature   [@onboarding @phase_2]
+│   ├── phase_3_wallet_and_assets.feature               [@onboarding @phase_3]
+│   ├── phase_4_add_liability.feature              [@onboarding @phase_4]
+│   ├── phase_5_add_income.feature               [@onboarding @phase_5]
+│   ├── phase_6_add_expense.feature              [@onboarding @phase_6]
+│   └── back_and_skip.feature                    [@onboarding @navigation]
 │
 ├── account_management/
 │   ├── p0/                              # 🔥 Master Core Journeys (Multi-step integration)

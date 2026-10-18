@@ -1,117 +1,79 @@
 import React from "react";
+import { PlainButton } from "@excited-live/design-system";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";
+import { Step, Stepper } from "@astryxdesign/core/Stepper";
 import { Text } from "@astryxdesign/core/Text";
 import { SectionCard } from "../../../../components/SectionCard";
+import { useT } from "../../../../application/hooks/useT";
+import type {
+	OnboardingEntryView,
+	OnboardingStepId,
+	OnboardingStepStatus,
+	OnboardingStepView,
+} from "../../../../domain/onboarding";
 
 export interface HomeOnboardingChecklistProps {
-	onUpdatePersonalWallet: () => void;
-	onAddCareer: () => void;
-	onAddExpense: () => void;
-	onAddAssets: () => void;
-	onAddLiability: () => void;
-	onAddFirstBusiness: () => void;
-	isWalletDone: boolean;
-	isCareerDone: boolean;
-	isExpenseDone: boolean;
-	isAssetsDone: boolean;
-	isLiabilityDone: boolean;
-	isBusinessDone: boolean;
+	steps: OnboardingStepView[];
+	activeIndex: number;
+	isComplete: boolean;
+	completedCount: number;
+	/** Stepper click: reopen the step (works for done, skipped and current steps). */
+	onStepClick: (index: number) => void;
+	onCompleteStep: (id: OnboardingStepId) => void;
+	onSkipStep: (id: OnboardingStepId) => void;
+	/** Clear a skip and jump into the step's editor. */
+	onReopenStep: (id: OnboardingStepId) => void;
+	onAddEntry: (id: OnboardingStepId, entityId: string) => void;
+	onEditEntry: (id: OnboardingStepId, entryId: string, entityId: string) => void;
 }
 
-interface StepItem {
-	id: string;
-	title: string;
-	isDone: boolean;
-	action?: () => void;
-	actionLabel?: string;
-}
+const EntryRow: React.FC<{ entry: OnboardingEntryView; onEdit: () => void }> = ({ entry, onEdit }) => (
+	<PlainButton
+		type="button"
+		onClick={onEdit}
+		className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-line/60 bg-white px-2.5 py-2 text-left active:bg-lifted/60"
+	>
+		<Text maxLines={1} className="text-[12px] font-medium text-ink">
+			{entry.label}
+		</Text>
+		{entry.meta ? <Text className="shrink-0 text-[11px] text-slate">฿{entry.meta}</Text> : null}
+	</PlainButton>
+);
 
 export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = ({
-	onUpdatePersonalWallet,
-	onAddCareer,
-	onAddExpense,
-	onAddAssets,
-	onAddLiability,
-	onAddFirstBusiness,
-	isWalletDone,
-	isCareerDone,
-	isExpenseDone,
-	isAssetsDone,
-	isLiabilityDone,
-	isBusinessDone,
+	steps,
+	activeIndex,
+	isComplete,
+	completedCount,
+	onStepClick,
+	onCompleteStep,
+	onSkipStep,
+	onReopenStep,
+	onAddEntry,
+	onEditEntry,
 }) => {
-	const steps: StepItem[] = [
-		{
-			id: "create_account",
-			title: "Create Account",
-			isDone: true,
-		},
-		{
-			id: "update_wallet",
-			title: "Update Detail for Personal default Wallet",
-			isDone: isWalletDone,
-			action: onUpdatePersonalWallet,
-			actionLabel: "Configure Wallet",
-		},
-		{
-			id: "add_career",
-			title: "Add career",
-			isDone: isCareerDone,
-			action: onAddCareer,
-			actionLabel: "Add Career",
-		},
-		{
-			id: "add_expense",
-			title: "Add Expense",
-			isDone: isExpenseDone,
-			action: onAddExpense,
-			actionLabel: "Add Expense",
-		},
-		{
-			id: "add_assets",
-			title: "Add Assets",
-			isDone: isAssetsDone,
-			action: onAddAssets,
-			actionLabel: "Add Asset",
-		},
-		{
-			id: "add_liability",
-			title: "Add Liability (or option to say I dont have)",
-			isDone: isLiabilityDone,
-			action: onAddLiability,
-			actionLabel: "Add Liability",
-		},
-		{
-			id: "add_first_business",
-			title: "Add First Business",
-			isDone: isBusinessDone,
-			action: onAddFirstBusiness,
-			actionLabel: "Create Business",
-		},
-	];
+	const { t } = useT();
 
-	const completedCount = steps.filter((s) => s.isDone).length;
-	const isAllDone = completedCount === steps.length;
-
-	// Find the first unfinished step to mark as "Up next"
-	const firstUnfinishedIdx = steps.findIndex((s) => !s.isDone);
+	const statusText = (status: OnboardingStepStatus) =>
+		status === "done"
+			? t("onboarding.status.done")
+			: status === "skipped"
+				? t("onboarding.status.skipped")
+				: status === "active"
+					? t("onboarding.status.upNext")
+					: t("onboarding.status.pending");
 
 	return (
 		<SectionCard
 			title="Onboarding Checklist"
-			badge={
-				<Badge
-					label={`${completedCount} of ${steps.length}`}
-					variant="neutral"
-				/>
-			}
+			badge={<Badge label={`${completedCount} of ${steps.length}`} variant="neutral" />}
 		>
 			<Stack gap={3} width="100%">
-				{isAllDone ? (
+				{isComplete ? (
 					<Card padding={3} className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
 						<HStack gap={3} align="center">
 							<Text weight="bold" className="text-emerald-700 dark:text-emerald-300 text-[14px]">
@@ -125,60 +87,125 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 					</Text>
 				)}
 
-				<Stack gap={2} width="100%">
-					{steps.map((step, idx) => {
-						const isUpNext = idx === firstUnfinishedIdx;
-						const statusLabel = step.isDone ? "Done already" : isUpNext ? "Up next" : "Pending";
-
+				<Stepper
+					activeStep={activeIndex === -1 ? steps.length : activeIndex}
+					orientation="vertical"
+					density="compact"
+					label="Onboarding progress"
+					onStepClick={onStepClick}
+				>
+					{steps.map((step, index) => {
+						const isActive = step.status === "active";
+						const isFuture = activeIndex !== -1 && index > activeIndex;
 						return (
-							<HStack
+							<Step
 								key={step.id}
-								justify="between"
-								align="center"
-								className={`p-3 rounded-2xl border transition-all ${
-									step.isDone
-										? "bg-lifted/60 border-line text-slate"
-										: isUpNext
-											? "bg-card border-primary/40 shadow-sm"
-											: "bg-lifted/30 border-line/50 opacity-70"
-								}`}
+								step={index}
+								label={step.title}
+								description={statusText(step.status)}
+								status={
+									step.status === "done"
+										? "success"
+										: step.status === "skipped"
+											? "warning"
+											: undefined
+								}
+								isOptional={step.skippable}
+								isDisabled={isFuture}
 							>
-								<HStack gap={3} align="center" className="min-w-0 flex-1">
-									<div
-										className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${
-											step.isDone
-												? "bg-emerald-500 text-white"
-												: isUpNext
-													? "bg-primary text-white"
-													: "bg-slate/20 text-slate"
-										}`}
-									>
-										{step.isDone ? "✓" : idx + 1}
-									</div>
-									<Stack gap={0} className="min-w-0 flex-1">
-										<Text
-											weight={isUpNext ? "bold" : "medium"}
-											className={`text-[13px] truncate ${step.isDone ? "line-through text-slate" : ""}`}
-										>
-											{step.title}
-										</Text>
-										<Text className="text-[11px] text-slate">
-											{statusLabel}
-										</Text>
-									</Stack>
-								</HStack>
+								<Stack gap={2} width="100%" className="pb-1">
+									{step.entries.length > 0 && (
+										<Stack gap={1.5} width="100%">
+											{step.entries.map((entry) => (
+												<EntryRow
+													key={entry.id}
+													entry={entry}
+													onEdit={() => onEditEntry(step.id, entry.id, "")}
+												/>
+											))}
+										</Stack>
+									)}
 
-								{step.action && !step.isDone && (
-									<Button
-										label={step.title}
-															variant={isUpNext ? "primary" : "secondary"}
-										onClick={step.action}
-									/>
-								)}
-							</HStack>
+									{step.sections.map((section) => (
+										<Stack
+											key={section.entityId}
+											gap={1.5}
+											width="100%"
+											className="rounded-2xl border border-line/60 bg-lifted/30 p-2.5"
+										>
+											<HStack width="100%" justify="between" align="center">
+												<Text className="text-[12px] font-semibold text-slate">
+													{section.entityName}
+												</Text>
+												{isActive && (
+													<Button
+														label={t("onboarding.action.add")}
+														variant="secondary"
+														size="sm"
+														onClick={() => onAddEntry(step.id, section.entityId)}
+													/>
+												)}
+											</HStack>
+											{section.entries.length === 0 ? (
+												<Text className="text-[11px] text-slate">{t("onboarding.empty")}</Text>
+											) : (
+												section.entries.map((entry) => (
+													<EntryRow
+														key={entry.id}
+														entry={entry}
+														onEdit={() => onEditEntry(step.id, entry.id, section.entityId)}
+													/>
+												))
+											)}
+										</Stack>
+									))}
+
+									{isActive && step.id === "add_business" && (
+										<Button
+											label={t("onboarding.action.add")}
+											variant="secondary"
+											size="sm"
+											onClick={() => onAddEntry(step.id, "")}
+										/>
+									)}
+
+									{isActive && !step.canComplete && (
+										<Text className="text-[11px] text-slate">{t("onboarding.hint.addFirst")}</Text>
+									)}
+
+									{isActive && (
+										<HStack gap={2}>
+											<Button
+												label={t("onboarding.action.done")}
+												variant="primary"
+												size="sm"
+												isDisabled={!step.canComplete}
+												onClick={() => onCompleteStep(step.id)}
+											/>
+											{step.skippable && (
+												<Button
+													label={t("onboarding.action.skip")}
+													variant="secondary"
+													size="sm"
+													onClick={() => onSkipStep(step.id)}
+												/>
+											)}
+										</HStack>
+									)}
+
+									{step.status === "skipped" && (
+										<Button
+											label={t("onboarding.action.setupNow")}
+											variant="secondary"
+											size="sm"
+											onClick={() => onReopenStep(step.id)}
+										/>
+									)}
+								</Stack>
+							</Step>
 						);
 					})}
-				</Stack>
+				</Stepper>
 			</Stack>
 		</SectionCard>
 	);

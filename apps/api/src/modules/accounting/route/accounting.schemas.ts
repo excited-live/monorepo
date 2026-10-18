@@ -36,7 +36,17 @@ const dayOfMonth = z.number().int().min(1).max(31);
 const version = z.number().int().min(1).optional().describe("Stored version the caller last read; a mismatch returns 409.");
 const details = z.record(z.string(), z.unknown());
 const asOf = monthOrDate.optional().describe("Client's current month or day. Default month for startMonth; otherwise the UTC month.");
-const partial = <T extends z.ZodRawShape>(shape: T) => z.object(shape).partial().shape;
+/** PATCH fields: every field optional; fields that are optional on create also accept null, which clears them. */
+type Patchable<T extends z.ZodRawShape> = {
+	[K in keyof T]: T[K] extends z.ZodOptional<z.ZodType> ? z.ZodOptional<z.ZodNullable<T[K]>> : z.ZodOptional<T[K]>;
+};
+const partial = <T extends z.ZodRawShape>(shape: T): Patchable<T> =>
+	Object.fromEntries(
+		Object.entries(shape).map(([key, field]) => {
+			const zod = field as z.ZodType;
+			return [key, zod instanceof z.ZodOptional ? zod.nullable().optional() : zod.optional()];
+		}),
+	) as Patchable<T>;
 
 // ENTITIES ----------------------------------------------------------------
 

@@ -70,6 +70,17 @@ function definedOnly<T extends object>(fields: T): Partial<T> {
 }
 
 /** `YYYY-MM` of the client's `asOf` when given, else of the current UTC date. */
+/** Merges a PATCH body onto a stored record: undefined keeps a field, null clears it. */
+function applyPatch<T extends object>(record: T, patch: object): T {
+	const next: Record<string, unknown> = { ...(record as Record<string, unknown>) };
+	for (const [key, value] of Object.entries(patch)) {
+		if (value === undefined) continue;
+		if (value === null) delete next[key];
+		else next[key] = value;
+	}
+	return next as T;
+}
+
 function monthOf(asOf?: string): string {
 	return asOf ? asOf.slice(0, 7) : new Date().toISOString().slice(0, 7);
 }
@@ -256,7 +267,7 @@ export function createAccountingService(repo: AccountingRepository) {
 		const stored = await findOrThrow(userId, "entities", id, "Entity");
 		const { version, type, ...fields } = patch;
 		if (type !== undefined && type !== stored.type) throw new ValidationError("Entity type cannot change");
-		const next: BookEntity = { ...plain(stored), ...definedOnly(fields) };
+		const next: BookEntity = applyPatch(plain(stored), fields);
 		return written(await repo.write(userId, [update("entities", next, version)]), id);
 	}
 
@@ -408,7 +419,7 @@ export function createAccountingService(repo: AccountingRepository) {
 		await ensureBootstrap(userId, monthOf());
 		const stored = await findOrThrow(userId, "assets", id, "Asset");
 		const { version, ...fields } = patch;
-		const next = parseRecord(CreateAssetBody, { ...plain(stored), ...definedOnly(fields) }) as BookAsset;
+		const next = parseRecord(CreateAssetBody, applyPatch(plain(stored), fields)) as BookAsset;
 
 		const before: WriteOp[] = [];
 		if (next.kind === "cash" && stored.kind === "cash") {
@@ -485,7 +496,7 @@ export function createAccountingService(repo: AccountingRepository) {
 		await ensureBootstrap(userId, monthOf());
 		const stored = await findOrThrow(userId, "incomes", id, "Income");
 		const { version, employment, ...fields } = patch;
-		const merged: Record<string, unknown> = { ...plain(stored), ...definedOnly(fields) };
+		const merged: Record<string, unknown> = applyPatch(plain(stored), fields);
 		if (employment !== undefined) {
 			merged.employment = { ...(stored.kind === "employment" ? stored.employment : undefined), ...employment };
 		}
@@ -606,7 +617,7 @@ export function createAccountingService(repo: AccountingRepository) {
 		await ensureBootstrap(userId, monthOf());
 		const stored = await findOrThrow(userId, "expenses", id, "Expense");
 		const { version, ...fields } = patch;
-		const next = parseRecord(CreateExpenseBody, { ...plain(stored), ...definedOnly(fields) }) as BookExpense;
+		const next = parseRecord(CreateExpenseBody, applyPatch(plain(stored), fields)) as BookExpense;
 		await validateExpenseLinks(userId, next);
 		return written(await repo.write(userId, [update("expenses", next, version)]), id);
 	}
@@ -700,7 +711,7 @@ export function createAccountingService(repo: AccountingRepository) {
 		const stored = await findOrThrow(userId, "liabilities", id, "Liability");
 		const { version, loan, revolving, ...fields } = patch;
 		// Nested details merge shallowly onto what is stored.
-		const merged: Record<string, unknown> = { ...plain(stored), ...definedOnly(fields) };
+		const merged: Record<string, unknown> = applyPatch(plain(stored), fields);
 		if (loan !== undefined) merged.loan = { ...(stored.kind === "loan" ? stored.loan : undefined), ...loan };
 		if (revolving !== undefined) {
 			merged.revolving = { ...(stored.kind === "revolving" ? stored.revolving : undefined), ...revolving };

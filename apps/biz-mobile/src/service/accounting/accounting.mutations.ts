@@ -1,534 +1,331 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-	addAccount,
-	updateAccount,
-	deleteAccount,
-	addExpense,
-	updateExpense,
-	deleteExpense,
-	addAsset,
-	updateAsset,
-	deleteAsset,
-	addIncome,
-	updateIncome,
-	deleteIncome,
-	setCareerIncome,
-	addLiability,
-	updateLiability,
-	deleteLiability,
-	recordTransfer,
-	deleteTransfer,
-	type Account,
-	type AccountingSnapshot,
-	type Asset,
-	type Expense,
-	type Income,
-	type Liability,
-	type Transfer,
+import { useMutation, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import type {
+	BookAsset,
+	BookEntity,
+	BookExpense,
+	BookIncome,
+	BookLiability,
+	BookTransfer,
+	Stored,
 } from "@excited-live/accounting";
-import { accountingApi } from "./accounting.api";
+import {
+	accountingApi,
+	type CreateEntityInput,
+	type CreateTransferInput,
+	type Patch,
+	type SetCareerInput,
+	type UpdateTransferInput,
+} from "./accounting.api";
 import { accountingKeys } from "./accounting.keys";
+import { defaultCashAssetId, primaryEmploymentIncome } from "./accounting.mappers";
 
-interface MutationContext {
-	previousSnapshot?: AccountingSnapshot;
+type Row = { id: string };
+type Rows<T> = Stored<T>[];
+
+interface ListSnapshot {
+	queryKey: QueryKey;
+	rows: unknown;
 }
 
-export function useAddAccount() {
+interface WriteOptions<TVars, T extends Row> {
+	/** The list the write edits optimistically. */
+	list: QueryKey;
+	write: (vars: TVars) => Promise<unknown>;
+	/** Cache edit applied before the request. Not run while the list is still loading. */
+	optimistic?: (rows: Rows<T>, vars: TVars, queryClient: QueryClient) => Rows<T>;
+	/** Other lists the write changes on the server (cascades), refetched once it settles. */
+	refresh?: QueryKey[];
+}
+
+/**
+ * One write: optimistic edit of `list`, rollback on error, and a refetch of the
+ * touched lists plus the computed views (ledger, summary, cash flows) on settle.
+ */
+function useWrite<TVars, T extends Row>({ list, write, optimistic, refresh = [] }: WriteOptions<TVars, T>) {
 	const queryClient = useQueryClient();
 
-	return useMutation<Account, Error, { name: string; imageUrl?: string; id?: string; asOf?: string }, MutationContext>({
-		mutationFn: (data) => accountingApi.createAccount(data),
-		onMutate: async (newAccount) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				const result = addAccount(previousSnapshot, newAccount);
-				queryClient.setQueryData<AccountingSnapshot>(accountingKeys.snapshot(), result.snapshot);
+	return useMutation<unknown, Error, TVars, ListSnapshot>({
+		mutationFn: write,
+		onMutate: async (vars) => {
+			await queryClient.cancelQueries({ queryKey: list });
+			const snapshot: ListSnapshot = { queryKey: list, rows: queryClient.getQueryData(list) };
+			if (optimistic) {
+				queryClient.setQueryData<Rows<T>>(list, (rows) => (rows ? optimistic(rows, vars, queryClient) : rows));
 			}
-			return { previousSnapshot };
+			return snapshot;
 		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
+		onError: (_error, _vars, snapshot) => {
+			if (snapshot) {
+				queryClient.setQueryData(snapshot.queryKey, snapshot.rows);
 			}
 		},
 		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
+			const computed: QueryKey[] = [[...accountingKeys.all, "ledger"], accountingKeys.summary(), accountingKeys.cashFlows()];
+			for (const queryKey of [list, ...refresh, ...computed]) {
+				queryClient.invalidateQueries({ queryKey });
+			}
 		},
 	});
 }
 
-export function useUpdateAccount() {
-	const queryClient = useQueryClient();
+const nowIso = () => new Date().toISOString();
 
-	return useMutation<Account, Error, { id: string; data: Partial<Account> }, MutationContext>({
-		mutationFn: ({ id, data }) => accountingApi.updateAccount(id, data),
-		onMutate: async ({ id, data }) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					updateAccount(previousSnapshot, id, data),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+/** Adds the stored-record meta fields to an optimistic row; a previous row keeps its own. */
+function withMeta<T extends Row>(row: T, previous?: Stored<T>): Stored<T> {
+	const at = nowIso();
+	return { ...row, version: previous?.version ?? 1, createdAt: previous?.createdAt ?? at, updatedAt: at };
+}
+
+function upsertRow<T extends Row>(rows: Rows<T>, row: T): Rows<T> {
+	const previous = rows.find((r) => r.id === row.id);
+	const stored = withMeta(row, previous);
+	return previous ? rows.map((r) => (r.id === row.id ? stored : r)) : [...rows, stored];
+}
+
+/** Merges a partial update as the server does: undefined keeps a field, null clears it. */
+function patchRow<T extends Row>(rows: Rows<T>, id: string, patch: Patch<T> | Partial<T>): Rows<T> {
+	return rows.map((r) => {
+		if (r.id !== id) return r;
+		const next: Record<string, unknown> = { ...r, updatedAt: nowIso() };
+		for (const [key, value] of Object.entries(patch)) {
+			if (value === undefined) continue;
+			if (value === null) delete next[key];
+			else next[key] = value;
+		}
+		return next as unknown as Stored<T>;
 	});
 }
 
-export function useDeleteAccount() {
-	const queryClient = useQueryClient();
+function removeRow<T extends Row>(rows: Rows<T>, id: string): Rows<T> {
+	return rows.filter((r) => r.id !== id);
+}
 
-	return useMutation<boolean, Error, string, MutationContext>({
-		mutationFn: (id) => accountingApi.deleteAccount(id),
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					deleteAccount(previousSnapshot, id),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+// ENTITIES
+
+export function useCreateEntity() {
+	return useWrite<CreateEntityInput, BookEntity>({
+		list: accountingKeys.entities(),
+		write: (data) => accountingApi.createEntity(data),
+		optimistic: (rows, data) =>
+			upsertRow(rows, {
+				id: data.id,
+				name: data.name,
+				imageUrl: data.imageUrl,
+				type: "business",
+				currency: "THB",
+				active: true,
+			}),
+		// The server creates the business's default wallet with it.
+		refresh: [accountingKeys.assets()],
 	});
 }
 
-export function useAddExpense() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Expense, Error, Omit<Expense, "id"> & { id?: string }, MutationContext>({
-		mutationFn: (data) => accountingApi.createExpense(data),
-		onMutate: async (newExpense) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				const result = addExpense(previousSnapshot, newExpense);
-				queryClient.setQueryData<AccountingSnapshot>(accountingKeys.snapshot(), result.snapshot);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+export function useUpdateEntity() {
+	return useWrite<{ id: string; patch: Patch<BookEntity> }, BookEntity>({
+		list: accountingKeys.entities(),
+		write: ({ id, patch }) => accountingApi.updateEntity(id, patch),
+		optimistic: (rows, { id, patch }) => patchRow(rows, id, patch),
 	});
 }
 
-export function useUpdateExpense() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Expense, Error, Expense, MutationContext>({
-		mutationFn: (expense) => accountingApi.updateExpense(expense.id, expense),
-		onMutate: async (expense) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					updateExpense(previousSnapshot, expense),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+export function useDeleteEntity() {
+	return useWrite<string, BookEntity>({
+		list: accountingKeys.entities(),
+		write: (id) => accountingApi.deleteEntity(id),
+		optimistic: (rows, id) => removeRow(rows, id),
+		// Deleting an entity cascades to every record it owns.
+		refresh: [
+			accountingKeys.assets(),
+			accountingKeys.incomes(),
+			accountingKeys.expenses(),
+			accountingKeys.liabilities(),
+			accountingKeys.transfers(),
+		],
 	});
 }
 
-export function useDeleteExpense() {
-	const queryClient = useQueryClient();
+// ASSETS
 
-	return useMutation<boolean, Error, string, MutationContext>({
-		mutationFn: (id) => accountingApi.deleteExpense(id),
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					deleteExpense(previousSnapshot, id),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
-	});
-}
-
-export function useAddAsset() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Asset, Error, Omit<Asset, "id"> & { id?: string }, MutationContext>({
-		mutationFn: (data) => accountingApi.createAsset(data),
-		onMutate: async (newAsset) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				const result = addAsset(previousSnapshot, newAsset);
-				queryClient.setQueryData<AccountingSnapshot>(accountingKeys.snapshot(), result.snapshot);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+export function useCreateAsset() {
+	return useWrite<BookAsset, BookAsset>({
+		list: accountingKeys.assets(),
+		write: (data) => accountingApi.createAsset(data),
+		optimistic: (rows, data) => upsertRow(rows, data),
+		// paidFrom creates a purchase transfer and financing creates a loan, in the same write.
+		refresh: [accountingKeys.transfers(), accountingKeys.liabilities()],
 	});
 }
 
 export function useUpdateAsset() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Asset, Error, Asset, MutationContext>({
-		mutationFn: (asset) => accountingApi.updateAsset(asset.id, asset),
-		onMutate: async (asset) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					updateAsset(previousSnapshot, asset),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+	return useWrite<{ id: string; patch: Patch<BookAsset> }, BookAsset>({
+		list: accountingKeys.assets(),
+		write: ({ id, patch }) => accountingApi.updateAsset(id, patch),
+		optimistic: (rows, { id, patch }) => patchRow(rows, id, patch),
 	});
 }
 
 export function useDeleteAsset() {
-	const queryClient = useQueryClient();
-
-	return useMutation<boolean, Error, string, MutationContext>({
-		mutationFn: (id) => accountingApi.deleteAsset(id),
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					deleteAsset(previousSnapshot, id),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+	return useWrite<string, BookAsset>({
+		list: accountingKeys.assets(),
+		write: (id) => accountingApi.deleteAsset(id),
+		optimistic: (rows, id) => removeRow(rows, id),
+		// Transfers are removed with the asset; incomes, expenses and liabilities are removed or unlinked.
+		refresh: [
+			accountingKeys.incomes(),
+			accountingKeys.expenses(),
+			accountingKeys.liabilities(),
+			accountingKeys.transfers(),
+		],
 	});
 }
 
-export function useAddIncome() {
-	const queryClient = useQueryClient();
+// INCOMES
 
-	return useMutation<Income, Error, Omit<Income, "id"> & { id?: string }, MutationContext>({
-		mutationFn: (data) => accountingApi.createIncome(data),
-		onMutate: async (newIncome) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				const result = addIncome(previousSnapshot, newIncome);
-				queryClient.setQueryData<AccountingSnapshot>(accountingKeys.snapshot(), result.snapshot);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+export function useCreateIncome() {
+	return useWrite<BookIncome, BookIncome>({
+		list: accountingKeys.incomes(),
+		write: (data) => accountingApi.createIncome(data),
+		optimistic: (rows, data) => upsertRow(rows, data),
 	});
 }
 
 export function useUpdateIncome() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Income, Error, Income, MutationContext>({
-		mutationFn: (income) => accountingApi.updateIncome(income.id, income),
-		onMutate: async (income) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					updateIncome(previousSnapshot, income),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+	return useWrite<{ id: string; patch: Patch<BookIncome> }, BookIncome>({
+		list: accountingKeys.incomes(),
+		write: ({ id, patch }) => accountingApi.updateIncome(id, patch),
+		optimistic: (rows, { id, patch }) => patchRow(rows, id, patch),
 	});
 }
 
 export function useDeleteIncome() {
-	const queryClient = useQueryClient();
-
-	return useMutation<boolean, Error, string, MutationContext>({
-		mutationFn: (id) => accountingApi.deleteIncome(id),
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					deleteIncome(previousSnapshot, id),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+	return useWrite<string, BookIncome>({
+		list: accountingKeys.incomes(),
+		write: (id) => accountingApi.deleteIncome(id),
+		optimistic: (rows, id) => removeRow(rows, id),
+		// Expenses that cost this income are unlinked (SET NULL).
+		refresh: [accountingKeys.expenses()],
 	});
 }
 
 export function useSetCareerIncome() {
-	const queryClient = useQueryClient();
-
-	return useMutation<
-		AccountingSnapshot,
-		Error,
-		{
-			entityId: string;
-			salary: number;
-			paydayDayOfMonth?: number;
-			title?: string;
-			company?: string;
-			imageUrl?: string;
-			startMonth?: string;
-			endMonth?: string;
-		},
-		MutationContext
-	>({
-		mutationFn: (data) => accountingApi.setCareerIncome(data),
-		onMutate: async (command) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					setCareerIncome(previousSnapshot, command),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
+	return useWrite<SetCareerInput, BookIncome>({
+		list: accountingKeys.incomes(),
+		write: (data) => accountingApi.setCareerIncome(data),
+		optimistic: (rows, input) => {
+			const primary = primaryEmploymentIncome(rows, input.entityId);
+			if (!primary) return rows;
+			return patchRow(rows, primary.id, {
+				amount: input.salary,
+				active: input.salary > 0,
+				dayOfMonth: input.paydayDayOfMonth,
+				imageUrl: input.imageUrl,
+				employment: {
+					title: input.title ?? primary.employment?.title,
+					employer: input.company ?? primary.employment?.employer,
+				},
+			});
 		},
 	});
 }
 
-export function useAddLiability() {
-	const queryClient = useQueryClient();
+// EXPENSES
 
-	return useMutation<Liability, Error, Omit<Liability, "id"> & { id?: string }, MutationContext>({
-		mutationFn: (data) => accountingApi.createLiability(data),
-		onMutate: async (newLiability) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				const result = addLiability(previousSnapshot, newLiability);
-				queryClient.setQueryData<AccountingSnapshot>(accountingKeys.snapshot(), result.snapshot);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+export function useCreateExpense() {
+	return useWrite<BookExpense, BookExpense>({
+		list: accountingKeys.expenses(),
+		write: (data) => accountingApi.createExpense(data),
+		optimistic: (rows, data) => upsertRow(rows, data),
+	});
+}
+
+export function useUpdateExpense() {
+	return useWrite<{ id: string; patch: Patch<BookExpense> }, BookExpense>({
+		list: accountingKeys.expenses(),
+		write: ({ id, patch }) => accountingApi.updateExpense(id, patch),
+		optimistic: (rows, { id, patch }) => patchRow(rows, id, patch),
+	});
+}
+
+export function useDeleteExpense() {
+	return useWrite<string, BookExpense>({
+		list: accountingKeys.expenses(),
+		write: (id) => accountingApi.deleteExpense(id),
+		optimistic: (rows, id) => removeRow(rows, id),
+	});
+}
+
+// LIABILITIES
+
+export function useCreateLiability() {
+	return useWrite<BookLiability, BookLiability>({
+		list: accountingKeys.liabilities(),
+		write: (data) => accountingApi.createLiability(data),
+		optimistic: (rows, data) => upsertRow(rows, data),
 	});
 }
 
 export function useUpdateLiability() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Liability, Error, Liability, MutationContext>({
-		mutationFn: (liability) => accountingApi.updateLiability(liability.id, liability),
-		onMutate: async (liability) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					updateLiability(previousSnapshot, liability),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+	return useWrite<{ id: string; patch: Patch<BookLiability> }, BookLiability>({
+		list: accountingKeys.liabilities(),
+		write: ({ id, patch }) => accountingApi.updateLiability(id, patch),
+		optimistic: (rows, { id, patch }) => patchRow(rows, id, patch),
 	});
 }
 
 export function useDeleteLiability() {
-	const queryClient = useQueryClient();
+	return useWrite<string, BookLiability>({
+		list: accountingKeys.liabilities(),
+		write: (id) => accountingApi.deleteLiability(id),
+		optimistic: (rows, id) => removeRow(rows, id),
+		// Card charges and transfers into the liability are unlinked or removed.
+		refresh: [accountingKeys.expenses(), accountingKeys.transfers()],
+	});
+}
 
-	return useMutation<boolean, Error, string, MutationContext>({
-		mutationFn: (id) => accountingApi.deleteLiability(id),
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					deleteLiability(previousSnapshot, id),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
+// TRANSFERS
+
+export function useCreateTransfer() {
+	return useWrite<CreateTransferInput, BookTransfer>({
+		list: accountingKeys.transfers(),
+		write: (data) => accountingApi.createTransfer(data),
+		optimistic: (rows, input, queryClient) => {
+			// Resolve the endpoints the way the server does; leave the row out when they cannot be resolved.
+			const assets = queryClient.getQueryData<Stored<BookAsset>[]>(accountingKeys.assets()) ?? [];
+			const fromAssetId =
+				input.fromAssetId ?? (input.fromEntityId ? defaultCashAssetId(assets, input.fromEntityId) : undefined);
+			const toLiabilityId = input.toLiabilityId;
+			const toAssetId = toLiabilityId
+				? undefined
+				: (input.toAssetId ?? (input.toEntityId ? defaultCashAssetId(assets, input.toEntityId) : undefined));
+			if (!fromAssetId || (!toLiabilityId && !toAssetId)) return rows;
+			return upsertRow(rows, {
+				id: input.id,
+				amount: input.amount,
+				date: input.date,
+				cycle: input.cycle ?? "one_time",
+				note: input.note ?? "",
+				fromAssetId,
+				toAssetId,
+				toLiabilityId,
+			});
 		},
 	});
 }
 
-export function useAddTransfer() {
-	const queryClient = useQueryClient();
-
-	return useMutation<Transfer, Error, Omit<Transfer, "id"> & { id?: string }, MutationContext>({
-		mutationFn: (data) => accountingApi.createTransfer(data),
-		onMutate: async (newTransfer) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				const result = recordTransfer(previousSnapshot, newTransfer);
-				queryClient.setQueryData<AccountingSnapshot>(accountingKeys.snapshot(), result.snapshot);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+export function useUpdateTransfer() {
+	return useWrite<{ id: string; patch: UpdateTransferInput }, BookTransfer>({
+		list: accountingKeys.transfers(),
+		write: ({ id, patch }) => accountingApi.updateTransfer(id, patch),
+		// Endpoint changes are re-resolved by the server; the refetch shows them.
+		optimistic: (rows, { id, patch }) =>
+			patchRow(rows, id, { amount: patch.amount, date: patch.date, cycle: patch.cycle, note: patch.note }),
 	});
 }
 
 export function useDeleteTransfer() {
-	const queryClient = useQueryClient();
-
-	return useMutation<boolean, Error, string, MutationContext>({
-		mutationFn: (id) => accountingApi.deleteTransfer(id),
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });
-			const previousSnapshot = queryClient.getQueryData<AccountingSnapshot>(accountingKeys.snapshot());
-			if (previousSnapshot) {
-				queryClient.setQueryData<AccountingSnapshot>(
-					accountingKeys.snapshot(),
-					deleteTransfer(previousSnapshot, id),
-				);
-			}
-			return { previousSnapshot };
-		},
-		onError: (_err, _variables, context) => {
-			if (context?.previousSnapshot) {
-				queryClient.setQueryData(accountingKeys.snapshot(), context.previousSnapshot);
-			}
-		},
-		onSettled: () => {
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
-	});
-}
-
-export function useReplaceSnapshot() {
-	const queryClient = useQueryClient();
-
-	return useMutation<AccountingSnapshot, Error, Omit<AccountingSnapshot, "updatedAt">, MutationContext>({
-		mutationFn: (data) => accountingApi.replaceSnapshot(data),
-		onSuccess: (data) => {
-			queryClient.setQueryData(accountingKeys.snapshot(), data);
-			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
-		},
+	return useWrite<string, BookTransfer>({
+		list: accountingKeys.transfers(),
+		write: (id) => accountingApi.deleteTransfer(id),
+		optimistic: (rows, id) => removeRow(rows, id),
 	});
 }

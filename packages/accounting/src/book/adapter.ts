@@ -74,6 +74,8 @@ function bookEntityToAccount(entity: BookEntity, job?: BookIncome): Account {
 			careerCompany: job?.employment?.employer,
 			careerImageUrl: job?.imageUrl,
 			paydayDayOfMonth: job?.dayOfMonth,
+			// Mirrors the primary salary onto the account, as the engine's career commands do.
+			salary: job?.amount,
 		}),
 	};
 }
@@ -155,6 +157,15 @@ function bookIncomeToIncome(income: BookIncome): Income {
 	};
 }
 
+/**
+ * The renewal date a recurring expense was entered with (e.g. a yearly domain
+ * renewing in March). Display-only, kept in `details.renewalDate`.
+ */
+function renewalDateOf(expense: BookExpense): string | undefined {
+	const date = expense.details?.renewalDate;
+	return expense.cycle !== "one_time" && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
+}
+
 function bookExpenseToExpense(expense: BookExpense): Expense {
 	// Engine expenses carry a date, not a day rule: the day is clamped to the month length.
 	const day = Math.min(expense.dayOfMonth ?? 1, daysInMonth(expense.startMonth));
@@ -165,7 +176,7 @@ function bookExpenseToExpense(expense: BookExpense): Expense {
 		amount: expense.amount,
 		cycle: expense.cycle,
 		category: expense.category,
-		nextRenewalDate: `${expense.startMonth}-${pad2(day)}`,
+		nextRenewalDate: renewalDateOf(expense) ?? `${expense.startMonth}-${pad2(day)}`,
 		active: expense.active,
 		startMonth: expense.startMonth,
 		...defined({
@@ -368,6 +379,7 @@ export function expenseToBookExpense(expense: Expense): BookExpense {
 			paidFromLiabilityId: expense.paidFromLiabilityId,
 			assetId: expense.assetId,
 			incomeId: expense.incomeId,
+			details: !oneTime && renewalDay !== undefined ? { renewalDate: expense.nextRenewalDate.slice(0, 10) } : undefined,
 		}),
 	};
 }

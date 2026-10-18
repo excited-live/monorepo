@@ -635,3 +635,25 @@ describe("computed reads", () => {
 	});
 });
 
+
+describe("PATCH clearing", () => {
+	it("null clears an optional field, undefined keeps it", async () => {
+		const me = await personalEntity();
+		const expense = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Gym",
+			category: "health",
+			amount: 1500,
+			notes: "annual plan",
+			endMonth: "2027-06",
+		});
+
+		const kept = await service.updateExpense(USER, expense.id, { amount: 1600 });
+		expect(kept.notes).toBe("annual plan");
+
+		const cleared = await service.updateExpense(USER, expense.id, { notes: null, endMonth: null });
+		expect(cleared.notes).toBeUndefined();
+		expect(cleared.endMonth).toBeUndefined();
+		expect(cleared.amount).toBe(1600);
+	});
+});

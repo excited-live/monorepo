@@ -353,6 +353,7 @@ describe("@excited-live/accounting - book adapter", () => {
 				active: true,
 				dayOfMonth: 20,
 				paidFromLiabilityId: "liab_card",
+				details: { renewalDate: "2026-01-20" },
 			});
 			expect(expenseToBookExpense(netflix).dayOfMonth).toBe(5);
 		});
@@ -639,5 +640,42 @@ describe("@excited-live/accounting - book adapter", () => {
 				}),
 			]);
 		});
+	});
+});
+
+describe("display fields the UI reads", () => {
+	it("keeps a yearly expense's renewal date and mirrors the primary salary onto the account", () => {
+		const domain: Expense = {
+			id: "sub_domain",
+			entityId: "acc_personal",
+			name: "Domain",
+			amount: 600,
+			cycle: "yearly",
+			category: "subscription",
+			nextRenewalDate: "2027-03-02",
+			active: true,
+			startMonth: "2026-01",
+		};
+		const salary: Income = {
+			id: "rev_salary",
+			entityId: "acc_personal",
+			name: "Salary",
+			amount: 85000,
+			frequency: "monthly",
+			source: "salary",
+			active: true,
+			startMonth: "2026-01",
+		};
+		const account: Account = { id: "acc_personal", name: "Personal", type: "personal", cashReserve: 0, currency: "THB" };
+		const book = snapshotToBook({
+			accounts: [account],
+			subscriptions: [domain],
+			hardware: [],
+			revenues: [salary],
+			transfers: [],
+		});
+		const back = bookToSnapshot(book);
+		expect(back.subscriptions[0]?.nextRenewalDate).toBe("2027-03-02");
+		expect(back.accounts[0]?.salary).toBe(85000);
 	});
 });

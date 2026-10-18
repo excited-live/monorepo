@@ -1,33 +1,47 @@
 import { useCallback, useMemo } from "react";
-import type {
-	CapitalTransfer,
-	EntityAccount,
-	HardwareAsset,
-	LiabilityStream,
-	RecurringSubscription,
-	RevenueStream,
+import {
+	assetToBookAsset,
+	bookToSnapshot,
+	expenseToBookExpense,
+	incomeToBookIncome,
+	liabilityToBookLiability,
+	type CapitalTransfer,
+	type EntityAccount,
+	type HardwareAsset,
+	type LiabilityStream,
+	type RecurringSubscription,
+	type RevenueStream,
 } from "@excited-live/accounting";
 import {
-	useAccountingSnapshot,
-	useAddAccount,
-	useUpdateAccount,
-	useDeleteAccount,
-	useAddExpense,
-	useUpdateExpense,
-	useDeleteExpense,
-	useAddAsset,
-	useUpdateAsset,
+	useAccountingBook,
+	useCreateAsset,
+	useCreateEntity,
+	useCreateExpense,
+	useCreateIncome,
+	useCreateLiability,
+	useCreateTransfer,
 	useDeleteAsset,
-	useAddIncome,
-	useUpdateIncome,
+	useDeleteEntity,
+	useDeleteExpense,
 	useDeleteIncome,
-	useSetCareerIncome,
-	useAddLiability,
-	useUpdateLiability,
 	useDeleteLiability,
-	useAddTransfer,
 	useDeleteTransfer,
+	useSetCareerIncome,
+	useUpdateAsset,
+	useUpdateEntity,
+	useUpdateExpense,
+	useUpdateIncome,
+	useUpdateLiability,
+	useUpdateTransfer,
 } from "../../service/accounting";
+import {
+	careerInput,
+	localDay,
+	localMonth,
+	transferDestination,
+	replacing,
+	transferEndpointsPatch,
+} from "../../service/accounting/accounting.mappers";
 
 export interface FinancesSlice {
 	accounts: EntityAccount[];
@@ -95,31 +109,34 @@ const DEFAULT_ACCOUNTS: EntityAccount[] = [
 ];
 
 export function useFinances(): FinancesSlice {
-	const { data: snapshot } = useAccountingSnapshot();
+	const { book } = useAccountingBook();
+	// Engine-shaped lists, derived from the normalized book. Undefined while the book loads.
+	const snapshot = useMemo(() => (book ? bookToSnapshot(book) : undefined), [book]);
 
-	const addAccountMutation = useAddAccount();
-	const updateAccountMutation = useUpdateAccount();
-	const deleteAccountMutation = useDeleteAccount();
+	const createEntity = useCreateEntity();
+	const updateEntity = useUpdateEntity();
+	const deleteEntity = useDeleteEntity();
 
-	const addExpenseMutation = useAddExpense();
-	const updateExpenseMutation = useUpdateExpense();
-	const deleteExpenseMutation = useDeleteExpense();
+	const createAsset = useCreateAsset();
+	const updateAsset = useUpdateAsset();
+	const deleteAsset = useDeleteAsset();
 
-	const addAssetMutation = useAddAsset();
-	const updateAssetMutation = useUpdateAsset();
-	const deleteAssetMutation = useDeleteAsset();
-
-	const addIncomeMutation = useAddIncome();
-	const updateIncomeMutation = useUpdateIncome();
-	const deleteIncomeMutation = useDeleteIncome();
+	const createIncome = useCreateIncome();
+	const updateIncome = useUpdateIncome();
+	const deleteIncome = useDeleteIncome();
 	const setCareerIncomeMutation = useSetCareerIncome();
 
-	const addLiabilityMutation = useAddLiability();
+	const createExpense = useCreateExpense();
+	const updateExpense = useUpdateExpense();
+	const deleteExpense = useDeleteExpense();
+
+	const createLiability = useCreateLiability();
 	const updateLiabilityMutation = useUpdateLiability();
 	const deleteLiabilityMutation = useDeleteLiability();
 
-	const addTransferMutation = useAddTransfer();
-	const deleteTransferMutation = useDeleteTransfer();
+	const createTransfer = useCreateTransfer();
+	const updateTransfer = useUpdateTransfer();
+	const deleteTransfer = useDeleteTransfer();
 
 	const accounts = useMemo(() => snapshot?.accounts ?? DEFAULT_ACCOUNTS, [snapshot?.accounts]);
 	const subscriptions = useMemo(() => snapshot?.subscriptions ?? [], [snapshot?.subscriptions]);
@@ -128,105 +145,128 @@ export function useFinances(): FinancesSlice {
 	const liabilities = useMemo(() => snapshot?.liabilities ?? [], [snapshot?.liabilities]);
 	const transfers = useMemo(() => snapshot?.transfers ?? [], [snapshot?.transfers]);
 
+	// The owning entity's career fields fill in employment incomes that carry none.
+	const ownerOf = useCallback(
+		(entityId: string) => accounts.find((account) => account.id === entityId),
+		[accounts],
+	);
+
 	const addBusiness = useCallback(
 		(name: string, imageUrl?: string): string => {
-			const id = `acc_biz_${Date.now()}`;
-			const now = new Date();
+			const id = crypto.randomUUID();
 			// Date the new ฿0 wallet to the user's local month, not the server's UTC one
-			const asOf = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-			addAccountMutation.mutate({ id, name, imageUrl, asOf });
+			createEntity.mutate({ id, name, imageUrl, asOf: localMonth(new Date()) });
 			return id;
 		},
-		[addAccountMutation],
+		[createEntity],
 	);
 
 	const updateBusiness = useCallback(
 		(id: string, name: string, imageUrl?: string) => {
-			updateAccountMutation.mutate({ id, data: { name, imageUrl } });
+			updateEntity.mutate({ id, patch: { name, imageUrl: imageUrl ?? null } });
 		},
-		[updateAccountMutation],
+		[updateEntity],
 	);
 
 	const deleteBusiness = useCallback(
 		(id: string) => {
-			deleteAccountMutation.mutate(id);
+			deleteEntity.mutate(id);
 		},
-		[deleteAccountMutation],
+		[deleteEntity],
 	);
 
 	const addSubscription = useCallback(
 		(sub: Omit<RecurringSubscription, "id">) => {
-			addExpenseMutation.mutate(sub);
+			createExpense.mutate(expenseToBookExpense({ ...sub, id: crypto.randomUUID() }));
 		},
-		[addExpenseMutation],
+		[createExpense],
 	);
 
 	const updateSubscription = useCallback(
 		(sub: RecurringSubscription) => {
-			updateExpenseMutation.mutate(sub);
+			updateExpense.mutate({
+				id: sub.id,
+				patch: replacing(expenseToBookExpense(sub), ["notes", "imageUrl", "endMonth", "dayOfMonth"]),
+			});
 		},
-		[updateExpenseMutation],
+		[updateExpense],
 	);
 
 	const deleteSubscription = useCallback(
 		(id: string) => {
-			deleteExpenseMutation.mutate(id);
+			deleteExpense.mutate(id);
 		},
-		[deleteExpenseMutation],
+		[deleteExpense],
 	);
 
 	const addHardware = useCallback(
 		(hw: Omit<HardwareAsset, "id"> & { id?: string }) => {
-			addAssetMutation.mutate(hw);
+			createAsset.mutate(assetToBookAsset({ ...hw, id: hw.id ?? crypto.randomUUID() }));
 		},
-		[addAssetMutation],
+		[createAsset],
 	);
 
 	const updateHardware = useCallback(
 		(hw: HardwareAsset) => {
-			updateAssetMutation.mutate(hw);
+			const record = assetToBookAsset(hw);
+			const current = hardware.find((h) => h.id === hw.id);
+			if (current?.kind !== undefined && current.kind !== record.kind) {
+				// The API rejects kind changes, so replace the asset. The new record gets a new id.
+				// Deleting the asset also drops the transfers into and out of it (see docs/accounting-data-model.md).
+				deleteAsset.mutate(hw.id, {
+					onSuccess: () => createAsset.mutate({ ...record, id: crypto.randomUUID() }),
+				});
+				return;
+			}
+			updateAsset.mutate({ id: hw.id, patch: replacing(record, ["notes", "imageUrl"]) });
 		},
-		[updateAssetMutation],
+		[hardware, createAsset, deleteAsset, updateAsset],
 	);
 
 	const deleteHardware = useCallback(
 		(id: string) => {
-			deleteAssetMutation.mutate(id);
+			deleteAsset.mutate(id);
 		},
-		[deleteAssetMutation],
+		[deleteAsset],
 	);
 
 	const addRevenue = useCallback(
 		(rev: Omit<RevenueStream, "id">) => {
-			addIncomeMutation.mutate(rev);
+			createIncome.mutate(incomeToBookIncome({ ...rev, id: crypto.randomUUID() }, ownerOf(rev.entityId)));
 		},
-		[addIncomeMutation],
+		[createIncome, ownerOf],
 	);
 
 	const updateRevenue = useCallback(
 		(rev: RevenueStream) => {
-			updateIncomeMutation.mutate(rev);
+			updateIncome.mutate({
+				id: rev.id,
+				patch: replacing(incomeToBookIncome(rev, ownerOf(rev.entityId)), ["notes", "imageUrl", "endMonth"]),
+			});
 		},
-		[updateIncomeMutation],
+		[updateIncome, ownerOf],
 	);
 
 	const deleteRevenue = useCallback(
 		(id: string) => {
-			deleteIncomeMutation.mutate(id);
+			deleteIncome.mutate(id);
 		},
-		[deleteIncomeMutation],
+		[deleteIncome],
 	);
 
 	const addLiability = useCallback(
 		(liab: Omit<LiabilityStream, "id">) => {
-			addLiabilityMutation.mutate(liab);
+			createLiability.mutate(liabilityToBookLiability({ ...liab, id: crypto.randomUUID() }));
 		},
-		[addLiabilityMutation],
+		[createLiability],
 	);
 
 	const updateLiability = useCallback(
 		(liab: LiabilityStream) => {
-			updateLiabilityMutation.mutate(liab);
+			updateLiabilityMutation.mutate({
+				id: liab.id,
+				patch: replacing(liabilityToBookLiability(liab), ["notes", "imageUrl", "endMonth"]),
+			});
 		},
 		[updateLiabilityMutation],
 	);
@@ -247,43 +287,43 @@ export function useFinances(): FinancesSlice {
 			frequency: "one_time" | "monthly" = "one_time",
 			targetAssetId?: string,
 		) => {
-			const now = new Date();
-			const y = now.getFullYear();
-			const m = String(now.getMonth() + 1).padStart(2, "0");
-			const d = String(now.getDate()).padStart(2, "0");
-			addTransferMutation.mutate({
+			createTransfer.mutate({
+				id: crypto.randomUUID(),
 				fromEntityId,
-				toEntityId,
 				amount,
-				date: `${y}-${m}-${d}`,
+				date: localDay(new Date()),
 				note,
-				frequency,
-				targetAssetId,
+				cycle: frequency,
+				...transferDestination(targetAssetId, toEntityId),
 			});
 		},
-		[addTransferMutation],
+		[createTransfer],
 	);
 
 	const updateCapitalTransfer = useCallback(
 		(transfer: CapitalTransfer) => {
-			// For transfer update, delete old and add new or record
-			deleteTransferMutation.mutate(transfer.id, {
-				onSuccess: () => {
-					addTransferMutation.mutate(transfer);
+			updateTransfer.mutate({
+				id: transfer.id,
+				patch: {
+					amount: transfer.amount,
+					date: transfer.date,
+					note: transfer.note,
+					cycle: transfer.frequency ?? "one_time",
+					...transferEndpointsPatch(transfer),
 				},
 			});
 		},
-		[addTransferMutation, deleteTransferMutation],
+		[updateTransfer],
 	);
 
 	const deleteCapitalTransfer = useCallback(
 		(id: string) => {
-			deleteTransferMutation.mutate(id);
+			deleteTransfer.mutate(id);
 		},
-		[deleteTransferMutation],
+		[deleteTransfer],
 	);
 
-	const setCareerIncome = useCallback(
+	const setCareerIncomeAction = useCallback(
 		(
 			entityId: string,
 			salary: number,
@@ -319,9 +359,9 @@ export function useFinances(): FinancesSlice {
 				paydayDayOfMonth?: number;
 			},
 		) => {
-			updateAccountMutation.mutate({ id: entityId, data: career });
+			setCareerIncomeMutation.mutate(careerInput(entityId, career, revenues));
 		},
-		[updateAccountMutation],
+		[setCareerIncomeMutation, revenues],
 	);
 
 	return {
@@ -349,7 +389,7 @@ export function useFinances(): FinancesSlice {
 		injectCapital,
 		updateCapitalTransfer,
 		deleteCapitalTransfer,
-		setCareerIncome,
+		setCareerIncome: setCareerIncomeAction,
 		updateCareer,
 	};
 }

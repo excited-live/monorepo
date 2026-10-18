@@ -1,12 +1,12 @@
 import type {
-	Account,
-	AccountingSnapshot,
-	Asset,
-	Expense,
-	Income,
-	Liability,
+	BookAsset,
+	BookEntity,
+	BookExpense,
+	BookIncome,
+	BookLiability,
+	BookTransfer,
 	MonthlyLedger,
-	Transfer,
+	Stored,
 } from "@excited-live/accounting";
 import { accountingClient } from "../http/client";
 
@@ -21,190 +21,214 @@ export class ApiError extends Error {
 	}
 }
 
+/** Body of POST /entities. The server also creates the business's default cash wallet. */
+export interface CreateEntityInput {
+	id: string;
+	name: string;
+	imageUrl?: string;
+	/** Local month (YYYY-MM) the new wallet is dated to. */
+	asOf?: string;
+}
+
+/** Body of POST /transfers. Each end is an asset id, or an entity (its default cash wallet). */
+export interface CreateTransferInput {
+	id: string;
+	amount: number;
+	date: string;
+	cycle?: BookTransfer["cycle"];
+	note?: string;
+	fromAssetId?: string;
+	fromEntityId?: string;
+	toAssetId?: string;
+	toEntityId?: string;
+	toLiabilityId?: string;
+}
+
+/** Body of PATCH /transfers/:id. Naming a destination re-resolves that side. */
+/** PATCH body: any subset of fields; null clears an optional field. */
+export type Patch<T> = { [K in keyof T]?: undefined extends T[K] ? T[K] | null : T[K] };
+
+export type UpdateTransferInput = Partial<Omit<CreateTransferInput, "id">>;
+
+/** Body of POST /incomes/career: sets the entity's primary salary. */
+export interface SetCareerInput {
+	entityId: string;
+	salary: number;
+	paydayDayOfMonth?: number;
+	title?: string;
+	company?: string;
+	imageUrl?: string;
+	startMonth?: string;
+	endMonth?: string;
+}
+
+interface RawResponse {
+	ok: boolean;
+	status: number;
+	json: () => Promise<unknown>;
+}
+
+async function parse<T>(res: RawResponse, message: string): Promise<T> {
+	if (!res.ok) {
+		throw new ApiError(message, res.status);
+	}
+	return (await res.json()) as T;
+}
+
+function check(res: RawResponse, message: string): void {
+	if (!res.ok) {
+		throw new ApiError(message, res.status);
+	}
+}
+
 const api = accountingClient;
 
+// The POST bodies are discriminated by `kind`, while the book records carry the kind as a union. The
+// converters set only the fields of each record's own kind, so the cast only narrows the type.
+type IncomeBody = Parameters<(typeof api.incomes)["$post"]>[0]["json"];
+type LiabilityBody = Parameters<(typeof api.liabilities)["$post"]>[0]["json"];
+
 export const accountingApi = {
-	async getSnapshot(): Promise<AccountingSnapshot> {
-		const res = await api.snapshot.$get();
-		if (!res.ok) {
-			throw new ApiError("Failed to fetch accounting snapshot", res.status);
-		}
-		return (await res.json()) as AccountingSnapshot;
+	// ENTITIES
+	async listEntities(): Promise<Stored<BookEntity>[]> {
+		return parse<Stored<BookEntity>[]>(await api.entities.$get(), "Failed to load entities");
 	},
 
-	async replaceSnapshot(data: Omit<AccountingSnapshot, "updatedAt">): Promise<AccountingSnapshot> {
-		const payload = {
-			...data,
-			liabilities: data.liabilities ?? [],
-		};
-		const res = await api.snapshot.$put({ json: payload });
-		if (!res.ok) {
-			throw new ApiError("Failed to replace accounting snapshot", res.status);
-		}
-		return (await res.json()) as AccountingSnapshot;
+	async createEntity(data: CreateEntityInput): Promise<Stored<BookEntity>> {
+		return parse<Stored<BookEntity>>(await api.entities.$post({ json: data }), "Failed to create entity");
 	},
 
-	async createAccount(data: { name: string; imageUrl?: string; id?: string; asOf?: string }): Promise<Account> {
-		const res = await api.accounts.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to create account", res.status);
-		}
-		return (await res.json()) as Account;
+	async updateEntity(id: string, patch: Patch<BookEntity>): Promise<Stored<BookEntity>> {
+		return parse<Stored<BookEntity>>(
+			await api.entities[":id"].$patch({ param: { id }, json: patch }),
+			"Failed to update entity",
+		);
 	},
 
-	async updateAccount(id: string, data: Partial<Account>): Promise<Account> {
-		const res = await api.accounts[":id"].$put({ param: { id }, json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to update account", res.status);
-		}
-		return (await res.json()) as Account;
+	async deleteEntity(id: string): Promise<void> {
+		check(await api.entities[":id"].$delete({ param: { id } }), "Failed to delete entity");
 	},
 
-	async deleteAccount(id: string): Promise<boolean> {
-		const res = await api.accounts[":id"].$delete({ param: { id } });
-		if (!res.ok) {
-			throw new ApiError("Failed to delete account", res.status);
-		}
-		return true;
+	// ASSETS
+	async listAssets(): Promise<Stored<BookAsset>[]> {
+		return parse<Stored<BookAsset>[]>(await api.assets.$get({ query: {} }), "Failed to load assets");
 	},
 
-	async createExpense(data: Omit<Expense, "id"> & { id?: string }): Promise<Expense> {
-		const res = await api.expenses.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to create expense", res.status);
-		}
-		return (await res.json()) as Expense;
+	async createAsset(data: BookAsset): Promise<Stored<BookAsset>> {
+		return parse<Stored<BookAsset>>(await api.assets.$post({ json: data }), "Failed to create asset");
 	},
 
-	async updateExpense(id: string, data: Expense): Promise<Expense> {
-		const res = await api.expenses[":id"].$put({ param: { id }, json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to update expense", res.status);
-		}
-		return (await res.json()) as Expense;
+	async updateAsset(id: string, patch: Patch<BookAsset>): Promise<Stored<BookAsset>> {
+		return parse<Stored<BookAsset>>(
+			await api.assets[":id"].$patch({ param: { id }, json: patch }),
+			"Failed to update asset",
+		);
 	},
 
-	async deleteExpense(id: string): Promise<boolean> {
-		const res = await api.expenses[":id"].$delete({ param: { id } });
-		if (!res.ok) {
-			throw new ApiError("Failed to delete expense", res.status);
-		}
-		return true;
+	async deleteAsset(id: string): Promise<void> {
+		check(await api.assets[":id"].$delete({ param: { id } }), "Failed to delete asset");
 	},
 
-	async createAsset(data: Omit<Asset, "id"> & { id?: string }): Promise<Asset> {
-		const res = await api.assets.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to create asset", res.status);
-		}
-		return (await res.json()) as Asset;
+	// INCOMES
+	async listIncomes(): Promise<Stored<BookIncome>[]> {
+		return parse<Stored<BookIncome>[]>(await api.incomes.$get({ query: {} }), "Failed to load incomes");
 	},
 
-	async updateAsset(id: string, data: Asset): Promise<Asset> {
-		const res = await api.assets[":id"].$put({ param: { id }, json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to update asset", res.status);
-		}
-		return (await res.json()) as Asset;
+	async createIncome(data: BookIncome): Promise<Stored<BookIncome>> {
+		return parse<Stored<BookIncome>>(
+			await api.incomes.$post({ json: data as IncomeBody }),
+			"Failed to create income",
+		);
 	},
 
-	async deleteAsset(id: string): Promise<boolean> {
-		const res = await api.assets[":id"].$delete({ param: { id } });
-		if (!res.ok) {
-			throw new ApiError("Failed to delete asset", res.status);
-		}
-		return true;
+	async updateIncome(id: string, patch: Patch<BookIncome>): Promise<Stored<BookIncome>> {
+		return parse<Stored<BookIncome>>(
+			// Nested detail objects merge on the server; the RPC type has no null for them.
+			await api.incomes[":id"].$patch({ param: { id }, json: patch as never }),
+			"Failed to update income",
+		);
 	},
 
-	async createIncome(data: Omit<Income, "id"> & { id?: string }): Promise<Income> {
-		const res = await api.incomes.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to create income", res.status);
-		}
-		return (await res.json()) as Income;
+	async deleteIncome(id: string): Promise<void> {
+		check(await api.incomes[":id"].$delete({ param: { id } }), "Failed to delete income");
 	},
 
-	async updateIncome(id: string, data: Income): Promise<Income> {
-		const res = await api.incomes[":id"].$put({ param: { id }, json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to update income", res.status);
-		}
-		return (await res.json()) as Income;
+	async setCareerIncome(data: SetCareerInput): Promise<unknown> {
+		return parse<unknown>(await api.incomes.career.$post({ json: data }), "Failed to update career income");
 	},
 
-	async deleteIncome(id: string): Promise<boolean> {
-		const res = await api.incomes[":id"].$delete({ param: { id } });
-		if (!res.ok) {
-			throw new ApiError("Failed to delete income", res.status);
-		}
-		return true;
+	// EXPENSES
+	async listExpenses(): Promise<Stored<BookExpense>[]> {
+		return parse<Stored<BookExpense>[]>(await api.expenses.$get({ query: {} }), "Failed to load expenses");
 	},
 
-	async setCareerIncome(data: {
-		entityId: string;
-		salary: number;
-		paydayDayOfMonth?: number;
-		title?: string;
-		company?: string;
-		imageUrl?: string;
-		startMonth?: string;
-		endMonth?: string;
-	}): Promise<AccountingSnapshot> {
-		const res = await api.incomes.career.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to update career income", res.status);
-		}
-		return (await res.json()) as AccountingSnapshot;
+	async createExpense(data: BookExpense): Promise<Stored<BookExpense>> {
+		return parse<Stored<BookExpense>>(await api.expenses.$post({ json: data }), "Failed to create expense");
 	},
 
-	async createLiability(data: Omit<Liability, "id"> & { id?: string }): Promise<Liability> {
-		const res = await api.liabilities.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to create liability", res.status);
-		}
-		return (await res.json()) as Liability;
+	async updateExpense(id: string, patch: Patch<BookExpense>): Promise<Stored<BookExpense>> {
+		return parse<Stored<BookExpense>>(
+			await api.expenses[":id"].$patch({ param: { id }, json: patch }),
+			"Failed to update expense",
+		);
 	},
 
-	async updateLiability(id: string, data: Liability): Promise<Liability> {
-		const res = await api.liabilities[":id"].$put({ param: { id }, json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to update liability", res.status);
-		}
-		return (await res.json()) as Liability;
+	async deleteExpense(id: string): Promise<void> {
+		check(await api.expenses[":id"].$delete({ param: { id } }), "Failed to delete expense");
 	},
 
-	async deleteLiability(id: string): Promise<boolean> {
-		const res = await api.liabilities[":id"].$delete({ param: { id } });
-		if (!res.ok) {
-			throw new ApiError("Failed to delete liability", res.status);
-		}
-		return true;
+	// LIABILITIES
+	async listLiabilities(): Promise<Stored<BookLiability>[]> {
+		return parse<Stored<BookLiability>[]>(
+			await api.liabilities.$get({ query: {} }),
+			"Failed to load liabilities",
+		);
 	},
 
-	async createTransfer(data: Omit<Transfer, "id"> & { id?: string }): Promise<Transfer> {
-		const res = await api.transfers.$post({ json: data });
-		if (!res.ok) {
-			throw new ApiError("Failed to record transfer", res.status);
-		}
-		return (await res.json()) as Transfer;
+	async createLiability(data: BookLiability): Promise<Stored<BookLiability>> {
+		return parse<Stored<BookLiability>>(
+			await api.liabilities.$post({ json: data as LiabilityBody }),
+			"Failed to create liability",
+		);
 	},
 
-	async deleteTransfer(id: string): Promise<boolean> {
-		const res = await api.transfers[":id"].$delete({ param: { id } });
-		if (!res.ok) {
-			throw new ApiError("Failed to delete transfer", res.status);
-		}
-		return true;
+	async updateLiability(id: string, patch: Patch<BookLiability>): Promise<Stored<BookLiability>> {
+		return parse<Stored<BookLiability>>(
+			// Nested detail objects merge on the server; the RPC type has no null for them.
+			await api.liabilities[":id"].$patch({ param: { id }, json: patch as never }),
+			"Failed to update liability",
+		);
 	},
 
+	async deleteLiability(id: string): Promise<void> {
+		check(await api.liabilities[":id"].$delete({ param: { id } }), "Failed to delete liability");
+	},
+
+	// TRANSFERS
+	async listTransfers(): Promise<Stored<BookTransfer>[]> {
+		return parse<Stored<BookTransfer>[]>(await api.transfers.$get(), "Failed to load transfers");
+	},
+
+	async createTransfer(data: CreateTransferInput): Promise<Stored<BookTransfer>> {
+		return parse<Stored<BookTransfer>>(await api.transfers.$post({ json: data }), "Failed to record transfer");
+	},
+
+	async updateTransfer(id: string, patch: UpdateTransferInput): Promise<Stored<BookTransfer>> {
+		return parse<Stored<BookTransfer>>(
+			await api.transfers[":id"].$patch({ param: { id }, json: patch }),
+			"Failed to update transfer",
+		);
+	},
+
+	async deleteTransfer(id: string): Promise<void> {
+		check(await api.transfers[":id"].$delete({ param: { id } }), "Failed to delete transfer");
+	},
+
+	// COMPUTED
 	async getLedger(yearMonth: string, entityId?: string): Promise<MonthlyLedger> {
-		const res = await api.ledger[":yearMonth"].$get({
-			param: { yearMonth },
-			query: { entityId },
-		});
-		if (!res.ok) {
-			throw new ApiError("Failed to fetch ledger", res.status);
-		}
-		return (await res.json()) as MonthlyLedger;
+		return parse<MonthlyLedger>(
+			await api.ledger[":yearMonth"].$get({ param: { yearMonth }, query: { entityId } }),
+			"Failed to fetch ledger",
+		);
 	},
 };

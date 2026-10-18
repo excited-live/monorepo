@@ -100,11 +100,11 @@ Type: `object`
 | `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
 | `type` | `"personal"` \| `"business"` | no | Must match the stored type; entity type cannot change. |
 | `name` | `string` | no |  |
-| `currency` | `string` | no |  |
-| `targetSafetyBuffer` | `number` | no |  |
-| `active` | `boolean` | no |  |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
+| `currency` | `string` \| `null` | no |  |
+| `targetSafetyBuffer` | `number` \| `null` | no |  |
+| `active` | `boolean` \| `null` | no |  |
+| `notes` | `string` \| `null` | no |  |
+| `imageUrl` | `string` \| `null` | no |  |
 
 **Responses**
 
@@ -235,26 +235,26 @@ Type: `object`
 | `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
 | `name` | `string` | no |  |
 | `category` | `string` | no |  |
-| `active` | `boolean` | no |  |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-| `details` | map of `any` | no |  |
-| `balance` | `number` | no | Defaults to 0. |
-| `balanceAsOf` | `string` | no | Defaults to the UTC month. |
-| `currency` | `string` | no |  |
-| `isDefault` | `boolean` | no |  |
+| `active` | `boolean` \| `null` | no |  |
+| `notes` | `string` \| `null` | no |  |
+| `imageUrl` | `string` \| `null` | no |  |
+| `details` | map of `any` \| `null` | no |  |
+| `balance` | `number` \| `null` | no |  |
+| `balanceAsOf` | `string` \| `null` | no |  |
+| `currency` | `string` \| `null` | no |  |
+| `isDefault` | `boolean` \| `null` | no |  |
 | `cost` | `number` | no |  |
 | `acquiredOn` | `string` | no |  |
-| `depreciationMethod` | `"straight_line"` \| `"none"` | no |  |
-| `usefulLifeMonths` | `integer` | no |  |
-| `salvageValue` | `number` | no |  |
+| `depreciationMethod` | `"straight_line"` \| `"none"` \| `null` | no |  |
+| `usefulLifeMonths` | `integer` \| `null` | no |  |
+| `salvageValue` | `number` \| `null` | no |  |
 | `instrument` | `string` | no |  |
-| `symbol` | `string` | no |  |
-| `units` | `number` | no |  |
-| `costBasis` | `number` | no |  |
-| `marketValue` | `number` | no |  |
-| `valuedAsOf` | `string` | no |  |
-| `expectedAnnualReturn` | `number` | no |  |
+| `symbol` | `string` \| `null` | no |  |
+| `units` | `number` \| `null` | no |  |
+| `costBasis` | `number` \| `null` | no |  |
+| `marketValue` | `number` \| `null` | no |  |
+| `valuedAsOf` | `string` \| `null` | no |  |
+| `expectedAnnualReturn` | `number` \| `null` | no |  |
 
 **Responses**
 
@@ -384,16 +384,16 @@ Type: `object`
 | `name` | `string` | no |  |
 | `category` | `string` | no |  |
 | `amount` | `number` | no |  |
-| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
-| `dayOfMonth` | `integer` | no |  |
-| `startMonth` | `string` | no |  |
-| `endMonth` | `string` | no |  |
-| `taxCategory` | `"40_1"` \| `"40_2"` \| `"40_3"` \| `"40_4"` \| `"40_5"` \| `"40_6"` \| `"40_7"` \| `"40_8"` | no |  |
-| `depositAssetId` | `string` | no |  |
-| `active` | `boolean` | no |  |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-| `details` | map of `any` | no |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` \| `null` | no |  |
+| `dayOfMonth` | `integer` \| `null` | no |  |
+| `startMonth` | `string` \| `null` | no |  |
+| `endMonth` | `string` \| `null` | no |  |
+| `taxCategory` | `"40_1"` \| `"40_2"` \| `"40_3"` \| `"40_4"` \| `"40_5"` \| `"40_6"` \| `"40_7"` \| `"40_8"` \| `null` | no |  |
+| `depositAssetId` | `string` \| `null` | no |  |
+| `active` | `boolean` \| `null` | no |  |
+| `notes` | `string` \| `null` | no |  |
+| `imageUrl` | `string` \| `null` | no |  |
+| `details` | map of `any` \| `null` | no |  |
 | `employment` | `object` | no |  |
 | `employment.employer` | `string` | no |  |
 | `employment.title` | `string` | no |  |
@@ -580,18 +580,18 @@ Type: `object`
 | `name` | `string` | no |  |
 | `category` | `string` | no |  |
 | `amount` | `number` | no |  |
-| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
-| `dayOfMonth` | `integer` | no |  |
-| `startMonth` | `string` | no |  |
-| `endMonth` | `string` | no |  |
-| `paidFromAssetId` | `string` | no |  |
-| `paidFromLiabilityId` | `string` | no |  |
-| `assetId` | `string` | no |  |
-| `incomeId` | `string` | no |  |
-| `active` | `boolean` | no |  |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-| `details` | map of `any` | no |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` \| `null` | no |  |
+| `dayOfMonth` | `integer` \| `null` | no |  |
+| `startMonth` | `string` \| `null` | no |  |
+| `endMonth` | `string` \| `null` | no |  |
+| `paidFromAssetId` | `string` \| `null` | no |  |
+| `paidFromLiabilityId` | `string` \| `null` | no |  |
+| `assetId` | `string` \| `null` | no |  |
+| `incomeId` | `string` \| `null` | no |  |
+| `active` | `boolean` \| `null` | no |  |
+| `notes` | `string` \| `null` | no |  |
+| `imageUrl` | `string` \| `null` | no |  |
+| `details` | map of `any` \| `null` | no |  |
 
 **Responses**
 
@@ -720,15 +720,15 @@ Type: `object`
 | `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
 | `name` | `string` | no |  |
 | `category` | `string` | no |  |
-| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
-| `dayOfMonth` | `integer` | no |  |
-| `startMonth` | `string` | no |  |
-| `endMonth` | `string` | no |  |
-| `paidFromAssetId` | `string` | no |  |
-| `active` | `boolean` | no |  |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-| `details` | map of `any` | no |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` \| `null` | no |  |
+| `dayOfMonth` | `integer` \| `null` | no |  |
+| `startMonth` | `string` \| `null` | no |  |
+| `endMonth` | `string` \| `null` | no |  |
+| `paidFromAssetId` | `string` \| `null` | no |  |
+| `active` | `boolean` \| `null` | no |  |
+| `notes` | `string` \| `null` | no |  |
+| `imageUrl` | `string` \| `null` | no |  |
+| `details` | map of `any` \| `null` | no |  |
 | `amount` | `number` | no |  |
 | `loan` | `object` | no | Merged shallowly onto the stored loan details. |
 | `loan.principal` | `number` | no |  |

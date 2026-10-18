@@ -9,6 +9,7 @@ import { AutofillBanner, SuggestionChips } from "../../../../components/Autofill
 import { CurrencyInput } from "../../../../components/CurrencyInput";
 import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
+import { selectEntityCurrentLiquid } from "../../../../domain/selectors";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useFinances, useAppUI } from "../../../../state";
@@ -45,8 +46,18 @@ export const AddExpenseDrawer: React.FC<{
 	onClose: () => void;
 	initialData?: RecurringSubscription | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addSubscription, updateSubscription, deleteSubscription, accounts, hardware, injectCapital } =
-		useFinances();
+	const {
+		addSubscription,
+		updateSubscription,
+		deleteSubscription,
+		accounts,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+		injectCapital,
+	} = useFinances();
 	const { activeEntityId } = useAppUI();
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
@@ -69,7 +80,14 @@ export const AddExpenseDrawer: React.FC<{
 
 	const targetBiz = accounts.find((a) => a.id === targetBizId) || businessAccounts[0];
 	const targetBizCashAssets = targetBiz ? hardware.filter((h) => h.entityId === targetBiz.id && isCashAsset(h)) : [];
-	const availablePersonalCash = activeAccount.cashReserve;
+	const availablePersonalCash = selectEntityCurrentLiquid({
+		account: activeAccount,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+	});
 
 	const handleTargetBizChange = (newBizId: string) => {
 		setTargetBizId(newBizId);

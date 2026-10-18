@@ -28,6 +28,7 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 		personalCash,
 		businessCash,
 		eomTreasury,
+		currentTreasury,
 		openCareerEdit,
 		formatType,
 		calculatePaydayCountdown,
@@ -113,6 +114,7 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 					onAddBusiness={handleOpenAddBusiness}
 					onSelectAccount={handleSelectAccount}
 					onOpenCareerEdit={openCareerEdit}
+					treasury={currentTreasury}
 					eomTreasury={eomTreasury}
 					formatType={formatType}
 					calculatePaydayCountdown={calculatePaydayCountdown}

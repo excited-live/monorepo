@@ -9,11 +9,12 @@ import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../EntityThumb";
 import { useModalBack } from "../../hooks/useModalBack";
 import { useFinances, useAppUI } from "../../state";
+import { selectEntityCurrentLiquid } from "../../domain/selectors";
 import { formatMoney } from "../../utils/format";
 import { GLASS_PILL } from "../../utils/ui";
 
 export const Header: React.FC = () => {
-	const { accounts } = useFinances();
+	const { accounts, hardware, subscriptions, revenues, liabilities, transfers } = useFinances();
 	const { activeEntityId, setActiveEntityId, activeTab } = useAppUI();
 	const [isOpen, setIsOpen] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -95,6 +96,14 @@ export const Header: React.FC = () => {
 					<Stack gap={2} width="100%">
 						{accounts.map((acc) => {
 							const isSelected = acc.id === activeEntityId;
+							const treasury = selectEntityCurrentLiquid({
+								account: acc,
+								hardware,
+								subscriptions,
+								revenues,
+								liabilities,
+								transfers,
+							});
 							return (
 								<PlainButton
 									key={acc.id}
@@ -114,7 +123,7 @@ export const Header: React.FC = () => {
 										<Badge variant="neutral" label={acc.type === "business" ? "Business" : "Personal"} />
 									</Stack>
 									<Stack gap={0.5} align="end" className="shrink-0">
-										<Text className="text-[14px] font-bold text-ink">฿{formatMoney(acc.cashReserve)}</Text>
+										<Text className="text-[14px] font-bold text-ink">฿{formatMoney(treasury)}</Text>
 										<Text className="text-[11px] text-slate">THB</Text>
 									</Stack>
 								</PlainButton>

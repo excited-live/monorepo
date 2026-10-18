@@ -18,6 +18,7 @@ import {
 } from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useFinances, useAppUI } from "../../../../state";
+import { selectEntityCurrentLiquid } from "../../../../domain/selectors";
 import { formatMoney } from "../../../../utils/format";
 
 export const CapitalDrawer: React.FC<{
@@ -30,6 +31,8 @@ export const CapitalDrawer: React.FC<{
 		subscriptions,
 		hardware,
 		revenues,
+		liabilities,
+		transfers,
 		injectCapital,
 		updateCapitalTransfer,
 		deleteCapitalTransfer,
@@ -91,14 +94,29 @@ export const CapitalDrawer: React.FC<{
 	const bizInflow = round2(bizRev.reduce((acc, r) => acc + r.amount, 0));
 	const bizNetBurn = Math.max(1, bizOutflow - bizInflow);
 
-	const availablePersonalCash = initialData
-		? personalAccount.cashReserve + initialData.amount
-		: personalAccount.cashReserve;
+	const personalTreasury = selectEntityCurrentLiquid({
+		account: personalAccount,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+	});
+	const bizTreasury = selectEntityCurrentLiquid({
+		account: targetBiz,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+	});
+
+	const availablePersonalCash = initialData ? personalTreasury + initialData.amount : personalTreasury;
 
 	const simulation = simulateCapitalTransfer(
-		personalAccount.cashReserve,
+		personalTreasury,
 		personalBurn,
-		targetBiz.cashReserve,
+		bizTreasury,
 		bizNetBurn,
 		transferAmount,
 	);
@@ -230,14 +248,14 @@ export const CapitalDrawer: React.FC<{
 					<HStack width="100%" justify="between" gap={2}>
 						<Text className="text-[13px] text-slate">Personal Runway</Text>
 						<Text className="text-[13px] font-semibold">
-							{personalBurn > 0 ? round2(personalAccount.cashReserve / personalBurn) : "∞"} mos →{" "}
+							{personalBurn > 0 ? round2(personalTreasury / personalBurn) : "∞"} mos →{" "}
 							<Text className="text-signal">{formatRunway(simulation.fromNewRunway)}</Text>
 						</Text>
 					</HStack>
 					<HStack width="100%" justify="between" gap={2}>
 						<Text className="text-[13px] text-slate">{targetBiz.name} Runway</Text>
 						<Text className="text-[13px] font-semibold">
-							{bizNetBurn > 0 ? round2(targetBiz.cashReserve / bizNetBurn) : "∞"} mos →{" "}
+							{bizNetBurn > 0 ? round2(bizTreasury / bizNetBurn) : "∞"} mos →{" "}
 							<Text className="text-[#059669]">{formatRunway(simulation.toNewRunway)}</Text>
 						</Text>
 					</HStack>

@@ -28,6 +28,23 @@ export {
 };
 
 /**
+ * Current spendable cash for one entity: the sum of its cash assets' balances
+ * (net of transfers). Use this instead of the deprecated `cashReserve` field,
+ * which is always 0 now that cash lives in asset rows.
+ */
+export function selectEntityCurrentLiquid(params: {
+	account: EntityAccount;
+	hardware: HardwareAsset[];
+	subscriptions: RecurringSubscription[];
+	revenues: RevenueStream[];
+	liabilities: LiabilityStream[];
+	transfers: CapitalTransfer[];
+	yearMonth?: string;
+}): number {
+	return calculateEntityWealthMetrics(params).currentLiquid;
+}
+
+/**
  * Pure ViewModel Selector: transforms raw cash hardware entries into rich CashWalletViewModels.
  * Strictly separates Stock (current balance in hand today) from Flow (net monthly operating cash).
  */

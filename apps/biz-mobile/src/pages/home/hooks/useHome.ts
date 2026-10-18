@@ -9,6 +9,7 @@ import {
 import {
 	calculateConsolidatedWealth,
 	calculatePaydayCountdown,
+	selectEntityCurrentLiquid,
 } from "../../../domain/selectors";
 import { useFinances, useAppUI } from "../../../state";
 import { t } from "../../../utils/i18n";
@@ -86,6 +87,17 @@ export function useHome() {
 			transfers,
 		});
 
+	/** Spendable cash today for a single account (derived from cash assets). */
+	const currentTreasury = (acc: EntityAccount) =>
+		selectEntityCurrentLiquid({
+			account: acc,
+			subscriptions,
+			revenues,
+			liabilities,
+			hardware,
+			transfers,
+		});
+
 	const openCareerEdit = (acc: EntityAccount) => {
 		setActiveEntityId(acc.id);
 		setIsCareerOpen(true);
@@ -155,6 +167,7 @@ export function useHome() {
 		personalCash,
 		businessCash,
 		eomTreasury,
+		currentTreasury,
 		openCareerEdit,
 		formatType,
 		calculatePaydayCountdown,

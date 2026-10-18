@@ -3,7 +3,7 @@ name: design_system
 description: >-
   How packages/design-system (@excited-live/design-system) works: the Mastercard theme token pipeline,
   the public component surface app code must use, the no-raw-HTML lint rule, and the Dialog/Layout
-  quirks. Use this skill when styling or building UI in apps/webapp or apps/tax-webapp, editing the
+  quirks. Use this skill when styling or building UI in apps/webapp, editing the
   Mastercard theme, or when ESLint blocks a raw element.
 ---
 
@@ -11,7 +11,7 @@ description: >-
 
 `packages/design-system` is the single UI surface for excited.live apps: the Mastercard theme (tokens plus generated CSS), zero-style primitives, and one re-export surface for Astryx so app code imports from one place.
 
-Consumers today: `apps/webapp` and `apps/tax-webapp`. The Astro landing app (`apps/landingpage`) does NOT use this package; it has its own styling.
+Consumers today: `apps/webapp`. The Astro landing app (`apps/landingpage`) does NOT use this package; it has its own styling.
 
 ---
 
@@ -75,7 +75,6 @@ See `references/component_inventory.md` for the full export list with when-to-us
 
 > Raw HTML is not allowed in app code. Use a component instead: Astryx components or primitives from @excited-live/design-system (Box, Text, Heading, PlainButton, Svg/SvgLine/SvgPath, SvgIcon, AppDocument). If no primitive fits, add one to packages/design-system.
 
-- Scope today: `apps/webapp/src/**/*.{ts,tsx}`. `apps/tax-webapp` consumes the package but is not in the ban scope yet.
 - Banned elements include div, span, p, headings, button, a, lists, img, form controls, table, and the svg primitives; the full list is the `FORBIDDEN_HTML` array in `eslint.config.mjs`.
 - Allowed home: raw elements live in this package ("packages/design-system itself is the allowed home for raw elements"). If no primitive fits your case, add one here, the way `Img` and `AppDocument` were added, instead of disabling the rule in app code.
 

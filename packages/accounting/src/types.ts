@@ -2,7 +2,7 @@ export type EntityType = "personal" | "business";
 
 export type BillingCycle = "weekly" | "monthly" | "quarterly" | "semi-annual" | "yearly" | "one_time";
 
-export interface EntityAccount {
+export interface Account {
 	id: string;
 	name: string;
 	type: EntityType;
@@ -19,8 +19,9 @@ export interface EntityAccount {
 	careerCompany?: string;
 	careerImageUrl?: string;
 }
+export type EntityAccount = Account;
 
-export interface CapitalTransfer {
+export interface Transfer {
 	id: string;
 	fromEntityId: string;
 	toEntityId: string;
@@ -30,8 +31,9 @@ export interface CapitalTransfer {
 	targetAssetId?: string;
 	frequency?: "one_time" | "monthly";
 }
+export type CapitalTransfer = Transfer;
 
-export interface RecurringSubscription {
+export interface Expense {
 	id: string;
 	entityId: string;
 	name: string;
@@ -44,8 +46,9 @@ export interface RecurringSubscription {
 	notes?: string;
 	imageUrl?: string;
 }
+export type RecurringSubscription = Expense;
 
-export type HardwareCategory =
+export type AssetCategory =
 	| "laptop"
 	| "phone"
 	| "tablet"
@@ -58,8 +61,9 @@ export type HardwareCategory =
 	| "cash"
 	| "other"
 	| (string & {});
+export type HardwareCategory = AssetCategory;
 
-export interface HardwareAsset {
+export interface Asset {
 	id: string;
 	entityId: string;
 	name: string;
@@ -67,10 +71,11 @@ export interface HardwareAsset {
 	lifespanMonths: number;
 	purchaseDate: string; // YYYY-MM-DD or YYYY-MM
 	salvageValue?: number;
-	category: HardwareCategory;
+	category: AssetCategory;
 	imageUrl?: string;
 	isDefault?: boolean;
 }
+export type HardwareAsset = Asset;
 
 export interface CashWallet {
 	id: string;
@@ -83,7 +88,7 @@ export interface CashWallet {
 	imageUrl?: string;
 }
 
-export interface RevenueStream {
+export interface Income {
 	id: string;
 	entityId: string;
 	name: string;
@@ -96,6 +101,7 @@ export interface RevenueStream {
 	notes?: string;
 	imageUrl?: string;
 }
+export type RevenueStream = Income;
 
 export type LiabilityCategory =
 	| "mortgage"
@@ -109,7 +115,7 @@ export type LiabilityCategory =
 	| "other"
 	| (string & {});
 
-export interface LiabilityStream {
+export interface Liability {
 	id: string;
 	entityId: string;
 	name: string;
@@ -119,6 +125,7 @@ export interface LiabilityStream {
 	notes?: string;
 	imageUrl?: string;
 }
+export type LiabilityStream = Liability;
 
 export interface DepreciationCalculation {
 	monthlyRate: number;
@@ -161,14 +168,15 @@ export interface MonthlyLedger {
 	actionItems: LedgerActionItem[];
 }
 
-export interface BizSnapshot {
-	accounts: EntityAccount[];
-	subscriptions: RecurringSubscription[];
-	hardware: HardwareAsset[];
-	revenues: RevenueStream[];
-	transfers: CapitalTransfer[];
-	liabilities?: LiabilityStream[];
+export interface AccountingSnapshot {
+	accounts: Account[];
+	subscriptions: Expense[];
+	hardware: Asset[];
+	revenues: Income[];
+	transfers: Transfer[];
+	liabilities?: Liability[];
 	wallets?: CashWallet[];
 	updatedAt?: string;
 	isDefault?: boolean;
 }
+export type BizSnapshot = AccountingSnapshot;

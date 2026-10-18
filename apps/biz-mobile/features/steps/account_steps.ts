@@ -90,7 +90,7 @@ When("the user submits the business form", async function () {
 	await this.page.locator('button[type="submit"][form="business-form"]').click();
 });
 
-Then("the {string} drawer should dismiss", async function (_drawerTitle: string) {
+Then("the {string} drawer should dismiss", async function () {
 	await expect(this.page.getByRole("dialog")).toBeHidden();
 });
 
@@ -98,7 +98,7 @@ Then("a new entity {string} should appear in the entity list", async function (b
 	await expect(this.page.getByText(bizName)).toBeVisible();
 });
 
-When("the user taps the business settings icon {string} on the hero card", async function (_iconName: string) {
+When("the user taps the business settings icon {string} on the hero card", async function () {
 	await this.page.locator(".hero-config-btn").click();
 });
 

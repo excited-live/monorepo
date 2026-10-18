@@ -8,7 +8,7 @@ import type {
 	CapitalTransfer,
 	LiabilityStream,
 	CatalogItem,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 
 export type { BizSnapshot, MonthlyLedger };
 

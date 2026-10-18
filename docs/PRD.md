@@ -14,7 +14,7 @@ As software shifts from manual CRUD dashboards to personal AI agents (Claude, Ch
 `excited.live` bridges that gap with a **4-Layer Agentic OS Kernel**:
 
 1. **Proactive Zero-Friction Capture (Sensor Layer)**: Get real-world user data into the system as seamlessly as possible—starting with **MeowJot (เหมียวจด) style Thai bank e-slip reading** on mobile/API for Money, activity-duration tagging on existing spend/career items for Time, and **Cal AI style photo/multimodal logging** for Health.
-2. **Pure Deterministic Engines (`packages/*`)**: Zero-hallucination TypeScript math engines (`@excited-live/biz`, `@excited-live/tax`, `@excited-live/sim`, and future `@excited-live/time` & `@excited-live/health`) verified against independent Python recompute gates.
+2. **Pure Deterministic Engines (`packages/*`)**: Zero-hallucination TypeScript math engines (`@excited-live/accounting`, `@excited-live/tax`, `@excited-live/sim`, and future `@excited-live/time` & `@excited-live/health`) verified against independent Python recompute gates.
 3. **Open Agent Surface — Bring Your Own Agent (`apps/api` + MCP + Scoped Keys)**: Instead of forcing users into an isolated in-app chatbot, we prioritize **opening the platform (`REST API` + `MCP` + `OpenAPI` + `llms.txt`)** with scoped Better Auth API keys so the **user's own personal AI agents** can read their numbers, ingest slips/events, run simulations, and stage actions on their behalf.
 4. **High-Trust Human Cockpits (`apps/*` Mobile & Web)**: Fast, tactile mobile companions (`apps/biz-mobile`, `apps/tax-mobile`) for daily capture and instant runway awareness, channeling users into deep web workspaces (`apps/webapp`, `apps/tax-webapp`) for 50-year life visualization and decision sign-off.
 

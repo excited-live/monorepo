@@ -8,7 +8,7 @@ import {
 	type LiabilityStream,
 	type RecurringSubscription,
 	type RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type { ApiEnv } from "../lib/env";
 import { getUserId } from "../lib/request";
 import { crudDocs, jsonBody, jsonResponse, route } from "../openapi/docs";

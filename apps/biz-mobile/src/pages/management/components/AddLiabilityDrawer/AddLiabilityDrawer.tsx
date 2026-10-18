@@ -5,7 +5,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { FormField, InputField, SelectField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import type { LiabilityCategory, LiabilityStream } from "@excited-live/biz";
+import type { LiabilityCategory, LiabilityStream } from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useBiz } from "../../../../state";
 

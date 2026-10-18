@@ -3,7 +3,7 @@ import { NativeInput, PlainButton, Svg, SvgPath } from "@excited-live/design-sys
 import { HStack } from "@astryxdesign/core/HStack";
 import { Text } from "@astryxdesign/core/Text";
 import { GLASS_PILL } from "../../../../utils/ui";
-import { parseYearMonth } from "@excited-live/biz";
+import { parseYearMonth } from "@excited-live/accounting";
 import { useBiz } from "../../../../state";
 
 const STEP_BTN =

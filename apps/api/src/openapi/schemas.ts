@@ -7,7 +7,7 @@ import type {
 	MonthlyLedger,
 	RecurringSubscription,
 	RevenueStream,
-} from "@excited-live/biz"
+} from "@excited-live/accounting"
 import { z } from "zod"
 
 /**
@@ -15,7 +15,7 @@ import { z } from "zod"
  *
  * These describe the API for docs and generated clients; they are NOT used to
  * validate requests (handlers keep their current behaviour). Each entity
- * schema is checked against its `@excited-live/biz` type with `satisfies`, so
+ * schema is checked against its `@excited-live/accounting` type with `satisfies`, so
  * adding or renaming a field in the engine breaks the typecheck here instead of
  * silently drifting from the published spec.
  */

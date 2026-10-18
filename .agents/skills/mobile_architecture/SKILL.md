@@ -21,19 +21,18 @@ This skill defines the technical standards, Clean Architecture layers, page/comp
 
 ```text
 apps/biz-mobile/src/
-├── domain/                    # DOMAIN LAYER: Pure business logic & types (ZERO React / DOM)
-│   ├── types.ts               # Core entity interfaces, session models, navigation enums
-│   └── selectors.ts           # Pure mathematical selectors (wealth, countdown, projections)
+├── domain/                    # DOMAIN LAYER: Pure types & view models (ZERO React / DOM)
+│   ├── types.ts               # View model interfaces, session models, navigation types
+│   └── selectors.ts           # Pure mathematical selectors (transitioning to @excited-live/accounting)
 │
-├── application/               # APPLICATION LAYER: Use cases, storage adapters, state, hooks
-│   ├── storage/
-│   │   ├── storage.interface.ts   # IStorageAdapter contract
-│   │   └── local-storage.adapter.ts # LocalStorage implementation with safe JSON parsing
-│   ├── auth/                  # Authentication orchestration
-│   ├── context/
-│   │   ├── BizContext.tsx     # Application state provider with useMemo derivation
-│   │   └── useBiz.ts          # Typed consumer hook
-│   └── hooks/                 # Domain-sliced hooks (useAccounts, useAppUI, useCashflow, etc.)
+├── service/                   # SERVICE LAYER (I/O ONLY): Queries, mutations, API calls, Tauri bridge
+│   ├── accounting/            # TanStack Query hooks & Hono RPC client (@excited-live/accounting)
+│   ├── auth/                  # Better Auth session & token store (token-only, no domain caching)
+│   └── catalog/               # Catalog autofill queries
+│
+├── app/                       # APPLICATION SHELL: Routing context, providers, locale
+│   ├── providers.tsx          # QueryClientProvider + Astryx Theme
+│   └── locale.tsx             # Bilingual locale provider
 │
 ├── components/                # PRESENTATION (SHARED): Components used across 2+ pages
 │   ├── Header/                # Each component has its own folder: <Name>.tsx, index.ts, <Name>.spec.tsx
@@ -58,25 +57,25 @@ apps/biz-mobile/src/
 │   │   ├── Settings.tsx
 │   │   ├── Settings.spec.tsx
 │   │   ├── hooks/             # useSettings.ts
-│   │   └── components/        # SettingsProfileSection, SettingsCloudSyncSection, etc.
+│   │   └── components/        # SettingsProfileSection, SettingsLanguageSection, etc.
 │   └── signin/
 │       ├── Signin.tsx
 │       ├── Signin.spec.tsx
 │       ├── hooks/             # useSignIn.ts
 │       └── components/        # GoogleIcon, etc.
 │
-└── infrastructure/            # INFRASTRUCTURE LAYER: External APIs & Tauri bridge
-    ├── lib/api-client.ts      # Better Auth & snapshot sync HTTP client
-    └── src-tauri/             # Tauri v2 native Android & iOS configuration
+└── routes/                    # ROUTING LAYER: TanStack Router file routes & search params
+    ├── __root.tsx             # Root layout with Theme and QueryClientProvider
+    └── index.tsx              # Tab and view coordination
 ```
 
 ### Layer & Component Rules
-1. **Domain** never imports from Application, Presentation, or Infrastructure.
-2. **Application** only imports from Domain and abstract Infrastructure contracts. Prefer domain-sliced hooks (`useAccounts`, `useAppUI`, `useCashflow`, `useHardwareAssets`, `useUserData`, `useCloudSync`) over monolithic state consumption.
-3. **Dedicated Folder per Component**: Every component (both in `src/components/` and `src/pages/<page>/components/`) must live in its own folder (`<ComponentName>/<ComponentName>.tsx`, `index.ts`, `<ComponentName>.spec.tsx`).
-4. **Co-locate Page-Specific Components**: If a component or drawer is only used in one page, place it in `src/pages/<page>/components/<ComponentName>/`. Only place components in `src/components/` if they are shared across multiple pages.
-5. **Thin Pages & Page Hooks**: Pages (`Home.tsx`, `Management.tsx`, `Settings.tsx`, `Signin.tsx`) must remain thin and declarative: extract state/selector orchestration into `src/pages/<page>/hooks/use<Page>.ts` and UI sections into `src/pages/<page>/components/<SectionName>/`.
-6. **State Facade**: `src/state.tsx` re-exports Domain and Application layers to ensure clean backwards compatibility.
+1. **Domain & Accounting Engine**: Business logic and math belong in `@excited-live/accounting`. Domain in the app only holds local view models.
+2. **Strict I/O Boundary**: `src/service/` is the **ONLY** folder permitted to execute network requests, call `@tanstack/react-query`, or touch token storage. Components and page hooks consume typed queries/mutations.
+3. **No Offline Domain Persistence**: Domain data is server-authoritative and managed via TanStack Query. No local SQLite/localStorage syncing of domain snapshots.
+4. **Dedicated Folder per Component**: Every component (both in `src/components/` and `src/pages/<page>/components/`) must live in its own folder (`<ComponentName>/<ComponentName>.tsx`, `index.ts`, `<ComponentName>.spec.tsx`).
+5. **Co-locate Page-Specific Components**: If a component or drawer is only used in one page, place it in `src/pages/<page>/components/<ComponentName>/`. Only place components in `src/components/` if they are shared across multiple pages.
+6. **Thin Pages & Page Hooks**: Pages (`Home.tsx`, `Management.tsx`, `Settings.tsx`, `Signin.tsx`) must remain thin and declarative: extract state/selector orchestration into `src/pages/<page>/hooks/use<Page>.ts` and UI sections into `src/pages/<page>/components/<SectionName>/`.
 
 ---
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { type EntityAccount, round2 } from "@excited-live/biz";
+import { type EntityAccount, round2 } from "@excited-live/accounting";
 import { TuneIcon, UserIcon } from "@excited-live/design-system";
 import { calculateEntityWealthMetrics } from "../../../../domain/selectors";
 import { useBiz } from "../../../../state";

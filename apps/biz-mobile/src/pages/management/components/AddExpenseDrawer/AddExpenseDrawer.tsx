@@ -7,7 +7,7 @@ import { FormField, InputField, SelectField } from "../../../../components/FormF
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/biz";
+import { isCashAsset, resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";

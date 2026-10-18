@@ -4,7 +4,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { ChipButton } from "../ChipButton";
-import { CURATED_COVER_WALLPAPERS } from "@excited-live/biz";
+import { CURATED_COVER_WALLPAPERS } from "@excited-live/accounting";
 
 const OVERLAY_BTN = "cursor-pointer rounded-pill px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-[8px]";
 

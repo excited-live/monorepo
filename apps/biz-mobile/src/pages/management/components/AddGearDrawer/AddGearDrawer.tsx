@@ -10,7 +10,7 @@ import { ModalPage } from "../../../../components/ModalPage";
 import { ChipButton } from "../../../../components/ChipButton";
 import { SectionCard } from "../../../../components/SectionCard";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import type { HardwareAsset } from "@excited-live/biz";
+import type { HardwareAsset } from "@excited-live/accounting";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useBiz } from "../../../../state";

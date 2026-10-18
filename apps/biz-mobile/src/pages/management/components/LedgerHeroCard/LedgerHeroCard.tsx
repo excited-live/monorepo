@@ -1,5 +1,5 @@
 import React from "react";
-import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/biz";
+import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/accounting";
 import { calculateProjectionBalances } from "../../../../domain/selectors";
 import { useBiz } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";

@@ -20,11 +20,11 @@ Then("the primary hero balance should display current wealth {string}", async fu
 	await expect(this.page.locator(".hero-balance")).toContainText(wealthText);
 });
 
-When("the user taps {string} on the hero card", async function (_text: string) {
+When("the user taps {string} on the hero card", async function () {
 	await this.page.locator(".hero-flip-hint").click();
 });
 
-Then("the {string} face should become visible and interactive", async function (_cardFace: string) {
+Then("the {string} face should become visible and interactive", async function () {
 	await expect(this.page.locator(".hero-chart")).toBeVisible();
 });
 
@@ -44,7 +44,7 @@ Then("the Live Runway Impact Simulation Box should display:", async function (da
 	}
 });
 
-When("the user taps the next month button {string}", async function (_btnSymbol: string) {
+When("the user taps the next month button {string}", async function () {
 	await this.page.getByRole("button", { name: /Next Month/i }).click();
 });
 

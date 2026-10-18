@@ -5,7 +5,7 @@ import type {
 	LiabilityStream,
 	RecurringSubscription,
 	RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type { UserSession } from "../domain/types";
 
 export const FIXTURE_USER_SESSION: UserSession = {

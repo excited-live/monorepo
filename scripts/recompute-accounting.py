@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independent recompute of @excited-live/biz math — pure Python, no shared code.
+"""Independent recompute of @excited-live/accounting math — pure Python, no shared code.
 
 Recomputes:
 1. Prame's verified baseline subscriptions (฿2,577.50/mo)

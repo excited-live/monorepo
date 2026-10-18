@@ -13,7 +13,7 @@ import {
 	type LiabilityStream,
 	type RecurringSubscription,
 	type RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type {
 	CashWalletViewModel,
 	ConsolidatedWealthMetrics,

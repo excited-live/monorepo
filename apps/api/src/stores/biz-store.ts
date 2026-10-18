@@ -11,7 +11,7 @@ import {
 	SEED_REVENUES,
 	SEED_SUBSCRIPTIONS,
 	SEED_TRANSFERS,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type { SqlDriver } from "../db/types";
 
 export interface BizDataSnapshot {

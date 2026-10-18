@@ -3,7 +3,7 @@ import {
 	generateMonthlyLedger,
 	type EntityAccount,
 	type LedgerActionItem,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import { useFinances } from "../../../state";
 
 export interface AccountLedgerSlice {

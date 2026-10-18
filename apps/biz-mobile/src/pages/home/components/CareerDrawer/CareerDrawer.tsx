@@ -8,7 +8,7 @@ import { FIELD_CLASS, FormField, InputField } from "../../../../components/FormF
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import { resolveCatalogAmount } from "@excited-live/biz";
+import { resolveCatalogAmount } from "@excited-live/accounting";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useBiz } from "../../../../state";

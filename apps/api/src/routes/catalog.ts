@@ -5,7 +5,7 @@ import {
 	resolveFaviconUrl,
 	searchCatalog,
 	type CatalogItem,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type { ApiEnv } from "../lib/env";
 import { jsonBody, jsonResponse, route } from "../openapi/docs";
 import { CatalogItemSchema } from "../openapi/schemas";

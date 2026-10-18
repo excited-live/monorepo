@@ -15,7 +15,7 @@ import {
 	type CapitalTransfer,
 	round2,
 	simulateCapitalTransfer,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useBiz } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";

@@ -5,7 +5,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { FormField, InputField, SelectField } from "../FormField";
 import { ModalPage } from "../ModalPage";
 import { CurrencyInput } from "../CurrencyInput";
-import type { RevenueStream } from "@excited-live/biz";
+import type { RevenueStream } from "@excited-live/accounting";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
 import { useBiz } from "../../state";

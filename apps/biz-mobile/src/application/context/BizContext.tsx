@@ -15,7 +15,7 @@ import {
 	type LiabilityStream,
 	type RecurringSubscription,
 	type RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import { authApi, bizApi, setBearerToken } from "../../lib/api-client";
 import { defaultStorage } from "../storage/local-storage.adapter";
 import type { IStorageAdapter } from "../storage/storage.interface";

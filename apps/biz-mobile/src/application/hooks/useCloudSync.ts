@@ -6,7 +6,7 @@ import type {
 	RecurringSubscription,
 	RevenueStream,
 	CapitalTransfer,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import type { UserSession } from "../../domain/types";
 
 export interface CloudSyncSlice {

@@ -7,7 +7,7 @@ import type {
 	LiabilityStream,
 	RecurringSubscription,
 	RevenueStream,
-} from "@excited-live/biz";
+} from "@excited-live/accounting";
 import { AddBusinessDrawer } from "../../components/AddBusinessDrawer";
 import { AddRevenueDrawer } from "../../components/AddRevenueDrawer";
 import {

@@ -164,6 +164,9 @@ importers:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
     devDependencies:
+      '@excited-live/api':
+        specifier: workspace:*
+        version: link:../api
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0

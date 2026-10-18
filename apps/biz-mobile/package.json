@@ -28,6 +28,7 @@
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
+		"@excited-live/api": "workspace:*",
 		"@playwright/test": "^1.63.0",
 		"@tailwindcss/vite": "catalog:",
 		"@tanstack/router-plugin": "catalog:",

@@ -6,6 +6,7 @@ import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
 import { documentation, jsonResponse } from "./openapi/docs"
+import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
 import { createBizRouter } from "./routes/biz"
 import { createCatalogRouter } from "./routes/catalog"
@@ -90,6 +91,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	app.use("/api/v1/*", createIdentityMiddleware())
 
 	const apiV1 = new Hono<ApiEnv>()
+	apiV1.route("/accounting", createAccountingRouter())
 	apiV1.route("/auth", createAuthRouter())
 	apiV1.route("/biz", createBizRouter())
 	apiV1.route("/catalog", createCatalogRouter())
@@ -105,3 +107,6 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 
 	return app
 }
+
+export type AppType = ReturnType<typeof createApp>
+

@@ -8,11 +8,12 @@ import { createAuth } from "./server"
 import type { AuthD1DatabaseLike } from "./types"
 
 /**
- * Round-trip proof for the auth foundation: the 0003_auth.sql ledger file
- * (read from apps/api, the single source of truth) must be exactly what a
- * `both`-mount auth instance needs to sign a user up and resolve their
- * credentials — through BOTH driver paths (node:sqlite and the D1 dialect),
- * since apps/api runs the same code on either backend.
+ * Round-trip proof for the auth foundation: the 0001_init.sql ledger file
+ * (read from apps/api, the single source of truth; its generated Better Auth
+ * block is what this package owns) must be exactly what a `both`-mount auth
+ * instance needs to sign a user up and resolve their credentials — through
+ * BOTH driver paths (node:sqlite and the D1 dialect), since apps/api runs the
+ * same code on either backend.
  *
  * Cookie-store session resolution is NOT asserted here on purpose: the
  * tanstackStartCookies plugin hands cookie writing to the TanStack Start
@@ -23,7 +24,7 @@ import type { AuthD1DatabaseLike } from "./types"
  */
 
 const migrationSql = readFileSync(
-	join(fileURLToPath(import.meta.url), "..", "..", "..", "..", "apps", "api", "migrations", "0003_auth.sql"),
+	join(fileURLToPath(import.meta.url), "..", "..", "..", "..", "apps", "api", "migrations", "0001_init.sql"),
 	"utf8",
 )
 

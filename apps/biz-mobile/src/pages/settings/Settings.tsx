@@ -5,7 +5,6 @@ import { Text } from "@astryxdesign/core/Text";
 import { ModalPage } from "../../components";
 import { Signin } from "../signin/Signin";
 import {
-	SettingsCloudSyncSection,
 	SettingsDataPortabilitySection,
 	SettingsLanguageSection,
 	SettingsProfileSection,
@@ -17,9 +16,6 @@ export const Settings: React.FC = () => {
 		userSession,
 		isCloudAccount,
 		signOut,
-		cloudSyncStatus,
-		lastSyncedAt,
-		syncWithCloud,
 		lang,
 		setLang,
 		isSignInOpen,
@@ -48,14 +44,6 @@ export const Settings: React.FC = () => {
 				verifiedLabel={t("settings.verified")}
 				signOutLabel={t("settings.signOut")}
 				signInLabel={t("settings.signIn")}
-			/>
-
-			{/* Cloud Native State Synchronization */}
-			<SettingsCloudSyncSection
-				cloudSyncStatus={cloudSyncStatus}
-				lastSyncedAt={lastSyncedAt}
-				onSyncWithCloud={syncWithCloud}
-				lang={lang}
 			/>
 
 			{/* Language Switcher */}

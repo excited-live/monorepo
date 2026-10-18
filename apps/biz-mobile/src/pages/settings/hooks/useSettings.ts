@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { useUserData, useCloudSync, useFinances, useAppUI } from "../../../state";
+import { useUserData, useFinances, useAppUI } from "../../../state";
+import { useReplaceSnapshot } from "../../../service/accounting";
 import { t } from "../../../utils/i18n";
 
 export function useSettings() {
@@ -9,12 +10,7 @@ export function useSettings() {
 		signOut,
 	} = useUserData();
 
-	const {
-		cloudSyncStatus,
-		lastSyncedAt,
-		syncWithCloud,
-		restoreBackup,
-	} = useCloudSync();
+	const replaceSnapshot = useReplaceSnapshot();
 
 	const {
 		accounts,
@@ -58,7 +54,7 @@ export function useSettings() {
 			try {
 				const data = JSON.parse(event.target?.result as string);
 				if (data && typeof data === "object") {
-					restoreBackup(data);
+					replaceSnapshot.mutate(data);
 					alert(lang === "th" ? "กู้คืนข้อมูลสำเร็จเรียบร้อย" : "Backup restored successfully!");
 				}
 			} catch {
@@ -73,9 +69,6 @@ export function useSettings() {
 		userSession,
 		isCloudAccount,
 		signOut,
-		cloudSyncStatus,
-		lastSyncedAt,
-		syncWithCloud,
 		lang,
 		setLang,
 		fileInputRef,

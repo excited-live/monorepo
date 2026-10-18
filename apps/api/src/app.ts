@@ -8,7 +8,6 @@ import type { ApiEnv } from "./lib/env"
 import { documentation, jsonResponse } from "./openapi/docs"
 import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
-import { createBizRouter } from "./routes/biz"
 import { createCatalogRouter } from "./routes/catalog"
 import { createPlanRouter } from "./routes/plan"
 import { createSettingsRouter } from "./routes/settings"
@@ -87,13 +86,12 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 
 	// Resolve identity from a Bearer session (Better Auth tokens mount); 401s
 	// unauthenticated calls while auth is configured, x-user-id passthrough
-	// otherwise. Runs before the routers so biz/plan/settings see the pinned id.
+	// otherwise. Runs before the routers so plan/settings see the pinned id.
 	app.use("/api/v1/*", createIdentityMiddleware())
 
 	const routes = app
 		.route("/api/v1/accounting", createAccountingRouter())
 		.route("/api/v1/auth", createAuthRouter())
-		.route("/api/v1/biz", createBizRouter())
 		.route("/api/v1/catalog", createCatalogRouter())
 		.route("/api/v1/plan", createPlanRouter())
 		.route("/api/v1/settings", createSettingsRouter())

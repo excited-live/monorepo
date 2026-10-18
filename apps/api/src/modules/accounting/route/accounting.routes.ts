@@ -17,6 +17,8 @@ import {
 import {
 	AssetListQuery,
 	CareerIncomeResultSchema,
+	CashFlowsQuery,
+	CashFlowsResponseSchema,
 	CreateAssetBody,
 	CreateEntityBody,
 	CreateExpenseBody,
@@ -27,6 +29,8 @@ import {
 	ExpenseListQuery,
 	IncomeListQuery,
 	LiabilityListQuery,
+	LiabilityScheduleQuery,
+	LiabilityScheduleSchema,
 	MonthlyLedgerSchema,
 	ProjectionQuery,
 	ProjectionSchema,
@@ -154,7 +158,7 @@ export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 					operationId: "createAsset",
 					summary: "Create an asset",
 					description:
-						"Body discriminated by `kind`. Fixed and investment assets accept `paidFrom` (creates the purchase transfer in the same write); fixed assets accept `financing` (creates a loan liability). A cash asset with `isDefault` clears the entity's other defaults; an entity's first cash asset is always the default.",
+						"Body discriminated by `kind`. Fixed and investment assets accept `paidFrom` (creates the purchase transfer in the same write); fixed assets accept `financing` (creates a loan liability, paid at its level payment unless `amount` is given). A cash asset with `isDefault` clears the entity's other defaults; an entity's first cash asset is always the default.",
 					responses: { 201: jsonResponse("Asset created.", AssetSchema), ...errors },
 				}),
 				validator("json", CreateAssetBody),
@@ -336,7 +340,8 @@ export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 					tags: ["Accounting"],
 					operationId: "createLiability",
 					summary: "Create a liability",
-					description: "Body discriminated by `kind`. A loan needs `amount` (monthly payment).",
+					description:
+						"Body discriminated by `kind`. A loan without `amount` is paid at its level payment, calculateLoanPayment(principal, annualRate, termMonths), and its payments start in the origination month unless `startMonth` is given.",
 					responses: { 201: jsonResponse("Liability created.", LiabilitySchema), ...errors },
 				}),
 				validator("json", CreateLiabilityBody),
@@ -354,6 +359,24 @@ export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 				validator("json", UpdateLiabilityBody),
 				async (c) =>
 					c.json(await getService(c).updateLiability(getUserId(c), c.req.param("id"), c.req.valid("json")), 200),
+			)
+			.get(
+				"/liabilities/:id/schedule",
+				route({
+					tags: ["Accounting"],
+					operationId: "getLiabilitySchedule",
+					summary: "Get a liability's month-by-month schedule",
+					description:
+						"Loans: payments, interest and principal per month, including extra-payment transfers. Revolving: opening balance, interest, card charges and payments per month. Liabilities of kind `other` have no schedule (400).",
+					responses: {
+						200: jsonResponse("Loan or revolving schedule.", LiabilityScheduleSchema),
+						400: jsonResponse("Validation error, or the liability has no schedule.", ErrorSchema),
+						404: jsonResponse("Liability not found.", ErrorSchema),
+					},
+				}),
+				validator("query", LiabilityScheduleQuery),
+				async (c) =>
+					c.json(await getService(c).getLiabilitySchedule(getUserId(c), c.req.param("id"), c.req.valid("query")), 200),
 			)
 			.delete(
 				"/liabilities/:id",
@@ -430,7 +453,9 @@ export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 				route({
 					tags: ["Accounting"],
 					operationId: "getSummary",
-					summary: "Get wealth metrics per entity and consolidated",
+					summary: "Get wealth metrics and balance sheet per entity and consolidated",
+					description:
+						"Per entity: wealth metrics and balance sheet at `month`. Consolidated: metrics plus the balance sheet summed over all entities.",
 					responses: {
 						200: jsonResponse("Summary for the month.", SummarySchema),
 						400: jsonResponse("Validation error.", ErrorSchema),
@@ -456,6 +481,23 @@ export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 					const ledger = await getService(c).getLedger(getUserId(c), c.req.param("yearMonth"), entityId);
 					return c.json(ledger, 200);
 				},
+			)
+			.get(
+				"/cash-flows",
+				route({
+					tags: ["Accounting"],
+					operationId: "getCashFlows",
+					summary: "Get the cash-flow feed for a month",
+					description:
+						"Dated money movements of one entity (default: personal) for one month. `direction` filters `items`; `totals` (moneyIn, moneyOut, spending) always cover every item.",
+					responses: {
+						200: jsonResponse("Cash-flow feed and totals.", CashFlowsResponseSchema),
+						400: jsonResponse("Validation error.", ErrorSchema),
+						404: jsonResponse("Entity not found.", ErrorSchema),
+					},
+				}),
+				validator("query", CashFlowsQuery),
+				async (c) => c.json(await getService(c).getCashFlows(getUserId(c), c.req.valid("query")), 200),
 			)
 			.get(
 				"/projection",

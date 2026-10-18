@@ -1,10 +1,17 @@
 import {
 	bookToSnapshot,
+	buildCashFlows,
+	buildLoanSchedule,
+	buildRevolvingSchedule,
+	calculateConsolidatedBalanceSheet,
 	calculateConsolidatedWealthMetrics,
+	calculateEntityBalanceSheet,
 	calculateEntityWealthMetrics,
+	calculateLoanPayment,
 	calculateProjectionBalances,
 	generateMonthlyLedger,
 	shiftYearMonth,
+	summarizeCashFlows,
 	type AccountingBook,
 	type AccountingSnapshot,
 	type BookAsset,
@@ -15,7 +22,9 @@ import {
 	type BookLiability,
 	type BookTransfer,
 	type Liability,
+	type LoanScheduleEntry,
 	type MonthlyLedger,
+	type RevolvingScheduleEntry,
 	type Stored,
 } from "@excited-live/accounting";
 import type { z } from "zod";
@@ -87,6 +96,9 @@ function written<T>(records: ReadonlyArray<{ id: string }>, id: string): T {
 	if (!record) throw new Error(`Write returned no record for ${id}`);
 	return record as unknown as T;
 }
+
+/** Longest loan schedule the default horizon will build (50 years). */
+const MAX_SCHEDULE_MONTHS = 600;
 
 /** The entity's default cash asset: the flagged one, else the oldest (list order is creation order). */
 function defaultCash<T extends { isDefault: boolean }>(cash: T[]): T | undefined {
@@ -343,7 +355,7 @@ export function createAccountingService(repo: AccountingRepository) {
 					kind: "loan",
 					name: f.name ?? `${body.name} loan`,
 					category: f.category ?? "loan",
-					amount: f.amount,
+					amount: f.amount ?? calculateLoanPayment(f.principal, f.annualRate, f.termMonths),
 					cycle: "monthly",
 					startMonth: monthOf(f.originatedOn ?? body.acquiredOn),
 					active: true,
@@ -626,9 +638,13 @@ export function createAccountingService(repo: AccountingRepository) {
 
 	async function createLiability(userId: string, body: CreateLiabilityInput): Promise<Stored<BookLiability>> {
 		await ensureBootstrap(userId, monthOf(body.asOf));
-		const amount = body.amount;
+		const amount =
+			body.kind === "loan" && body.amount === undefined
+				? calculateLoanPayment(body.loan.principal, body.loan.annualRate ?? 0, body.loan.termMonths)
+				: body.amount;
 		if (amount === undefined) throw new ValidationError("amount is required");
-		const startMonth = body.startMonth ?? monthOf(body.asOf);
+		// A loan's payments start in its origination month, as the financing path does.
+		const startMonth = body.startMonth ?? (body.kind === "loan" ? body.loan.originatedOn.slice(0, 7) : monthOf(body.asOf));
 		const base = {
 			id: body.id ?? crypto.randomUUID(),
 			entityId: body.entityId,
@@ -825,13 +841,100 @@ export function createAccountingService(repo: AccountingRepository) {
 					yearMonth: query.month,
 					asOfDate: query.asOf,
 				}),
+				balanceSheet: calculateEntityBalanceSheet({ account, ...shared, yearMonth: query.month }),
 			})),
-			consolidated: calculateConsolidatedWealthMetrics({
-				accounts: snapshot.accounts,
-				...shared,
-				yearMonth: query.month,
-			}),
+			consolidated: {
+				...calculateConsolidatedWealthMetrics({
+					accounts: snapshot.accounts,
+					...shared,
+					yearMonth: query.month,
+				}),
+				balanceSheet: calculateConsolidatedBalanceSheet({
+					accounts: snapshot.accounts,
+					...shared,
+					yearMonth: query.month,
+				}),
+			},
 		};
+	}
+
+	/** The entity's account (default: personal), or 404. Shared by the entity-scoped computed reads. */
+	function accountOrThrow<A extends { id: string; type: string }>(accounts: A[], entityId: string | undefined): A {
+		const account = entityId !== undefined ? accounts.find((a) => a.id === entityId) : accounts.find((a) => a.type === "personal");
+		if (!account) throw new NotFoundError(`Entity ${entityId ?? "personal"} not found`);
+		return account;
+	}
+
+	async function getCashFlows(
+		userId: string,
+		query: { month: string; entityId?: string; direction?: "in" | "out"; includeDepreciation?: "true" | "false" },
+	) {
+		await ensureBootstrap(userId, monthOf());
+		const snapshot = await loadSnapshot(userId);
+		const account = accountOrThrow(snapshot.accounts, query.entityId);
+		// Totals cover the unfiltered feed, so the direction filter never changes them.
+		const all = buildCashFlows({
+			account,
+			yearMonth: query.month,
+			subscriptions: snapshot.subscriptions,
+			hardware: snapshot.hardware,
+			revenues: snapshot.revenues,
+			transfers: snapshot.transfers,
+			liabilities: snapshot.liabilities,
+			includeDepreciation: query.includeDepreciation === "true",
+		});
+		return {
+			yearMonth: query.month,
+			entityId: account.id,
+			items: query.direction !== undefined ? all.filter((item) => item.direction === query.direction) : all,
+			totals: summarizeCashFlows(all),
+		};
+	}
+
+	/**
+	 * Month-by-month schedule of a liability. A loan defaults to its payoff month
+	 * (first month with nothing owed) or the end of its term, whichever comes first;
+	 * revolving balances default to the current UTC month. `other` has no schedule.
+	 */
+	async function getLiabilitySchedule(
+		userId: string,
+		id: string,
+		query: { through?: string },
+	): Promise<
+		| { liabilityId: string; kind: "loan"; entries: LoanScheduleEntry[] }
+		| { liabilityId: string; kind: "revolving"; entries: RevolvingScheduleEntry[] }
+	> {
+		await ensureBootstrap(userId, monthOf());
+		const stored = await findOrThrow(userId, "liabilities", id, "Liability");
+		if (stored.kind === "other") throw new ValidationError("This liability has no schedule");
+		const snapshot = await loadSnapshot(userId);
+		const liability = snapshot.liabilities.find((l) => l.id === id);
+		if (!liability) throw new NotFoundError(`Liability ${id} not found`);
+
+		if (liability.loan) {
+			const termEnd = shiftYearMonth(
+				liability.loan.originatedOn.slice(0, 7),
+				Math.min(liability.loan.termMonths, MAX_SCHEDULE_MONTHS) - 1,
+			);
+			const full = buildLoanSchedule({ liability, transfers: snapshot.transfers, throughYearMonth: termEnd });
+			const payoff = full.find((entry) => entry.closing <= 0)?.yearMonth ?? termEnd;
+			const through = query.through ?? payoff;
+			const entries =
+				through <= termEnd
+					? full.filter((entry) => entry.yearMonth <= through)
+					: buildLoanSchedule({ liability, transfers: snapshot.transfers, throughYearMonth: through });
+			return { liabilityId: id, kind: "loan", entries };
+		}
+		if (liability.revolving) {
+			const entries = buildRevolvingSchedule({
+				liability,
+				subscriptions: snapshot.subscriptions,
+				transfers: snapshot.transfers,
+				yearMonth: query.through ?? monthOf(),
+			});
+			return { liabilityId: id, kind: "revolving", entries };
+		}
+		throw new ValidationError("This liability has no schedule");
 	}
 
 	async function getLedger(userId: string, yearMonth: string, entityId?: string): Promise<MonthlyLedger> {
@@ -1000,6 +1103,8 @@ export function createAccountingService(repo: AccountingRepository) {
 		getSummary,
 		getLedger,
 		getProjection,
+		getCashFlows,
+		getLiabilitySchedule,
 	};
 }
 

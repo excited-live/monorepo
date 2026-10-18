@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDriver } from "../../../db/testing";
 import type { SqlDriver } from "../../../db/types";
 import { createSqlAccountingRepository } from "../repository/sql-accounting.repository";
+import { DomainError } from "../domain/errors";
 import { createAccountingService } from "../service/accounting.service";
 import { createAccountingRouter } from "./accounting.routes";
 
@@ -13,7 +14,14 @@ let client: ReturnType<typeof testClient<ReturnType<typeof createAccountingRoute
 beforeEach(async () => {
 	driver = await createTestDriver();
 	const service = createAccountingService(createSqlAccountingRepository(driver));
-	client = testClient(createAccountingRouter({ service }));
+	const router = createAccountingRouter({ service });
+	// Same mapping as app.ts: domain errors carry their status, anything else is a 500.
+	router.onError((err, c) =>
+		err instanceof DomainError
+			? c.json({ error: err.message, code: err.code }, err.status as 400)
+			: c.text("Internal Server Error", 500),
+	);
+	client = testClient(router);
 });
 
 afterEach(() => {
@@ -212,6 +220,65 @@ describe("computed", () => {
 		expect(projection.status).toBe(200);
 		const body = await projection.json();
 		expect(body.points.map((p) => p.yearMonth)).toEqual(["2026-08", "2026-09", "2026-10", "2026-11", "2026-12", "2027-01"]);
+	});
+});
+
+describe("balance sheet, cash flows and schedules", () => {
+	it("adds a balance sheet to the summary", async () => {
+		const me = await personalId();
+		const summary = await (await client.summary.$get({ query: { month: "2026-10" } })).json();
+		expect(summary.entities[0]?.balanceSheet).toMatchObject({ cash: 0, fixedAssets: 0, debt: 0, netWorth: 0 });
+		expect(summary.consolidated.balanceSheet).toMatchObject({ netWorth: 0 });
+		expect(summary.entities[0]?.entityId).toBe(me);
+	});
+
+	it("serves the cash-flow feed with a direction filter and 404s on an unknown entity", async () => {
+		const me = await personalId();
+		await client.incomes.$post({
+			json: { kind: "employment", entityId: me, name: "Salary", category: "salary", amount: 50000, startMonth: "2026-10" },
+		});
+
+		const all = await client["cash-flows"].$get({ query: { month: "2026-10" } });
+		expect(all.status).toBe(200);
+		const feed = await all.json();
+		expect(feed).toMatchObject({ yearMonth: "2026-10", entityId: me, items: [expect.objectContaining({ direction: "in" })] });
+		expect(feed.totals.moneyIn).toBe(50000);
+
+		const out = await client["cash-flows"].$get({ query: { month: "2026-10", direction: "out" } });
+		expect(await out.json()).toMatchObject({ items: [], totals: { moneyIn: 50000 } });
+
+		const missing = await client["cash-flows"].$get({ query: { month: "2026-10", entityId: "missing" } });
+		expect(missing.status).toBe(404);
+	});
+
+	it("serves a loan schedule, defaults a loan amount, and refuses a schedule for other liabilities", async () => {
+		const me = await personalId();
+		const created = await client.liabilities.$post({
+			json: {
+				kind: "loan",
+				entityId: me,
+				name: "Loan",
+				category: "loan",
+				loan: { principal: 10000, annualRate: 0, termMonths: 10, originatedOn: "2026-01" },
+			},
+		});
+		expect(created.status).toBe(201);
+		const loan = await created.json();
+		expect(loan).toMatchObject({ amount: 1000, startMonth: "2026-01" });
+
+		const schedule = await client.liabilities[":id"].schedule.$get({ param: { id: loan.id }, query: {} });
+		expect(schedule.status).toBe(200);
+		const body = await schedule.json();
+		expect(body).toMatchObject({ liabilityId: loan.id, kind: "loan" });
+		expect(body.kind === "loan" && body.entries).toHaveLength(10);
+
+		const other = await client.liabilities.$post({
+			json: { kind: "other", entityId: me, name: "Tax", category: "tax", amount: 100 },
+		});
+		const otherId = (await other.json()).id;
+		const refused = await client.liabilities[":id"].schedule.$get({ param: { id: otherId }, query: {} });
+		expect(refused.status).toBe(400);
+		expect(await refused.json()).toMatchObject({ error: "This liability has no schedule", code: "VALIDATION_ERROR" });
 	});
 });
 

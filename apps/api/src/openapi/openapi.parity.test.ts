@@ -42,6 +42,7 @@ describe("openapi.json", () => {
 			"GET /api/v1/accounting/liabilities/{id}",
 			"POST /api/v1/accounting/liabilities",
 			"PATCH /api/v1/accounting/liabilities/{id}",
+			"GET /api/v1/accounting/liabilities/{id}/schedule",
 			"DELETE /api/v1/accounting/liabilities/{id}",
 			"GET /api/v1/accounting/transfers",
 			"GET /api/v1/accounting/transfers/{id}",
@@ -50,9 +51,19 @@ describe("openapi.json", () => {
 			"DELETE /api/v1/accounting/transfers/{id}",
 			"GET /api/v1/accounting/summary",
 			"GET /api/v1/accounting/ledger/{yearMonth}",
+			"GET /api/v1/accounting/cash-flows",
 			"GET /api/v1/accounting/projection",
 		]
 		for (const operation of expected) expect(operations).toContain(operation)
 		expect(operations.filter((operation) => operation.includes("/api/v1/accounting/"))).toHaveLength(expected.length)
+	})
+
+	it("names the cash-flow and schedule operations", async () => {
+		const doc = (await buildOpenApiDocument()) as {
+			paths: Record<string, Record<string, { operationId?: string }>>
+		}
+		const ids = Object.values(doc.paths).flatMap((methods) => Object.values(methods).map((op) => op.operationId))
+		expect(ids).toContain("getCashFlows")
+		expect(ids).toContain("getLiabilitySchedule")
 	})
 })

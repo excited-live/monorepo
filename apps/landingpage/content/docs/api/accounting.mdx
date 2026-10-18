@@ -1,62 +1,31 @@
 ---
 title: "Accounting"
-description: "The per-user accounting snapshot: accounts, expenses, assets, incomes, liabilities and transfers."
+description: "Per-resource accounting API: entities, assets, incomes, expenses, liabilities and transfers, plus computed summary (wealth and balance sheet), ledger, cash-flows, liability schedules and projection."
 ---
 
 {/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
 
-## Get the full accounting snapshot
+## List entities
 
-`GET` `/api/v1/accounting/snapshot`
+`GET` `/api/v1/accounting/entities`
 
-Accounts, expenses, assets, incomes, liabilities and transfers in one document.
+Bootstraps the personal entity and its default wallet on first call.
 
 **Responses**
 
-- `200` — The snapshot. [BizSnapshot](#bizsnapshot)
+- `200` — Entities. [Entity](#entity)[]
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
 
 ```bash
-curl "$API_URL/api/v1/accounting/snapshot" \
+curl "$API_URL/api/v1/accounting/entities" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Replace the full accounting snapshot
+## Create a business entity
 
-`PUT` `/api/v1/accounting/snapshot`
+`POST` `/api/v1/accounting/entities`
 
-Replaces full accounting state for import or portability.
-
-**Request body** (`application/json`)
-
-Type: `object`
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `accounts` | [EntityAccount](#entityaccount)[] | yes |  |
-| `subscriptions` | [RecurringSubscription](#recurringsubscription)[] | yes |  |
-| `hardware` | [HardwareAsset](#hardwareasset)[] | yes |  |
-| `revenues` | [RevenueStream](#revenuestream)[] | yes |  |
-| `transfers` | [CapitalTransfer](#capitaltransfer)[] | yes |  |
-| `liabilities` | [LiabilityStream](#liabilitystream)[] | yes |  |
-| `isDefault` | `boolean` | no |  |
-
-**Responses**
-
-- `200` — Replaced snapshot. [BizSnapshot](#bizsnapshot)
-- `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
-
-```bash
-curl -X PUT "$API_URL/api/v1/accounting/snapshot" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ ... }'
-```
-
-## Create a new business account
-
-`POST` `/api/v1/accounting/accounts`
+Business only. Also creates its default cash asset, "&lt;name> Main Wallet", at ฿0.
 
 **Request body** (`application/json`)
 
@@ -64,73 +33,34 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `name` | `string` | yes |  |
-| `imageUrl` | `string` | no |  |
 | `id` | `string` | no |  |
-| `asOf` | `string` | no | `YYYY-MM` (client's local month) the default wallet's ฿0 balance is dated to. |
-
-**Responses**
-
-- `201` — Account created. [EntityAccount](#entityaccount)
-- `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
-
-```bash
-curl -X POST "$API_URL/api/v1/accounting/accounts" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ ... }'
-```
-
-## Update account metadata
-
-`PUT` `/api/v1/accounting/accounts/{id}`
-
-**Parameters**
-
-| Name | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `id` | path | `string` | yes |  |
-
-**Request body** (`application/json`)
-
-Type: `object`
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `id` | `string` | no | Client-generated unique id. |
-| `name` | `string` | no |  |
-| `type` | `"personal"` \| `"business"` | no |  |
-| `cashReserve` | `number` | no | Cash on hand, in `currency`. |
-| `salary` | `number` | no |  |
-| `paydayDayOfMonth` | `integer` | no |  |
+| `type` | `"personal"` \| `"business"` | no | Only `business` can be created; the personal entity is created on first use. |
+| `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
+| `name` | `string` | yes |  |
+| `currency` | `string` | no |  |
 | `targetSafetyBuffer` | `number` | no |  |
-| `currency` | `string` | no | ISO currency code, typically `THB` or `USD`. |
-| `createdAt` | `string` | no |  |
 | `active` | `boolean` | no |  |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
-| `careerTitle` | `string` | no |  |
-| `careerCompany` | `string` | no |  |
-| `careerImageUrl` | `string` | no |  |
 
 **Responses**
 
-- `200` — Account updated. [EntityAccount](#entityaccount)
-- `400` — Validation Error `object`
+- `201` — Entity created. [Entity](#entity)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
-- `404` — Account not found. [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X PUT "$API_URL/api/v1/accounting/accounts/:id" \
+curl -X POST "$API_URL/api/v1/accounting/entities" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
 
-## Delete account and cascade associated records
+## Get an entity
 
-`DELETE` `/api/v1/accounting/accounts/{id}`
+`GET` `/api/v1/accounting/entities/{id}`
 
 **Parameters**
 
@@ -140,18 +70,26 @@ curl -X PUT "$API_URL/api/v1/accounting/accounts/:id" \
 
 **Responses**
 
-- `200` — Account deleted. [Ok](#ok)
+- `200` — The entity. [Entity](#entity)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
-- `404` — Account not found. [Error](#error)
+- `404` — Record not found. [Error](#error)
 
 ```bash
-curl -X DELETE "$API_URL/api/v1/accounting/accounts/:id" \
+curl "$API_URL/api/v1/accounting/entities/:id" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Add a recurring expense
+## Update an entity
 
-`POST` `/api/v1/accounting/expenses`
+`PATCH` `/api/v1/accounting/entities/{id}`
+
+Partial update. The entity type cannot change.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
 
 **Request body** (`application/json`)
 
@@ -159,63 +97,35 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
-| `name` | `string` | yes |  |
-| `amount` | `number` | yes |  |
-| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | yes |  |
-| `category` | `string` | yes |  |
-| `nextRenewalDate` | `string` | yes | `YYYY-MM-DD`. |
-| `billingDay` | `integer` | no |  |
-| `active` | `boolean` | yes |  |
-| `startMonth` | `string` | no | `YYYY-MM`. First month charged. |
-| `endMonth` | `string` | no | `YYYY-MM`. Last month charged; absent = open-ended. |
+| `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `type` | `"personal"` \| `"business"` | no | Must match the stored type; entity type cannot change. |
+| `name` | `string` | no |  |
+| `currency` | `string` | no |  |
+| `targetSafetyBuffer` | `number` | no |  |
+| `active` | `boolean` | no |  |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
-| `id` | `string` | no |  |
 
 **Responses**
 
-- `201` — Expense created. [RecurringSubscription](#recurringsubscription)
-- `400` — Validation Error `object`
+- `200` — Entity updated. [Entity](#entity)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X POST "$API_URL/api/v1/accounting/expenses" \
+curl -X PATCH "$API_URL/api/v1/accounting/entities/:id" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
 
-## Update recurring expense
+## Delete a business entity
 
-`PUT` `/api/v1/accounting/expenses/{id}`
+`DELETE` `/api/v1/accounting/entities/{id}`
 
-**Parameters**
-
-| Name | In | Type | Required | Description |
-| --- | --- | --- | --- | --- |
-| `id` | path | `string` | yes |  |
-
-**Request body** (`application/json`)
-
-Type: [RecurringSubscription](#recurringsubscription)
-
-**Responses**
-
-- `200` — Expense updated. [RecurringSubscription](#recurringsubscription)
-- `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
-
-```bash
-curl -X PUT "$API_URL/api/v1/accounting/expenses/:id" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ ... }'
-```
-
-## Delete recurring expense
-
-`DELETE` `/api/v1/accounting/expenses/{id}`
+The personal entity cannot be deleted. Deleting cascades to all of its records.
 
 **Parameters**
 
@@ -225,40 +135,56 @@ curl -X PUT "$API_URL/api/v1/accounting/expenses/:id" \
 
 **Responses**
 
-- `200` — Expense deleted. [Ok](#ok)
+- `200` — Entity deleted. [Ok](#ok)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X DELETE "$API_URL/api/v1/accounting/expenses/:id" \
+curl -X DELETE "$API_URL/api/v1/accounting/entities/:id" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Add an asset
+## List assets
+
+`GET` `/api/v1/accounting/assets`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `entityId` | query | `string` | no |  |
+| `kind` | query | `"cash"` \| `"fixed"` \| `"investment"` | no |  |
+
+**Responses**
+
+- `200` — Assets. [Asset](#asset)[]
+- `400` — Validation Error `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/assets" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create an asset
 
 `POST` `/api/v1/accounting/assets`
 
+Body discriminated by `kind`. Fixed and investment assets accept `paidFrom` (creates the purchase transfer in the same write); fixed assets accept `financing` (creates a loan liability, paid at its level payment unless `amount` is given). A cash asset with `isDefault` clears the entity's other defaults; an entity's first cash asset is always the default.
+
 **Request body** (`application/json`)
 
-Type: `object`
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
-| `name` | `string` | yes |  |
-| `cost` | `number` | yes |  |
-| `lifespanMonths` | `integer` | yes |  |
-| `purchaseDate` | `string` | yes | `YYYY-MM-DD` or `YYYY-MM`. |
-| `salvageValue` | `number` | no |  |
-| `category` | `string` | yes |  |
-| `imageUrl` | `string` | no |  |
-| `isDefault` | `boolean` | no |  |
-| `id` | `string` | no |  |
+Type: `object` \| `object` \| `object`
 
 **Responses**
 
-- `201` — Asset created. [HardwareAsset](#hardwareasset)
-- `400` — Validation Error `object`
+- `201` — Asset created. [Asset](#asset)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X POST "$API_URL/api/v1/accounting/assets" \
@@ -267,9 +193,32 @@ curl -X POST "$API_URL/api/v1/accounting/assets" \
   -d '{ ... }'
 ```
 
-## Update asset
+## Get an asset
 
-`PUT` `/api/v1/accounting/assets/{id}`
+`GET` `/api/v1/accounting/assets/{id}`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — The asset. [Asset](#asset)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/assets/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Update an asset
+
+`PATCH` `/api/v1/accounting/assets/{id}`
+
+Partial update. `kind` and `entityId` cannot change.
 
 **Parameters**
 
@@ -279,24 +228,54 @@ curl -X POST "$API_URL/api/v1/accounting/assets" \
 
 **Request body** (`application/json`)
 
-Type: [HardwareAsset](#hardwareasset)
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `name` | `string` | no |  |
+| `category` | `string` | no |  |
+| `active` | `boolean` | no |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | no |  |
+| `balance` | `number` | no | Defaults to 0. |
+| `balanceAsOf` | `string` | no | Defaults to the UTC month. |
+| `currency` | `string` | no |  |
+| `isDefault` | `boolean` | no |  |
+| `cost` | `number` | no |  |
+| `acquiredOn` | `string` | no |  |
+| `depreciationMethod` | `"straight_line"` \| `"none"` | no |  |
+| `usefulLifeMonths` | `integer` | no |  |
+| `salvageValue` | `number` | no |  |
+| `instrument` | `string` | no |  |
+| `symbol` | `string` | no |  |
+| `units` | `number` | no |  |
+| `costBasis` | `number` | no |  |
+| `marketValue` | `number` | no |  |
+| `valuedAsOf` | `string` | no |  |
+| `expectedAnnualReturn` | `number` | no |  |
 
 **Responses**
 
-- `200` — Asset updated. [HardwareAsset](#hardwareasset)
-- `400` — Validation Error `object`
+- `200` — Asset updated. [Asset](#asset)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X PUT "$API_URL/api/v1/accounting/assets/:id" \
+curl -X PATCH "$API_URL/api/v1/accounting/assets/:id" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
 
-## Delete asset
+## Delete an asset
 
 `DELETE` `/api/v1/accounting/assets/{id}`
+
+Deleting the default cash asset promotes the oldest remaining cash asset of the entity.
 
 **Parameters**
 
@@ -307,40 +286,55 @@ curl -X PUT "$API_URL/api/v1/accounting/assets/:id" \
 **Responses**
 
 - `200` — Asset deleted. [Ok](#ok)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X DELETE "$API_URL/api/v1/accounting/assets/:id" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Add an income stream
+## List incomes
 
-`POST` `/api/v1/accounting/incomes`
+`GET` `/api/v1/accounting/incomes`
 
-**Request body** (`application/json`)
+**Parameters**
 
-Type: `object`
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
-| `name` | `string` | yes |  |
-| `amount` | `number` | yes |  |
-| `frequency` | `"monthly"` \| `"yearly"` \| `"one_time"` | yes |  |
-| `source` | `"stripe"` \| `"bank_transfer"` \| `"cash"` \| `"freelance"` \| `"salary"` \| `"other"` | yes |  |
-| `active` | `boolean` | yes |  |
-| `startMonth` | `string` | no | `YYYY-MM`. |
-| `endMonth` | `string` | no | `YYYY-MM`. |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-| `id` | `string` | no |  |
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `entityId` | query | `string` | no |  |
+| `kind` | query | `"employment"` \| `"business"` \| `"investment"` \| `"other"` | no |  |
 
 **Responses**
 
-- `201` — Income created. [RevenueStream](#revenuestream)
+- `200` — Incomes. [Income](#income)[]
 - `400` — Validation Error `object`
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/incomes" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create an income
+
+`POST` `/api/v1/accounting/incomes`
+
+`employment` only for kind employment; `sourceAssetId` only for kind investment.
+
+**Request body** (`application/json`)
+
+Type: `object` \| `object` \| `object` \| `object`
+
+**Responses**
+
+- `201` — Income created. [Income](#income)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X POST "$API_URL/api/v1/accounting/incomes" \
@@ -349,9 +343,30 @@ curl -X POST "$API_URL/api/v1/accounting/incomes" \
   -d '{ ... }'
 ```
 
-## Update income stream
+## Get an income
 
-`PUT` `/api/v1/accounting/incomes/{id}`
+`GET` `/api/v1/accounting/incomes/{id}`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — The income. [Income](#income)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/incomes/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Update an income
+
+`PATCH` `/api/v1/accounting/incomes/{id}`
 
 **Parameters**
 
@@ -361,22 +376,45 @@ curl -X POST "$API_URL/api/v1/accounting/incomes" \
 
 **Request body** (`application/json`)
 
-Type: [RevenueStream](#revenuestream)
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `name` | `string` | no |  |
+| `category` | `string` | no |  |
+| `amount` | `number` | no |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
+| `dayOfMonth` | `integer` | no |  |
+| `startMonth` | `string` | no |  |
+| `endMonth` | `string` | no |  |
+| `taxCategory` | `"40_1"` \| `"40_2"` \| `"40_3"` \| `"40_4"` \| `"40_5"` \| `"40_6"` \| `"40_7"` \| `"40_8"` | no |  |
+| `depositAssetId` | `string` | no |  |
+| `active` | `boolean` | no |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | no |  |
+| `employment` | `object` | no |  |
+| `employment.employer` | `string` | no |  |
+| `employment.title` | `string` | no |  |
+| `sourceAssetId` | `string` | no |  |
 
 **Responses**
 
-- `200` — Income updated. [RevenueStream](#revenuestream)
-- `400` — Validation Error `object`
+- `200` — Income updated. [Income](#income)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X PUT "$API_URL/api/v1/accounting/incomes/:id" \
+curl -X PATCH "$API_URL/api/v1/accounting/incomes/:id" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
 
-## Delete income stream
+## Delete an income
 
 `DELETE` `/api/v1/accounting/incomes/{id}`
 
@@ -389,16 +427,21 @@ curl -X PUT "$API_URL/api/v1/accounting/incomes/:id" \
 **Responses**
 
 - `200` — Income deleted. [Ok](#ok)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X DELETE "$API_URL/api/v1/accounting/incomes/:id" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Set career salary and title
+## Set the career salary
 
 `POST` `/api/v1/accounting/incomes/career`
+
+Updates the entity's primary employment income (earliest startMonth), or creates one when `salary > 0`. A salary of 0 deactivates the primary income.
 
 **Request body** (`application/json`)
 
@@ -412,14 +455,17 @@ Type: `object`
 | `title` | `string` | no |  |
 | `company` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
-| `startMonth` | `string` | no |  |
-| `endMonth` | `string` | no |  |
+| `startMonth` | `string` \| `""` | no | `YYYY-MM`. Empty string keeps the existing start month. |
+| `endMonth` | `string` \| `""` | no | `YYYY-MM`. Empty string clears the end month. |
+| `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
 
 **Responses**
 
-- `200` — Career updated. [BizSnapshot](#bizsnapshot)
-- `400` — Validation Error `object`
+- `200` — Primary income, or null when none exists. `object`
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X POST "$API_URL/api/v1/accounting/incomes/career" \
@@ -428,9 +474,30 @@ curl -X POST "$API_URL/api/v1/accounting/incomes/career" \
   -d '{ ... }'
 ```
 
-## Add a liability debt stream
+## List expenses
 
-`POST` `/api/v1/accounting/liabilities`
+`GET` `/api/v1/accounting/expenses`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `entityId` | query | `string` | no |  |
+
+**Responses**
+
+- `200` — Expenses. [Expense](#expense)[]
+- `400` — Validation Error `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/expenses" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create an expense
+
+`POST` `/api/v1/accounting/expenses`
 
 **Request body** (`application/json`)
 
@@ -438,33 +505,64 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
+| `id` | `string` | no |  |
+| `entityId` | `string` | yes |  |
+| `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
 | `name` | `string` | yes |  |
-| `amount` | `number` | yes | Monthly payment. |
-| `category` | `string` | yes | `mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string. |
-| `active` | `boolean` | yes |  |
-| `startMonth` | `string` | no | `YYYY-MM`. First month due. |
-| `endMonth` | `string` | no | `YYYY-MM`. Last month due; absent = open-ended. |
+| `category` | `string` | yes |  |
+| `amount` | `number` | yes |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
+| `dayOfMonth` | `integer` | no |  |
+| `startMonth` | `string` | no |  |
+| `endMonth` | `string` | no |  |
+| `paidFromAssetId` | `string` | no |  |
+| `paidFromLiabilityId` | `string` | no |  |
+| `assetId` | `string` | no |  |
+| `incomeId` | `string` | no |  |
+| `active` | `boolean` | no |  |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
-| `id` | `string` | no |  |
+| `details` | map of `any` | no |  |
 
 **Responses**
 
-- `201` — Liability created. [LiabilityStream](#liabilitystream)
-- `400` — Validation Error `object`
+- `201` — Expense created. [Expense](#expense)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X POST "$API_URL/api/v1/accounting/liabilities" \
+curl -X POST "$API_URL/api/v1/accounting/expenses" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
 
-## Update liability
+## Get an expense
 
-`PUT` `/api/v1/accounting/liabilities/{id}`
+`GET` `/api/v1/accounting/expenses/{id}`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — The expense. [Expense](#expense)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/expenses/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Update an expense
+
+`PATCH` `/api/v1/accounting/expenses/{id}`
 
 **Parameters**
 
@@ -474,22 +572,193 @@ curl -X POST "$API_URL/api/v1/accounting/liabilities" \
 
 **Request body** (`application/json`)
 
-Type: [LiabilityStream](#liabilitystream)
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `name` | `string` | no |  |
+| `category` | `string` | no |  |
+| `amount` | `number` | no |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
+| `dayOfMonth` | `integer` | no |  |
+| `startMonth` | `string` | no |  |
+| `endMonth` | `string` | no |  |
+| `paidFromAssetId` | `string` | no |  |
+| `paidFromLiabilityId` | `string` | no |  |
+| `assetId` | `string` | no |  |
+| `incomeId` | `string` | no |  |
+| `active` | `boolean` | no |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | no |  |
 
 **Responses**
 
-- `200` — Liability updated. [LiabilityStream](#liabilitystream)
-- `400` — Validation Error `object`
+- `200` — Expense updated. [Expense](#expense)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
-curl -X PUT "$API_URL/api/v1/accounting/liabilities/:id" \
+curl -X PATCH "$API_URL/api/v1/accounting/expenses/:id" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
 
-## Delete liability
+## Delete an expense
+
+`DELETE` `/api/v1/accounting/expenses/{id}`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — Expense deleted. [Ok](#ok)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
+
+```bash
+curl -X DELETE "$API_URL/api/v1/accounting/expenses/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## List liabilities
+
+`GET` `/api/v1/accounting/liabilities`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `entityId` | query | `string` | no |  |
+| `kind` | query | `"loan"` \| `"revolving"` \| `"other"` | no |  |
+
+**Responses**
+
+- `200` — Liabilities. [Liability](#liability)[]
+- `400` — Validation Error `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/liabilities" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create a liability
+
+`POST` `/api/v1/accounting/liabilities`
+
+Body discriminated by `kind`. A loan without `amount` is paid at its level payment, calculateLoanPayment(principal, annualRate, termMonths), and its payments start in the origination month unless `startMonth` is given.
+
+**Request body** (`application/json`)
+
+Type: `object` \| `object` \| `object`
+
+**Responses**
+
+- `201` — Liability created. [Liability](#liability)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/accounting/liabilities" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Get a liability
+
+`GET` `/api/v1/accounting/liabilities/{id}`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — The liability. [Liability](#liability)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/liabilities/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Update a liability
+
+`PATCH` `/api/v1/accounting/liabilities/{id}`
+
+Partial update. `loan` and `revolving` merge shallowly onto the stored details.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Request body** (`application/json`)
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `name` | `string` | no |  |
+| `category` | `string` | no |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
+| `dayOfMonth` | `integer` | no |  |
+| `startMonth` | `string` | no |  |
+| `endMonth` | `string` | no |  |
+| `paidFromAssetId` | `string` | no |  |
+| `active` | `boolean` | no |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | no |  |
+| `amount` | `number` | no |  |
+| `loan` | `object` | no | Merged shallowly onto the stored loan details. |
+| `loan.principal` | `number` | no |  |
+| `loan.annualRate` | `number` | no | Defaults to 0 (0% installment plan). |
+| `loan.termMonths` | `integer` | no |  |
+| `loan.originatedOn` | `string` | no |  |
+| `loan.financedAssetId` | `string` | no |  |
+| `loan.proceedsAssetId` | `string` | no |  |
+| `revolving` | `object` | no | Merged shallowly onto the stored revolving details. |
+| `revolving.creditLimit` | `number` | no |  |
+| `revolving.balance` | `number` | no | Defaults to 0. |
+| `revolving.balanceAsOf` | `string` | no | Defaults to the start month. |
+| `revolving.annualRate` | `number` | no |  |
+
+**Responses**
+
+- `200` — Liability updated. [Liability](#liability)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
+
+```bash
+curl -X PATCH "$API_URL/api/v1/accounting/liabilities/:id" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Delete a liability
 
 `DELETE` `/api/v1/accounting/liabilities/{id}`
 
@@ -502,16 +771,60 @@ curl -X PUT "$API_URL/api/v1/accounting/liabilities/:id" \
 **Responses**
 
 - `200` — Liability deleted. [Ok](#ok)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X DELETE "$API_URL/api/v1/accounting/liabilities/:id" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Record capital transfer injection
+## Get a liability's month-by-month schedule
+
+`GET` `/api/v1/accounting/liabilities/{id}/schedule`
+
+Loans: payments, interest and principal per month, including extra-payment transfers. Revolving: opening balance, interest, card charges and payments per month. Liabilities of kind `other` have no schedule (400).
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `through` | query | `string` | no | Last month `YYYY-MM`. Loans default to the payoff month or the end of the term, whichever comes first (capped at 600 months). Revolving balances default to the current UTC month. |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — Loan or revolving schedule. [LoanSchedule](#loanschedule) \| [RevolvingSchedule](#revolvingschedule)
+- `400` — Validation error, or the liability has no schedule. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Liability not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/liabilities/:id/schedule" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## List transfers
+
+`GET` `/api/v1/accounting/transfers`
+
+**Responses**
+
+- `200` — Transfers. [Transfer](#transfer)[]
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/transfers" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Create a transfer
 
 `POST` `/api/v1/accounting/transfers`
+
+Source: `fromAssetId` or `fromEntityId` (its default cash asset). Destination: exactly one of `toAssetId`, `toEntityId` (its default cash asset) or `toLiabilityId`.
 
 **Request body** (`application/json`)
 
@@ -519,20 +832,24 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `fromEntityId` | `string` | yes |  |
-| `toEntityId` | `string` | yes |  |
-| `amount` | `number` | yes |  |
-| `date` | `string` | yes | `YYYY-MM-DD` or `YYYY-MM`. |
-| `note` | `string` | yes |  |
-| `targetAssetId` | `string` | no |  |
-| `frequency` | `"one_time"` \| `"monthly"` | no |  |
 | `id` | `string` | no |  |
+| `amount` | `number` | yes |  |
+| `date` | `string` | yes |  |
+| `cycle` | `"one_time"` \| `"monthly"` | no |  |
+| `note` | `string` | no |  |
+| `fromAssetId` | `string` | no |  |
+| `fromEntityId` | `string` | no | Resolves to the entity's default cash asset. |
+| `toAssetId` | `string` | no |  |
+| `toEntityId` | `string` | no | Resolves to the entity's default cash asset. |
+| `toLiabilityId` | `string` | no |  |
 
 **Responses**
 
-- `201` — Transfer recorded. [CapitalTransfer](#capitaltransfer)
-- `400` — Validation Error `object`
+- `201` — Transfer created. [Transfer](#transfer)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X POST "$API_URL/api/v1/accounting/transfers" \
@@ -541,7 +858,72 @@ curl -X POST "$API_URL/api/v1/accounting/transfers" \
   -d '{ ... }'
 ```
 
-## Delete capital transfer
+## Get a transfer
+
+`GET` `/api/v1/accounting/transfers/{id}`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — The transfer. [Transfer](#transfer)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/transfers/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Update a transfer
+
+`PATCH` `/api/v1/accounting/transfers/{id}`
+
+Partial update. Name a new source or destination to re-resolve that side.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Request body** (`application/json`)
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `amount` | `number` | no |  |
+| `date` | `string` | no |  |
+| `cycle` | `"one_time"` \| `"monthly"` | no |  |
+| `note` | `string` | no |  |
+| `fromAssetId` | `string` | no |  |
+| `fromEntityId` | `string` | no | Resolves to the entity's default cash asset. |
+| `toAssetId` | `string` | no |  |
+| `toEntityId` | `string` | no | Resolves to the entity's default cash asset. |
+| `toLiabilityId` | `string` | no |  |
+
+**Responses**
+
+- `200` — Transfer updated. [Transfer](#transfer)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
+
+```bash
+curl -X PATCH "$API_URL/api/v1/accounting/transfers/:id" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Delete a transfer
 
 `DELETE` `/api/v1/accounting/transfers/{id}`
 
@@ -554,10 +936,37 @@ curl -X POST "$API_URL/api/v1/accounting/transfers" \
 **Responses**
 
 - `200` — Transfer deleted. [Ok](#ok)
+- `400` — Validation error. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Record not found. [Error](#error)
+- `409` — Version conflict or duplicate id. [Error](#error)
 
 ```bash
 curl -X DELETE "$API_URL/api/v1/accounting/transfers/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Get wealth metrics and balance sheet per entity and consolidated
+
+`GET` `/api/v1/accounting/summary`
+
+Per entity: wealth metrics and balance sheet at `month`. Consolidated: metrics plus the balance sheet summed over all entities.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `month` | query | `string` | yes | `YYYY-MM`. |
+| `asOf` | query | `string` | no | Today (`YYYY-MM-DD`); current values are as of this day when inside `month`. |
+
+**Responses**
+
+- `200` — Summary for the month. [Summary](#summary)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/summary" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -577,29 +986,85 @@ curl -X DELETE "$API_URL/api/v1/accounting/transfers/:id" \
 - `200` — Monthly ledger. [MonthlyLedger](#monthlyledger)
 - `400` — Validation Error `object`
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
-- `404` — Account not found. [Error](#error)
+- `404` — Entity not found. [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/ledger/:yearMonth" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+## Get the cash-flow feed for a month
+
+`GET` `/api/v1/accounting/cash-flows`
+
+Dated money movements of one entity (default: personal) for one month. `direction` filters `items`; `totals` (moneyIn, moneyOut, spending) always cover every item.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `month` | query | `string` | yes | `YYYY-MM`. |
+| `entityId` | query | `string` | no | Defaults to the personal entity. |
+| `direction` | query | `"in"` \| `"out"` | no | Filters `items` only; `totals` always cover every item. |
+| `includeDepreciation` | query | `"true"` \| `"false"` | no | Adds non-cash depreciation items. Defaults to `false`. |
+
+**Responses**
+
+- `200` — Cash-flow feed and totals. [CashFlowsResponse](#cashflowsresponse)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Entity not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/cash-flows" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Get treasury balance per month around a centre month
+
+`GET` `/api/v1/accounting/projection`
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `entityId` | query | `string` | no | Defaults to the personal entity. |
+| `month` | query | `string` | no | Centre month `YYYY-MM`. Defaults to the UTC month. |
+| `pastMonths` | query | `integer` | no |  |
+| `futureMonths` | query | `integer` | no |  |
+| `asOf` | query | `string` | no |  |
+
+**Responses**
+
+- `200` — Projection points and waterfall figures. [Projection](#projection)
+- `400` — Validation error. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Entity not found. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/accounting/projection" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Schemas
 
-### BizSnapshot
+### Entity
 
-Everything a user owns in the biz domain, in one document.
+A personal or business entity that owns money flows.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `accounts` | [EntityAccount](#entityaccount)[] | yes |  |
-| `subscriptions` | [RecurringSubscription](#recurringsubscription)[] | yes |  |
-| `hardware` | [HardwareAsset](#hardwareasset)[] | yes |  |
-| `revenues` | [RevenueStream](#revenuestream)[] | yes |  |
-| `transfers` | [CapitalTransfer](#capitaltransfer)[] | yes |  |
-| `liabilities` | [LiabilityStream](#liabilitystream)[] | yes |  |
-| `updatedAt` | `string` | no | ISO timestamp of the last save. |
-| `isDefault` | `boolean` | no | `true` while the user has never saved and seed data is returned. |
+| `id` | `string` | yes |  |
+| `name` | `string` | yes |  |
+| `type` | `"personal"` \| `"business"` | yes |  |
+| `currency` | `string` | yes | ISO currency code, typically `THB` or `USD`. |
+| `targetSafetyBuffer` | `number` | no |  |
+| `active` | `boolean` | yes |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
 
 ### Error
 
@@ -607,120 +1072,173 @@ Everything a user owns in the biz domain, in one document.
 | --- | --- | --- | --- |
 | `error` | `string` | yes |  |
 
-### EntityAccount
-
-A personal or business entity that owns money flows.
+### Ok
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `id` | `string` | yes | Client-generated unique id. |
-| `name` | `string` | yes |  |
-| `type` | `"personal"` \| `"business"` | yes |  |
-| `cashReserve` | `number` | yes | Cash on hand, in `currency`. |
-| `salary` | `number` | no |  |
-| `paydayDayOfMonth` | `integer` | no |  |
-| `targetSafetyBuffer` | `number` | no |  |
-| `currency` | `string` | yes | ISO currency code, typically `THB` or `USD`. |
-| `createdAt` | `string` | no |  |
-| `active` | `boolean` | no |  |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-| `careerTitle` | `string` | no |  |
-| `careerCompany` | `string` | no |  |
-| `careerImageUrl` | `string` | no |  |
+| `ok` | `true` | yes |  |
 
-### RecurringSubscription
+### Asset
 
-A recurring cost (SaaS, rent, insurance…).
+An asset, discriminated by `kind`.
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `id` | `string` | yes |  |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
-| `name` | `string` | yes |  |
-| `amount` | `number` | yes |  |
-| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | yes |  |
-| `category` | `string` | yes |  |
-| `nextRenewalDate` | `string` | yes | `YYYY-MM-DD`. |
-| `billingDay` | `integer` | no |  |
-| `active` | `boolean` | yes |  |
-| `startMonth` | `string` | no | `YYYY-MM`. First month charged. |
-| `endMonth` | `string` | no | `YYYY-MM`. Last month charged; absent = open-ended. |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
+Type: [CashAsset](#cashasset) \| [FixedAsset](#fixedasset) \| [InvestmentAsset](#investmentasset)
 
-### HardwareAsset
-
-A depreciating asset.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `id` | `string` | yes |  |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
-| `name` | `string` | yes |  |
-| `cost` | `number` | yes |  |
-| `lifespanMonths` | `integer` | yes |  |
-| `purchaseDate` | `string` | yes | `YYYY-MM-DD` or `YYYY-MM`. |
-| `salvageValue` | `number` | no |  |
-| `category` | `string` | yes |  |
-| `imageUrl` | `string` | no |  |
-| `isDefault` | `boolean` | no |  |
-
-### RevenueStream
+### Income
 
 An income stream.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | `string` | yes |  |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
+| `entityId` | `string` | yes |  |
+| `kind` | `"employment"` \| `"business"` \| `"investment"` \| `"other"` | yes |  |
+| `category` | `string` | yes | salary, bonus, freelance, sales, dividend, interest, rent… |
 | `name` | `string` | yes |  |
 | `amount` | `number` | yes |  |
-| `frequency` | `"monthly"` \| `"yearly"` \| `"one_time"` | yes |  |
-| `source` | `"stripe"` \| `"bank_transfer"` \| `"cash"` \| `"freelance"` \| `"salary"` \| `"other"` | yes |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | yes |  |
+| `dayOfMonth` | `integer` | no | Day the money moves; absent = the flow type's default day. |
+| `startMonth` | `string` | yes | `YYYY-MM`. First month the flow happens. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month; absent = open-ended. |
+| `taxCategory` | `"40_1"` \| `"40_2"` \| `"40_3"` \| `"40_4"` \| `"40_5"` \| `"40_6"` \| `"40_7"` \| `"40_8"` | no |  |
+| `depositAssetId` | `string` | no | Cash asset the income lands in; absent = the default cash asset. |
+| `sourceAssetId` | `string` | no | Asset that generates it. Investment income only. |
+| `employment` | `object` | no | Present only when kind is `employment`. |
+| `employment.employer` | `string` | no |  |
+| `employment.title` | `string` | no |  |
 | `active` | `boolean` | yes |  |
-| `startMonth` | `string` | no | `YYYY-MM`. |
-| `endMonth` | `string` | no | `YYYY-MM`. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
+| `details` | map of `any` | yes | Display-only extras the engine never reads. |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
 
-### CapitalTransfer
+### Expense
 
-Money moved between two entities.
+A recurring or one-time cost.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `id` | `string` | yes |  |
-| `fromEntityId` | `string` | yes |  |
-| `toEntityId` | `string` | yes |  |
+| `entityId` | `string` | yes |  |
+| `name` | `string` | yes |  |
+| `category` | `string` | yes |  |
+| `amount` | `number` | yes |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | yes |  |
+| `dayOfMonth` | `integer` | no | Day the money moves; absent = the flow type's default day. |
+| `startMonth` | `string` | yes | `YYYY-MM`. First month the flow happens. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month; absent = open-ended. |
+| `paidFromAssetId` | `string` | no |  |
+| `paidFromLiabilityId` | `string` | no | Revolving liability (credit card) it is charged to. |
+| `assetId` | `string` | no | Asset this is a cost of owning. |
+| `incomeId` | `string` | no | Income this is a cost of earning. |
+| `active` | `boolean` | yes |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | yes | Display-only extras the engine never reads. |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
+
+### Liability
+
+A debt. The schedule is the planned payment.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes |  |
+| `entityId` | `string` | yes |  |
+| `kind` | `"loan"` \| `"revolving"` \| `"other"` | yes |  |
+| `name` | `string` | yes |  |
+| `category` | `string` | yes |  |
+| `amount` | `number` | yes |  |
+| `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | yes |  |
+| `dayOfMonth` | `integer` | no | Day the money moves; absent = the flow type's default day. |
+| `startMonth` | `string` | yes | `YYYY-MM`. First month the flow happens. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month; absent = open-ended. |
+| `paidFromAssetId` | `string` | no |  |
+| `loan` | [LoanDetails](#loandetails) | no |  |
+| `revolving` | [RevolvingDetails](#revolvingdetails) | no |  |
+| `active` | `boolean` | yes |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | yes | Display-only extras the engine never reads. |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
+
+### LoanSchedule
+
+Month-by-month loan schedule.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `liabilityId` | `string` | yes |  |
+| `kind` | `"loan"` | yes |  |
+| `entries` | [LoanScheduleEntry](#loanscheduleentry)[] | yes |  |
+
+### RevolvingSchedule
+
+Month-by-month revolving balance.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `liabilityId` | `string` | yes |  |
+| `kind` | `"revolving"` | yes |  |
+| `entries` | [RevolvingScheduleEntry](#revolvingscheduleentry)[] | yes |  |
+
+### Transfer
+
+Money moved from an asset to an asset, or onto a liability.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes |  |
 | `amount` | `number` | yes |  |
 | `date` | `string` | yes | `YYYY-MM-DD` or `YYYY-MM`. |
+| `cycle` | `"one_time"` \| `"monthly"` | yes |  |
 | `note` | `string` | yes |  |
-| `targetAssetId` | `string` | no |  |
-| `frequency` | `"one_time"` \| `"monthly"` | no |  |
+| `fromAssetId` | `string` | yes |  |
+| `toAssetId` | `string` | no |  |
+| `toLiabilityId` | `string` | no |  |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
 
-### LiabilityStream
+### Summary
 
-A debt payment stream.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `id` | `string` | yes |  |
-| `entityId` | `string` | yes | Owning `EntityAccount.id`. |
-| `name` | `string` | yes |  |
-| `amount` | `number` | yes | Monthly payment. |
-| `category` | `string` | yes | `mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string. |
-| `active` | `boolean` | yes |  |
-| `startMonth` | `string` | no | `YYYY-MM`. First month due. |
-| `endMonth` | `string` | no | `YYYY-MM`. Last month due; absent = open-ended. |
-| `notes` | `string` | no |  |
-| `imageUrl` | `string` | no |  |
-
-### Ok
+Wealth metrics per entity and consolidated, for one month.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `ok` | `true` | yes |  |
+| `yearMonth` | `string` | yes |  |
+| `asOf` | `string` | no |  |
+| `entities` | `object`[] | yes |  |
+| `entities[].entityId` | `string` | yes |  |
+| `entities[].metrics` | `object` | yes |  |
+| `entities[].metrics.cashAssetsValue` | `number` | yes |  |
+| `entities[].metrics.gearAssetsValue` | `number` | yes |  |
+| `entities[].metrics.totalAssetsValue` | `number` | yes |  |
+| `entities[].metrics.currentLiquid` | `number` | yes |  |
+| `entities[].metrics.eomLiquid` | `number` | yes |  |
+| `entities[].metrics.currentWealth` | `number` | yes |  |
+| `entities[].metrics.eomWealth` | `number` | yes |  |
+| `entities[].metrics.liquidPct` | `number` | yes |  |
+| `entities[].metrics.gearPct` | `number` | yes |  |
+| `entities[].metrics.totalIncome` | `number` | yes |  |
+| `entities[].metrics.totalExpense` | `number` | yes |  |
+| `entities[].metrics.liabilityMonthly` | `number` | yes |  |
+| `entities[].metrics.liabPct` | `number` | yes |  |
+| `entities[].metrics.runwayMonths` | `number` \| `null` | yes |  |
+| `entities[].metrics.isDefaultAlive` | `boolean` | yes |  |
+| `entities[].balanceSheet` | [BalanceSheet](#balancesheet) | yes |  |
+| `consolidated` | `object` | yes |  |
+| `consolidated.totalTreasury` | `number` | yes |  |
+| `consolidated.totalEomTreasury` | `number` | yes |  |
+| `consolidated.personalCash` | `number` | yes |  |
+| `consolidated.businessCash` | `number` | yes |  |
+| `consolidated.balanceSheet` | [BalanceSheet](#balancesheet) | yes |  |
 
 ### MonthlyLedger
 
@@ -750,4 +1268,192 @@ Computed cash ledger for one entity and month.
 | `actionItems[].type` | `"subscription"` \| `"depreciation"` \| `"revenue"` \| `"capital_in"` \| `"capital_out"` \| `"inflow"` \| `"outflow"` | yes |  |
 | `actionItems[].category` | `string` | no |  |
 | `actionItems[].reference` | `string` | no |  |
+
+### CashFlowsResponse
+
+Cash-flow feed of one entity for one month, with totals over all items.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `yearMonth` | `string` | yes |  |
+| `entityId` | `string` | yes |  |
+| `items` | [CashFlowItem](#cashflowitem)[] | yes |  |
+| `totals` | `object` | yes |  |
+| `totals.moneyIn` | `number` | yes | Cash in, from cash items only. |
+| `totals.moneyOut` | `number` | yes | Cash out, from cash items only. |
+| `totals.spending` | `number` | yes | Sum of spendingAmount over every item. |
+
+### Projection
+
+Treasury balance per month around a centre month.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `points` | `object`[] | yes |  |
+| `points[].offset` | `integer` | yes |  |
+| `points[].yearMonth` | `string` | yes |  |
+| `points[].balance` | `number` | yes |  |
+| `totalIncome` | `number` | yes |  |
+| `totalExpense` | `number` | yes |  |
+| `liabilityMonthly` | `number` | yes |  |
+| `projectedNet` | `number` | yes |  |
+
+### CashAsset
+
+Cash and cash equivalents: bank accounts, e-wallets, cash on hand.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes |  |
+| `entityId` | `string` | yes | Owning `Entity.id`. |
+| `name` | `string` | yes |  |
+| `category` | `string` | yes | Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock… |
+| `active` | `boolean` | yes |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | yes | Display-only extras the engine never reads. |
+| `kind` | `"cash"` | yes |  |
+| `balance` | `number` | yes | Balance at the start of `balanceAsOf`. |
+| `balanceAsOf` | `string` | yes | `YYYY-MM`, or `YYYY-MM-DD` for a balance recorded mid-month. |
+| `currency` | `string` | yes |  |
+| `isDefault` | `boolean` | yes | Where unlinked money of the entity lands. One per entity. |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
+
+### FixedAsset
+
+PP&E bought once and depreciated over its useful life.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes |  |
+| `entityId` | `string` | yes | Owning `Entity.id`. |
+| `name` | `string` | yes |  |
+| `category` | `string` | yes | Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock… |
+| `active` | `boolean` | yes |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | yes | Display-only extras the engine never reads. |
+| `kind` | `"fixed"` | yes |  |
+| `cost` | `number` | yes |  |
+| `acquiredOn` | `string` | yes | `YYYY-MM` or `YYYY-MM-DD`. |
+| `depreciationMethod` | `"straight_line"` \| `"none"` | yes |  |
+| `usefulLifeMonths` | `integer` | no | Required unless depreciationMethod is `none`. |
+| `salvageValue` | `number` | yes |  |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
+
+### InvestmentAsset
+
+Valued at market, grown by an expected return, never depreciated.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes |  |
+| `entityId` | `string` | yes | Owning `Entity.id`. |
+| `name` | `string` | yes |  |
+| `category` | `string` | yes | Free-form sub-type: bank, e_wallet, laptop, vehicle, property, stock… |
+| `active` | `boolean` | yes |  |
+| `notes` | `string` | no |  |
+| `imageUrl` | `string` | no |  |
+| `details` | map of `any` | yes | Display-only extras the engine never reads. |
+| `kind` | `"investment"` | yes |  |
+| `instrument` | `string` | yes |  |
+| `symbol` | `string` | no |  |
+| `units` | `number` | no |  |
+| `costBasis` | `number` | yes |  |
+| `marketValue` | `number` | yes |  |
+| `valuedAsOf` | `string` | yes | `YYYY-MM`. |
+| `expectedAnnualReturn` | `number` | no | Yearly return as a fraction (0.07 = 7%). |
+| `currency` | `string` | yes |  |
+| `version` | `integer` | yes | Starts at 1; every update bumps it. PATCH may send it back to detect conflicts. |
+| `createdAt` | `string` | yes | ISO timestamp. |
+| `updatedAt` | `string` | yes | ISO timestamp. |
+
+### LoanDetails
+
+Amortizing loan terms.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `principal` | `number` | yes |  |
+| `annualRate` | `number` | yes | Yearly interest rate as a fraction (0.065 = 6.5%). |
+| `termMonths` | `integer` | yes |  |
+| `originatedOn` | `string` | yes | `YYYY-MM` or `YYYY-MM-DD`. |
+| `financedAssetId` | `string` | no |  |
+| `proceedsAssetId` | `string` | no |  |
+
+### RevolvingDetails
+
+Revolving credit: a card or credit line.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `creditLimit` | `number` | no |  |
+| `balance` | `number` | yes |  |
+| `balanceAsOf` | `string` | yes | `YYYY-MM`. |
+| `annualRate` | `number` | no |  |
+
+### LoanScheduleEntry
+
+One month of a loan.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `yearMonth` | `string` | yes |  |
+| `opening` | `number` | yes |  |
+| `interest` | `number` | yes |  |
+| `payment` | `number` | yes | Scheduled payment actually made, capped at what is owed. |
+| `extra` | `number` | yes | Extra payments applied, capped at what is owed after `payment`. |
+| `principal` | `number` | yes | Principal repaid; negative when the balance grows. |
+| `closing` | `number` | yes |  |
+
+### RevolvingScheduleEntry
+
+One month of a revolving balance.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `yearMonth` | `string` | yes |  |
+| `opening` | `number` | yes |  |
+| `interest` | `number` | yes |  |
+| `charges` | `number` | yes | Monthly-equivalent card charges that month. |
+| `payments` | `number` | yes | Scheduled payment plus transfers into the card. |
+| `closing` | `number` | yes | A negative balance is a credit. |
+
+### BalanceSheet
+
+Position at the end of one month.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `cash` | `number` | yes | End-of-month treasury of the cash wallets. |
+| `fixedAssets` | `number` | yes | Remaining book value of fixed (non-cash, non-investment) assets. |
+| `investments` | `number` | yes | Value of investment assets. |
+| `totalAssets` | `number` | yes | cash + fixedAssets + investments. |
+| `debt` | `number` | yes | Loan and revolving balances owed. |
+| `netWorth` | `number` | yes | totalAssets - debt. |
+
+### CashFlowItem
+
+One dated money movement in the cash-flow feed.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Unique within the month's feed. |
+| `sourceType` | `"income"` \| `"expense"` \| `"liability"` \| `"transfer"` \| `"asset"` \| `"account"` | yes |  |
+| `sourceId` | `string` | yes | The record to open when tapped. |
+| `flowType` | `"income"` \| `"expense"` \| `"debt_payment"` \| `"asset_purchase"` \| `"investment"` \| `"transfer"` \| `"loan_proceeds"` \| `"depreciation"` | yes |  |
+| `direction` | `"in"` \| `"out"` | yes |  |
+| `date` | `string` | yes | `YYYY-MM-DD`. |
+| `name` | `string` | yes |  |
+| `amount` | `number` | yes |  |
+| `isCash` | `boolean` | yes | False for card charges and depreciation: they move no cash. |
+| `spendingAmount` | `number` | yes | The part of the amount that counts as spending. |
+| `cashAssetId` | `string` | no |  |
+| `chargedToLiabilityId` | `string` | no | Revolving liability a card charge lands on. |
+| `interest` | `number` | no | Loan payments only. |
+| `principal` | `number` | no | Loan payments only. |
 

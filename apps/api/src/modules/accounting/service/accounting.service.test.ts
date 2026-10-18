@@ -1,3 +1,4 @@
+import { calculateLoanPayment } from "@excited-live/accounting";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDriver } from "../../../db/testing";
 import type { SqlDriver } from "../../../db/types";
@@ -180,17 +181,16 @@ describe("validation rules", () => {
 		).rejects.toBeInstanceOf(ValidationError);
 	});
 
-	it("rejects a loan without an amount", async () => {
+	it("defaults a loan without an amount to its level payment", async () => {
 		const me = await personalEntity();
-		await expect(
-			service.createLiability(USER, {
-				kind: "loan",
-				entityId: me.id,
-				name: "Mortgage",
-				category: "mortgage",
-				loan: { principal: 1000000, termMonths: 240, originatedOn: "2026-01" },
-			}),
-		).rejects.toThrow("amount is required");
+		const loan = await service.createLiability(USER, {
+			kind: "loan",
+			entityId: me.id,
+			name: "Mortgage",
+			category: "mortgage",
+			loan: { principal: 1000000, annualRate: 0.065, termMonths: 240, originatedOn: "2026-01" },
+		});
+		expect(loan.amount).toBe(calculateLoanPayment(1000000, 0.065, 240));
 	});
 
 	it("rejects a transfer with two destinations", async () => {
@@ -461,3 +461,177 @@ describe("asset purchases", () => {
 		expect(incoming).toMatchObject({ fromAssetId: savings.id, toAssetId: acmeWallet.id });
 	});
 });
+
+describe("computed reads", () => {
+	it("adds a balance sheet to each entity and to the consolidated summary", async () => {
+		const me = await personalEntity();
+		await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Condo",
+			category: "property",
+			cost: 1200000,
+			acquiredOn: "2026-01-10",
+			depreciationMethod: "none",
+			financing: { principal: 1000000, annualRate: 0.06, termMonths: 240, originatedOn: "2026-01-10", amount: 7000 },
+		});
+
+		const summary = await service.getSummary(USER, { month: "2026-01" });
+		const personal = summary.entities.find((e) => e.entityId === me.id);
+		if (!personal) throw new Error("personal entity missing from summary");
+
+		// Interest accrues on the opening balance for the origination month.
+		const debt = 1000000 + 5000 - 7000;
+		expect(personal.balanceSheet.fixedAssets).toBe(1200000);
+		expect(personal.balanceSheet.debt).toBeCloseTo(debt, 2);
+		expect(personal.balanceSheet.totalAssets).toBe(
+			personal.balanceSheet.cash + personal.balanceSheet.fixedAssets + personal.balanceSheet.investments,
+		);
+		expect(personal.balanceSheet.netWorth).toBeCloseTo(personal.balanceSheet.totalAssets - personal.balanceSheet.debt, 2);
+		expect(summary.consolidated.balanceSheet).toEqual(personal.balanceSheet);
+	});
+
+	it("feeds the cash-flow totals from the ledger and keeps them under the direction filter", async () => {
+		const me = await personalEntity();
+		const wallet = await defaultWallet(me.id);
+		const savings = await service.createAsset(USER, { kind: "cash", entityId: me.id, name: "Savings", category: "bank" });
+		await service.createIncome(USER, {
+			entityId: me.id,
+			kind: "employment",
+			category: "salary",
+			name: "Salary",
+			amount: 50000,
+			startMonth: "2026-01",
+			asOf: "2026-01-15",
+		});
+		await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Rent",
+			category: "housing",
+			amount: 12000,
+			startMonth: "2026-01",
+			paidFromAssetId: wallet.id,
+		});
+		const card = await service.createLiability(USER, {
+			kind: "revolving",
+			entityId: me.id,
+			name: "Card",
+			category: "credit_card",
+			amount: 500,
+			revolving: { creditLimit: 50000, balance: 0, balanceAsOf: "2026-01" },
+		});
+		await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Streaming",
+			category: "entertainment",
+			amount: 300,
+			startMonth: "2026-01",
+			paidFromLiabilityId: card.id,
+		});
+		await service.createTransfer(USER, { amount: 5000, date: "2026-03-05", fromEntityId: me.id, toAssetId: savings.id });
+
+		const all = await service.getCashFlows(USER, { month: "2026-03" });
+		const out = await service.getCashFlows(USER, { month: "2026-03", direction: "out" });
+		const ledger = await service.getLedger(USER, "2026-03", me.id);
+
+		expect(all.entityId).toBe(me.id);
+		expect(all.totals.moneyIn).toBe(ledger.summary.totalInflow);
+		expect(all.totals.moneyOut).toBe(ledger.summary.totalCashOutflow);
+		expect(all.items.some((item) => item.isCash === false && item.chargedToLiabilityId === card.id)).toBe(true);
+		expect(out.items.every((item) => item.direction === "out")).toBe(true);
+		expect(out.items.length).toBeLessThan(all.items.length);
+		expect(out.totals).toEqual(all.totals);
+	});
+
+	it("includes depreciation only when asked and 404s on an unknown entity", async () => {
+		const me = await personalEntity();
+		await service.createAsset(USER, {
+			kind: "fixed",
+			entityId: me.id,
+			name: "Laptop",
+			category: "laptop",
+			cost: 36000,
+			acquiredOn: "2026-01",
+			usefulLifeMonths: 36,
+		});
+
+		const without = await service.getCashFlows(USER, { month: "2026-02" });
+		const withDep = await service.getCashFlows(USER, { month: "2026-02", includeDepreciation: "true" });
+		expect(without.items.some((item) => item.flowType === "depreciation")).toBe(false);
+		expect(withDep.items.some((item) => item.flowType === "depreciation")).toBe(true);
+		expect(withDep.totals.moneyOut).toBe(without.totals.moneyOut);
+
+		await expect(service.getCashFlows(USER, { month: "2026-02", entityId: "missing" })).rejects.toBeInstanceOf(NotFoundError);
+	});
+
+	it("schedules a loan to its payoff month by default, counting extra payments", async () => {
+		const me = await personalEntity();
+		const loan = await service.createLiability(USER, {
+			kind: "loan",
+			entityId: me.id,
+			name: "Phone plan",
+			category: "loan",
+			loan: { principal: 10000, annualRate: 0, termMonths: 10, originatedOn: "2026-01" },
+		});
+		await service.createTransfer(USER, { amount: 20000, date: "2026-02-10", fromEntityId: me.id, toLiabilityId: loan.id });
+
+		const schedule = await service.getLiabilitySchedule(USER, loan.id, {});
+		expect(schedule.kind).toBe("loan");
+		if (schedule.kind !== "loan") throw new Error("expected a loan schedule");
+		expect(schedule.entries.map((e) => e.yearMonth)).toEqual(["2026-01", "2026-02"]);
+		expect(schedule.entries[1]).toMatchObject({ payment: 1000, extra: 8000, closing: 0 });
+	});
+
+	it("runs a loan schedule to the end of its term when it is not paid off early", async () => {
+		const me = await personalEntity();
+		const loan = await service.createLiability(USER, {
+			kind: "loan",
+			entityId: me.id,
+			name: "Mortgage",
+			category: "mortgage",
+			loan: { principal: 120000, annualRate: 0.12, termMonths: 12, originatedOn: "2026-01" },
+		});
+
+		const schedule = await service.getLiabilitySchedule(USER, loan.id, {});
+		if (schedule.kind !== "loan") throw new Error("expected a loan schedule");
+		expect(schedule.entries).toHaveLength(12);
+		expect(schedule.entries[11]?.yearMonth).toBe("2026-12");
+
+		const partial = await service.getLiabilitySchedule(USER, loan.id, { through: "2026-03" });
+		if (partial.kind !== "loan") throw new Error("expected a loan schedule");
+		expect(partial.entries.map((e) => e.yearMonth)).toEqual(["2026-01", "2026-02", "2026-03"]);
+	});
+
+	it("schedules a revolving balance month by month", async () => {
+		const me = await personalEntity();
+		const card = await service.createLiability(USER, {
+			kind: "revolving",
+			entityId: me.id,
+			name: "Card",
+			category: "credit_card",
+			amount: 1000,
+			revolving: { creditLimit: 50000, balance: 2000, balanceAsOf: "2026-01", annualRate: 0.18 },
+		});
+
+		const schedule = await service.getLiabilitySchedule(USER, card.id, { through: "2026-03" });
+		expect(schedule.kind).toBe("revolving");
+		if (schedule.kind !== "revolving") throw new Error("expected a revolving schedule");
+		expect(schedule.entries.map((e) => e.yearMonth)).toEqual(["2026-01", "2026-02", "2026-03"]);
+		expect(schedule.entries[0]).toMatchObject({ opening: 2000, interest: 30 });
+	});
+
+	it("refuses a schedule for an other-kind liability and 404s on an unknown one", async () => {
+		const me = await personalEntity();
+		const other = await service.createLiability(USER, {
+			kind: "other",
+			entityId: me.id,
+			name: "Tax owed",
+			category: "tax",
+			amount: 500,
+		});
+
+		await expect(service.getLiabilitySchedule(USER, other.id, {})).rejects.toThrow("This liability has no schedule");
+		await expect(service.getLiabilitySchedule(USER, "missing", {})).rejects.toBeInstanceOf(NotFoundError);
+	});
+});
+

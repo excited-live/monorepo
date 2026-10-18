@@ -1,3 +1,9 @@
+import type {
+	BalanceSheet,
+	CashFlowItem,
+	LoanScheduleEntry,
+	RevolvingScheduleEntry,
+} from "@excited-live/accounting";
 import { z } from "zod";
 import {
 	AssetSchema,
@@ -106,7 +112,11 @@ const financingSchema = z.object({
 	annualRate: z.number().min(0),
 	termMonths: z.number().int().positive(),
 	originatedOn: monthOrDate.optional().describe("Defaults to acquiredOn."),
-	amount: z.number().min(0).describe("Monthly payment."),
+	amount: z
+		.number()
+		.min(0)
+		.optional()
+		.describe("Monthly payment. Defaults to the level payment: calculateLoanPayment(principal, annualRate, termMonths)."),
 	name: z.string().min(1).optional(),
 	category: z.string().min(1).optional(),
 });
@@ -269,7 +279,11 @@ export const CreateLiabilityBody = z.discriminatedUnion("kind", [
 		...liabilityIdentity,
 		...liabilityFields,
 		kind: z.literal("loan"),
-		amount: z.number().min(0).optional().describe("Monthly payment. Required by the service for loans."),
+		amount: z
+			.number()
+			.min(0)
+			.optional()
+			.describe("Monthly payment. Defaults to the level payment: calculateLoanPayment(principal, annualRate, termMonths)."),
 		loan: loanDetails,
 		revolving: z.undefined("revolving is only allowed for revolving liabilities").optional(),
 	}),
@@ -351,6 +365,21 @@ export const SummaryQuery = z.object({
 	asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD").optional().describe("Today (`YYYY-MM-DD`); current values are as of this day when inside `month`."),
 });
 
+export const CashFlowsQuery = z.object({
+	month: month.describe("`YYYY-MM`."),
+	entityId: z.string().min(1).optional().describe("Defaults to the personal entity."),
+	direction: z.enum(["in", "out"]).optional().describe("Filters `items` only; `totals` always cover every item."),
+	includeDepreciation: z.enum(["true", "false"]).optional().describe("Adds non-cash depreciation items. Defaults to `false`."),
+});
+
+export const LiabilityScheduleQuery = z.object({
+	through: month
+		.optional()
+		.describe(
+			"Last month `YYYY-MM`. Loans default to the payoff month or the end of the term, whichever comes first (capped at 600 months). Revolving balances default to the current UTC month.",
+		),
+});
+
 export const GetLedgerQuerySchema = z.object({
 	entityId: z.string().optional(),
 });
@@ -364,6 +393,99 @@ export const ProjectionQuery = z.object({
 });
 
 // RESPONSES ---------------------------------------------------------------
+
+export const BalanceSheetSchema = z
+	.object({
+		cash: z.number().describe("End-of-month treasury of the cash wallets."),
+		fixedAssets: z.number().describe("Remaining book value of fixed (non-cash, non-investment) assets."),
+		investments: z.number().describe("Value of investment assets."),
+		totalAssets: z.number().describe("cash + fixedAssets + investments."),
+		debt: z.number().describe("Loan and revolving balances owed."),
+		netWorth: z.number().describe("totalAssets - debt."),
+	})
+	.meta({ id: "BalanceSheet", description: "Position at the end of one month." }) satisfies z.ZodType<BalanceSheet>;
+
+export const CashFlowItemSchema = z
+	.object({
+		id: z.string().describe("Unique within the month's feed."),
+		sourceType: z.enum(["income", "expense", "liability", "transfer", "asset", "account"]),
+		sourceId: z.string().describe("The record to open when tapped."),
+		flowType: z.enum([
+			"income",
+			"expense",
+			"debt_payment",
+			"asset_purchase",
+			"investment",
+			"transfer",
+			"loan_proceeds",
+			"depreciation",
+		]),
+		direction: z.enum(["in", "out"]),
+		date: z.string().describe("`YYYY-MM-DD`."),
+		name: z.string(),
+		amount: z.number(),
+		isCash: z.boolean().describe("False for card charges and depreciation: they move no cash."),
+		spendingAmount: z.number().describe("The part of the amount that counts as spending."),
+		cashAssetId: z.string().optional(),
+		chargedToLiabilityId: z.string().optional().describe("Revolving liability a card charge lands on."),
+		interest: z.number().optional().describe("Loan payments only."),
+		principal: z.number().optional().describe("Loan payments only."),
+	})
+	.meta({ id: "CashFlowItem", description: "One dated money movement in the cash-flow feed." }) satisfies z.ZodType<CashFlowItem>;
+
+export const CashFlowsResponseSchema = z
+	.object({
+		yearMonth: z.string(),
+		entityId: z.string(),
+		items: z.array(CashFlowItemSchema),
+		totals: z.object({
+			moneyIn: z.number().describe("Cash in, from cash items only."),
+			moneyOut: z.number().describe("Cash out, from cash items only."),
+			spending: z.number().describe("Sum of spendingAmount over every item."),
+		}),
+	})
+	.meta({ id: "CashFlowsResponse", description: "Cash-flow feed of one entity for one month, with totals over all items." });
+
+export const LoanScheduleEntrySchema = z
+	.object({
+		yearMonth: z.string(),
+		opening: z.number(),
+		interest: z.number(),
+		payment: z.number().describe("Scheduled payment actually made, capped at what is owed."),
+		extra: z.number().describe("Extra payments applied, capped at what is owed after `payment`."),
+		principal: z.number().describe("Principal repaid; negative when the balance grows."),
+		closing: z.number(),
+	})
+	.meta({ id: "LoanScheduleEntry", description: "One month of a loan." }) satisfies z.ZodType<LoanScheduleEntry>;
+
+export const RevolvingScheduleEntrySchema = z
+	.object({
+		yearMonth: z.string(),
+		opening: z.number(),
+		interest: z.number(),
+		charges: z.number().describe("Monthly-equivalent card charges that month."),
+		payments: z.number().describe("Scheduled payment plus transfers into the card."),
+		closing: z.number().describe("A negative balance is a credit."),
+	})
+	.meta({ id: "RevolvingScheduleEntry", description: "One month of a revolving balance." }) satisfies z.ZodType<RevolvingScheduleEntry>;
+
+export const LoanScheduleSchema = z
+	.object({
+		liabilityId: z.string(),
+		kind: z.literal("loan"),
+		entries: z.array(LoanScheduleEntrySchema),
+	})
+	.meta({ id: "LoanSchedule", description: "Month-by-month loan schedule." });
+
+export const RevolvingScheduleSchema = z
+	.object({
+		liabilityId: z.string(),
+		kind: z.literal("revolving"),
+		entries: z.array(RevolvingScheduleEntrySchema),
+	})
+	.meta({ id: "RevolvingSchedule", description: "Month-by-month revolving balance." });
+
+export const LiabilityScheduleSchema = z.discriminatedUnion("kind", [LoanScheduleSchema, RevolvingScheduleSchema]);
 
 const entityWealthMetrics = z.object({
 	cashAssetsValue: z.number(),
@@ -387,12 +509,13 @@ export const SummarySchema = z
 	.object({
 		yearMonth: z.string(),
 		asOf: z.string().optional(),
-		entities: z.array(z.object({ entityId: z.string(), metrics: entityWealthMetrics })),
+		entities: z.array(z.object({ entityId: z.string(), metrics: entityWealthMetrics, balanceSheet: BalanceSheetSchema })),
 		consolidated: z.object({
 			totalTreasury: z.number(),
 			totalEomTreasury: z.number(),
 			personalCash: z.number(),
 			businessCash: z.number(),
+			balanceSheet: BalanceSheetSchema,
 		}),
 	})
 	.meta({ id: "Summary", description: "Wealth metrics per entity and consolidated, for one month." });

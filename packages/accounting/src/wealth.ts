@@ -66,7 +66,8 @@ export function calculateEntityWealthMetrics(params: {
 			return acc + bal.effectiveBalance;
 		}, 0),
 	);
-	const gearAssets = entityAssets.filter((h) => !isCashAsset(h));
+	// Investments are valued by calculateInvestmentValue, not as gear.
+	const gearAssets = entityAssets.filter((h) => !isCashAsset(h) && h.kind !== "investment");
 	const gearAssetsValue = round2(
 		gearAssets.reduce(
 			(acc, h) => acc + calculateAssetDepreciation(h, yearMonth).remainingBookValue,

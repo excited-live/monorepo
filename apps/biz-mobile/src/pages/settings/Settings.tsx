@@ -5,7 +5,6 @@ import { Text } from "@astryxdesign/core/Text";
 import { ModalPage } from "../../components";
 import { Signin } from "../signin/Signin";
 import {
-	SettingsDataPortabilitySection,
 	SettingsLanguageSection,
 	SettingsProfileSection,
 } from "./components";
@@ -20,8 +19,6 @@ export const Settings: React.FC = () => {
 		setLang,
 		isSignInOpen,
 		setIsSignInOpen,
-		handleExportJSON,
-		handleImportJSON,
 		t,
 	} = useSettings();
 
@@ -48,15 +45,6 @@ export const Settings: React.FC = () => {
 
 			{/* Language Switcher */}
 			<SettingsLanguageSection lang={lang} onSetLang={setLang} languageTitle={t("settings.language")} />
-
-			{/* Data Backup & Portability */}
-			<SettingsDataPortabilitySection
-				onExportJSON={handleExportJSON}
-				onImportJSON={handleImportJSON}
-				portabilityTitle={t("settings.dataPortability")}
-				exportLabel={t("settings.exportJson")}
-				importLabel={t("settings.importJson")}
-			/>
 
 			{/* Sign In Sheet if requested */}
 			{isSignInOpen && (

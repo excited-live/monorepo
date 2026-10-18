@@ -42,7 +42,7 @@ export interface FinancesSlice {
 	addSubscription: (sub: Omit<RecurringSubscription, "id">) => void;
 	updateSubscription: (sub: RecurringSubscription) => void;
 	deleteSubscription: (id: string) => void;
-	addHardware: (hw: Omit<HardwareAsset, "id">) => void;
+	addHardware: (hw: Omit<HardwareAsset, "id"> & { id?: string }) => void;
 	updateHardware: (hw: HardwareAsset) => void;
 	deleteHardware: (id: string) => void;
 	addRevenue: (rev: Omit<RevenueStream, "id">) => void;
@@ -173,7 +173,7 @@ export function useFinances(): FinancesSlice {
 	);
 
 	const addHardware = useCallback(
-		(hw: Omit<HardwareAsset, "id">) => {
+		(hw: Omit<HardwareAsset, "id"> & { id?: string }) => {
 			addAssetMutation.mutate(hw);
 		},
 		[addAssetMutation],

@@ -4,7 +4,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { Text } from "@astryxdesign/core/Text";
 import { GLASS_PILL } from "../../../../utils/ui";
 import { parseYearMonth } from "@excited-live/accounting";
-import { useBiz } from "../../../../state";
+import { useAppUI } from "../../../../state";
 
 const STEP_BTN =
 	"cursor-pointer rounded-pill px-3 py-1.5 text-[13px] font-semibold text-ink transition-colors duration-150 hover:bg-ink/5 active:bg-ink/10";
@@ -16,7 +16,7 @@ const formatMonthName = (ym: string) => {
 };
 
 export const MonthStepper: React.FC = () => {
-	const { selectedMonth, setSelectedMonth } = useBiz();
+	const { selectedMonth, setSelectedMonth } = useAppUI();
 	const monthInputRef = useRef<HTMLInputElement>(null);
 
 	const shiftMonth = (delta: number) => {

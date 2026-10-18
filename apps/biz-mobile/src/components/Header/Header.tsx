@@ -8,12 +8,13 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../EntityThumb";
 import { useModalBack } from "../../hooks/useModalBack";
-import { useBiz } from "../../state";
+import { useFinances, useAppUI } from "../../state";
 import { formatMoney } from "../../utils/format";
 import { GLASS_PILL } from "../../utils/ui";
 
 export const Header: React.FC = () => {
-	const { accounts, activeEntityId, setActiveEntityId, activeTab } = useBiz();
+	const { accounts } = useFinances();
+	const { activeEntityId, setActiveEntityId, activeTab } = useAppUI();
 	const [isOpen, setIsOpen] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
 

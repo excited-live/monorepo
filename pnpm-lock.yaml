@@ -157,6 +157,9 @@ importers:
       '@tauri-apps/plugin-opener':
         specifier: ^2.7.1
         version: 2.7.1
+      hono:
+        specifier: ^4.7.4
+        version: 4.13.13
       react:
         specifier: 'catalog:'
         version: 19.2.8

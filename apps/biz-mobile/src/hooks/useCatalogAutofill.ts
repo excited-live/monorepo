@@ -5,7 +5,7 @@ import {
 	searchCatalog,
 	type CatalogItem,
 } from "@excited-live/accounting";
-import { catalogApi } from "../lib/api-client";
+import { catalogApi } from "../service/catalog";
 
 export interface TouchedFields {
 	amount?: boolean;

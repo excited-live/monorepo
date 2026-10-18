@@ -1,4 +1,5 @@
 import type {
+	AccountingSnapshot,
 	CapitalTransfer,
 	EntityAccount,
 	HardwareAsset,
@@ -210,3 +211,13 @@ export const LANDING_TRANSFERS: CapitalTransfer[] = [
 		note: "Cafe equipment top-up",
 	},
 ];
+
+export const LANDING_SNAPSHOT: AccountingSnapshot = {
+	accounts: LANDING_ACCOUNTS,
+	subscriptions: LANDING_SUBSCRIPTIONS,
+	hardware: LANDING_HARDWARE,
+	revenues: LANDING_REVENUES,
+	liabilities: LANDING_LIABILITIES,
+	transfers: LANDING_TRANSFERS,
+};
+

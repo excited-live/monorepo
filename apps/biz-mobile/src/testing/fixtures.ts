@@ -1,4 +1,5 @@
 import type {
+	AccountingSnapshot,
 	CapitalTransfer,
 	EntityAccount,
 	HardwareAsset,
@@ -124,3 +125,13 @@ export const FIXTURE_TRANSFERS: CapitalTransfer[] = [
 		note: "Q4 Seed Capital Injection",
 	},
 ];
+
+export const FIXTURE_SNAPSHOT: AccountingSnapshot = {
+	accounts: FIXTURE_ACCOUNTS,
+	subscriptions: FIXTURE_SUBSCRIPTIONS,
+	hardware: FIXTURE_HARDWARE,
+	revenues: FIXTURE_REVENUES,
+	liabilities: FIXTURE_LIABILITIES,
+	transfers: FIXTURE_TRANSFERS,
+};
+

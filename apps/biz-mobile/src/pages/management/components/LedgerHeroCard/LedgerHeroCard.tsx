@@ -3,7 +3,7 @@ import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/ac
 import { calculateProjectionBalances } from "../../../../domain/selectors";
 import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
-import { t } from "../../../../utils/i18n";
+import { t } from "../../../../i18n";
 import { HeroShell } from "../HeroShell";
 
 export interface LedgerHeroCardProps {

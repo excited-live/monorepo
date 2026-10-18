@@ -4,7 +4,7 @@ import { TuneIcon, UserIcon } from "@excited-live/design-system";
 import { calculateEntityWealthMetrics } from "../../../../domain/selectors";
 import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
-import { t } from "../../../../utils/i18n";
+import { t } from "../../../../i18n";
 import { HeroShell } from "../HeroShell";
 
 export interface CapitalHeroCardProps {

@@ -4,7 +4,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { EmptyCard, ItemRow } from "../../../../components";
 import type { LedgerActionItem } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
-import { t } from "../../../../utils/i18n";
+import { t } from "../../../../i18n";
 import type { MobileLocale } from "../../../../domain/types";
 
 export interface ManagementLedgerSectionProps {

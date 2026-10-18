@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAppUI, useUserData } from "../../../state";
-import { t } from "../../../utils/i18n";
+import { t } from "../../../i18n";
 import type { CapitalSubTab, MobileLocale, UserSession } from "../../../domain/types";
 
 export interface ManagementViewSlice {

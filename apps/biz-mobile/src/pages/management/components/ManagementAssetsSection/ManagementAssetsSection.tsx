@@ -16,7 +16,7 @@ import type {
 import type { CashWalletViewModel, GearAssetViewModel } from "../../../../domain/types";
 import { selectCashWalletViewModels, selectGearAssetViewModels } from "../../../../domain/selectors";
 import { EmptyCard, ItemRow, SectionHeader } from "../../../../components";
-import { t } from "../../../../utils/i18n";
+import { t } from "../../../../i18n";
 import { BADGE_TONE_CLASS } from "../../../../utils/ui";
 
 export interface ManagementAssetsSectionProps {

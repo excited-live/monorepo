@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useMemo, type ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState, useMemo, type ReactNode } from "react";
+import { resolveInitialLocale, saveLocale } from "../i18n";
 import type { CapitalSubTab, MobileLocale, MobileTab } from "../domain/types";
 
 export interface UIContextValue {
@@ -38,13 +39,21 @@ export function UIProvider({
 	initialEntityId = "acc_personal",
 	initialMonth,
 	initialCapitalSubTab = "capital",
-	initialLang = "en",
+	initialLang,
 }: UIProviderProps) {
 	const [activeTab, setActiveTab] = useState<MobileTab>(initialTab);
 	const [activeEntityId, setActiveEntityId] = useState<string>(initialEntityId);
 	const [activeCapitalSubTab, setActiveCapitalSubTab] = useState<CapitalSubTab>(initialCapitalSubTab);
 	const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth || getDefaultMonth());
-	const [lang, setLang] = useState<MobileLocale>(initialLang);
+	const [lang, setLangState] = useState<MobileLocale>(() => initialLang ?? resolveInitialLocale());
+	const setLang = useCallback((next: MobileLocale) => {
+		setLangState(next);
+		saveLocale(next);
+	}, []);
+
+	useEffect(() => {
+		document.documentElement.lang = lang;
+	}, [lang]);
 
 	const value = useMemo<UIContextValue>(
 		() => ({
@@ -59,7 +68,7 @@ export function UIProvider({
 			lang,
 			setLang,
 		}),
-		[activeTab, activeEntityId, activeCapitalSubTab, selectedMonth, lang],
+		[activeTab, activeEntityId, activeCapitalSubTab, selectedMonth, lang, setLang],
 	);
 
 	return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

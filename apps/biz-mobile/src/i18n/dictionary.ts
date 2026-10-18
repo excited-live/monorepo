@@ -1,8 +1,8 @@
-import type { MobileLocale } from "../domain/types";
+import type { Dictionary } from "@excited-live/i18n";
 
-export type SupportedLang = "en" | "th";
-
-export const DICTIONARY: Record<string, { en: string; th: string }> = {
+// Mobile dictionary. Keys are stable IDs ("area.name"), values are { en, th } with EN first.
+// Add a key here in the same change that consumes it; never key logic off rendered text.
+export const strings: Dictionary = {
 	// Navigation Tabs & Dock
 	"tab.home": { en: "Home", th: "หน้าหลัก" },
 	"tab.businessDetail": { en: "Business Detail", th: "รายละเอียดธุรกิจ" },
@@ -107,22 +107,3 @@ export const DICTIONARY: Record<string, { en: string; th: string }> = {
 	"common.active": { en: "Active", th: "ใช้งานอยู่" },
 	"common.inactive": { en: "Inactive", th: "ไม่ใช้งาน" },
 };
-
-export const translations = DICTIONARY;
-
-export function t(
-	key: string,
-	lang: MobileLocale | SupportedLang = "en",
-	params?: Record<string, string | number>,
-): string {
-	const entry = DICTIONARY[key];
-	if (!entry) return key;
-
-	let text: string = entry[lang as SupportedLang] ?? entry.en ?? key;
-	if (params) {
-		for (const [k, v] of Object.entries(params)) {
-			text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
-		}
-	}
-	return text;
-}

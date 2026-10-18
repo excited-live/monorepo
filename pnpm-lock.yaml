@@ -145,6 +145,9 @@ importers:
       '@excited-live/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@excited-live/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.104.1(react@19.2.8)

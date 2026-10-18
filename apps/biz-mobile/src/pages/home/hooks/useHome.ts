@@ -11,7 +11,7 @@ import {
 	calculatePaydayCountdown,
 } from "../../../domain/selectors";
 import { useFinances, useAppUI } from "../../../state";
-import { t } from "../../../utils/i18n";
+import { t } from "../../../i18n";
 
 export function useHome() {
 	const {

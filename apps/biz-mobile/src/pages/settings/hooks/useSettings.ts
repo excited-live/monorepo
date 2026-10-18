@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useUserData, useFinances, useAppUI } from "../../../state";
 import { useReplaceSnapshot } from "../../../service/accounting";
-import { t } from "../../../utils/i18n";
+import { t } from "../../../i18n";
 
 export function useSettings() {
 	const {

@@ -173,6 +173,26 @@ Do not "migrate" landing copy to packages/i18n as a drive-by. The landing app is
 separate static surface; unify only if a spec asks for it, and carry the domain
 knowledge first (the data-lang mechanics differ from the React context flow).
 
+## 8b. Mobile (`apps/biz-mobile`) uses the same engine
+
+`@excited-live/i18n` is a workspace dependency of biz-mobile. No custom `t()` lives in the app.
+
+- `src/i18n/dictionary.ts`: `strings: Dictionary`, `{ en, th }`, EN first, stable `area.name` keys.
+- `src/i18n/index.ts`: `getTranslator(locale)` (cached `createTranslator`), `t(key, locale, vars)`
+  (non-hook helper; numeric vars are stringified), `resolveInitialLocale()`, `saveLocale()`.
+- `src/application/hooks/useT.ts`: `const { t } = useT()` binds the translator to the active locale.
+  Use this in new code instead of threading a `lang` prop.
+- `MobileLocale` is an alias of the package `Locale`.
+- Locale state lives in `UIProvider` (`src/app/ui-context.tsx`, `lang` / `setLang`). Initial value:
+  the `initialLang` prop (tests), else the saved choice (`localStorage` key
+  `excited_live_mobile_locale`), else the device language (`toLocale(navigator.language)`), else
+  `DEFAULT_LOCALE`. `setLang` persists and `document.documentElement.lang` follows. This is a UI
+  preference, not domain data, so it does not conflict with the "no offline domain persistence"
+  rule. There is no SSR in the Tauri app, so device APIs are safe here; the cookie/middleware flow
+  in sections 3-4 is webapp-only.
+- Not yet migrated: components still receive a `lang` prop and call `t(key, lang)`. Both styles
+  work; move a component to `useT()` when you next touch it.
+
 ## 9. Commands
 
 ```bash
@@ -187,6 +207,7 @@ Compatibility: webapp typecheck covers `dictionaries.ts`, `locale-context.tsx`,
 
 ```bash
 pnpm --filter @excited-live/webapp typecheck
+pnpm --filter @excited-live/biz-mobile typecheck   # mobile consumer
 ```
 
 `@excited-live/i18n` has no runtime dependencies, so a fresh install typechecks with

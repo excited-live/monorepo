@@ -20,6 +20,7 @@
 		"@choochmeque/tauri-plugin-google-auth-api": "0.5.1",
 		"@excited-live/accounting": "workspace:*",
 		"@excited-live/design-system": "workspace:*",
+		"@excited-live/i18n": "workspace:*",
 		"@tanstack/react-query": "catalog:",
 		"@tanstack/react-router": "catalog:",
 		"@tauri-apps/api": "^2.3.0",

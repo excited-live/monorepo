@@ -8,7 +8,7 @@ import {
 } from "@excited-live/design-system";
 import { HStack } from "@astryxdesign/core/HStack";
 import { useFinances, useAppUI } from "../../state";
-import { t } from "../../utils/i18n";
+import { t } from "../../i18n";
 
 export const BottomDock: React.FC = () => {
 	const { accounts } = useFinances();

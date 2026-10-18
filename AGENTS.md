@@ -29,7 +29,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
   - `tax_engine` — only when touching tax math or `packages/tax`.
   - `deployment_ci` — only when touching CI workflows or preview deploys.
   - `simulation_engine` — only when touching `packages/sim`, plan math, or plan-service.
-  - `i18n_platform` — only when touching locale resolution, dictionaries, or en/th strings.
+  - `i18n_platform` — only when touching locale resolution, dictionaries, or en/th strings (webapp and biz-mobile).
   - `landing_seo` — only when touching `apps/landingpage`, its meta/SEO layer, or its content pipeline.
   - `auth_better` — only when touching authentication, the middleware chain, or auth routes.
 

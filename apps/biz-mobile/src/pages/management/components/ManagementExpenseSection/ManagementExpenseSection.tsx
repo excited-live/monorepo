@@ -4,7 +4,7 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { EmptyCard, ItemRow, SectionHeader } from "../../../../components";
 import type { CapitalTransfer, RecurringSubscription } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
-import { t } from "../../../../utils/i18n";
+import { t } from "../../../../i18n";
 import type { MobileLocale } from "../../../../domain/types";
 
 export interface ManagementExpenseSectionProps {

@@ -1,3 +1,5 @@
+import type { Locale } from "@excited-live/i18n";
+
 import type {
 	CapitalTransfer,
 	CashWallet,
@@ -33,7 +35,7 @@ export interface UserSession {
 
 export type MobileTab = "home" | "capital" | "settings";
 export type CapitalSubTab = "capital" | "income" | "expense" | "assets" | "liability" | "ledger";
-export type MobileLocale = "en" | "th";
+export type MobileLocale = Locale;
 
 export interface CashWalletViewModel {
 	id: string;

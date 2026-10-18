@@ -53,6 +53,8 @@ export const RecurringSubscriptionSchema = z
 		nextRenewalDate: z.string().describe("`YYYY-MM-DD`."),
 		billingDay: z.number().int().optional(),
 		active: z.boolean(),
+		startMonth: z.string().optional().describe("`YYYY-MM`. First month charged."),
+		endMonth: z.string().optional().describe("`YYYY-MM`. Last month charged; absent = open-ended."),
 		notes: z.string().optional(),
 		imageUrl: z.string().optional(),
 	})
@@ -101,6 +103,8 @@ export const LiabilityStreamSchema = z
 				"`mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string.",
 			),
 		active: z.boolean(),
+		startMonth: z.string().optional().describe("`YYYY-MM`. First month due."),
+		endMonth: z.string().optional().describe("`YYYY-MM`. Last month due; absent = open-ended."),
 		notes: z.string().optional(),
 		imageUrl: z.string().optional(),
 	})

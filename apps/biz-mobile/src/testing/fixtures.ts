@@ -9,6 +9,9 @@ import type {
 } from "@excited-live/accounting";
 import type { UserSession } from "../domain/types";
 
+/** Pinned "today" for visual tests, so NOW / current-month UI is deterministic. */
+export const FIXTURE_TODAY = "2026-10-18";
+
 export const FIXTURE_USER_SESSION: UserSession = {
 	id: "usr_fixture_001",
 	email: "alex@excited.live",

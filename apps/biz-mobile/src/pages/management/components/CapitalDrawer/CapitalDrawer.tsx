@@ -9,12 +9,11 @@ import { ModalPage } from "../../../../components/ModalPage";
 import { SectionCard } from "../../../../components/SectionCard";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
 import {
-	calculateAssetDepreciation,
-	calculateMonthlyEquivalent,
+	calculateAvailableCash,
+	calculateRunwayProjection,
 	isCashAsset,
 	type CapitalTransfer,
-	round2,
-	simulateCapitalTransfer,
+	type EntityAccount,
 } from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useFinances, useAppUI } from "../../../../state";
@@ -30,11 +29,13 @@ export const CapitalDrawer: React.FC<{
 		subscriptions,
 		hardware,
 		revenues,
+		liabilities,
+		transfers,
 		injectCapital,
 		updateCapitalTransfer,
 		deleteCapitalTransfer,
 	} = useFinances();
-	const { activeEntityId, selectedMonth } = useAppUI();
+	const { activeEntityId, selectedMonth, today } = useAppUI();
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -72,36 +73,39 @@ export const CapitalDrawer: React.FC<{
 	const targetBizCashAssets = hardware.filter((h) => h.entityId === targetBiz.id && isCashAsset(h));
 	const transferAmount = Number(amount) || 0;
 
-	// Calculate personal net burn
-	const personalSubs = subscriptions.filter((s) => s.entityId === personalAccount.id && s.active);
-	const personalHw = hardware.filter((h) => h.entityId === personalAccount.id);
-	const personalBurn = round2(
-		personalSubs.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
-			personalHw.reduce((acc, h) => acc + calculateAssetDepreciation(h, selectedMonth).monthlyRate, 0),
-	);
+	// Runway before/after: replay the month-by-month ledger with the draft transfer
+	// swapped in, so one-offs, monthly transfers and income end dates all count.
+	// New transfers are saved with today's date (see injectCapital), edits keep theirs.
+	const otherTransfers = initialData ? transfers.filter((t) => t.id !== initialData.id) : transfers;
+	const { targetAssetId: _previousTarget, ...initialRest } = initialData ?? {};
+	const draftTransfer: CapitalTransfer = {
+		...initialRest,
+		id: initialData?.id ?? "draft_transfer",
+		fromEntityId: personalAccount.id,
+		toEntityId: targetBiz.id,
+		amount: transferAmount,
+		date: initialData?.date ?? today,
+		note,
+		frequency,
+		...(targetAssetId && targetAssetId !== "primary_cash" ? { targetAssetId } : {}),
+	};
+	const simulatedTransfers = transferAmount > 0 ? [...otherTransfers, draftTransfer] : otherTransfers;
+	const flowParams = { hardware, subscriptions, revenues, liabilities };
+	const runwayOf = (account: EntityAccount, txs: CapitalTransfer[]) =>
+		calculateRunwayProjection({ account, transfers: txs, ...flowParams, yearMonth: selectedMonth });
 
-	// Calculate target biz net burn
-	const bizSubs = subscriptions.filter((s) => s.entityId === targetBiz.id && s.active);
-	const bizHw = hardware.filter((h) => h.entityId === targetBiz.id);
-	const bizRev = revenues.filter((r) => r.entityId === targetBiz.id && r.active);
-	const bizOutflow = round2(
-		bizSubs.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0) +
-			bizHw.reduce((acc, h) => acc + calculateAssetDepreciation(h, selectedMonth).monthlyRate, 0),
-	);
-	const bizInflow = round2(bizRev.reduce((acc, r) => acc + r.amount, 0));
-	const bizNetBurn = Math.max(1, bizOutflow - bizInflow);
+	const personalRunway = runwayOf(personalAccount, transfers);
+	const personalNewRunway = runwayOf(personalAccount, simulatedTransfers);
+	const bizRunway = runwayOf(targetBiz, transfers);
+	const bizNewRunway = runwayOf(targetBiz, simulatedTransfers);
 
-	const availablePersonalCash = initialData
-		? personalAccount.cashReserve + initialData.amount
-		: personalAccount.cashReserve;
-
-	const simulation = simulateCapitalTransfer(
-		personalAccount.cashReserve,
-		personalBurn,
-		targetBiz.cashReserve,
-		bizNetBurn,
-		transferAmount,
-	);
+	// Cash personal can move on the transfer's date without dipping below zero later that month
+	const availablePersonalCash = calculateAvailableCash({
+		account: personalAccount,
+		transfers: otherTransfers,
+		...flowParams,
+		asOfDate: draftTransfer.date,
+	});
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -129,8 +133,8 @@ export const CapitalDrawer: React.FC<{
 	};
 
 	const canSubmit = transferAmount > 0 && transferAmount <= availablePersonalCash;
-	const formatRunway = (mos: number | null | undefined) =>
-		mos !== null && mos !== undefined ? `${mos} mos` : "∞ (Default Alive)";
+	const formatRunway = ({ runwayMonths, isDefaultAlive }: { runwayMonths: number | null; isDefaultAlive: boolean }) =>
+		runwayMonths !== null ? `${runwayMonths} mos` : isDefaultAlive ? "∞ (Default Alive)" : "∞";
 
 	return (
 		<ModalPage
@@ -230,15 +234,15 @@ export const CapitalDrawer: React.FC<{
 					<HStack width="100%" justify="between" gap={2}>
 						<Text className="text-[13px] text-slate">Personal Runway</Text>
 						<Text className="text-[13px] font-semibold">
-							{personalBurn > 0 ? round2(personalAccount.cashReserve / personalBurn) : "∞"} mos →{" "}
-							<Text className="text-signal">{formatRunway(simulation.fromNewRunway)}</Text>
+							{formatRunway(personalRunway)} →{" "}
+							<Text className="text-signal">{formatRunway(personalNewRunway)}</Text>
 						</Text>
 					</HStack>
 					<HStack width="100%" justify="between" gap={2}>
 						<Text className="text-[13px] text-slate">{targetBiz.name} Runway</Text>
 						<Text className="text-[13px] font-semibold">
-							{bizNetBurn > 0 ? round2(targetBiz.cashReserve / bizNetBurn) : "∞"} mos →{" "}
-							<Text className="text-[#059669]">{formatRunway(simulation.toNewRunway)}</Text>
+							{formatRunway(bizRunway)} →{" "}
+							<Text className="text-[#059669]">{formatRunway(bizNewRunway)}</Text>
 						</Text>
 					</HStack>
 				</SectionCard>

@@ -4,5 +4,6 @@ export * from "./seed";
 export * from "./ledger";
 export * from "./catalog";
 export * from "./wealth";
+export * from "./normalize";
 export * as commands from "./commands";
 export * from "./commands";

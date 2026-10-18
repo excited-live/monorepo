@@ -235,6 +235,14 @@
 					"active": {
 						"type": "boolean"
 					},
+					"startMonth": {
+						"description": "`YYYY-MM`. First month charged.",
+						"type": "string"
+					},
+					"endMonth": {
+						"description": "`YYYY-MM`. Last month charged; absent = open-ended.",
+						"type": "string"
+					},
 					"notes": {
 						"type": "string"
 					},
@@ -433,6 +441,14 @@
 					},
 					"active": {
 						"type": "boolean"
+					},
+					"startMonth": {
+						"description": "`YYYY-MM`. First month due.",
+						"type": "string"
+					},
+					"endMonth": {
+						"description": "`YYYY-MM`. Last month due; absent = open-ended.",
+						"type": "string"
 					},
 					"notes": {
 						"type": "string"
@@ -932,6 +948,10 @@
 									},
 									"id": {
 										"type": "string"
+									},
+									"asOf": {
+										"description": "`YYYY-MM` (client's local month) the default wallet's ฿0 balance is dated to.",
+										"type": "string"
 									}
 								},
 								"required": [
@@ -1236,6 +1256,14 @@
 									},
 									"active": {
 										"type": "boolean"
+									},
+									"startMonth": {
+										"description": "`YYYY-MM`. First month charged.",
+										"type": "string"
+									},
+									"endMonth": {
+										"description": "`YYYY-MM`. Last month charged; absent = open-ended.",
+										"type": "string"
 									},
 									"notes": {
 										"type": "string"
@@ -2040,6 +2068,14 @@
 									},
 									"active": {
 										"type": "boolean"
+									},
+									"startMonth": {
+										"description": "`YYYY-MM`. First month due.",
+										"type": "string"
+									},
+									"endMonth": {
+										"description": "`YYYY-MM`. Last month due; absent = open-ended.",
+										"type": "string"
 									},
 									"notes": {
 										"type": "string"
@@ -3039,6 +3075,14 @@
 									"active": {
 										"type": "boolean"
 									},
+									"startMonth": {
+										"description": "`YYYY-MM`. First month charged.",
+										"type": "string"
+									},
+									"endMonth": {
+										"description": "`YYYY-MM`. Last month charged; absent = open-ended.",
+										"type": "string"
+									},
 									"notes": {
 										"type": "string"
 									},
@@ -3664,6 +3708,14 @@
 									},
 									"active": {
 										"type": "boolean"
+									},
+									"startMonth": {
+										"description": "`YYYY-MM`. First month due.",
+										"type": "string"
+									},
+									"endMonth": {
+										"description": "`YYYY-MM`. Last month due; absent = open-ended.",
+										"type": "string"
 									},
 									"notes": {
 										"type": "string"

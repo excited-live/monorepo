@@ -11,17 +11,20 @@ export interface UIContextValue {
 	setActiveCapitalSubTab: (tab: CapitalSubTab) => void;
 	selectedMonth: string;
 	setSelectedMonth: (month: string) => void;
+	/** Today as YYYY-MM-DD; NOW values and "current month" are relative to it. */
+	today: string;
 	lang: MobileLocale;
 	setLang: (lang: MobileLocale) => void;
 }
 
 const UIContext = createContext<UIContextValue | null>(null);
 
-function getDefaultMonth(): string {
+function getToday(): string {
 	const now = new Date();
 	const y = now.getFullYear();
 	const m = String(now.getMonth() + 1).padStart(2, "0");
-	return `${y}-${m}`;
+	const d = String(now.getDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
 }
 
 export interface UIProviderProps {
@@ -29,6 +32,8 @@ export interface UIProviderProps {
 	initialTab?: MobileTab;
 	initialEntityId?: string;
 	initialMonth?: string;
+	/** Pins "today" (YYYY-MM-DD), e.g. for deterministic visual tests. */
+	initialToday?: string;
 	initialCapitalSubTab?: CapitalSubTab;
 	initialLang?: MobileLocale;
 }
@@ -38,13 +43,26 @@ export function UIProvider({
 	initialTab = "home",
 	initialEntityId = "acc_personal",
 	initialMonth,
+	initialToday,
 	initialCapitalSubTab = "capital",
 	initialLang,
 }: UIProviderProps) {
 	const [activeTab, setActiveTab] = useState<MobileTab>(initialTab);
 	const [activeEntityId, setActiveEntityId] = useState<string>(initialEntityId);
 	const [activeCapitalSubTab, setActiveCapitalSubTab] = useState<CapitalSubTab>(initialCapitalSubTab);
-	const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth || getDefaultMonth());
+	const [today, setToday] = useState<string>(() => initialToday || getToday());
+	// Keep "today" fresh while the app stays open (resume from background, midnight)
+	useEffect(() => {
+		if (initialToday) return;
+		const refresh = () => setToday(getToday());
+		const timer = window.setInterval(refresh, 60_000);
+		document.addEventListener("visibilitychange", refresh);
+		return () => {
+			window.clearInterval(timer);
+			document.removeEventListener("visibilitychange", refresh);
+		};
+	}, [initialToday]);
+	const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth || today.slice(0, 7));
 	const [lang, setLangState] = useState<MobileLocale>(() => initialLang ?? resolveInitialLocale());
 	const setLang = useCallback((next: MobileLocale) => {
 		setLangState(next);
@@ -65,10 +83,11 @@ export function UIProvider({
 			setActiveCapitalSubTab,
 			selectedMonth,
 			setSelectedMonth,
+			today,
 			lang,
 			setLang,
 		}),
-		[activeTab, activeEntityId, activeCapitalSubTab, selectedMonth, lang, setLang],
+		[activeTab, activeEntityId, activeCapitalSubTab, selectedMonth, today, lang, setLang],
 	);
 
 	return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

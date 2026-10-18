@@ -102,4 +102,30 @@ describe("AccountingService", () => {
 		expect(ledger.summary.yearMonth).toBe("2026-10");
 		expect(ledger.summary.totalInflow).toBe(50000);
 	});
+
+	it("backfills start months and wallet as-of dates when loading old snapshots", async () => {
+		const repo = createMemoryAccountingRepository();
+		const service = createAccountingService(repo);
+		await repo.save("user_old", {
+			accounts: [{ id: "acc_personal", name: "Personal", type: "personal", cashReserve: 0, currency: "THB" }],
+			hardware: [
+				{ id: "hw_w", entityId: "acc_personal", name: "Bank", cost: 1000, lifespanMonths: 0, purchaseDate: "Historical", category: "cash", isDefault: true },
+			],
+			subscriptions: [
+				{ id: "s1", entityId: "acc_personal", name: "Rent", amount: 100, cycle: "monthly", category: "housing", nextRenewalDate: "2026-11-01", active: true },
+			],
+			revenues: [
+				{ id: "r1", entityId: "acc_personal", name: "Salary", amount: 500, frequency: "monthly", source: "salary", active: true },
+			],
+			transfers: [],
+			liabilities: [],
+		});
+
+		const snapshot = await service.getSnapshot("user_old");
+		const savedMonth = snapshot.updatedAt!.slice(0, 7);
+		expect(snapshot.hardware[0]?.purchaseDate).toBe(savedMonth);
+		expect(snapshot.subscriptions[0]?.startMonth).toBe(savedMonth);
+		expect(snapshot.revenues[0]?.startMonth).toBe(savedMonth);
+		expect(snapshot.revenues[0]?.endMonth).toBeUndefined();
+	});
 });

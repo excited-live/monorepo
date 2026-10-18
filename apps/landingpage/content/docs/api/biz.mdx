@@ -137,6 +137,8 @@ A recurring cost (SaaS, rent, insurance…).
 | `nextRenewalDate` | `string` | yes | `YYYY-MM-DD`. |
 | `billingDay` | `integer` | no |  |
 | `active` | `boolean` | yes |  |
+| `startMonth` | `string` | no | `YYYY-MM`. First month charged. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month charged; absent = open-ended. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
 
@@ -202,6 +204,8 @@ A debt payment stream.
 | `amount` | `number` | yes | Monthly payment. |
 | `category` | `string` | yes | `mortgage`, `car_loan`, `student_loan`, `credit_card`, `business_loan`, `equipment_loan`, `credit_line`, `lease`, `other`, or a custom string. |
 | `active` | `boolean` | yes |  |
+| `startMonth` | `string` | no | `YYYY-MM`. First month due. |
+| `endMonth` | `string` | no | `YYYY-MM`. Last month due; absent = open-ended. |
 | `notes` | `string` | no |  |
 | `imageUrl` | `string` | no |  |
 

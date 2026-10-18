@@ -4,6 +4,7 @@ import {
 	calculateEntityWealthMetrics,
 	calculatePaydayCountdown,
 	calculateProjectionBalances,
+	round2,
 	SEED_ACCOUNTS,
 	SEED_HARDWARE,
 	SEED_LIABILITIES,
@@ -63,9 +64,12 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 			transfers: SEED_TRANSFERS,
 		});
 
-		expect(consolidated.totalTreasury).toBeGreaterThan(0);
-		expect(consolidated.personalCash).toBe(personalAccount.cashReserve);
-		expect(consolidated.businessCash).toBe(bizAccount.cashReserve);
+		// Opening treasury of 2026-10 = cash wallets at the start of the month
+		expect(consolidated.personalCash).toBe(72130);
+		expect(consolidated.businessCash).toBe(24447.5);
+		expect(consolidated.totalTreasury).toBe(96577.5);
+		// End of month reproduces the seeded demo balances (125,000 + 45,000)
+		expect(consolidated.totalEomTreasury).toBe(170000);
 	});
 
 	it("calculates pure payday countdown without hidden time drift", () => {
@@ -93,7 +97,9 @@ describe("@excited-live/accounting - Wealth and Projections Characterization", (
 		});
 
 		expect(projection.offsets).toHaveLength(10); // -3, -2, -1, 0, 1, 2, 3, 4, 5, 6
-		expect(projection.balances.get(0)).toBe(personalAccount.cashReserve);
+		// "Now" is the opening treasury of the selected month, not account.cashReserve
+		expect(projection.balances.get(0)).toBe(72130);
+		expect(projection.balances.get(1)).toBe(round2(72130 + projection.projectedNet));
 		expect(projection.balances.size).toBe(10);
 	});
 });

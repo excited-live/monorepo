@@ -1,5 +1,14 @@
-import { calculateAssetDepreciation, calculateMonthlyEquivalent, calculateRunway, isCashAsset, round2, shiftYearMonth } from "./math";
-import { calculateCashAssetBalance, calculateDerivedTreasury, generateMonthlyLedger } from "./ledger";
+import { calculateAssetDepreciation, isCashAsset, round2, shiftYearMonth } from "./math";
+import {
+	calculateCashAssetBalance,
+	calculateDerivedTreasury,
+	calculateEntityMonthlyCashFlow,
+	calculateOpeningTreasury,
+	calculateTreasuryAsOf,
+	DEFAULT_BASELINE_MONTH,
+	generateMonthlyLedger,
+	isLiabilityInMonth,
+} from "./ledger";
 import type {
 	Account,
 	Asset,
@@ -24,6 +33,8 @@ export function calculateEntityWealthMetrics(params: {
 	liabilities: Liability[];
 	transfers: Transfer[];
 	yearMonth?: string;
+	/** Today (YYYY-MM-DD). When inside yearMonth, "current" values are as of this day. */
+	asOfDate?: string;
 }): EntityWealthMetrics {
 	const {
 		account,
@@ -33,6 +44,7 @@ export function calculateEntityWealthMetrics(params: {
 		liabilities,
 		transfers,
 		yearMonth = "2026-10",
+		asOfDate,
 	} = params;
 
 	const entityAssets = hardware.filter((h) => h.entityId === account.id);
@@ -77,9 +89,14 @@ export function calculateEntityWealthMetrics(params: {
 		endingTreasury,
 		totalInflow,
 		totalCashOutflow,
+		runwayMonths = null,
+		isDefaultAlive = false,
 	} = ledger.summary;
 
-	const currentLiquid = startingTreasury;
+	const currentLiquid =
+		asOfDate && asOfDate.startsWith(yearMonth)
+			? calculateTreasuryAsOf({ account, hardware, transfers, subscriptions, revenues, liabilities, asOfDate })
+			: startingTreasury;
 	const eomLiquid = endingTreasury;
 
 	const currentWealth = round2(currentLiquid + gearAssetsValue);
@@ -89,7 +106,7 @@ export function calculateEntityWealthMetrics(params: {
 
 	const liabilityMonthly = round2(
 		liabilities
-			.filter((l) => l.entityId === account.id && l.active)
+			.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth))
 			.reduce((acc, l) => acc + l.amount, 0),
 	);
 
@@ -102,10 +119,6 @@ export function calculateEntityWealthMetrics(params: {
 			: liabilityMonthly > 0
 				? 100
 				: 0;
-
-	const netBurn = Math.max(0, round2(totalCashOutflow - totalInflow));
-	const runwayMonths = calculateRunway(currentLiquid, netBurn);
-	const isDefaultAlive = totalInflow > 0 && totalInflow >= totalCashOutflow;
 
 	return {
 		cashAssetsValue,
@@ -137,16 +150,33 @@ export function calculateConsolidatedWealthMetrics(params: {
 	revenues: Income[];
 	liabilities: Liability[];
 	transfers: Transfer[];
+	yearMonth?: string;
 }): ConsolidatedWealthMetrics {
-	const { accounts, hardware, subscriptions, revenues, liabilities, transfers } = params;
+	const {
+		accounts,
+		hardware,
+		subscriptions,
+		revenues,
+		liabilities,
+		transfers,
+		yearMonth = DEFAULT_BASELINE_MONTH,
+	} = params;
+
+	const opening = new Map(
+		accounts.map((account) => [
+			account.id,
+			calculateOpeningTreasury({ account, hardware, transfers, subscriptions, revenues, liabilities, yearMonth }),
+		]),
+	);
+	const openingOf = (account: Account) => opening.get(account.id) ?? 0;
 
 	const personal = accounts.find((a) => a.type === "personal");
-	const personalCash = personal?.cashReserve ?? 0;
+	const personalCash = personal ? openingOf(personal) : 0;
 	const businessCash = accounts
 		.filter((a) => a.type === "business")
-		.reduce((acc, a) => acc + a.cashReserve, 0);
+		.reduce((acc, a) => acc + openingOf(a), 0);
 
-	const totalTreasury = accounts.reduce((acc, a) => acc + a.cashReserve, 0);
+	const totalTreasury = accounts.reduce((acc, a) => acc + openingOf(a), 0);
 	const totalEomTreasury = accounts.reduce((acc, a) => {
 		const eom = calculateDerivedTreasury({
 			account: a,
@@ -155,6 +185,7 @@ export function calculateConsolidatedWealthMetrics(params: {
 			liabilities,
 			hardware,
 			transfers,
+			yearMonth,
 		});
 		return acc + eom;
 	}, 0);
@@ -200,6 +231,8 @@ export function calculateProjectionBalances(params: {
 	liabilities: Liability[];
 	pastMonths?: number;
 	futureMonths?: number;
+	/** Today (YYYY-MM-DD). When inside yearMonth, the "Now" point is as of this day. */
+	asOfDate?: string;
 }): ProjectionBalances {
 	const {
 		account,
@@ -211,57 +244,49 @@ export function calculateProjectionBalances(params: {
 		liabilities,
 		pastMonths = 6,
 		futureMonths = 12,
+		asOfDate,
 	} = params;
 
-	const netOf = (ym: string, acc: Account = account) =>
-		generateMonthlyLedger({
-			account: acc,
-			yearMonth: ym,
-			subscriptions,
-			hardware,
-			revenues,
-			transfers,
-			liabilities,
-		}).summary.netCashFlow;
+	const flowOf = (ym: string) =>
+		calculateEntityMonthlyCashFlow({ account, transfers, subscriptions, revenues, liabilities, yearMonth: ym });
 
-	const entityRevenues = revenues.filter((r) => r.entityId === account.id && r.active);
-	const hasSalaryStream = entityRevenues.some((r) => r.source === "salary");
-	const legacySalary = !hasSalaryStream && account.type === "personal" ? (account.salary ?? 0) : 0;
-	const totalIncome = round2(
-		legacySalary +
-			entityRevenues
-				.filter((r) => r.frequency === "monthly")
-				.reduce((acc, r) => acc + r.amount, 0),
-	);
-	const totalExpense = round2(
-		subscriptions
-			.filter((s) => s.entityId === account.id && s.active)
-			.reduce((acc, s) => acc + calculateMonthlyEquivalent(s.amount, s.cycle), 0),
-	);
+	// Waterfall figures for the selected month, straight from the ledger so the
+	// bars add up to the same net the balance line uses.
+	const selected = flowOf(yearMonth);
 	const liabilityMonthly = round2(
 		liabilities
-			.filter((l) => l.entityId === account.id && l.active)
+			.filter((l) => l.entityId === account.id && isLiabilityInMonth(l, yearMonth))
 			.reduce((acc, l) => acc + l.amount, 0),
 	);
-	const projectedNet = round2(totalIncome - totalExpense - liabilityMonthly);
+	const totalIncome = selected.inflow;
+	const totalExpense = round2(Math.max(0, selected.outflow - liabilityMonthly));
+	const projectedNet = selected.net;
 
 	const offsets: number[] = [];
 	for (let m = -pastMonths; m <= futureMonths; m++) offsets.push(m);
 
+	// balances.get(m) = treasury at the start of month (yearMonth + m)
 	const balances = new Map<number, number>();
-	balances.set(0, account.cashReserve);
+	balances.set(
+		0,
+		calculateOpeningTreasury({ account, hardware, transfers, subscriptions, revenues, liabilities, yearMonth }),
+	);
 
 	for (let m = -1; m >= -pastMonths; m--) {
-		balances.set(
-			m,
-			round2((balances.get(m + 1) ?? 0) - netOf(shiftYearMonth(yearMonth, m + 1), { ...account, salary: undefined })),
-		);
+		balances.set(m, round2((balances.get(m + 1) ?? 0) - flowOf(shiftYearMonth(yearMonth, m)).net));
 	}
 
 	for (let m = 1; m <= futureMonths; m++) {
-		const ym = shiftYearMonth(yearMonth, m);
-		const ledgerNet = netOf(ym, account);
-		balances.set(m, round2((balances.get(m - 1) ?? 0) + ledgerNet));
+		balances.set(m, round2((balances.get(m - 1) ?? 0) + flowOf(shiftYearMonth(yearMonth, m - 1)).net));
+	}
+
+	// The "Now" point shows today's balance when viewing the current month; the
+	// other points stay on month starts.
+	if (asOfDate && asOfDate.startsWith(yearMonth)) {
+		balances.set(
+			0,
+			calculateTreasuryAsOf({ account, hardware, transfers, subscriptions, revenues, liabilities, asOfDate }),
+		);
 	}
 
 	return {

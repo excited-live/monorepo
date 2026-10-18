@@ -117,6 +117,33 @@
 	border-color:#9a3a0a2e;
 }
 
+.hero-status-pill.runway.safe {
+	color:#34d399;
+}
+
+.hero-status-pill.runway.warn {
+	color:#fbbf24;
+}
+
+.hero-status-pill.runway.danger {
+	color:#f87171;
+}
+
+.hero-card.tone-light .hero-status-pill.runway.safe {
+	color:#065f46;
+	border-color:#065f462e;
+}
+
+.hero-card.tone-light .hero-status-pill.runway.warn {
+	color:#92400e;
+	border-color:#92400e2e;
+}
+
+.hero-card.tone-light .hero-status-pill.runway.danger {
+	color:#b91c1c;
+	border-color:#b91c1c2e;
+}
+
 .hero-divider {
 	border:none;
 	border-top:1px solid var(--hero-divider);

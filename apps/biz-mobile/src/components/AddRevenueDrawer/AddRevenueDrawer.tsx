@@ -16,7 +16,8 @@ export const AddRevenueDrawer: React.FC<{
 	initialData?: RevenueStream | null;
 }> = ({ isOpen, onClose, initialData }) => {
 	const { addRevenue, updateRevenue, deleteRevenue, accounts, setCareerIncome } = useFinances();
-	const { activeEntityId } = useAppUI();
+	const { activeEntityId, today } = useAppUI();
+	const currentMonth = today.slice(0, 7);
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 
@@ -39,7 +40,7 @@ export const AddRevenueDrawer: React.FC<{
 			setAmount(String(initialData.amount));
 			setFrequency(initialData.frequency);
 			setSource(initialData.source);
-			setStartMonth(initialData.startMonth || "");
+			setStartMonth(initialData.startMonth || currentMonth);
 			setEndMonth(initialData.endMonth || "");
 			setNotes(initialData.notes || "");
 			setImageUrl(initialData.imageUrl || "");
@@ -48,12 +49,12 @@ export const AddRevenueDrawer: React.FC<{
 			setAmount("");
 			setFrequency("monthly");
 			setSource(isPersonal ? "freelance" : "stripe");
-			setStartMonth("");
+			setStartMonth(currentMonth);
 			setEndMonth("");
 			setNotes("");
 			setImageUrl("");
 		}
-	}, [initialData, isOpen, isPersonal]);
+	}, [initialData, isOpen, isPersonal, currentMonth]);
 
 	if (!isOpen) return null;
 
@@ -67,8 +68,9 @@ export const AddRevenueDrawer: React.FC<{
 			amount: num,
 			frequency,
 			source,
-			startMonth: startMonth || undefined,
-			endMonth: endMonth || undefined,
+			startMonth,
+			// One-time income lands in its start month only
+			endMonth: frequency === "one_time" ? undefined : endMonth || undefined,
 			notes: notes.trim() || undefined,
 			imageUrl: imageUrl || undefined,
 		};
@@ -91,7 +93,7 @@ export const AddRevenueDrawer: React.FC<{
 				name.trim(),
 				notes.trim() || undefined,
 				imageUrl || undefined,
-				startMonth || undefined,
+				startMonth,
 				endMonth || undefined,
 			);
 		}
@@ -110,7 +112,9 @@ export const AddRevenueDrawer: React.FC<{
 		}
 	};
 
-	const canSubmit = name.trim().length > 0 && Number(amount) > 0;
+	// Every income needs a start month; the end month is optional (open-ended)
+	const hasValidMonths = Boolean(startMonth) && (!endMonth || frequency === "one_time" || endMonth >= startMonth);
+	const canSubmit = name.trim().length > 0 && Number(amount) > 0 && hasValidMonths;
 	const isEditMode = Boolean(initialData);
 	// A personal salary stream IS the career (title/company/payday live on the account).
 	const isCareer = isPersonal && source === "salary";
@@ -207,18 +211,22 @@ export const AddRevenueDrawer: React.FC<{
 				<HStack wrap="wrap" gap={2} width="100%">
 					<InputField
 						fieldClassName="flex-1 basis-[150px]"
-						label="Start Month"
+						label={frequency === "one_time" ? "Month Received" : "Start Month"}
 						type="month"
 						value={startMonth}
 						onChange={(e) => setStartMonth(e.target.value)}
+						required
 					/>
-					<InputField
-						fieldClassName="flex-1 basis-[150px]"
-						label="End Month"
-						type="month"
-						value={endMonth}
-						onChange={(e) => setEndMonth(e.target.value)}
-					/>
+					{frequency !== "one_time" && (
+						<InputField
+							fieldClassName="flex-1 basis-[150px]"
+							label="End Month (Optional)"
+							type="month"
+							value={endMonth}
+							min={startMonth || undefined}
+							onChange={(e) => setEndMonth(e.target.value)}
+						/>
+					)}
 				</HStack>
 
 				<InputField

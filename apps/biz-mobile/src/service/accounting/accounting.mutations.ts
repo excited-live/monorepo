@@ -36,7 +36,7 @@ interface MutationContext {
 export function useAddAccount() {
 	const queryClient = useQueryClient();
 
-	return useMutation<Account, Error, { name: string; imageUrl?: string; id?: string }, MutationContext>({
+	return useMutation<Account, Error, { name: string; imageUrl?: string; id?: string; asOf?: string }, MutationContext>({
 		mutationFn: (data) => accountingApi.createAccount(data),
 		onMutate: async (newAccount) => {
 			await queryClient.cancelQueries({ queryKey: accountingKeys.snapshot() });

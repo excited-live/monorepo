@@ -44,7 +44,7 @@ export const accountingApi = {
 		return (await res.json()) as AccountingSnapshot;
 	},
 
-	async createAccount(data: { name: string; imageUrl?: string; id?: string }): Promise<Account> {
+	async createAccount(data: { name: string; imageUrl?: string; id?: string; asOf?: string }): Promise<Account> {
 		const res = await api.accounts.$post({ json: data });
 		if (!res.ok) {
 			throw new ApiError("Failed to create account", res.status);

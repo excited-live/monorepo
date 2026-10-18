@@ -1,6 +1,6 @@
 import React from "react";
-import { calculateMonthlyEquivalent, type EntityAccount } from "@excited-live/accounting";
-import { calculateProjectionBalances } from "../../../../domain/selectors";
+import type { EntityAccount } from "@excited-live/accounting";
+import { calculateProjectionBalances, selectMonthlyExpenseBreakdown } from "../../../../domain/selectors";
 import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
 import { t } from "../../../../i18n";
@@ -23,14 +23,13 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 	onTap,
 }) => {
 	const { subscriptions, hardware, revenues, liabilities, transfers } = useFinances();
-	const { lang } = useAppUI();
+	const { lang, today } = useAppUI();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const {
 		offsets,
 		balances,
 		totalIncome,
-		totalExpense,
 		projectedNet,
 	} = calculateProjectionBalances({
 		account,
@@ -42,30 +41,19 @@ export const LedgerHeroCard: React.FC<LedgerHeroCardProps> = ({
 		liabilities,
 		pastMonths: PAST_MONTHS,
 		futureMonths: FUTURE_MONTHS,
+		asOfDate: today,
 	});
 
-	// Granular expense breakdown by category/type for steady-state month
-	const entitySubs = subscriptions.filter((s) => s.entityId === account.id && s.active);
-	const outgoingTransfers = transfers.filter(
-		(t) => t.fromEntityId === account.id && t.date.startsWith(yearMonth),
-	);
-
-	const expMap = new Map<string, number>();
-	for (const s of entitySubs) {
-		const rawCat = s.category || "Subscriptions";
-		const catName = rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
-		const cost = calculateMonthlyEquivalent(s.amount, s.cycle);
-		expMap.set(catName, (expMap.get(catName) ?? 0) + cost);
-	}
-	for (const t of outgoingTransfers) {
-		expMap.set("Capital", (expMap.get("Capital") ?? 0) + t.amount);
-	}
-
-	if (expMap.size === 0 && totalExpense > 0) {
-		expMap.set("Expense", totalExpense);
-	}
-
-	const sortedCats = Array.from(expMap.entries()).sort((a, b) => b[1] - a[1]);
+	// Expense breakdown for the selected month, from the same ledger as the net
+	const sortedCats = selectMonthlyExpenseBreakdown({
+		account,
+		yearMonth,
+		subscriptions,
+		hardware,
+		revenues,
+		transfers,
+		liabilities,
+	});
 	let displayCats: Array<[string, number]> = [];
 	if (sortedCats.length > 3) {
 		displayCats = sortedCats.slice(0, 2);

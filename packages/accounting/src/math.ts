@@ -25,6 +25,13 @@ export function shiftYearMonth(ym: string, delta: number): string {
 	return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
 }
 
+/** Number of days in a YYYY-MM month (Gregorian leap years). */
+export function daysInMonth(ym: string): number {
+	const { year, month } = parseYearMonth(ym);
+	if (month === 2) return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28;
+	return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
 export function getYearMonthRange(start: string, end: string): string[] {
 	if (start > end) return [];
 	const months: string[] = [];

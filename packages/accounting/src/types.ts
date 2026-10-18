@@ -43,6 +43,10 @@ export interface Expense {
 	nextRenewalDate: string; // YYYY-MM-DD
 	billingDay?: number;
 	active: boolean;
+	/** First month (YYYY-MM) the expense is charged. */
+	startMonth?: string;
+	/** Last month (YYYY-MM) it is charged; absent = open-ended. */
+	endMonth?: string;
 	notes?: string;
 	imageUrl?: string;
 }
@@ -122,6 +126,10 @@ export interface Liability {
 	amount: number;
 	category: LiabilityCategory;
 	active: boolean;
+	/** First month (YYYY-MM) the payment is due. */
+	startMonth?: string;
+	/** Last month (YYYY-MM) it is due; absent = open-ended. */
+	endMonth?: string;
 	notes?: string;
 	imageUrl?: string;
 }

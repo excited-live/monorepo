@@ -10,6 +10,7 @@ import { accountingKeys } from "../../src/service/accounting/accounting.keys";
 import { authKeys } from "../../src/service/auth/auth.queries";
 import {
 	FIXTURE_SNAPSHOT,
+	FIXTURE_TODAY,
 	FIXTURE_USER_SESSION,
 } from "../../src/testing/fixtures";
 import {
@@ -129,7 +130,7 @@ window.mount = async ({
 		root?.render(
 			<Theme theme={mastercardTheme} mode="light">
 				<QueryClientProvider client={queryClient}>
-					<UIProvider initialEntityId={snapshot.accounts[0]?.id}>
+					<UIProvider initialEntityId={snapshot.accounts[0]?.id} initialToday={FIXTURE_TODAY}>
 						<Component {...props} />
 					</UIProvider>
 				</QueryClientProvider>

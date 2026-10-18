@@ -14,6 +14,12 @@ export interface CapitalHeroCardProps {
 	onTap?: () => void;
 }
 
+type RunwayTone = "safe" | "warn" | "danger";
+
+/** 12+ months is comfortable, 6–12 needs attention, under 6 is urgent. */
+const runwayTone = (months: number): RunwayTone => (months >= 12 ? "safe" : months >= 6 ? "warn" : "danger");
+const RUNWAY_ICON: Record<RunwayTone, string> = { safe: "🟢", warn: "🟡", danger: "🔴" };
+
 export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	account,
 	onConfigure,
@@ -21,14 +27,13 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 	onTap,
 }) => {
 	const { revenues, subscriptions, liabilities, hardware, transfers } = useFinances();
-	const { selectedMonth, lang } = useAppUI();
+	const { selectedMonth, today, lang } = useAppUI();
 	const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 	const [showEom, setShowEom] = useState(false);
 
-	const now = new Date();
-	const currentSystemMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-	const isCurrentMonth = selectedMonth === "2026-10" || selectedMonth === currentSystemMonth;
+	// NOW (as of today) only exists for the current month; other months show EOM
+	const isCurrentMonth = selectedMonth === today.slice(0, 7);
 	const effectiveShowEom = !isCurrentMonth || showEom;
 
 	const metrics = calculateEntityWealthMetrics({
@@ -39,6 +44,7 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 		liabilities,
 		transfers,
 		yearMonth: selectedMonth,
+		asOfDate: today,
 	});
 
 	const {
@@ -147,8 +153,8 @@ export const CapitalHeroCard: React.FC<CapitalHeroCardProps> = ({
 				{isDefaultAlive ? (
 					<span className="hero-status-pill alive">{t("hero.defaultAlive", lang)}</span>
 				) : runwayMonths !== null ? (
-					<span className="hero-status-pill runway">
-						🟢 {t("hero.runwayMos", lang, { count: runwayMonths })}
+					<span className={`hero-status-pill runway ${runwayTone(runwayMonths)}`}>
+						{RUNWAY_ICON[runwayTone(runwayMonths)]} {t("hero.runwayMos", lang, { count: runwayMonths })}
 					</span>
 				) : null}
 				{account.type === "business" && totalCapitalIn > 0 && (

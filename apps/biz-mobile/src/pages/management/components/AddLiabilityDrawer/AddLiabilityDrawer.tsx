@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { FormField, InputField, SelectField } from "../../../../components/FormField";
@@ -25,7 +26,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 	onSkip,
 }) => {
 	const { addLiability, updateLiability, deleteLiability, accounts } = useFinances();
-	const { activeEntityId } = useAppUI();
+	const { activeEntityId, today } = useAppUI();
+	const currentMonth = today.slice(0, 7);
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
 
@@ -36,6 +38,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState<LiabilityCategory>(defaultCategory);
 	const [notes, setNotes] = useState("");
+	const [startMonth, setStartMonth] = useState(currentMonth);
+	const [endMonth, setEndMonth] = useState("");
 
 	useEffect(() => {
 		if (initialData) {
@@ -43,13 +47,17 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 			setAmount(String(initialData.amount));
 			setCategory(initialData.category);
 			setNotes(initialData.notes || "");
+			setStartMonth(initialData.startMonth || currentMonth);
+			setEndMonth(initialData.endMonth || "");
 		} else {
 			setName("");
 			setAmount("");
 			setCategory(isPersonal ? "mortgage" : "business_loan");
 			setNotes("");
+			setStartMonth(currentMonth);
+			setEndMonth("");
 		}
-	}, [initialData, isOpen, isPersonal]);
+	}, [initialData, isOpen, isPersonal, currentMonth]);
 
 	if (!isOpen) return null;
 
@@ -64,6 +72,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 				name: name.trim(),
 				amount: num,
 				category,
+				startMonth,
+				endMonth: endMonth || undefined,
 				notes: notes.trim() || undefined,
 			});
 		} else {
@@ -73,6 +83,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 				amount: num,
 				category,
 				active: true,
+				startMonth,
+				endMonth: endMonth || undefined,
 				notes: notes.trim() || undefined,
 			});
 		}
@@ -88,7 +100,9 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 		}
 	};
 
-	const canSubmit = name.trim().length > 0 && Number(amount) > 0;
+	// Every payment needs a start month; the end month is optional (open-ended)
+	const canSubmit =
+		name.trim().length > 0 && Number(amount) > 0 && Boolean(startMonth) && (!endMonth || endMonth >= startMonth);
 	const isEditMode = Boolean(initialData);
 
 	return (
@@ -171,6 +185,25 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 				<FormField label="Monthly Payment (THB)">
 					<CurrencyInput placeholder="0.00" value={amount} onChange={setAmount} />
 				</FormField>
+
+				<HStack wrap="wrap" gap={2} width="100%">
+					<InputField
+						fieldClassName="flex-1 basis-[150px]"
+						label="Start Month"
+						type="month"
+						value={startMonth}
+						onChange={(e) => setStartMonth(e.target.value)}
+						required
+					/>
+					<InputField
+						fieldClassName="flex-1 basis-[150px]"
+						label="End Month (Optional)"
+						type="month"
+						value={endMonth}
+						min={startMonth || undefined}
+						onChange={(e) => setEndMonth(e.target.value)}
+					/>
+				</HStack>
 
 				<InputField
 					label="Notes (Optional)"

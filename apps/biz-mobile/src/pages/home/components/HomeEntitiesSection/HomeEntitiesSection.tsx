@@ -19,6 +19,7 @@ export interface HomeEntitiesSectionProps {
 	onAddBusiness?: () => void;
 	onSelectAccount?: (accId: string) => void;
 	onOpenCareerEdit?: (acc: EntityAccount) => void;
+	openingTreasury?: (acc: EntityAccount) => number;
 	eomTreasury?: (acc: EntityAccount) => number;
 	formatType?: (type: string) => string;
 	calculatePaydayCountdown?: (day?: number) => string | null;
@@ -30,6 +31,7 @@ export const HomeEntitiesSection: React.FC<HomeEntitiesSectionProps> = ({
 	onAddBusiness = () => {},
 	onSelectAccount = () => {},
 	onOpenCareerEdit = () => {},
+	openingTreasury = (acc) => acc.cashReserve,
 	eomTreasury = (acc) => acc.cashReserve,
 	formatType = (entityType) => (entityType === "personal" ? t("home.personal", lang) : t("home.businesses", lang)),
 	calculatePaydayCountdown = defaultCalculatePaydayCountdown,
@@ -68,7 +70,7 @@ export const HomeEntitiesSection: React.FC<HomeEntitiesSectionProps> = ({
 										{acc.name}
 									</Text>
 									<Text maxLines={1} className="text-[12px] text-slate">
-										Treasury: ฿{formatMoney(acc.cashReserve)} (฿{formatMoney(eomTreasury(acc))})
+										Treasury: ฿{formatMoney(openingTreasury(acc))} (฿{formatMoney(eomTreasury(acc))})
 									</Text>
 								</Stack>
 								<Badge variant="neutral" label={formatType(acc.type)} className="shrink-0" />

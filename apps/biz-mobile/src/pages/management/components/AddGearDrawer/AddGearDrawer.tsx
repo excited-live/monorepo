@@ -22,7 +22,8 @@ export const AddGearDrawer: React.FC<{
 	initialData?: HardwareAsset | null;
 }> = ({ isOpen, onClose, initialData }) => {
 	const { addHardware, updateHardware, deleteHardware } = useFinances();
-	const { activeEntityId, selectedMonth } = useAppUI();
+	const { activeEntityId, selectedMonth, today } = useAppUI();
+
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -33,6 +34,9 @@ export const AddGearDrawer: React.FC<{
 	const [category, setCategory] = useState("workstation");
 	const [imageUrl, setImageUrl] = useState("");
 	const [isDefault, setIsDefault] = useState(false);
+	// A cash balance is true "as of" a day. Re-date it to today only when the user
+	// types a new balance, never silently (that would drop the movements between).
+	const [isAsOfTouched, setIsAsOfTouched] = useState(false);
 
 	useEffect(() => {
 		if (initialData) {
@@ -40,13 +44,8 @@ export const AddGearDrawer: React.FC<{
 			setCost(String(initialData.cost));
 			setLifespanMonths(String(initialData.lifespanMonths));
 			const isCashItem = initialData.category === "cash" || initialData.lifespanMonths <= 0;
-			setPurchaseDate(
-				initialData.purchaseDate === "Historical"
-					? "2024-01"
-					: isCashItem && initialData.purchaseDate < selectedMonth
-						? selectedMonth
-						: initialData.purchaseDate,
-			);
+			const isDated = /^\d{4}-\d{2}/.test(initialData.purchaseDate);
+			setPurchaseDate(isDated ? initialData.purchaseDate : isCashItem ? today : "2024-01");
 			setCategory(initialData.category);
 			setImageUrl(initialData.imageUrl || "");
 			setIsDefault(Boolean(initialData.isDefault));
@@ -59,7 +58,8 @@ export const AddGearDrawer: React.FC<{
 			setImageUrl("");
 			setIsDefault(false);
 		}
-	}, [initialData, isOpen, selectedMonth]);
+		setIsAsOfTouched(false);
+	}, [initialData, isOpen, selectedMonth, today]);
 
 	if (!isOpen) return null;
 
@@ -78,7 +78,7 @@ export const AddGearDrawer: React.FC<{
 				name: name.trim(),
 				cost: numCost,
 				lifespanMonths: numLife,
-				purchaseDate,
+				purchaseDate: isCash ? purchaseDate : purchaseDate.slice(0, 7),
 				category,
 				imageUrl: imageUrl || undefined,
 				isDefault: isCash ? isDefault : undefined,
@@ -89,7 +89,7 @@ export const AddGearDrawer: React.FC<{
 				name: name.trim(),
 				cost: numCost,
 				lifespanMonths: numLife,
-				purchaseDate,
+				purchaseDate: isCash ? purchaseDate : purchaseDate.slice(0, 7),
 				category,
 				imageUrl: imageUrl || undefined,
 				isDefault: isCash ? isDefault : undefined,
@@ -146,6 +146,8 @@ export const AddGearDrawer: React.FC<{
 					onChange={(e) => {
 						const next = e.target.value;
 						setCategory(next);
+						// A new cash balance is what's in the bank now
+						if (next === "cash" && !initialData && !isAsOfTouched) setPurchaseDate(today);
 						if (next !== "cash" && (Number(lifespanMonths) || 0) <= 0) {
 							setLifespanMonths("36");
 						}
@@ -175,14 +177,26 @@ export const AddGearDrawer: React.FC<{
 				/>
 
 				<FormField label={isCash ? "Balance (THB)" : "Purchase Cost (THB)"}>
-					<CurrencyInput placeholder="0.00" value={cost} onChange={setCost} required />
+					<CurrencyInput
+						placeholder="0.00"
+						value={cost}
+						onChange={(v) => {
+							setCost(v);
+							if (isCash && !isAsOfTouched) setPurchaseDate(today);
+						}}
+						required
+					/>
 				</FormField>
 
 				<InputField
-					label={isCash ? "As-of Date (Month)" : "Purchase Date (Month)"}
-					type="month"
-					value={purchaseDate}
-					onChange={(e) => setPurchaseDate(e.target.value)}
+					label={isCash ? "Balance As-of Date" : "Purchase Date (Month)"}
+					type={isCash ? "date" : "month"}
+					// A month-only as-of means the start of that month (the 1st)
+					value={isCash ? (purchaseDate.length === 7 ? `${purchaseDate}-01` : purchaseDate) : purchaseDate.slice(0, 7)}
+					onChange={(e) => {
+						setIsAsOfTouched(true);
+						setPurchaseDate(e.target.value);
+					}}
 					required
 				/>
 

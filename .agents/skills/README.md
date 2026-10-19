@@ -17,6 +17,36 @@ One directory per skill, `snake_case`, each with a `SKILL.md`:
 - `landing_seo/`: the Astro marketing site, meta/OG/JSON-LD layer, waitlist flow, blog and docs pipeline.
 - `auth_better/`: Better Auth (packages/auth) — webapp cookies mount, api tokens mount, the middleware chain, the opt-in page gate.
 
+## Native harness support & symlinks
+
+`.agents/skills/` is the canonical single source of truth for all skills. To support multiple agent tools natively without duplicating skill content, each skill directory is individually symlinked:
+
+- **Claude Code**: `.claude/skills/<skill>` → `../../.agents/skills/<skill>`
+- **Antigravity CLI**: `.gemini/skills/<skill>` and `.antigravity/skills/<skill>` → `../../.agents/skills/<skill>`
+- **OpenCode**: `.opencode/skills/<skill>` → `../../.agents/skills/<skill>`
+
+To keep all harness symlinks synchronized after adding or renaming skills, run:
+```bash
+./scripts/sync-skills.sh
+```
+
+## Unified MCP gateway (FromSukong)
+
+The **FromSukong MCP** (`fromsukong`) is the unified MCP gateway for `excited.live`:
+- **Gateway Endpoint**: `https://mcp.fromsukong.com/mcp`
+- **Core Rule**: In every workflow, check tools in the FromSukong MCP gateway first before manual fallbacks.
+- **Tools Included**:
+  - `honcho_*`: Shared cross-agent memory, peer discovery, and semantic context search.
+  - `github-gitobs_*`: GitHub PRs, issues, commits, branch management, and repo ops.
+  - `cloud-flare_*`: Cloudflare docs, deployment status, and diagnostics.
+  - `mobbin_*`: Mobile and web UI patterns, screens, and flows.
+  - `portal_*`: Unified server management and toggles.
+
+Project configurations:
+- Claude Code: `.mcp.json`
+- OpenCode: `opencode.json`
+- Antigravity CLI / Gemini: `.gemini/mcp_config.json` and `.antigravity/mcp_config.json`
+
 ## Conventions
 
 - Directory name, skill `name` in frontmatter, and content language stay in sync; descriptions read like "use this skill when ...".

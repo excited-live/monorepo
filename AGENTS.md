@@ -10,6 +10,23 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 4. **Bilingual UI strings**: Always `{ en, th }`, English first.
 5. **Don't edit generated files**: `routeTree.gen.ts`, `pnpm-lock.yaml`, `dist/`, `.output/`.
 6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component or page under `apps/webapp/src/components`, `apps/biz-mobile/src/components`, or `apps/biz-mobile/src/pages`, also run visual tests (`pnpm test:visual` or `pnpm test:visual:mobile`) and commit any updated `__snapshots__` PNGs. Baselines must be captured on the CI runner (workflow_dispatch → "Re-record baselines on the CI runner"), never on your machine — local pixel diffs are expected and are not a failure signal.
+7. **Check FromSukong MCP tools first**: In every workflow, always check tools in the FromSukong MCP gateway (`fromsukong`) first. This is the unified MCP gateway (`https://mcp.fromsukong.com/mcp`).
+
+## MCP gateway & tools (FromSukong)
+
+The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/mcp`) for `excited.live`.
+
+- **Rule: Check FromSukong MCP tools first in every flow.** Before performing actions via external tools or manual fallbacks, check if a FromSukong MCP tool provides the capability.
+- **Unified tool suites**:
+  - `honcho_*`: Shared memory, semantic context search, peer discovery, and cross-agent coordination across workspaces.
+  - `github-gitobs_*`: Pull requests, issues, commits, branches, and repository operations.
+  - `cloud-flare_*`: Cloudflare docs, worker/Pages deployment status, and diagnostics.
+  - `mobbin_*`: UI/UX design search for mobile and web screens, flows, and sections.
+  - `portal_*`: Service portal server listing and toggling.
+- **Native harness configuration in this repo**:
+  - **Claude Code**: configured in `.mcp.json` (`fromsukong` via `npx -y mcp-remote https://mcp.fromsukong.com/mcp`).
+  - **OpenCode**: configured in `opencode.json` (`fromsukong` local mcp-remote command).
+  - **Antigravity CLI / Gemini**: configured in `.gemini/mcp_config.json` and `.antigravity/mcp_config.json`.
 
 ## PR & merge pipeline
 
@@ -19,8 +36,14 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 - **Auto-merge.** Arm it right after opening the PR: `gh pr merge <number> --auto --squash`. Arm from a user account (the assistant's credentials), never a bot/`GITHUB_TOKEN` — bot-armed merges do not trigger the deploy workflows. `main` is protected: GitHub merges automatically once Prame approves and the required checks pass — squash only.
 - **Never merge or push to `main` yourself.** After Prame approves, do not push anything: a new push dismisses his approval and blocks the merge.
 
-## Skill loading rules
+## Skill loading rules & native harness support
 
+- **Canonical source**: Skills live in `.agents/skills/`.
+- **Native harness support**: Each skill is individually symlinked into:
+  - `.claude/skills/<skill>` for **Claude Code**
+  - `.gemini/skills/<skill>` and `.antigravity/skills/<skill>` for **Antigravity CLI**
+  - `.opencode/skills/<skill>` for **OpenCode**
+  Run `scripts/sync-skills.sh` after adding or modifying skills to synchronize symlinks.
 - **`honcho_memory`**: **Always load every time**. Use it on every turn to recall user context, inspect peers, or ground decisions in shared memory.
 - **All other skills**: **Load only on demand as needed** — do NOT load all skills upfront:
   - `frontend_engineering` — only when building webapp UI, routes, or components.

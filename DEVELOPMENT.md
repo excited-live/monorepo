@@ -8,7 +8,8 @@ Run from repo root:
 
 - Install: `pnpm install`
 - Dev server: `pnpm dev` (webapp on :3000)
-- Build: `pnpm build`
+- Build: `pnpm build` (required once in a fresh worktree before the first dev command — dev tasks don't build workspace deps)
+- Mobile Android dev: see `docs/android-dev.md`
 - Typecheck: `pnpm typecheck`
 - Lint: `pnpm lint`
 - Visual tests: `pnpm test:visual` (Playwright component screenshots)

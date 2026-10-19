@@ -1504,7 +1504,8 @@
 							"subscription",
 							"hardware",
 							"career",
-							"revenue"
+							"revenue",
+							"liability"
 						]
 					},
 					"category": {
@@ -1549,7 +1550,7 @@
 					"defaultAmounts",
 					"imageUrl"
 				],
-				"description": "A preset from the built-in subscription/hardware catalog."
+				"description": "A preset from the built-in subscription, hardware, revenue and liability catalog."
 			},
 			"PlanInput": {
 				"type": "object",
@@ -1558,6 +1559,74 @@
 				},
 				"additionalProperties": {},
 				"description": "Plan document defined by `@excited-live/sim` (`PlanInput`). Stored and returned verbatim."
+			},
+			"UserOnboarding": {
+				"type": "object",
+				"properties": {
+					"userId": {
+						"type": "string"
+					},
+					"appId": {
+						"type": "string"
+					},
+					"isCompleted": {
+						"type": "boolean"
+					},
+					"completedAt": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"done": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"skipped": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"updatedAt": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"userId",
+					"appId",
+					"isCompleted",
+					"done",
+					"skipped",
+					"updatedAt"
+				],
+				"description": "Per-user onboarding progress and completion status per app."
+			},
+			"UpdateUserOnboarding": {
+				"type": "object",
+				"properties": {
+					"appId": {
+						"type": "string"
+					},
+					"isCompleted": {
+						"type": "boolean"
+					},
+					"done": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"skipped": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"description": "Payload to update user onboarding progress."
 			},
 			"UserSettings": {
 				"type": "object",
@@ -6308,7 +6377,8 @@
 								"subscription",
 								"hardware",
 								"career",
-								"revenue"
+								"revenue",
+								"liability"
 							]
 						}
 					}
@@ -6401,7 +6471,8 @@
 											"subscription",
 											"hardware",
 											"career",
-											"revenue"
+											"revenue",
+											"liability"
 										]
 									},
 									"touchedFields": {
@@ -6596,6 +6667,112 @@
 										"ok",
 										"data"
 									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/onboarding": {
+			"get": {
+				"operationId": "getOnboarding",
+				"tags": [
+					"Onboarding"
+				],
+				"summary": "Get onboarding state",
+				"description": "Returns onboarding progress for the specified app (defaults to biz-mobile).",
+				"parameters": [
+					{
+						"name": "app",
+						"in": "query",
+						"required": false,
+						"description": "Application ID (e.g. `biz-mobile`, `webapp`). Defaults to `biz-mobile`.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "The onboarding state.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/UserOnboarding"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"operationId": "saveOnboarding",
+				"tags": [
+					"Onboarding"
+				],
+				"summary": "Save onboarding state",
+				"description": "Updates onboarding progress, steps completed/skipped, and overall completion status.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateUserOnboarding"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Saved.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"ok": {
+											"type": "boolean",
+											"const": true
+										},
+										"data": {
+											"$ref": "#/components/schemas/UserOnboarding"
+										}
+									},
+									"required": [
+										"ok",
+										"data"
+									]
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Malformed onboarding payload.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
 								}
 							}
 						}

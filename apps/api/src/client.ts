@@ -4,3 +4,4 @@
  */
 export type { AppType } from "./app";
 export type { AccountingRouter } from "./modules/accounting/route/accounting.routes";
+export type { UserOnboarding } from "./routes/onboarding";

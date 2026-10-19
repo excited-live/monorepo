@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NativeInput } from "@excited-live/design-system";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Button } from "@astryxdesign/core/Button";
@@ -7,23 +7,29 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { FIELD_CLASS, FormField, InputField, SelectField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
+import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { ChipButton } from "../../../../components/ChipButton";
 import { SectionCard } from "../../../../components/SectionCard";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import type { HardwareAsset } from "@excited-live/accounting";
+import { resolveCatalogAmount, type HardwareAsset } from "@excited-live/accounting";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
+import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 import { useFinances, useAppUI } from "../../../../state";
 import { formatMoney } from "../../../../utils/format";
+
+const HARDWARE_CATEGORIES = ["workstation", "mobile", "audio", "furniture", "other"];
 
 export const AddGearDrawer: React.FC<{
 	isOpen: boolean;
 	onClose: () => void;
 	initialData?: HardwareAsset | null;
 }> = ({ isOpen, onClose, initialData }) => {
-	const { addHardware, updateHardware, deleteHardware, hardware } = useFinances();
+	const { addHardware, updateHardware, deleteHardware, hardware, accounts } = useFinances();
 	const { activeEntityId, selectedMonth, today } = useAppUI();
 
+	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
+	const currency = activeAccount?.currency || "THB";
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -38,6 +44,27 @@ export const AddGearDrawer: React.FC<{
 	// types a new balance, never silently (that would drop the movements between).
 	const [isAsOfTouched, setIsAsOfTouched] = useState(false);
 
+	// A pending catalog lookup can resolve after the user switched to cash; the
+	// ref keeps the cash guard honest against that race.
+	const categoryRef = useRef(category);
+	categoryRef.current = category;
+
+	// Smart catalog autofill with user-touch protection. Cash reserves are not
+	// catalog items: never let a work-gear match overwrite a bank balance.
+	const onApplyAutofill = (values: AutofillValues) => {
+		if (categoryRef.current === "cash") return;
+		if (values.amount !== undefined) setCost(String(values.amount));
+		if (values.category && HARDWARE_CATEGORIES.includes(values.category)) setCategory(values.category);
+		if (values.imageUrl !== undefined) setImageUrl(values.imageUrl);
+	};
+
+	const { suggestions, matchedItem, handleQueryChange, applySuggestion, markTouched, resetTouched } =
+		useCatalogAutofill({
+			type: "hardware",
+			currency,
+			onApplyAutofill,
+		});
+
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
@@ -49,6 +76,9 @@ export const AddGearDrawer: React.FC<{
 			setCategory(initialData.category);
 			setImageUrl(initialData.imageUrl || "");
 			setIsDefault(Boolean(initialData.isDefault));
+			markTouched("amount");
+			markTouched("category");
+			markTouched("imageUrl");
 		} else {
 			setName("");
 			setCost("");
@@ -57,9 +87,10 @@ export const AddGearDrawer: React.FC<{
 			setCategory("workstation");
 			setImageUrl("");
 			setIsDefault(false);
+			resetTouched();
 		}
 		setIsAsOfTouched(false);
-	}, [initialData, isOpen, selectedMonth, today]);
+	}, [initialData, isOpen, selectedMonth, today, markTouched, resetTouched]);
 
 	// `initialData` can be a locally proposed placeholder (the default wallet
 	// fabricated by the onboarding flow) that does not exist server-side yet.
@@ -71,6 +102,11 @@ export const AddGearDrawer: React.FC<{
 	if (!isOpen) return null;
 
 	const isCash = category === "cash";
+
+	const handleNameChange = (val: string) => {
+		setName(val);
+		handleQueryChange(val, { amount: cost, category, imageUrl });
+	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -145,7 +181,11 @@ export const AddGearDrawer: React.FC<{
 				</>
 			}
 		>
-			<ModalImageSection value={imageUrl} onChange={(v) => setImageUrl(v ?? "")} />
+			<ModalImageSection
+				value={imageUrl}
+				onChange={(v) => setImageUrl(v ?? "")}
+				onUserTouched={() => markTouched("imageUrl")}
+			/>
 
 			<Stack as="form" id="gear-form" gap={4} width="100%" onSubmit={handleSubmit}>
 				<SelectField
@@ -153,9 +193,11 @@ export const AddGearDrawer: React.FC<{
 					value={category}
 					onChange={(e) => {
 						const next = e.target.value;
+						markTouched("category");
 						setCategory(next);
 						// A new cash balance is what's in the bank now
 						if (next === "cash" && !initialData && !isAsOfTouched) setPurchaseDate(today);
+						if (next === "cash") handleQueryChange("");
 						if (next !== "cash" && (Number(lifespanMonths) || 0) <= 0) {
 							setLifespanMonths("36");
 						}
@@ -174,21 +216,47 @@ export const AddGearDrawer: React.FC<{
 					</optgroup>
 				</SelectField>
 
-				<InputField
-					label={isCash ? "Account / Reserve Name" : "Asset Name"}
-					placeholder={
-						isCash ? "e.g. Kasikorn Savings, Main Operating Account" : "e.g. MacBook Pro M3 Max, Herman Miller Chair"
-					}
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					required
-				/>
+				<Stack gap={1.5} width="100%">
+					<InputField
+						label={isCash ? "Account / Reserve Name" : "Asset Name"}
+						placeholder={
+							isCash ? "e.g. Kasikorn Savings, Main Operating Account" : "e.g. MacBook Pro M3 Max, Herman Miller Chair"
+						}
+						value={name}
+						onChange={(e) => handleNameChange(e.target.value)}
+						required
+					/>
 
-				<FormField label={isCash ? "Balance (THB)" : "Purchase Cost (THB)"}>
+					{/* Quick Work Gear Suggestions */}
+					{!isCash && suggestions.length > 0 && (
+						<SuggestionChips
+							suggestions={suggestions.slice(0, 5)}
+							onPick={(s) => {
+								setName(s.name);
+								applySuggestion(s as (typeof suggestions)[number]);
+							}}
+							renderMeta={(s) => {
+								const itemAmount = resolveCatalogAmount(s as (typeof suggestions)[number], currency);
+								if (itemAmount === undefined) return null;
+								return currency === "USD" ? `$${itemAmount}` : `฿${itemAmount.toLocaleString()}`;
+							}}
+						/>
+					)}
+
+					{/* Match Info Banner */}
+					{!isCash && matchedItem && (
+						<AutofillBanner badge="Auto-Filled">
+							{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
+						</AutofillBanner>
+					)}
+				</Stack>
+
+				<FormField label={isCash ? `Balance (${currency})` : `Purchase Cost (${currency})`}>
 					<CurrencyInput
 						placeholder="0.00"
 						value={cost}
 						onChange={(v) => {
+							markTouched("amount");
 							setCost(v);
 							if (isCash && !isAsOfTouched) setPurchaseDate(today);
 						}}

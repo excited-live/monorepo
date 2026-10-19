@@ -169,6 +169,60 @@ describe("api/v1/settings", () => {
 	})
 })
 
+
+describe("api/v1/onboarding", () => {
+	it("returns defaults for an unknown user", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const response = await app.request("/api/v1/onboarding", { headers: { "x-user-id": "user-a" } });
+		expect(response.status).toBe(200);
+		const data = await response.json();
+		expect(data).toMatchObject({
+			userId: "user-a",
+			appId: "biz-mobile",
+			isCompleted: false,
+			completedAt: null,
+			done: ["create_account"],
+			skipped: [],
+		});
+		db.driver.close();
+	});
+
+	it("round-trips progress and completion", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const put = await app.request(
+			"/api/v1/onboarding",
+			jsonRequest("PUT", "user-a", {
+				appId: "biz-mobile",
+				done: ["create_account", "add_income"],
+				skipped: ["add_business"],
+				isCompleted: false,
+			}),
+		);
+		expect(put.status).toBe(200);
+		const putData = await put.json();
+		expect(putData.data.done).toEqual(["create_account", "add_income"]);
+
+		const get = await app.request("/api/v1/onboarding?app=biz-mobile", { headers: { "x-user-id": "user-a" } });
+		expect(get.status).toBe(200);
+		const getData = await get.json();
+		expect(getData.done).toEqual(["create_account", "add_income"]);
+		expect(getData.skipped).toEqual(["add_business"]);
+		expect(getData.isCompleted).toBe(false);
+		db.driver.close();
+	});
+
+	it("rejects a malformed payload with 400", async () => {
+		const { app, db } = await openApi(tempDbFile());
+		const response = await app.request("/api/v1/onboarding", jsonRequest("PUT", "user-a", { done: 5 }));
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({ error: "Malformed onboarding payload" });
+
+		const stillDefault = await app.request("/api/v1/onboarding", { headers: { "x-user-id": "user-a" } });
+		expect((await stillDefault.json()).done).toEqual(["create_account"]);
+		db.driver.close();
+	});
+});
+
 describe("persistence across an API restart", () => {
 	it("serves plan and settings saved by a previous process, and a fresh user starts clean", async () => {
 		const file = tempDbFile()

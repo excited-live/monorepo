@@ -15,7 +15,7 @@ description: "Autofill catalog for subscriptions and hardware."
 | --- | --- | --- | --- | --- |
 | `q` | query | `string` | no | Search text (name, alias or domain). |
 | `currency` | query | `string` | no | Defaults to `THB`. |
-| `type` | query | `"subscription"` \| `"hardware"` \| `"career"` \| `"revenue"` | no |  |
+| `type` | query | `"subscription"` \| `"hardware"` \| `"career"` \| `"revenue"` \| `"liability"` | no |  |
 
 **Responses**
 
@@ -41,7 +41,7 @@ Type: `object`
 | --- | --- | --- | --- |
 | `query` | `string` | yes |  |
 | `currency` | `string` | no |  |
-| `type` | `"subscription"` \| `"hardware"` \| `"career"` \| `"revenue"` | no |  |
+| `type` | `"subscription"` \| `"hardware"` \| `"career"` \| `"revenue"` \| `"liability"` | no |  |
 | `touchedFields` | `object` | no |  |
 | `touchedFields.amount` | `boolean` | no |  |
 | `touchedFields.cycle` | `boolean` | no |  |

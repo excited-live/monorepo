@@ -24,7 +24,7 @@ export interface AutofillValues {
 }
 
 export interface UseCatalogAutofillOptions {
-	type?: "subscription" | "hardware" | "career" | "revenue";
+	type?: "subscription" | "hardware" | "career" | "revenue" | "liability";
 	currency?: string;
 	debounceMs?: number;
 	onApplyAutofill?: (values: AutofillValues, matched: CatalogItem) => void;

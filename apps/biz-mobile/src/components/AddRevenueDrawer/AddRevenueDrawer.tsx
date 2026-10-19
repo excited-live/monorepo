@@ -4,10 +4,12 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";
 import { FormField, InputField, SelectField } from "../FormField";
 import { ModalPage } from "../ModalPage";
+import { AutofillBanner, SuggestionChips } from "../AutofillHints";
 import { CurrencyInput } from "../CurrencyInput";
-import type { RevenueStream } from "@excited-live/accounting";
+import { resolveCatalogAmount, type RevenueStream } from "@excited-live/accounting";
 import { ModalImageSection } from "../ModalImageSection";
 import { useModalBack } from "../../hooks/useModalBack";
+import { useCatalogAutofill, type AutofillValues } from "../../hooks/useCatalogAutofill";
 import { useFinances, useAppUI } from "../../state";
 
 export const AddRevenueDrawer: React.FC<{
@@ -20,6 +22,7 @@ export const AddRevenueDrawer: React.FC<{
 	const currentMonth = today.slice(0, 7);
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
+	const currency = activeAccount.currency || "THB";
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -34,6 +37,47 @@ export const AddRevenueDrawer: React.FC<{
 	const [notes, setNotes] = useState("");
 	const [imageUrl, setImageUrl] = useState("");
 
+	const sourceOptions = isPersonal
+		? [
+				["salary", "Career / Salary"],
+				["freelance", "Freelance / Side Income"],
+				["bank_transfer", "Bank Transfer"],
+				["cash", "Cash"],
+				["other", "Other"],
+			]
+		: [
+				["stripe", "Stripe Payments"],
+				["bank_transfer", "B2B Direct Bank Invoice"],
+				["cash", "Manual Cash"],
+				["other", "Other"],
+			];
+	// A personal salary stream IS the career (title/company/payday live on the account).
+	const isCareer = isPersonal && source === "salary";
+
+	// Smart catalog autofill with user-touch protection. A salary stream is
+	// resolved against the career catalog (employers, benchmarks); every other
+	// stream against the revenue catalog (platforms, retainer templates).
+	const onApplyAutofill = (values: AutofillValues) => {
+		if (values.amount !== undefined) setAmount(String(values.amount));
+		if (values.cycle === "monthly" || values.cycle === "yearly") setFrequency(values.cycle);
+		if (values.category && sourceOptions.some(([value]) => value === values.category)) {
+			setSource(values.category as typeof source);
+		}
+		if (isCareer) {
+			if (values.coverImageUrl) setImageUrl(values.coverImageUrl);
+			else if (values.imageUrl) setImageUrl(values.imageUrl);
+		} else if (values.imageUrl !== undefined) {
+			setImageUrl(values.imageUrl);
+		}
+	};
+
+	const { suggestions, matchedItem, handleQueryChange, applySuggestion, markTouched, resetTouched } =
+		useCatalogAutofill({
+			type: isCareer ? "career" : "revenue",
+			currency,
+			onApplyAutofill,
+		});
+
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
@@ -44,6 +88,10 @@ export const AddRevenueDrawer: React.FC<{
 			setEndMonth(initialData.endMonth || "");
 			setNotes(initialData.notes || "");
 			setImageUrl(initialData.imageUrl || "");
+			markTouched("amount");
+			markTouched("cycle");
+			markTouched("category");
+			markTouched("imageUrl");
 		} else {
 			setName("");
 			setAmount("");
@@ -53,10 +101,31 @@ export const AddRevenueDrawer: React.FC<{
 			setEndMonth("");
 			setNotes("");
 			setImageUrl("");
+			resetTouched();
 		}
-	}, [initialData, isOpen, isPersonal, currentMonth]);
+	}, [initialData, isOpen, isPersonal, currentMonth, markTouched, resetTouched]);
 
 	if (!isOpen) return null;
+
+	const handleNameChange = (val: string) => {
+		setName(val);
+		handleQueryChange(val, { amount, cycle: frequency, category: source, imageUrl });
+	};
+
+	const handleAmountChange = (val: string) => {
+		markTouched("amount");
+		setAmount(val);
+	};
+
+	const handleFrequencyChange = (val: RevenueStream["frequency"]) => {
+		markTouched("cycle");
+		setFrequency(val);
+	};
+
+	const handleSourceChange = (val: typeof source) => {
+		markTouched("category");
+		setSource(val);
+	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -123,23 +192,6 @@ export const AddRevenueDrawer: React.FC<{
 	const hasValidMonths = Boolean(startMonth) && (!endMonth || frequency === "one_time" || endMonth >= startMonth);
 	const canSubmit = name.trim().length > 0 && Number(amount) > 0 && hasValidMonths;
 	const isEditMode = Boolean(initialData);
-	// A personal salary stream IS the career (title/company/payday live on the account).
-	const isCareer = isPersonal && source === "salary";
-
-	const sourceOptions = isPersonal
-		? [
-				["salary", "Career / Salary"],
-				["freelance", "Freelance / Side Income"],
-				["bank_transfer", "Bank Transfer"],
-				["cash", "Cash"],
-				["other", "Other"],
-			]
-		: [
-				["stripe", "Stripe Payments"],
-				["bank_transfer", "B2B Direct Bank Invoice"],
-				["cash", "Manual Cash"],
-				["other", "Other"],
-			];
 
 	return (
 		<ModalPage
@@ -175,6 +227,7 @@ export const AddRevenueDrawer: React.FC<{
 			<ModalImageSection
 				value={imageUrl}
 				onChange={(v) => setImageUrl(v ?? "")}
+				onUserTouched={() => markTouched("imageUrl")}
 				aspectRatio={isCareer ? "cover" : "square"}
 				showCuratedWallpapers={isCareer}
 			/>
@@ -183,7 +236,7 @@ export const AddRevenueDrawer: React.FC<{
 				<SelectField
 					label="Source Channel"
 					value={source}
-					onChange={(e) => setSource(e.target.value as typeof source)}
+					onChange={(e) => handleSourceChange(e.target.value as typeof source)}
 					autoFocus={!isEditMode}
 				>
 					{sourceOptions.map(([value, label]) => (
@@ -193,22 +246,47 @@ export const AddRevenueDrawer: React.FC<{
 					))}
 				</SelectField>
 
-				<InputField
-					label="Stream / Client Name"
-					placeholder={isPersonal ? "e.g. Freelance Project, Side Income" : "e.g. Acme Corp Retainer, Stripe MRR"}
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					required
-				/>
+				<Stack gap={1.5} width="100%">
+					<InputField
+						label="Stream / Client Name"
+						placeholder={isPersonal ? "e.g. Freelance Project, Side Income" : "e.g. Acme Corp Retainer, Stripe MRR"}
+						value={name}
+						onChange={(e) => handleNameChange(e.target.value)}
+						required
+					/>
 
-				<FormField label="Amount (THB)">
-					<CurrencyInput placeholder="0.00" value={amount} onChange={setAmount} required />
+					{/* Quick Auto-Suggestion Chips */}
+					{suggestions.length > 0 && (
+						<SuggestionChips
+							suggestions={suggestions.slice(0, 5)}
+							onPick={(s) => {
+								setName(s.name);
+								applySuggestion(s as (typeof suggestions)[number]);
+							}}
+							renderMeta={(s) => {
+								const itemAmount = resolveCatalogAmount(s as (typeof suggestions)[number], currency);
+								if (itemAmount === undefined) return null;
+								return currency === "USD" ? `$${itemAmount}` : `฿${itemAmount.toLocaleString()}`;
+							}}
+						/>
+					)}
+
+					{/* Match Info Banner */}
+					{matchedItem && (
+						<AutofillBanner badge="Auto-Filled">
+							{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
+						</AutofillBanner>
+					)}
+				</Stack>
+
+				<FormField label={`Amount (${currency})`}>
+					<CurrencyInput placeholder="0.00" value={amount} onChange={handleAmountChange} required />
 				</FormField>
 
 				<SelectField
 					label="Frequency"
 					value={frequency}
-					onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+					onChange={(e) => handleFrequencyChange(e.target.value as typeof frequency)}
 				>
 					<option value="monthly">Monthly</option>
 					<option value="yearly">Yearly</option>

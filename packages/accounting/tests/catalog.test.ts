@@ -52,4 +52,22 @@ describe("catalog", () => {
 		const subMatches = searchCatalog("agoda", "subscription");
 		expect(subMatches.length).toBe(0);
 	});
+
+	it("matches work gear, revenue sources and liabilities by type", () => {
+		const macbook = findBestCatalogMatch("macbook", "hardware");
+		expect(macbook?.name).toBe("MacBook Pro 14\"");
+		expect(macbook?.category).toBe("workstation");
+
+		const audio = searchCatalog("airpods", "hardware");
+		expect(audio.some((item) => item.category === "audio")).toBe(true);
+
+		const stripe = findBestCatalogMatch("stripe", "revenue");
+		expect(stripe?.name).toBe("Stripe Payout");
+		expect(stripe?.category).toBe("stripe");
+
+		const mortgage = findBestCatalogMatch("mortgage", "liability");
+		expect(mortgage?.name).toBe("Home Mortgage");
+		expect(mortgage?.category).toBe("mortgage");
+		expect(findBestCatalogMatch("mortgage", "subscription")).toBeNull();
+	});
 });

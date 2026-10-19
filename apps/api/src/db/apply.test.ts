@@ -31,7 +31,7 @@ describe("migrations", () => {
 			"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
 		)
 		expect(tables.map((table) => table.name)).toEqual(
-			expect.arrayContaining(["plans", "user_settings", "d1_migrations"]),
+			expect.arrayContaining(["plans", "user_settings", "user_onboarding", "d1_migrations"]),
 		)
 		db.driver.close()
 	})

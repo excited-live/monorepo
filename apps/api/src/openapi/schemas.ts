@@ -257,7 +257,7 @@ export const CatalogItemSchema = z
 		id: z.string(),
 		name: z.string(),
 		aliases: z.array(z.string()),
-		type: z.enum(["subscription", "hardware", "career", "revenue"]),
+		type: z.enum(["subscription", "hardware", "career", "revenue", "liability"]),
 		category: z.string(),
 		defaultAmounts: z.record(z.string(), z.number().optional()).describe("Default amount per currency code."),
 		cycle: z.enum(["monthly", "yearly"]).optional(),
@@ -266,7 +266,7 @@ export const CatalogItemSchema = z
 		coverImageUrl: z.string().optional(),
 		notes: z.string().optional(),
 	})
-	.meta({ id: "CatalogItem", description: "A preset from the built-in subscription/hardware catalog." }) satisfies z.ZodType<CatalogItem>
+	.meta({ id: "CatalogItem", description: "A preset from the built-in subscription, hardware, revenue and liability catalog." }) satisfies z.ZodType<CatalogItem>
 
 // Plan documents are owned by @excited-live/sim and change independently of the
 // API; describing them as an open object keeps the spec honest.
@@ -285,3 +285,24 @@ export const UserSettingsSchema = z
 export const OkSchema = z.object({ ok: z.literal(true) }).meta({ id: "Ok" })
 
 export const ErrorSchema = z.object({ error: z.string() }).meta({ id: "Error" })
+
+export const UserOnboardingSchema = z
+	.object({
+		userId: z.string(),
+		appId: z.string(),
+		isCompleted: z.boolean(),
+		completedAt: z.string().nullable().optional(),
+		done: z.array(z.string()),
+		skipped: z.array(z.string()),
+		updatedAt: z.string(),
+	})
+	.meta({ id: "UserOnboarding", description: "Per-user onboarding progress and completion status per app." })
+
+export const UpdateUserOnboardingSchema = z
+	.object({
+		appId: z.string().optional(),
+		isCompleted: z.boolean().optional(),
+		done: z.array(z.string()).optional(),
+		skipped: z.array(z.string()).optional(),
+	})
+	.meta({ id: "UpdateUserOnboarding", description: "Payload to update user onboarding progress." })

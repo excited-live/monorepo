@@ -12,7 +12,7 @@ export interface CatalogSuggestResponse {
 export interface CatalogResolveRequest {
 	query: string;
 	currency?: string;
-	type?: "subscription" | "hardware" | "career" | "revenue";
+	type?: "subscription" | "hardware" | "career" | "revenue" | "liability";
 	touchedFields?: {
 		amount?: boolean;
 		cycle?: boolean;

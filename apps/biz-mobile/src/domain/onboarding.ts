@@ -1,6 +1,6 @@
 /**
- * Pure onboarding step model: the ordered journey, its status derivation and
- * the local persistence shape. No React, no I/O beyond the storage helpers.
+ * Pure onboarding step model: the ordered journey and its status derivation.
+ * No React, no I/O — progress is server-backed (see service/onboarding).
  *
  * Only "Create Account" completes itself. Every other step is completed when
  * the user taps Done (gated on having at least one entry) or, when skippable,
@@ -40,42 +40,8 @@ export interface OnboardingProgress {
 	skipped: OnboardingStepId[];
 }
 
-export const ONBOARDING_STORAGE_KEY = "biz_onboarding_v2";
-export const LEGACY_LIABILITY_SKIP_KEY = "biz_onboarding_liability_skipped";
-
 export function isOnboardingStepId(value: unknown): value is OnboardingStepId {
 	return typeof value === "string" && ONBOARDING_STEPS.some((step) => step.id === value);
-}
-
-/**
- * Progress persisted in localStorage. Users coming from the old flow carried a
- * single `biz_onboarding_liability_skipped` flag; fold it into the skipped set.
- */
-export function loadOnboardingProgress(): OnboardingProgress {
-	try {
-		const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
-		if (raw) {
-			const parsed = JSON.parse(raw) as Partial<OnboardingProgress>;
-			return {
-				done: (parsed.done ?? []).filter(isOnboardingStepId),
-				skipped: (parsed.skipped ?? []).filter(isOnboardingStepId),
-			};
-		}
-		if (localStorage.getItem(LEGACY_LIABILITY_SKIP_KEY) === "true") {
-			return { done: [], skipped: ["add_liability"] };
-		}
-	} catch {
-		// Storage unavailable (private mode / tests): nothing persisted yet.
-	}
-	return { done: [], skipped: [] };
-}
-
-export function persistOnboardingProgress(progress: OnboardingProgress): void {
-	try {
-		localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(progress));
-	} catch {
-		// Storage unavailable — progress stays in memory for this session.
-	}
 }
 
 export interface OnboardingStepState extends OnboardingStepConfig {

@@ -2,6 +2,7 @@
 import Layout from '@/components/layout.astro';
 import WaitlistForm from '@/components/WaitlistForm';
 import LangSelect from '@/components/LangSelect';
+import '@/styles/landing-motion.css';
 
 const title = 'excited.live — Know your runway across every project';
 const description =
@@ -147,6 +148,20 @@ const minis = [
 ---
 
 <Layout title={title} description={description} schema={appSchema}>
+	<!-- Motion arms before the hero paints: no-JS and reduced-motion visitors get
+	     the static page, everyone else gets the choreography. See landing-motion.css. -->
+	<script is:inline data-astro-rerun>
+		(function () {
+			try {
+				if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+					document.documentElement.classList.add('motion');
+				}
+			} catch (e) {
+				/* matchMedia unavailable — leave the static page */
+			}
+		})();
+	</script>
+
 	<!-- ============ NAV ============ -->
 	<div class="nav-wrap">
 		<nav class="nav-pill" aria-label="Main">
@@ -185,15 +200,22 @@ const minis = [
 	<!-- ============ HERO ============ -->
 	<header class="hero" id="waitlist">
 		<div class="hero-inner">
-			<p class="eyebrow">
+			<p class="eyebrow" data-load style="--ld: 0">
 				<span data-lang-en>Free Android app</span>
 				<span data-lang-th>แอป Android ฟรี</span>
 			</p>
 			<h1>
-				<span data-lang-en>Every project.<br />Every baht.<br />One <span class="accent">runway</span>.</span>
-				<span data-lang-th>ทุกโปรเจกต์ ทุกบาท<br />ใน<span class="accent">รันเวย์เดียว</span></span>
+				<span data-lang-en>
+					<span class="line" style="--ld: 80"><span>Every project.</span></span>
+					<span class="line" style="--ld: 170"><span>Every baht.</span></span>
+					<span class="line" style="--ld: 260"><span>One <span class="accent">runway</span>.</span></span>
+				</span>
+				<span data-lang-th>
+					<span class="line" style="--ld: 80"><span>ทุกโปรเจกต์ ทุกบาท</span></span>
+					<span class="line" style="--ld: 170"><span>ใน<span class="accent">รันเวย์เดียว</span></span></span>
+				</span>
 			</h1>
-			<p class="hero-sub">
+			<p class="hero-sub" data-load style="--ld: 380">
 				<span data-lang-en>
 					See how long your cash lasts across your day job, your side projects and your
 					businesses. One free app, one honest number.
@@ -203,7 +225,7 @@ const minis = [
 					ในแอปฟรีแอปเดียว ตัวเลขเดียวที่ไม่หลอกตัวเอง
 				</span>
 			</p>
-			<div class="hero-perks">
+			<div class="hero-perks" data-load style="--ld: 470">
 				<span class="perk-chip">
 					<span class="dot"></span>
 					<span data-lang-en>Free</span>
@@ -220,14 +242,17 @@ const minis = [
 					<span data-lang-th>ออกแบบมาเพื่อคนไทย</span>
 				</span>
 			</div>
-			<WaitlistForm client:visible />
+			<div data-load style="--ld: 560"><WaitlistForm client:visible /></div>
 		</div>
 
 		<div class="hero-visual">
 			<svg class="hero-orbit" viewBox="0 0 520 640" preserveAspectRatio="none" aria-hidden="true">
 				<path d="M 30 600 C 40 380, 120 160, 470 40" />
+				<circle class="beacon" r="3.5" cx="0" cy="0">
+					<animateMotion dur="16s" repeatCount="indefinite" path="M 30 600 C 40 380, 120 160, 470 40" />
+				</circle>
 			</svg>
-			<div class="phone">
+			<div class="phone" data-load style="--ld: 220">
 				<div class="phone-screen">
 					<img
 						src="/app/mobile/home.webp"
@@ -238,16 +263,16 @@ const minis = [
 					/>
 				</div>
 			</div>
-			<span class="float-chip chip-a">
+			<span class="float-chip chip-a" data-load style="--ld: 620">
 				<span class="dot"></span>
-				<span data-lang-en>Runway 17 mo</span>
-				<span data-lang-th>รันเวย์ 17 เดือน</span>
+				<span data-lang-en>Runway <span data-count="17">17</span> mo</span>
+				<span data-lang-th>รันเวย์ <span data-count="17">17</span> เดือน</span>
 			</span>
-			<span class="float-chip chip-b">
+			<span class="float-chip chip-b" data-load style="--ld: 700">
 				<span data-lang-en>Payday in 10 days</span>
 				<span data-lang-th>อีก 10 วันเงินเดือนออก</span>
 			</span>
-			<span class="float-chip chip-c">
+			<span class="float-chip chip-c" data-load style="--ld: 780">
 				<span data-lang-en>3 businesses, 1 view</span>
 				<span data-lang-th>3 ธุรกิจ ดูที่เดียว</span>
 			</span>
@@ -297,7 +322,7 @@ const minis = [
 					</p>
 					<span class="total-num swap">
 						<span class="is-before">฿ ???</span>
-						<span class="is-after">฿2,305,400</span>
+						<span class="is-after" data-odometer="2305400">฿2,305,400</span>
 					</span>
 					<span class="total-hint swap">
 						<span class="is-before">
@@ -486,6 +511,9 @@ const minis = [
 		<div class="orbit-stage">
 			<svg class="orbit-svg" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
 				<path d="M 200 170 C 420 30, 780 30, 1000 170" />
+				<circle class="beacon" r="3.5" cx="0" cy="0">
+					<animateMotion dur="18s" repeatCount="indefinite" path="M 200 170 C 420 30, 780 30, 1000 170" />
+				</circle>
 			</svg>
 			<div class="orbit-item">
 				<div class="orbit-circle">
@@ -884,6 +912,231 @@ const minis = [
 				{ threshold: 0.5 }
 			);
 			observer.observe(stage);
+		})();
+	</script>
+
+	<!-- ============ MOTION (OpenDesign pass — spec in src/styles/landing-motion.css) ============ -->
+	<script is:inline data-astro-rerun>
+		(function () {
+			var root = document.documentElement;
+			if (!root.classList.contains('motion')) return;
+
+			var reduce = false;
+			try {
+				reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			} catch (e) {}
+			if (reduce) {
+				root.classList.remove('motion');
+				return;
+			}
+
+			var rAF = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
+
+			/* --- 1. hero choreography: two frames so the masks set first --- */
+			var hero = document.querySelector('.hero');
+			if (hero) {
+				rAF(function () {
+					rAF(function () {
+						hero.classList.add('is-loaded');
+					});
+				});
+			}
+
+			/* --- 2. reveal tagging: markup stays clean, stagger lives here --- */
+			var groups = [
+				['.section-head', ':scope > *', 70],
+				['.bento', ':scope > .bento-card', 70],
+				['.orbit-stage', ':scope > .orbit-item', 180],
+				['.next-grid', ':scope > .next-card', 80],
+				['.perk-cards', ':scope > .perk-card', 80],
+				['.deeper', ':scope > *', 90]
+			];
+			var targets = [];
+			groups.forEach(function (g) {
+				var parents = document.querySelectorAll(g[0]);
+				Array.prototype.forEach.call(parents, function (parent) {
+					Array.prototype.forEach.call(parent.querySelectorAll(g[1]), function (el, i) {
+						if (el.hasAttribute('data-reveal')) return;
+						el.setAttribute('data-reveal', '');
+						el.style.setProperty('--d', String(Math.min(i, 6) * g[2]));
+						targets.push(el);
+					});
+				});
+			});
+
+			if ('IntersectionObserver' in window) {
+				var io = new IntersectionObserver(
+					function (entries) {
+						entries.forEach(function (entry) {
+							if (!entry.isIntersecting) return;
+							entry.target.classList.add('is-in');
+							io.unobserve(entry.target);
+						});
+					},
+					{ threshold: 0.12, rootMargin: '0px 0px -6% 0px' }
+				);
+				targets.forEach(function (t) {
+					io.observe(t);
+				});
+			} else {
+				targets.forEach(function (t) {
+					t.classList.add('is-in');
+				});
+			}
+
+			/* --- 3. orbit arcs draw themselves, once --- */
+			Array.prototype.forEach.call(
+				document.querySelectorAll('.hero-orbit path, .orbit-svg path'),
+				function (path) {
+					if (typeof path.getTotalLength !== 'function') return;
+					var len = path.getTotalLength();
+					path.style.strokeDasharray = len;
+					path.style.strokeDashoffset = len;
+					var go = function () {
+						path.style.strokeDashoffset = '0';
+					};
+					if (!('IntersectionObserver' in window)) return go();
+					var o = new IntersectionObserver(
+						function (entries) {
+							if (!entries[0].isIntersecting) return;
+							o.disconnect();
+							setTimeout(go, 120);
+						},
+						{ threshold: 0.15 }
+					);
+					o.observe(path);
+				}
+			);
+
+			/* --- 4. one rAF pointer parallax on the hero visual (desktop only) --- */
+			var visual = document.querySelector('.hero-visual');
+			var fine = false;
+			try {
+				fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+			} catch (e) {}
+			if (visual && hero && fine) {
+				var tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
+				var loop = function () {
+					cx += (tx - cx) * 0.12;
+					cy += (ty - cy) * 0.12;
+					visual.style.transform = 'translate3d(' + cx.toFixed(2) + 'px,' + cy.toFixed(2) + 'px,0)';
+					if (Math.abs(tx - cx) > 0.1 || Math.abs(ty - cy) > 0.1) {
+						raf = rAF(loop);
+					} else {
+						raf = 0;
+					}
+				};
+				hero.addEventListener(
+					'pointermove',
+					function (e) {
+						var r = hero.getBoundingClientRect();
+						tx = ((e.clientX - r.left) / r.width - 0.5) * 16;
+						ty = ((e.clientY - r.top) / r.height - 0.5) * 12;
+						if (!raf) raf = rAF(loop);
+					},
+					{ passive: true }
+				);
+			}
+
+			/* --- 5. counters: runway chip + consolidated total --- */
+			function countUp(el, target, prefix, format) {
+				var t0 = 0;
+				var step = function (ts) {
+					if (!t0) t0 = ts;
+					var p = Math.min((ts - t0) / 900, 1);
+					var value = target * (1 - Math.pow(1 - p, 3));
+					el.textContent = prefix + format(Math.round(value));
+					if (p < 1) {
+						rAF(step);
+					} else {
+						el.textContent = prefix + format(target);
+					}
+				};
+				rAF(step);
+			}
+
+			Array.prototype.forEach.call(document.querySelectorAll('[data-count]'), function (el) {
+				var target = parseFloat(el.getAttribute('data-count')) || 0;
+				el.textContent = '0';
+				if (!('IntersectionObserver' in window)) {
+					el.textContent = String(target);
+					return;
+				}
+				var o = new IntersectionObserver(
+					function (entries) {
+						if (!entries[0].isIntersecting) return;
+						o.disconnect();
+						countUp(el, target, '', function (n) {
+							return String(n);
+						});
+					},
+					{ threshold: 0.4 }
+				);
+				o.observe(el);
+			});
+
+			Array.prototype.forEach.call(document.querySelectorAll('[data-odometer]'), function (el) {
+				var target = parseFloat(el.getAttribute('data-odometer')) || 0;
+				el.textContent = '฿0';
+				if (!('IntersectionObserver' in window)) {
+					el.textContent = '฿' + target.toLocaleString('en-US');
+					return;
+				}
+				var o = new IntersectionObserver(
+					function (entries) {
+						if (!entries[0].isIntersecting) return;
+						o.disconnect();
+						countUp(el, target, '฿', function (n) {
+							return n.toLocaleString('en-US');
+						});
+					},
+					{ threshold: 0.4 }
+				);
+				o.observe(el);
+			});
+
+			/* --- 6. nav condense on scroll, hide on the way down --- */
+			var nav = document.querySelector('.nav-wrap');
+			if (nav) {
+				var last = window.scrollY || 0;
+				var ticking = false;
+				var onScroll = function () {
+					var y = window.scrollY || 0;
+					nav.classList.toggle('is-condensed', y > 80);
+					if (y > 180 && y > last + 6) {
+						nav.classList.add('is-hidden');
+					} else if (y < last - 6 || y < 180) {
+						nav.classList.remove('is-hidden');
+					}
+					last = y;
+					ticking = false;
+				};
+				window.addEventListener(
+					'scroll',
+					function () {
+						if (ticking) return;
+						ticking = true;
+						rAF(onScroll);
+					},
+					{ passive: true }
+				);
+				onScroll();
+			}
+
+			/* --- 7. bento spotlight follows the pointer, desktop only --- */
+			if (fine) {
+				Array.prototype.forEach.call(document.querySelectorAll('.bento-card'), function (card) {
+					card.addEventListener(
+						'pointermove',
+						function (e) {
+							var r = card.getBoundingClientRect();
+							card.style.setProperty('--mx', e.clientX - r.left + 'px');
+							card.style.setProperty('--my', e.clientY - r.top + 'px');
+						},
+						{ passive: true }
+					);
+				});
+			}
 		})();
 	</script>
 </Layout>

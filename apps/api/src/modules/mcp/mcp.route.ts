@@ -1,6 +1,8 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { ApiEnv } from "../../lib/env";
+import { tokensAuthConfigured } from "../../lib/auth";
+import { protectedResourceMetadata } from "../../lib/oauth";
 import { createOnboardingStore } from "../../stores/onboarding-store";
 import { createSqlAccountingRepository } from "../accounting/repository/sql-accounting.repository";
 import { createAccountingService } from "../accounting/service/accounting.service";
@@ -16,6 +18,20 @@ import { createMcpServer } from "./registry";
  */
 export function createMcpRouter(): Hono<ApiEnv> {
 	const router = new Hono<ApiEnv>();
+
+	// RFC 9728 protected-resource discovery (the URL the 401 challenge points
+	// at). Both the bare well-known path and the `/mcp` suffix are published:
+	// clients derive one or the other from the resource URL.
+	const serveProtectedResourceMetadata = (c: Context<ApiEnv>) => {
+		const metadata = tokensAuthConfigured() ? protectedResourceMetadata(c.req.url) : null;
+		if (!metadata) {
+			return c.json({ error: "oauth is not configured in this environment" }, 404);
+		}
+		c.header("cache-control", "no-store");
+		return c.json(metadata);
+	};
+	router.get("/.well-known/oauth-protected-resource", serveProtectedResourceMetadata);
+	router.get("/.well-known/oauth-protected-resource/mcp", serveProtectedResourceMetadata);
 
 	router.all("/mcp", async (c) => {
 		const principal = await resolvePrincipal(c);

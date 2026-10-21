@@ -1,5 +1,5 @@
 import { createAuth, type Auth, type AuthD1DatabaseLike, type AuthDatabase } from "@excited-live/auth"
-import { authEnv, betterAuthConfigured, googleProviderConfig } from "./auth-config"
+import { authEnv, betterAuthConfigured, googleProviderConfig, oauthProviderConfig } from "./auth-config"
 import path from "node:path"
 
 /**
@@ -49,12 +49,19 @@ export async function getAuth(): Promise<Auth> {
 }
 
 async function createAuthAsync(): Promise<Auth> {
+	const oauth = oauthProviderConfig()
 	return createAuth({
 		database: await resolveAuthDatabase(),
 		secret: authEnv("BETTER_AUTH_SECRET")!,
 		baseURL: authEnv("BETTER_AUTH_URL") || undefined,
 		mount: "cookies",
 		google: googleProviderConfig(),
+		oauth: oauth
+			? {
+					resource: oauth.resource,
+					deviceVerificationUri: oauth.deviceVerificationUri,
+				}
+			: undefined,
 	})
 }
 

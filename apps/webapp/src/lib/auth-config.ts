@@ -36,6 +36,33 @@ export function googleProviderConfig(): { clientId: string; clientSecret: string
 }
 
 /**
+ * MCP authorization-server settings (A2.1), wired only when both env vars the
+ * flow needs exist:
+ *
+ *   - `BETTER_AUTH_URL` is the webapp origin. The OAuth provider derives its
+ *     issuer from it, so it cannot be omitted (the instance would throw).
+ *   - `EXCITED_API_URL` is the API origin. The `resource` registered for DCR
+ *     clients and bound into access tokens is `<origin>/mcp`.
+ *
+ * Without them the OAuth/device plugins are not mounted; the rest of auth
+ * (cookies, sign-in page) keeps working exactly as before.
+ */
+export function oauthProviderConfig(): {
+	resource: string
+	deviceVerificationUri: string
+} | undefined {
+	const webappUrl = envVar("BETTER_AUTH_URL")
+	const apiUrl = envVar("EXCITED_API_URL")
+	if (!webappUrl || !apiUrl) return undefined
+	const webapp = webappUrl.replace(/\/+$/, "")
+	const api = apiUrl.replace(/\/+$/, "")
+	return {
+		resource: `${api}/mcp`,
+		deviceVerificationUri: `${webapp}/device`,
+	}
+}
+
+/**
  * Route gate (#46): the gate is production-only; prelive/previews/local leave
  * the flag unset so the app stays browsable.
  * True iff betterAuthConfigured() AND AUTH_REQUIRED is "true" or "1".

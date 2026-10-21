@@ -55,6 +55,12 @@ work on workerd/Cloudflare Pages (where a module-load-time check would not).
   enabling it in an environment is an env change, NOT a code change).
 - `EXCITED_WEBAPP_AUTH_DB` — optional local dev SQLite path (default
   `.data/auth.sqlite` under apps/webapp).
+- `EXCITED_API_URL` — optional MCP resource origin. Together with
+  `BETTER_AUTH_URL` it turns on the authorization server (A2.1): the AS
+  registers `<EXCITED_API_URL>/mcp` as the only resource/audience. When either
+  is unset the OAuth and device plugins are not mounted and the rest of auth is
+  unchanged. `BETTER_AUTH_URL` must be the public webapp origin when the AS is
+  on (the issuer is derived from it; `/device` is built from it too).
 
 - `betterAuthConfigured()`: true iff BETTER_AUTH_SECRET is set. When NOT
   configured it warns once per process and returns false, so unconfigured
@@ -162,6 +168,53 @@ Page-level gate; registered per section 1. Behavior:
   `BETTER_AUTH_GOOGLE_CLIENT_ID`/`_SECRET` on the API and `VITE_GOOGLE_CLIENT_ID`
   (same web client ID) in apps/biz-mobile; Google Cloud needs an Android OAuth
   client for `live.excited.mobile` + the debug/release SHA-1.
+
+## 7b. MCP authorization server (webapp) + resource server (API)
+
+The sign-in link for modern agents is OAuth 2.1, with the WEBAPP as the
+authorization server (it owns the sign-in UI and browser cookies) and `/mcp` on
+the API as the protected resource.
+
+- `createAuth({ oauth: { resource, deviceVerificationUri } })` (packages/auth)
+  mounts `jwt()` + `oauthProvider()` + `deviceAuthorization()` on the cookies
+  mount. `apps/webapp/src/lib/auth.ts` passes it only when `BETTER_AUTH_URL`
+  and `EXCITED_API_URL` are both set.
+- oauthProvider: DCR on (`allowDynamicClientRegistration` +
+  `allowUnauthenticatedClientRegistration`), public PKCE clients, scopes
+  `openid profile email offline_access onboarding accounting:read
+  accounting:write`, grants `authorization_code` + `refresh_token` (no
+  client_credentials). `resources` / `clientRegistrationDefaultResources` /
+  `clientRegistrationAllowedResources` are all the MCP URL, so a requested
+  RFC 8707 `resource` binds the JWT `aud` and every DCR client is linked.
+  Access tokens are JWTs (EdDSA via the jwt plugin) — `aud` is present only
+  because the client requests the resource (which MCP clients do).
+- deviceAuthorization: public client id `excited-live-agent`,
+  `verificationUri = <webapp>/device`; `/device/token` returns a first-party
+  session token, NOT a JWT (accepted by the API's session-bearer branch).
+- Endpoints (webapp origin, base path `/api/auth`): `POST /oauth2/register`,
+  `GET /oauth2/authorize`, `POST /oauth2/consent`, `POST /oauth2/token`,
+  `GET /jwks`, `GET /.well-known/oauth-authorization-server`,
+  `GET /.well-known/openid-configuration`, plus `POST /device/code`,
+  `GET /device?user_code=…`, `POST /device/approve|deny`,
+  `POST /device/token`.
+- Pages: `/sign-in` resumes a signed authorization query
+  (`client_id` + `sig`) by forwarding the raw query back to
+  `/api/auth/oauth2/authorize` after sign-in; `/consent` shows the client name
+  and plain-language scopes and posts `{ accept, oauth_query }` to
+  `/oauth2/consent`; `/device` prefills `user_code`, claims the code through
+  `GET /device`, then approves/denies. `/consent` and `/device` are NOT added
+  to `PUBLIC_AUTH_PATHS`: the guard bounces signed-out visits to `/sign-in`
+  with `returnPathname`, which preserves the device code (no guard semantics
+  changed).
+- API resource server (`apps/api/src/lib/oauth.ts` + `modules/mcp/mcp.auth.ts`):
+  `EXCITED_WEBAPP_URL` gates it. `GET /.well-known/oauth-protected-resource`
+  and `/.well-known/oauth-protected-resource/mcp` return the resource, the AS
+  issuer (`<EXCITED_WEBAPP_URL>/api/auth`) and `scopes_supported`.
+  `resolvePrincipal` order: API key → OAuth JWT (remote JWKS + issuer +
+  audience `<requestOrigin>/mcp` + expiry, scopes from `scope`, `onboarding` →
+  `onboarding:read` + `onboarding:write`) → Better Auth session bearer → 401.
+  The challenge URL and the metadata `resource` use `requestOrigin()`, which
+  honours the API's `BETTER_AUTH_URL` behind proxies.
 
 ## 8. UI (`apps/webapp/src/components/TopbarAuth.tsx` + Topbar.tsx)
 

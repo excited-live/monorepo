@@ -33,6 +33,22 @@ interface SignInSearch {
 	returnPathname?: string
 }
 
+/**
+ * When the OAuth provider (or the device page) bounced the user here, the URL
+ * carries a signed authorization query (`client_id` + `sig`). After sign-in we
+ * must resume that flow instead of landing on the dashboard: forward the raw
+ * query back to the authorize endpoint. The raw string is used on purpose —
+ * the signature covers repeated `ba_param` entries, which a parsed object
+ * would lose.
+ */
+function oauthResumeUrl(): string | null {
+	if (typeof window === "undefined") return null
+	const params = new URLSearchParams(window.location.search)
+	params.delete("returnPathname")
+	if (!params.has("client_id") || !params.has("sig")) return null
+	return `/api/auth/oauth2/authorize?${params.toString()}`
+}
+
 export const Route = createFileRoute("/sign-in")({
 	validateSearch: (search: Record<string, unknown>): SignInSearch => ({
 		returnPathname: typeof search.returnPathname === "string" ? search.returnPathname : undefined,
@@ -81,6 +97,13 @@ function SignInPage() {
 				setError(t("auth.error.invalidCredentials"))
 				return
 			}
+			// Resume the OAuth/device flow when this page was part of one; a full
+			// navigation lets the provider set its cookies and redirect onwards.
+			const resume = oauthResumeUrl()
+			if (resume) {
+				window.location.assign(resume)
+				return
+			}
 			await navigate({ to: target })
 		} catch {
 			setError(t("auth.error.generic"))
@@ -93,7 +116,7 @@ function SignInPage() {
 		setBusy(true)
 		setError(null)
 		try {
-			await authClient.signIn.social({ provider: "google", callbackURL: target })
+			await authClient.signIn.social({ provider: "google", callbackURL: oauthResumeUrl() ?? target })
 		} catch {
 			setError(t("auth.error.generic"))
 			setBusy(false)

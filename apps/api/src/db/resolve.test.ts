@@ -32,6 +32,7 @@ describe("database resolution", () => {
 		expect(db.migrations).toEqual([
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		// The migrator goes through prepare/bind/run, not a local file handle.

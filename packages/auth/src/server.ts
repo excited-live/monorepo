@@ -1,5 +1,10 @@
-import { betterAuth, type Auth as BetterAuthInstance, type BetterAuthOptions } from "better-auth"
-import { bearer, jwt } from "better-auth/plugins"
+import {
+	betterAuth,
+	type Auth as BetterAuthInstance,
+	type BetterAuthOptions,
+	type BetterAuthPlugin,
+} from "better-auth"
+import { bearer, deviceAuthorization, jwt } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-dialect"
@@ -40,6 +45,37 @@ export interface AuthInput {
 	oauthLoginPage?: string
 	/** Page the OAuth provider sends users to for consent (api mount). Default: /consent. */
 	oauthConsentPage?: string
+	/**
+	 * Turn this instance into the MCP authorization server (A2.1).
+	 *
+	 * Only the webapp cookies mount passes this in production: it has the
+	 * sign-in/consent/device pages and the browser cookies the OAuth flow
+	 * needs. `baseURL` is then mandatory (the issuer is derived from it).
+	 */
+	oauth?: AuthOAuthInput
+}
+
+/** OAuth scopes every Better Auth AS advertises (OIDC defaults). */
+export const OAUTH_DEFAULT_SCOPES = ["openid", "profile", "email", "offline_access"] as const
+
+/**
+ * Scopes the excited.live authorization server accepts beyond the defaults.
+ * `openid` is what makes it an OIDC server; MCP only uses the three below.
+ */
+export const MCP_OAUTH_SCOPES = ["onboarding", "accounting:read", "accounting:write"] as const
+
+/** The one public (no client secret) client the RFC 8628 device flow accepts. */
+export const DEVICE_CLIENT_ID = "excited-live-agent"
+
+export interface AuthOAuthInput {
+	/** Protected resource the AS issues audience-bound JWTs for: the MCP endpoint URL. */
+	resource: string
+	/** Absolute verification URI the device flow sends users to (webapp `/device`). */
+	deviceVerificationUri: string
+	/** Public device-flow client id. Default: `excited-live-agent`. */
+	deviceClientId?: string
+	/** Extra scopes on top of `OAUTH_DEFAULT_SCOPES`. Defaults to `MCP_OAUTH_SCOPES`. */
+	scopes?: readonly string[]
 }
 
 /**
@@ -101,11 +137,70 @@ function buildKysely(database: AuthDatabase): Kysely<Record<string, unknown>> {
 }
 
 export function createAuth(input: AuthInput): Auth {
-	if ((input.mount === "tokens" || input.mount === "both") && !input.baseURL) {
+	if (
+		(input.mount === "tokens" || input.mount === "both" || input.oauth) &&
+		!input.baseURL
+	) {
 		throw new Error(
-			"[auth] baseURL is required for the tokens mount: the OAuth provider derives its issuer from it",
+			"[auth] baseURL is required for the tokens mount and the OAuth provider: the provider derives its issuer from it",
 		)
 	}
+	const tokenMount = input.mount === "tokens" || input.mount === "both"
+	const cookiesMount = input.mount === "cookies" || input.mount === "both"
+	const as = input.oauth
+	const loginPage = input.oauthLoginPage ?? "/sign-in"
+	const consentPage = input.oauthConsentPage ?? "/consent"
+	const plugins: BetterAuthPlugin[] = []
+	if (tokenMount) {
+		plugins.push(
+			bearer(),
+			// Agent onboarding keys: `elk_` prefix, metadata carries the agent
+			// id, and keys never mock a full session (the API validates them
+			// explicitly and maps permissions to scopes).
+			apiKey({
+				defaultPrefix: "elk_",
+				enableMetadata: true,
+				enableSessionForAPIKeys: false,
+			}),
+		)
+	}
+	// oauthProvider signs access tokens, which pulls in the jwt plugin's
+	// tables — declared here so the schema check sees a consistent set.
+	if (tokenMount || as) plugins.push(jwt())
+	if (as) {
+		plugins.push(
+			oauthProvider({
+				loginPage,
+				consentPage,
+				scopes: [...OAUTH_DEFAULT_SCOPES, ...(as.scopes ?? MCP_OAUTH_SCOPES)],
+				// RFC 8707: a requested `resource` binds the access token's
+				// audience. The MCP endpoint is the only resource this AS serves,
+				// and every dynamically registered client is linked to it, so
+				// clients never have to pre-register separately.
+				resources: [as.resource],
+				clientRegistrationDefaultResources: [as.resource],
+				clientRegistrationAllowedResources: [as.resource],
+				// MCP clients register themselves (public + PKCE, no secret).
+				allowDynamicClientRegistration: true,
+				allowUnauthenticatedClientRegistration: true,
+				// No client_credentials: every token must belong to a user.
+				grantTypes: ["authorization_code", "refresh_token"],
+			}),
+			// RFC 8628 for headless/cloud agents (Hermes on Discord): create a
+			// code, the user approves it on /device, the agent polls
+			// /device/token. One public client id, by design.
+			deviceAuthorization({
+				validateClient: (clientId) => clientId === (as.deviceClientId ?? DEVICE_CLIENT_ID),
+				verificationUri: as.deviceVerificationUri,
+			}),
+		)
+	} else if (tokenMount) {
+		// Default scopes: openid, profile, email, offline_access —
+		// offline_access is what gives mobile apps refresh tokens.
+		plugins.push(oauthProvider({ loginPage, consentPage }))
+	}
+	// Cookie integration LAST (see the ordering note below).
+	if (cookiesMount) plugins.push(tanstackStartCookies())
 	// Token plugins first; the cookie integration must stay LAST in the array
 	// (better-auth warns otherwise: its after-hooks own the framework cookie
 	// store, and plugins running after it can drop Set-Cookie headers).
@@ -130,31 +225,6 @@ export function createAuth(input: AuthInput): Auth {
 				}
 			: undefined,
 		database: kyselyAdapter(buildKysely(input.database), { type: "sqlite", transaction: false }),
-		plugins: [
-			...(input.mount === "tokens" || input.mount === "both"
-				? [
-						bearer(),
-						// Agent onboarding keys: `elk_` prefix, metadata carries the
-						// agent id, and keys never mock a full session (the API
-						// validates them explicitly and maps permissions to scopes).
-						apiKey({
-							defaultPrefix: "elk_",
-							enableMetadata: true,
-							enableSessionForAPIKeys: false,
-						}),
-						// oauthProvider signs access tokens, which pulls in the jwt
-						// plugin's tables — declared here so the schema check sees a
-						// consistent set.
-						jwt(),
-						// Default scopes: openid, profile, email, offline_access —
-						// offline_access is what gives mobile apps refresh tokens.
-						oauthProvider({
-							loginPage: input.oauthLoginPage ?? "/sign-in",
-							consentPage: input.oauthConsentPage ?? "/consent",
-						}),
-					]
-				: []),
-			...(input.mount === "cookies" || input.mount === "both" ? [tanstackStartCookies()] : []),
-		],
+		plugins,
 	}) as Auth
 }

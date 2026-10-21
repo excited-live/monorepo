@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as ConsentRouteImport } from './routes/consent'
+import { Route as DeviceRouteImport } from './routes/device'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
@@ -20,6 +22,16 @@ import { Route as ApiV1SimMonteCarloRouteImport } from './routes/api/v1/sim/mont
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsentRoute = ConsentRouteImport.update({
+  id: '/consent',
+  path: '/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceRoute = DeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInRoute = SignInRouteImport.update({
@@ -60,6 +72,8 @@ const ApiV1SimMonteCarloRoute = ApiV1SimMonteCarloRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
+  '/consent': typeof ConsentRoute
+  '/device': typeof DeviceRoute
   '/sign-in': typeof SignInRoute
   '/settings': typeof LayoutSettingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -68,6 +82,8 @@ export interface FileRoutesByFullPath {
   '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
 }
 export interface FileRoutesByTo {
+  '/consent': typeof ConsentRoute
+  '/device': typeof DeviceRoute
   '/sign-in': typeof SignInRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
@@ -79,6 +95,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
+  '/consent': typeof ConsentRoute
+  '/device': typeof DeviceRoute
   '/sign-in': typeof SignInRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
@@ -91,6 +109,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/consent'
+    | '/device'
     | '/sign-in'
     | '/settings'
     | '/api/auth/$'
@@ -99,6 +119,8 @@ export interface FileRouteTypes {
     | '/api/v1/sim/monte-carlo'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/consent'
+    | '/device'
     | '/sign-in'
     | '/settings'
     | '/'
@@ -109,6 +131,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_layout'
+    | '/consent'
+    | '/device'
     | '/sign-in'
     | '/_layout/settings'
     | '/_layout/'
@@ -120,6 +144,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
+  ConsentRoute: typeof ConsentRoute
+  DeviceRoute: typeof DeviceRoute
   SignInRoute: typeof SignInRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV1PlanRoute: typeof ApiV1PlanRoute
@@ -134,6 +160,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consent': {
+      id: '/consent'
+      path: '/consent'
+      fullPath: '/consent'
+      preLoaderRoute: typeof ConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device': {
+      id: '/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof DeviceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -203,6 +243,8 @@ const LayoutRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
+  ConsentRoute: ConsentRoute,
+  DeviceRoute: DeviceRoute,
   SignInRoute: SignInRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV1PlanRoute: ApiV1PlanRoute,

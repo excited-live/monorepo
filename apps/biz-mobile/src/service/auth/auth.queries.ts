@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi, type AuthUser } from "./auth.api";
 import { accountingKeys } from "../accounting/accounting.keys";
+import { onboardingKeys } from "../onboarding/onboarding.queries";
 
 export const authKeys = {
 	all: ["auth"] as const,
@@ -25,6 +26,7 @@ export function useSignIn() {
 		onSuccess: (data) => {
 			queryClient.setQueryData(authKeys.session(), data.user);
 			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
+			queryClient.invalidateQueries({ queryKey: onboardingKeys.all });
 		},
 	});
 }
@@ -38,6 +40,7 @@ export function useSignUp() {
 		onSuccess: (data) => {
 			queryClient.setQueryData(authKeys.session(), data.user);
 			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
+			queryClient.invalidateQueries({ queryKey: onboardingKeys.all });
 		},
 	});
 }
@@ -50,6 +53,7 @@ export function useGoogleSignIn() {
 		onSuccess: (data) => {
 			queryClient.setQueryData(authKeys.session(), data.user);
 			queryClient.invalidateQueries({ queryKey: accountingKeys.all });
+			queryClient.invalidateQueries({ queryKey: onboardingKeys.all });
 		},
 	});
 }

@@ -11,12 +11,12 @@ import { jsonBody, jsonResponse, route } from "../openapi/docs";
 import { CatalogItemSchema } from "../openapi/schemas";
 import { z } from "zod";
 
-const catalogType = z.enum(["subscription", "hardware", "career", "revenue"]);
+const catalogType = z.enum(["subscription", "hardware", "career", "revenue", "liability"]);
 
 export interface ResolveAutofillRequest {
 	query: string;
 	currency?: string;
-	type?: "subscription" | "hardware" | "career" | "revenue";
+	type?: "subscription" | "hardware" | "career" | "revenue" | "liability";
 	touchedFields?: {
 		amount?: boolean;
 		cycle?: boolean;
@@ -70,7 +70,7 @@ export function createCatalogRouter(): Hono<ApiEnv> {
 	}), (c) => {
 		const q = c.req.query("q") || "";
 		const currency = c.req.query("currency") || "THB";
-		const type = c.req.query("type") as "subscription" | "hardware" | "career" | "revenue" | undefined;
+		const type = c.req.query("type") as "subscription" | "hardware" | "career" | "revenue" | "liability" | undefined;
 
 		const suggestions = searchCatalog(q, type);
 		const bestMatch = findBestCatalogMatch(q, type);

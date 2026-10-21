@@ -42,5 +42,6 @@ describe("migration mirror parity", () => {
 		const statements = MIGRATION_FILES.flatMap((file) => splitStatements(file.sql))
 		expect(statements.some((sql) => /CREATE TABLE IF NOT EXISTS plans\b/i.test(sql))).toBe(true)
 		expect(statements.some((sql) => /CREATE TABLE IF NOT EXISTS user_settings\b/i.test(sql))).toBe(true)
+		expect(statements.some((sql) => /CREATE TABLE IF NOT EXISTS user_onboarding\b/i.test(sql))).toBe(true)
 	})
 })

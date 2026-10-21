@@ -12,6 +12,7 @@ import { createAccountingRouter } from "./modules/accounting/route/accounting.ro
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
 import { createCatalogRouter } from "./routes/catalog"
 import { createPlanRouter } from "./routes/plan"
+import { createOnboardingRouter } from "./routes/onboarding"
 import { createSettingsRouter } from "./routes/settings"
 import { simRouter } from "./routes/sim"
 import { z } from "zod"
@@ -109,6 +110,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		.route("/api/v1/auth", createAuthRouter())
 		.route("/api/v1/catalog", createCatalogRouter())
 		.route("/api/v1/plan", createPlanRouter())
+		.route("/api/v1/onboarding", createOnboardingRouter())
 		.route("/api/v1/settings", createSettingsRouter())
 		.route("/api/v1/sim", simRouter)
 

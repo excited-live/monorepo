@@ -1,0 +1,85 @@
+---
+title: "Onboarding"
+description: "Onboarding endpoints."
+---
+
+{/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
+
+## Get onboarding state
+
+`GET` `/api/v1/onboarding`
+
+Returns onboarding progress for the specified app (defaults to biz-mobile).
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `app` | query | `string` | no | Application ID (e.g. `biz-mobile`, `webapp`). Defaults to `biz-mobile`. |
+
+**Responses**
+
+- `200` — The onboarding state. [UserOnboarding](#useronboarding)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/onboarding" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Save onboarding state
+
+`PUT` `/api/v1/onboarding`
+
+Updates onboarding progress, steps completed/skipped, and overall completion status.
+
+**Request body** (`application/json`)
+
+Type: [UpdateUserOnboarding](#updateuseronboarding)
+
+**Responses**
+
+- `200` — Saved. `object`
+- `400` — Malformed onboarding payload. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+
+```bash
+curl -X PUT "$API_URL/api/v1/onboarding" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Schemas
+
+### UserOnboarding
+
+Per-user onboarding progress and completion status per app.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `userId` | `string` | yes |  |
+| `appId` | `string` | yes |  |
+| `isCompleted` | `boolean` | yes |  |
+| `completedAt` | `string` \| `null` | no |  |
+| `done` | `string`[] | yes |  |
+| `skipped` | `string`[] | yes |  |
+| `updatedAt` | `string` | yes |  |
+
+### Error
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `error` | `string` | yes |  |
+
+### UpdateUserOnboarding
+
+Payload to update user onboarding progress.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `appId` | `string` | no |  |
+| `isCompleted` | `boolean` | no |  |
+| `done` | `string`[] | no |  |
+| `skipped` | `string`[] | no |  |
+

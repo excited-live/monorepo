@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	calculateDerivedTreasury,
 	calculateEntityCashOnHand,
@@ -16,9 +16,8 @@ import {
 	countCompletedSteps,
 	deriveOnboardingSteps,
 	isOnboardingComplete,
-	loadOnboardingProgress,
+	isOnboardingStepId,
 	ONBOARDING_STEPS,
-	persistOnboardingProgress,
 	type OnboardingEntryView,
 	type OnboardingEntitySectionView,
 	type OnboardingProgress,
@@ -28,6 +27,7 @@ import {
 import { useFinances, useAppUI } from "../../../state";
 import { t } from "../../../i18n";
 import { formatMoney } from "../../../utils/format";
+import { useOnboarding, useUpdateOnboarding } from "../../../service";
 
 export function useHome() {
 	const {
@@ -64,7 +64,15 @@ export function useHome() {
 	const [isLiabilityOpen, setIsLiabilityOpen] = useState(false);
 	const [selectedLiability, setSelectedLiability] = useState<LiabilityStream | null>(null);
 
-	const [progress, setProgress] = useState<OnboardingProgress>(() => loadOnboardingProgress());
+	const onboardingQuery = useOnboarding("biz-mobile");
+	const updateOnboarding = useUpdateOnboarding("biz-mobile");
+
+	// Server payloads carry plain step ids; keep only known steps so a stale or
+	// malformed value can never fabricate a phantom checklist entry.
+	const progress: OnboardingProgress = useMemo(() => ({
+		done: (onboardingQuery.data?.done ?? ["create_account"]).filter(isOnboardingStepId),
+		skipped: (onboardingQuery.data?.skipped ?? []).filter(isOnboardingStepId),
+	}), [onboardingQuery.data?.done, onboardingQuery.data?.skipped]);
 
 	const personal = accounts.find((a) => a.type === "personal");
 	const personalId = personal?.id ?? "";
@@ -173,17 +181,21 @@ export function useHome() {
 	);
 
 	const onboardingActiveIndex = onboardingSteps.findIndex((step) => step.status === "active");
-	const onboardingComplete = isOnboardingComplete(onboardingSteps);
+	const onboardingComplete = Boolean(onboardingQuery.data?.isCompleted) || isOnboardingComplete(onboardingSteps);
 	const onboardingCompletedCount = countCompletedSteps(onboardingSteps);
 	const isLiabilityResolved = onboardingSteps.some(
 		(step) => step.id === "add_liability" && (step.status === "done" || step.status === "skipped"),
 	);
 
 	const updateProgress = (mutate: (current: OnboardingProgress) => OnboardingProgress) => {
-		setProgress((current) => {
-			const next = mutate(current);
-			persistOnboardingProgress(next);
-			return next;
+		const next = mutate(progress);
+		const nextSteps = deriveOnboardingSteps(stepEntryCounts, next);
+		const isCompleted = isOnboardingComplete(nextSteps);
+
+		updateOnboarding.mutate({
+			done: next.done,
+			skipped: next.skipped,
+			isCompleted,
 		});
 	};
 

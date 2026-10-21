@@ -5,10 +5,28 @@ import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { FormField, InputField, SelectField } from "../../../../components/FormField";
 import { ModalPage } from "../../../../components/ModalPage";
+import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
-import type { LiabilityCategory, LiabilityStream } from "@excited-live/accounting";
+import { resolveCatalogAmount, type LiabilityCategory, type LiabilityStream } from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
+import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 import { useFinances, useAppUI } from "../../../../state";
+
+const PERSONAL_LIABILITY_TYPES: { value: LiabilityCategory; label: string }[] = [
+	{ value: "mortgage", label: "Home Mortgage / Housing Debt" },
+	{ value: "car_loan", label: "Auto / Vehicle Loan" },
+	{ value: "student_loan", label: "Student / Education Loan" },
+	{ value: "credit_card", label: "Credit Card Minimum / Personal Loan" },
+	{ value: "other", label: "Other Personal Debt" },
+];
+
+const BUSINESS_LIABILITY_TYPES: { value: LiabilityCategory; label: string }[] = [
+	{ value: "business_loan", label: "Business Loan" },
+	{ value: "equipment_loan", label: "Equipment Loan / Financing" },
+	{ value: "credit_line", label: "Credit Line Repayment" },
+	{ value: "lease", label: "Commercial Lease / Rental" },
+	{ value: "other", label: "Other Business Recurring Debt" },
+];
 
 export interface AddLiabilityDrawerProps {
 	isOpen: boolean;
@@ -30,6 +48,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 	const currentMonth = today.slice(0, 7);
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isPersonal = activeAccount.type === "personal";
+	const currency = activeAccount.currency || "THB";
+	const typeOptions = isPersonal ? PERSONAL_LIABILITY_TYPES : BUSINESS_LIABILITY_TYPES;
 
 	const { dismiss } = useModalBack(isOpen, onClose);
 
@@ -41,6 +61,22 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 	const [startMonth, setStartMonth] = useState(currentMonth);
 	const [endMonth, setEndMonth] = useState("");
 
+	// Smart catalog autofill with user-touch protection: typing a debt name
+	// (mortgage, car loan, ...) suggests a preset and fills the matching type.
+	const onApplyAutofill = (values: AutofillValues) => {
+		if (values.amount !== undefined) setAmount(String(values.amount));
+		if (values.category && typeOptions.some((option) => option.value === values.category)) {
+			setCategory(values.category as LiabilityCategory);
+		}
+	};
+
+	const { suggestions, matchedItem, handleQueryChange, applySuggestion, markTouched, resetTouched } =
+		useCatalogAutofill({
+			type: "liability",
+			currency,
+			onApplyAutofill,
+		});
+
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
@@ -49,6 +85,8 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 			setNotes(initialData.notes || "");
 			setStartMonth(initialData.startMonth || currentMonth);
 			setEndMonth(initialData.endMonth || "");
+			markTouched("amount");
+			markTouched("category");
 		} else {
 			setName("");
 			setAmount("");
@@ -56,10 +94,26 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 			setNotes("");
 			setStartMonth(currentMonth);
 			setEndMonth("");
+			resetTouched();
 		}
-	}, [initialData, isOpen, isPersonal, currentMonth]);
+	}, [initialData, isOpen, isPersonal, currentMonth, markTouched, resetTouched]);
 
 	if (!isOpen) return null;
+
+	const handleNameChange = (val: string) => {
+		setName(val);
+		handleQueryChange(val, { amount, category });
+	};
+
+	const handleAmountChange = (val: string) => {
+		markTouched("amount");
+		setAmount(val);
+	};
+
+	const handleCategoryChange = (val: LiabilityCategory) => {
+		markTouched("category");
+		setCategory(val);
+	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -150,40 +204,53 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 				<SelectField
 					label="Type"
 					value={category}
-					onChange={(e) => setCategory(e.target.value as LiabilityCategory)}
+					onChange={(e) => handleCategoryChange(e.target.value as LiabilityCategory)}
 					autoFocus={!isEditMode}
 				>
-					{isPersonal ? (
-						<>
-							<option value="mortgage">Home Mortgage / Housing Debt</option>
-							<option value="car_loan">Auto / Vehicle Loan</option>
-							<option value="student_loan">Student / Education Loan</option>
-							<option value="credit_card">Credit Card Minimum / Personal Loan</option>
-							<option value="other">Other Personal Debt</option>
-						</>
-					) : (
-						<>
-							<option value="business_loan">Business Loan</option>
-							<option value="equipment_loan">Equipment Loan / Financing</option>
-							<option value="credit_line">Credit Line Repayment</option>
-							<option value="lease">Commercial Lease / Rental</option>
-							<option value="other">Other Business Recurring Debt</option>
-						</>
-					)}
+					{typeOptions.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
 				</SelectField>
 
-				<InputField
-					label="Liability Name"
-					placeholder={
-						isPersonal ? "e.g. Home Mortgage, Auto Loan, Credit Card" : "e.g. Studio Equipment Loan, Credit Line"
-					}
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					required
-				/>
+				<Stack gap={1.5} width="100%">
+					<InputField
+						label="Liability Name"
+						placeholder={
+							isPersonal ? "e.g. Home Mortgage, Auto Loan, Credit Card" : "e.g. Studio Equipment Loan, Credit Line"
+						}
+						value={name}
+						onChange={(e) => handleNameChange(e.target.value)}
+						required
+					/>
 
-				<FormField label="Monthly Payment (THB)">
-					<CurrencyInput placeholder="0.00" value={amount} onChange={setAmount} />
+					{/* Quick Debt Suggestions */}
+					{suggestions.length > 0 && (
+						<SuggestionChips
+							suggestions={suggestions.slice(0, 5)}
+							onPick={(s) => {
+								setName(s.name);
+								applySuggestion(s as (typeof suggestions)[number]);
+							}}
+							renderMeta={(s) => {
+								const itemAmount = resolveCatalogAmount(s as (typeof suggestions)[number], currency);
+								if (itemAmount === undefined) return null;
+								return currency === "USD" ? `$${itemAmount}` : `฿${itemAmount.toLocaleString()}`;
+							}}
+						/>
+					)}
+
+					{/* Match Info Banner */}
+					{matchedItem && (
+						<AutofillBanner badge="Auto-Filled">
+							{matchedItem.name} {matchedItem.notes ? `• ${matchedItem.notes}` : ""}
+						</AutofillBanner>
+					)}
+				</Stack>
+
+				<FormField label={`Monthly Payment (${currency})`}>
+					<CurrencyInput placeholder="0.00" value={amount} onChange={handleAmountChange} />
 				</FormField>
 
 				<HStack wrap="wrap" gap={2} width="100%">

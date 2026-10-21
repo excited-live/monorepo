@@ -366,4 +366,15 @@ CREATE INDEX IF NOT EXISTS accounting_transfers_to_asset_id_idx ON accounting_tr
 CREATE INDEX IF NOT EXISTS accounting_transfers_to_liability_id_idx ON accounting_transfers (to_liability_id);
 `,
 	},
+	{
+		name: "0002_onboarding_method.sql",
+		sql: `-- 0002_onboarding_method.sql — how the user chose to onboard.
+--
+-- "agent" when the MCP onboarding tools completed a step (and "manual" when the
+-- app stepper ran). NULL when the user has not chosen yet. Same ledger rules as
+-- 0001: one statement per semicolon on its own line.
+
+ALTER TABLE user_onboarding ADD COLUMN method TEXT;
+`,
+	},
 ]

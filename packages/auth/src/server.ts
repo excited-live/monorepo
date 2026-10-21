@@ -51,6 +51,47 @@ export interface AuthInput {
  */
 export type Auth = BetterAuthInstance<BetterAuthOptions>
 
+/**
+ * The apiKey plugin endpoints the API calls in-process, typed against the
+ * installed @better-auth/api-key 1.7.7 signatures.
+ *
+ * `Auth` is pinned to the core options instantiation (the plugin-instantiated
+ * type exceeds TypeScript's declaration-emit limit, see
+ * docs/plan-auth-migration.md), so this is the one explicit bridge to the
+ * plugin surface. Runtime endpoints come from the plugin itself.
+ */
+export interface ApiKeyRecord {
+	id: string
+	name: string | null
+	start: string | null
+	referenceId: string
+	permissions?: Record<string, string[]> | null
+	metadata: Record<string, unknown> | null
+	createdAt: Date
+	expiresAt: Date | null
+	lastRequest: Date | null
+}
+
+export interface ApiKeyApi {
+	createApiKey(input: {
+		body: {
+			userId: string
+			name?: string
+			expiresIn?: number
+			permissions?: Record<string, string[]>
+			metadata?: Record<string, unknown>
+		}
+	}): Promise<ApiKeyRecord & { key: string }>
+	verifyApiKey(input: { body: { key: string } }): Promise<{ valid: boolean; key: ApiKeyRecord | null }>
+	listApiKeys(input: { headers: Headers }): Promise<{ apiKeys: ApiKeyRecord[]; total: number }>
+	deleteApiKey(input: { body: { keyId: string }; headers: Headers }): Promise<{ success: boolean }>
+}
+
+/** Narrow an auth instance to the apiKey plugin surface. */
+export function apiKeyApi(auth: Auth): ApiKeyApi {
+	return auth.api as unknown as ApiKeyApi
+}
+
 function buildKysely(database: AuthDatabase): Kysely<Record<string, unknown>> {
 	const dialect =
 		database.kind === "d1"
@@ -93,7 +134,14 @@ export function createAuth(input: AuthInput): Auth {
 			...(input.mount === "tokens" || input.mount === "both"
 				? [
 						bearer(),
-						apiKey(),
+						// Agent onboarding keys: `elk_` prefix, metadata carries the
+						// agent id, and keys never mock a full session (the API
+						// validates them explicitly and maps permissions to scopes).
+						apiKey({
+							defaultPrefix: "elk_",
+							enableMetadata: true,
+							enableSessionForAPIKeys: false,
+						}),
 						// oauthProvider signs access tokens, which pulls in the jwt
 						// plugin's tables — declared here so the schema check sees a
 						// consistent set.

@@ -61,6 +61,7 @@ describe("D1 exec() fidelity", () => {
 		const report = await applyMigrations(driver)
 		expect(report.applied).toEqual([
 			"0001_init.sql",
+			"0002_onboarding_method.sql",
 		])
 
 		// The positive side of the fix: every statement, DDL included, went

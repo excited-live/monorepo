@@ -1,5 +1,8 @@
 import type { SqlDriver } from "../db/types";
 
+/** How the user chose to onboard: with an AI agent, manually, or not chosen yet. */
+export type OnboardingMethod = "agent" | "manual";
+
 export interface UserOnboarding {
 	userId: string;
 	appId: string;
@@ -7,6 +10,7 @@ export interface UserOnboarding {
 	completedAt: string | null;
 	done: string[];
 	skipped: string[];
+	method: OnboardingMethod | null;
 	updatedAt: string;
 }
 
@@ -20,6 +24,7 @@ export function defaultUserOnboarding(userId: string, appId: string = DEFAULT_AP
 		completedAt: null,
 		done: ["create_account"],
 		skipped: [],
+		method: null,
 		updatedAt: new Date().toISOString(),
 	};
 }
@@ -33,6 +38,7 @@ export interface OnboardingStore {
 			isCompleted?: boolean;
 			done?: string[];
 			skipped?: string[];
+			method?: OnboardingMethod | null;
 		},
 	): Promise<UserOnboarding>;
 }
@@ -44,6 +50,7 @@ interface OnboardingRow {
 	completed_at: string | null;
 	done_steps: string;
 	skipped_steps: string;
+	method: string | null;
 	updated_at: string;
 }
 
@@ -51,7 +58,7 @@ export function createOnboardingStore(driver: SqlDriver): OnboardingStore {
 	return {
 		async get(userId: string, appId: string = DEFAULT_APP_ID): Promise<UserOnboarding> {
 			const row = await driver.first<OnboardingRow>(
-				"SELECT user_id, app_id, is_completed, completed_at, done_steps, skipped_steps, updated_at FROM user_onboarding WHERE user_id = ? AND app_id = ?",
+				"SELECT user_id, app_id, is_completed, completed_at, done_steps, skipped_steps, method, updated_at FROM user_onboarding WHERE user_id = ? AND app_id = ?",
 				[userId, appId],
 			);
 			if (!row) {
@@ -81,6 +88,7 @@ export function createOnboardingStore(driver: SqlDriver): OnboardingStore {
 				completedAt: row.completed_at,
 				done,
 				skipped,
+				method: row.method === "agent" || row.method === "manual" ? row.method : null,
 				updatedAt: row.updated_at,
 			};
 		},
@@ -92,6 +100,7 @@ export function createOnboardingStore(driver: SqlDriver): OnboardingStore {
 				isCompleted?: boolean;
 				done?: string[];
 				skipped?: string[];
+				method?: OnboardingMethod | null;
 			},
 		): Promise<UserOnboarding> {
 			const appId = input.appId ?? DEFAULT_APP_ID;
@@ -104,16 +113,19 @@ export function createOnboardingStore(driver: SqlDriver): OnboardingStore {
 					: null;
 			const done = input.done ? Array.from(new Set(input.done)) : current.done;
 			const skipped = input.skipped ? Array.from(new Set(input.skipped)) : current.skipped;
+			// `undefined` keeps the stored choice; `null` clears it.
+			const method = input.method !== undefined ? input.method : current.method;
 			const updatedAt = new Date().toISOString();
 
 			await driver.run(
-				`INSERT INTO user_onboarding (user_id, app_id, is_completed, completed_at, done_steps, skipped_steps, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?)
+				`INSERT INTO user_onboarding (user_id, app_id, is_completed, completed_at, done_steps, skipped_steps, method, updated_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 				 ON CONFLICT(user_id, app_id) DO UPDATE SET
 					is_completed = excluded.is_completed,
 					completed_at = excluded.completed_at,
 					done_steps = excluded.done_steps,
 					skipped_steps = excluded.skipped_steps,
+					method = excluded.method,
 					updated_at = excluded.updated_at`,
 				[
 					userId,
@@ -122,6 +134,7 @@ export function createOnboardingStore(driver: SqlDriver): OnboardingStore {
 					completedAt,
 					JSON.stringify(done),
 					JSON.stringify(skipped),
+					method,
 					updatedAt,
 				],
 			);
@@ -133,6 +146,7 @@ export function createOnboardingStore(driver: SqlDriver): OnboardingStore {
 				completedAt,
 				done,
 				skipped,
+				method,
 				updatedAt,
 			};
 		},

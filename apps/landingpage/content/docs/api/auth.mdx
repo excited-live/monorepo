@@ -5,6 +5,76 @@ description: "Session check. The rest of the Better Auth surface is served under
 
 {/* GENERATED from apps/api/openapi.json — run `pnpm --filter @excited-live/landingpage gen:api-docs`. Do not edit. */}
 
+## List agent API keys
+
+`GET` `/api/v1/agent-keys`
+
+Keys owned by the signed-in user. The secret is never returned.
+
+**Responses**
+
+- `200` — The user's keys. `object`
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `503` — Auth is not configured in this environment. [Error](#error)
+
+```bash
+curl "$API_URL/api/v1/agent-keys" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Mint an agent API key
+
+`POST` `/api/v1/agent-keys`
+
+Creates a 90-day key scoped to onboarding and accounting, owned by the signed-in user. The full key is returned once.
+
+**Request body** (`application/json`)
+
+Type: `object`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `agentId` | `string` | yes |  |
+| `name` | `string` | no |  |
+
+**Responses**
+
+- `201` — The new key. The `key` field is shown only here. `object`
+- `400` — Malformed request. [Error](#error)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `503` — Auth is not configured in this environment. [Error](#error)
+
+```bash
+curl -X POST "$API_URL/api/v1/agent-keys" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+## Revoke an agent API key
+
+`DELETE` `/api/v1/agent-keys/{id}`
+
+Deletes one of the signed-in user's keys. Another user's key is a 404.
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | `string` | yes |  |
+
+**Responses**
+
+- `200` — Key revoked. [Ok](#ok)
+- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `404` — Key not found. [Error](#error)
+- `503` — Auth is not configured in this environment. [Error](#error)
+
+```bash
+curl -X DELETE "$API_URL/api/v1/agent-keys/:id" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Current session
 
 `GET` `/api/v1/auth/me`
@@ -29,4 +99,10 @@ curl "$API_URL/api/v1/auth/me" \
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `error` | `string` | yes |  |
+
+### Ok
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ok` | `true` | yes |  |
 

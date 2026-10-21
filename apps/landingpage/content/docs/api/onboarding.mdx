@@ -64,6 +64,7 @@ Per-user onboarding progress and completion status per app.
 | `completedAt` | `string` \| `null` | no |  |
 | `done` | `string`[] | yes |  |
 | `skipped` | `string`[] | yes |  |
+| `method` | `"agent"` \| `"manual"` \| `null` | yes | How the user chose to onboard; null when not chosen yet. |
 | `updatedAt` | `string` | yes |  |
 
 ### Error
@@ -82,4 +83,5 @@ Payload to update user onboarding progress.
 | `isCompleted` | `boolean` | no |  |
 | `done` | `string`[] | no |  |
 | `skipped` | `string`[] | no |  |
+| `method` | `"agent"` \| `"manual"` \| `null` | no | Pass `null` to clear the stored method. |
 

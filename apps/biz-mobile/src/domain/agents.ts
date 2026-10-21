@@ -201,7 +201,8 @@ export function defaultAgentAuth(agent: AgentOption, webappUrl: string | null): 
 }
 
 export type AgentPromptAuth =
-	| { kind: "apiKey"; key: string }
+	/** `key: null` is the dev passthrough: render no Authorization header at all. */
+	| { kind: "apiKey"; key: string | null }
 	| { kind: "oauth" }
 	| { kind: "device"; webappUrl: string };
 
@@ -219,26 +220,29 @@ interface ConfigPromptArgs {
 	header: string | null;
 	/** Header value only (`Bearer …`), for config maps. */
 	authValue: string | null;
+	/** Keyless dev passthrough: no header and no sign-in step. */
+	keyless?: boolean;
 	lang: string;
 }
 
 const guide = (lang: string) =>
 	`call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in ${lang}.`;
 
-const signIn = (authValue: string | null) => (authValue ? [] : ["Sign in when your client opens the browser."]);
+const signIn = (authValue: string | null, keyless = false) =>
+	authValue || keyless ? [] : ["Sign in when your client opens the browser."];
 
 const configPrompts: Record<Exclude<AgentPromptStyle, "generic">, (args: ConfigPromptArgs) => string> = {
-	"claude-code": ({ mcpUrl, header, lang }) =>
+	"claude-code": ({ mcpUrl, header, keyless, lang }) =>
 		[
 			"Add the excited.live MCP server, then help me set up my books.",
 			"",
 			"Run:",
 			`claude mcp add --transport http excited-live ${mcpUrl}${header ? ` --header "${header}"` : ""}`,
 			"",
-			...signIn(header),
+			...signIn(header, keyless),
 			`Reload your tools, then ${guide(lang)}`,
 		].join("\n"),
-	codex: ({ mcpUrl, authValue, lang }) =>
+	codex: ({ mcpUrl, authValue, keyless, lang }) =>
 		[
 			"Add this MCP server to ~/.codex/config.toml, then help me set up my books.",
 			"",
@@ -246,10 +250,10 @@ const configPrompts: Record<Exclude<AgentPromptStyle, "generic">, (args: ConfigP
 			`url = "${mcpUrl}"`,
 			...(authValue ? [`http_headers = { Authorization = "${authValue}" }`] : []),
 			"",
-			...signIn(authValue),
+			...signIn(authValue, keyless),
 			`Restart Codex, then ${guide(lang)}`,
 		].join("\n"),
-	cursor: ({ mcpUrl, authValue, lang }) =>
+	cursor: ({ mcpUrl, authValue, keyless, lang }) =>
 		[
 			"Add this MCP server to ~/.cursor/mcp.json, then help me set up my books.",
 			"",
@@ -262,10 +266,10 @@ const configPrompts: Record<Exclude<AgentPromptStyle, "generic">, (args: ConfigP
 			"  }",
 			"}",
 			"",
-			...signIn(authValue),
+			...signIn(authValue, keyless),
 			`Reload MCP servers, then ${guide(lang)}`,
 		].join("\n"),
-	opencode: ({ mcpUrl, authValue, lang }) =>
+	opencode: ({ mcpUrl, authValue, keyless, lang }) =>
 		[
 			"Add this to opencode.json, then help me set up my books.",
 			"",
@@ -280,10 +284,10 @@ const configPrompts: Record<Exclude<AgentPromptStyle, "generic">, (args: ConfigP
 			"  }",
 			"}",
 			"",
-			...(authValue ? [] : ["Authenticate with `opencode mcp auth excited-live`."]),
+			...(authValue || keyless ? [] : ["Authenticate with `opencode mcp auth excited-live`."]),
 			`Reload your tools, then ${guide(lang)}`,
 		].join("\n"),
-	"gemini-cli": ({ mcpUrl, authValue, lang }) =>
+	"gemini-cli": ({ mcpUrl, authValue, keyless, lang }) =>
 		[
 			"Add this MCP server to ~/.gemini/settings.json, then help me set up my books.",
 			"",
@@ -296,7 +300,7 @@ const configPrompts: Record<Exclude<AgentPromptStyle, "generic">, (args: ConfigP
 			"  }",
 			"}",
 			"",
-			...signIn(authValue),
+			...signIn(authValue, keyless),
 			`Restart Gemini CLI, then ${guide(lang)}`,
 		].join("\n"),
 };
@@ -325,10 +329,13 @@ export function buildAgentPrompt({ agent, mcpUrl, lang, auth }: BuildAgentPrompt
 		return configPrompts[agent.promptStyle]({ mcpUrl, header: null, authValue: null, lang });
 	}
 
-	const authValue = `Bearer ${auth.key}`;
-	const header = `Authorization: ${authValue}`;
+	const keyless = auth.key === null;
+	const authValue = auth.key ? `Bearer ${auth.key}` : null;
+	const header = authValue ? `Authorization: ${authValue}` : null;
 	if (agent.promptStyle === "generic") {
-		return `Add a remote Streamable-HTTP MCP server named "excited-live" at ${mcpUrl} with the header "${header}". Reload your tools, then ${guide(lang)}`;
+		return header
+			? `Add a remote Streamable-HTTP MCP server named "excited-live" at ${mcpUrl} with the header "${header}". Reload your tools, then ${guide(lang)}`
+			: `Add a remote Streamable-HTTP MCP server named "excited-live" at ${mcpUrl}. Reload your tools, then ${guide(lang)}`;
 	}
-	return configPrompts[agent.promptStyle]({ mcpUrl, header, authValue, lang });
+	return configPrompts[agent.promptStyle]({ mcpUrl, header, authValue, keyless, lang });
 }

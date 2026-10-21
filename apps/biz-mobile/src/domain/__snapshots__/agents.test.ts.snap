@@ -1,5 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`buildAgentPrompt > builds a keyless Claude Code command when the environment needs no key 1`] = `
+"Add the excited.live MCP server, then help me set up my books.
+
+Run:
+claude mcp add --transport http excited-live https://api.excited.live/mcp
+
+Reload your tools, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."
+`;
+
 exports[`buildAgentPrompt > builds the Claude Code install command with a key 1`] = `
 "Add the excited.live MCP server, then help me set up my books.
 

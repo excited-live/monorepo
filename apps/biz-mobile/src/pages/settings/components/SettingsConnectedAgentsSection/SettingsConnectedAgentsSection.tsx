@@ -14,7 +14,7 @@ import type { MobileLocale } from "../../../../domain/types";
 export interface ConnectedAgentKeyView {
 	id: string;
 	name?: string | null;
-	agentId: string;
+	agentId: string | null;
 	createdAt?: string | null;
 	expiresAt?: string | null;
 	lastRequest?: string | null;
@@ -69,8 +69,9 @@ export const SettingsConnectedAgentsSection: React.FC<SettingsConnectedAgentsSec
 				{!isLoading &&
 					!isError &&
 					keys.map((key) => {
-						const agentName = getAgentName(key.agentId);
-						const displayName = key.name?.trim() || agentName;
+						const agentName = key.agentId ? getAgentName(key.agentId) : null;
+						const displayName =
+							key.name?.trim() || agentName || t("settings.agentKeys.unknownAgent");
 						return (
 							<Stack
 								key={key.id}
@@ -83,7 +84,7 @@ export const SettingsConnectedAgentsSection: React.FC<SettingsConnectedAgentsSec
 										<Text maxLines={1} className="text-[13px] font-semibold text-ink">
 											{displayName}
 										</Text>
-										{displayName !== agentName && (
+										{agentName && displayName !== agentName && (
 											<Text className="text-[11px] text-slate">{agentName}</Text>
 										)}
 									</Stack>

@@ -48,6 +48,21 @@ test.describe("OnboardingAgentSetup Visual", () => {
 		await expect(component).toHaveScreenshot("onboarding-agent-setup-api-key.png");
 	});
 
+	test("renders the keyless prompt when auth is not configured", async ({ mount }) => {
+		const component = await mount("OnboardingAgentSetup", {
+			steps: STEPS,
+			isComplete: false,
+			mcpUrl: MCP_URL,
+			webappUrl: WEBAPP_URL,
+			createAgentKey: async () => "elk_demo_4f8c2a1b9d",
+			onUseManual: () => {},
+			initialKeyless: true,
+		});
+
+		await expect(component.getByText("Test environment: no key needed.")).toBeVisible();
+		await expect(component).toHaveScreenshot("onboarding-agent-setup-no-key.png");
+	});
+
 	test("renders the chat connector steps and prompt", async ({ mount }) => {
 		const component = await mount("OnboardingAgentSetup", {
 			steps: STEPS,

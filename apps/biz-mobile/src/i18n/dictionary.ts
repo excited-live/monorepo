@@ -108,6 +108,7 @@ export const strings: Dictionary = {
 	"settings.agentKeys.created": { en: "Created {date}", th: "สร้างเมื่อ {date}" },
 	"settings.agentKeys.lastUsed": { en: "Last used {date}", th: "ใช้ล่าสุด {date}" },
 	"settings.agentKeys.neverUsed": { en: "Never used", th: "ยังไม่เคยใช้" },
+	"settings.agentKeys.unknownAgent": { en: "Unknown agent", th: "ไม่ทราบเอเจนต์" },
 	"settings.agentKeys.expires": { en: "Expires {date}", th: "หมดอายุ {date}" },
 	"settings.agentKeys.revoke": { en: "Revoke", th: "ยกเลิก" },
 	"settings.agentKeys.revokeTitle": { en: "Revoke this key?", th: "ยกเลิกคีย์นี้?" },
@@ -174,6 +175,10 @@ export const strings: Dictionary = {
 	"onboarding.agent.keyError": {
 		en: "Couldn't create a key. Try again.",
 		th: "สร้างคีย์ไม่สำเร็จ ลองอีกครั้ง",
+	},
+	"onboarding.agent.testNoKey": {
+		en: "Test environment: no key needed.",
+		th: "โหมดทดสอบ: ไม่ต้องใช้คีย์ก็ได้",
 	},
 	"onboarding.agent.promptTitle": { en: "Prompt", th: "พรอมป์ต์" },
 	"onboarding.agent.copy": { en: "Copy", th: "คัดลอก" },

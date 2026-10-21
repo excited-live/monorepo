@@ -1,12 +1,13 @@
 import { getApiBaseUrl } from "../http/base-url";
 import { tokenStore } from "../auth/token.store";
+import { AgentKeyError } from "./agent-keys.error";
 
 /** A minted key as listed by `GET /api/v1/agent-keys` (never includes the secret). */
 export interface AgentKeyRecord {
 	id: string;
 	name?: string | null;
 	start?: string | null;
-	agentId: string;
+	agentId: string | null;
 	createdAt?: string | null;
 	expiresAt?: string | null;
 	lastRequest?: string | null;
@@ -56,7 +57,7 @@ export const agentKeysApi = {
 			headers: getHeaders(),
 			body: JSON.stringify(input),
 		});
-		if (!res.ok) throw new Error(`Create agent key failed HTTP ${res.status}`);
+		if (!res.ok) throw new AgentKeyError(res.status, `Create agent key failed HTTP ${res.status}`);
 		const body = (await res.json()) as CreatedAgentKey | { data: CreatedAgentKey };
 		return "data" in body ? body.data : body;
 	},

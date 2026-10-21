@@ -82,6 +82,20 @@ describe("buildAgentPrompt", () => {
 		expect(prompt).toMatchSnapshot();
 	});
 
+	it("builds a keyless Claude Code command when the environment needs no key", () => {
+		const prompt = buildAgentPrompt({
+			agent: agent("claude-code"),
+			mcpUrl: MCP_URL,
+			lang: "English",
+			auth: { kind: "apiKey", key: null },
+		});
+		expect(prompt).toContain(`claude mcp add --transport http excited-live ${MCP_URL}`);
+		expect(prompt).not.toContain("--header");
+		expect(prompt).not.toContain("Authorization");
+		expect(prompt).not.toContain("Sign in when");
+		expect(prompt).toMatchSnapshot();
+	});
+
 	it("drops the header and asks for sign-in on Claude Code OAuth", () => {
 		const prompt = buildAgentPrompt({
 			agent: agent("claude-code"),

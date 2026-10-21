@@ -24,6 +24,7 @@ import {
 	type AgentAuth,
 	type AgentOption,
 } from "../../../../domain/agents";
+import { AgentKeyError } from "../../../../service";
 
 export interface OnboardingAgentSetupProps {
 	steps: OnboardingStepView[];
@@ -37,6 +38,8 @@ export interface OnboardingAgentSetupProps {
 	/** Test/design seam: preselect an agent instead of the first featured one. */
 	initialAgentId?: string;
 	initialAuth?: AgentAuth;
+	/** Test/design seam: start in the keyless dev passthrough state. */
+	initialKeyless?: boolean;
 }
 
 const initials = (name: string): string => {
@@ -157,6 +160,7 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 	onUseManual,
 	initialAgentId,
 	initialAuth,
+	initialKeyless = false,
 }) => {
 	const { t } = useT();
 	const { lang } = useAppUI();
@@ -174,6 +178,8 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [keyFailed, setKeyFailed] = useState(false);
+	/** Dev passthrough: auth is not configured, so the API accepts keyless calls. */
+	const [keyless, setKeyless] = useState(initialKeyless);
 	const [isMoreOpen, setIsMoreOpen] = useState(false);
 	const { dismiss } = useModalBack(isMoreOpen, () => setIsMoreOpen(false));
 	const sliderRef = useRef<HTMLDivElement | null>(null);
@@ -192,6 +198,7 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 		setAuthKind(defaultAgentAuth(agent, webappUrl));
 		setCreatedKey(null);
 		setKeyFailed(false);
+		setKeyless(false);
 		setIsMoreOpen(false);
 	};
 
@@ -201,8 +208,15 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 		try {
 			const key = await createAgentKey(selectedAgent.id);
 			setCreatedKey(key);
-		} catch {
-			setKeyFailed(true);
+			setKeyless(false);
+		} catch (error) {
+			// No auth configured on the API: it accepts keyless MCP calls, so
+			// skip the key and show the prompt without an Authorization header.
+			if (error instanceof AgentKeyError && error.status === 503) {
+				setKeyless(true);
+			} else {
+				setKeyFailed(true);
+			}
 		} finally {
 			setIsGenerating(false);
 		}
@@ -210,12 +224,12 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 
 	const promptText = useMemo(() => {
 		if (authKind === "apiKey") {
-			if (!createdKey) return null;
+			if (!createdKey && !keyless) return null;
 			return buildAgentPrompt({
 				agent: selectedAgent,
 				mcpUrl,
 				lang: langName,
-				auth: { kind: "apiKey", key: createdKey },
+				auth: { kind: "apiKey", key: keyless ? null : createdKey },
 			});
 		}
 		if (authKind === "oauth") {
@@ -229,7 +243,7 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 			lang: langName,
 			auth: { kind: "device", webappUrl },
 		});
-	}, [authKind, createdKey, selectedAgent, mcpUrl, langName, webappUrl]);
+	}, [authKind, createdKey, keyless, selectedAgent, mcpUrl, langName, webappUrl]);
 
 	return (
 		<SectionCard title={t("onboarding.agent.title")}>
@@ -305,7 +319,11 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 
 				{authKind === "apiKey" && (
 					<Stack gap={2} width="100%">
-						{createdKey ? (
+						{keyless ? (
+							<Text className="text-[11px] leading-relaxed text-slate">
+								{t("onboarding.agent.testNoKey")}
+							</Text>
+						) : createdKey ? (
 							<Stack gap={1.5} width="100%" className="rounded-2xl border border-line/70 bg-white p-3">
 								<HStack width="100%" justify="between" align="center" gap={2}>
 									<Text className="text-[12px] font-semibold text-slate">
@@ -338,7 +356,7 @@ export const OnboardingAgentSetup: React.FC<OnboardingAgentSetupProps> = ({
 							/>
 						)}
 
-						{createdKey && (
+						{!keyless && createdKey && (
 							<Stack gap={1.5} width="100%">
 								<Button
 									label={

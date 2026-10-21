@@ -1,21 +1,30 @@
 import { apiKeyApi } from "@excited-live/auth";
 import type { Context } from "hono";
 import type { ApiEnv } from "../../lib/env";
-import { getTokensAuth, tokensAuthConfigured } from "../../lib/auth";
+import { getTokensAuth, requestOrigin, tokensAuthConfigured } from "../../lib/auth";
+import {
+	looksLikeJwt,
+	oauthConfigured,
+	verifyOAuthAccessToken,
+} from "../../lib/oauth";
 
 /**
  * Principal resolution for `/mcp` (separate from the `/api/v1/*` identity
  * middleware because MCP accepts API keys in addition to sessions).
  *
  * Order:
- *   1. `Authorization: Bearer elk_…` or `x-api-key: elk_…` → API key
+ *   1. API key — `Authorization: Bearer elk_…` or `x-api-key: elk_…`
  *      (`verifyApiKey`); scopes come from the key's permissions.
- *   2. Any other Bearer → Better Auth session; all scopes.
- *   3. Auth not configured → dev passthrough (`x-user-id`, else `default`),
+ *   2. OAuth 2.1 access token — a JWT from the webapp authorization server,
+ *      verified against its JWKS plus issuer, audience and expiry; scopes come
+ *      from the `scope` claim (`onboarding` → read + write). Only attempted
+ *      when `EXCITED_WEBAPP_URL` is configured.
+ *   3. Any other Bearer → Better Auth session; all scopes. This is what the
+ *      device flow's `/device/token` issues (a first-party session token) and
+ *      what the mobile app's bearer session uses.
+ *   4. Auth not configured → dev passthrough (`x-user-id`, else `default`),
  *      all scopes, matching the identity middleware's unconfigured mode.
- *   4. Anything else → null (the route answers 401 + WWW-Authenticate).
- *
- * A2 will insert OAuth JWT verification between steps 1 and 2.
+ *   5. Anything else → null (the route answers 401 + WWW-Authenticate).
  */
 
 export type McpVia = "apiKey" | "oauth" | "session" | "dev";
@@ -76,6 +85,16 @@ export async function resolvePrincipal(c: Context<ApiEnv>): Promise<McpPrincipal
 
 	if (!bearer) return null;
 
+	// OAuth access token: JWT compact serialization (three parts). Anything
+	// that fails verification falls through to the session branch below, which
+	// is where opaque device-flow and mobile tokens land.
+	if (oauthConfigured() && looksLikeJwt(bearer)) {
+		const principal = await verifyOAuthAccessToken(c.req.url, bearer);
+		if (principal) {
+			return { userId: principal.userId, scopes: principal.scopes, via: "oauth" };
+		}
+	}
+
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
 	if (!session?.user) return null;
 	return { userId: session.user.id, scopes: new Set(ALL_SCOPES), via: "session" };
@@ -83,7 +102,7 @@ export async function resolvePrincipal(c: Context<ApiEnv>): Promise<McpPrincipal
 
 /** 401 in the shape the MCP Streamable HTTP spec expects, pointing at the resource metadata. */
 export function unauthorizedResponse(requestUrl: string): Response {
-	const origin = new URL(requestUrl).origin;
+	const origin = requestOrigin(requestUrl);
 	return new Response(JSON.stringify({ error: "unauthorized" }), {
 		status: 401,
 		headers: {

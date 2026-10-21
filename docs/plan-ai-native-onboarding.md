@@ -169,3 +169,7 @@ Unit tests for `domain/agents.ts` prompt builders. Direct-mount Playwright visua
 - Device-flow tokens are full Better Auth sessions (not scoped like API keys). Acceptable for v1; a scoped follow-up could mint an API key on approval instead.
 - Agent config formats (Codex/Cursor/OpenCode/Gemini) drift. They live in one file (`domain/agents.ts`) so they are cheap to fix.
 - Keys pasted into third-party agents end up in their storage. That is why chat apps get OAuth only, and why keys expire after 90 days.
+
+## Follow-ups
+
+Tracked as GitHub issues #136 to #143, indexed in [followups-ai-native-onboarding.md](followups-ai-native-onboarding.md).

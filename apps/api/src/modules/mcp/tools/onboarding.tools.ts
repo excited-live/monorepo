@@ -263,7 +263,9 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 			const snapshot = await onboardingSnapshot(ctx);
 			if (stepId !== "create_account" && (snapshot.entryCounts[stepId] ?? 0) === 0) {
 				throw new ValidationError(
-					`Add at least one entry before completing "${step.title}" (use skip_onboarding_step if the user has none).`,
+					step.skippable
+						? `Add at least one entry before completing "${step.title}" (use skip_onboarding_step if the user has none).`
+						: `Add at least one entry before completing "${step.title}". This step is required and cannot be skipped.`,
 				);
 			}
 

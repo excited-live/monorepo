@@ -182,6 +182,8 @@ describe("/mcp", () => {
 		const gateResult = gate.json?.result as ToolResult;
 		expect(gateResult.isError).toBe(true);
 		expect(gateResult.content[0]?.text).toContain("at least one entry");
+		expect(gateResult.content[0]?.text).toContain("cannot be skipped");
+		expect(gateResult.content[0]?.text).not.toContain("skip_onboarding_step");
 
 		const added = await rpc(
 			app,

@@ -5,6 +5,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { ModalPage } from "../../components";
 import { Signin } from "../signin/Signin";
 import {
+	SettingsConnectedAgentsSection,
 	SettingsLanguageSection,
 	SettingsProfileSection,
 } from "./components";
@@ -19,6 +20,10 @@ export const Settings: React.FC = () => {
 		setLang,
 		isSignInOpen,
 		setIsSignInOpen,
+		agentKeys,
+		agentKeysLoading,
+		agentKeysError,
+		revokeAgentKey,
 		t,
 	} = useSettings();
 
@@ -45,6 +50,14 @@ export const Settings: React.FC = () => {
 
 			{/* Language Switcher */}
 			<SettingsLanguageSection lang={lang} onSetLang={setLang} languageTitle={t("settings.language")} />
+
+			{/* API keys agents use to write to the books */}
+			<SettingsConnectedAgentsSection
+				keys={agentKeys}
+				isLoading={agentKeysLoading}
+				isError={agentKeysError}
+				onRevoke={revokeAgentKey}
+			/>
 
 			{/* Sign In Sheet if requested */}
 			{isSignInOpen && (

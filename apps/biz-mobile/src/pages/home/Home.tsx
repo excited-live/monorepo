@@ -56,6 +56,11 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 		setSelectedLiability,
 		setActiveEntityId,
 		setActiveTab,
+		onboardingMethod,
+		selectOnboardingMethod,
+		mintAgentKey,
+		mcpUrl,
+		webappUrl,
 		onboardingSteps,
 		onboardingActiveIndex,
 		onboardingComplete,
@@ -94,6 +99,11 @@ export const Home: React.FC<HomeProps> = ({ onSelectAccount }) => {
 
 				{/* Onboarding Stepper — guided setup with back / skip per step */}
 				<HomeOnboardingChecklist
+					method={onboardingMethod}
+					onSelectMethod={selectOnboardingMethod}
+					mcpUrl={mcpUrl}
+					webappUrl={webappUrl}
+					onCreateAgentKey={mintAgentKey}
 					steps={onboardingSteps}
 					activeIndex={onboardingActiveIndex}
 					isComplete={onboardingComplete}

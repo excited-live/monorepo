@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
 const WEBHOOK_URL =
+	(import.meta.env.PUBLIC_WAITLIST_WEBHOOK_URL as string | undefined) ??
 	(import.meta.env.PUBLIC_N8N_WAITLIST_WEBHOOK as string | undefined) ??
-	'https://n8n.fromsukong.com/webhook/waitlist';
+	'https://leads.fromsukong.com/waitlist';
 
 const HP_FIELD = 'company_website';
 

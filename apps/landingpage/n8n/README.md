@@ -1,22 +1,22 @@
-# Waitlist → n8n → Google Sheets
+# Waitlist → Twenty CRM
 
-The landing page form POSTs to `https://n8n.fromsukong.com/webhook/waitlist`.
-If n8n is unreachable, the form keeps the email in the visitor's
-`localStorage` (no data lost) and shows an error — so activating this
-workflow is what makes entries durable.
+The landing page form POSTs to `https://leads.fromsukong.com/waitlist`
+(Cloudflare Worker `excited-waitlist`, source in the `leadgen` repo).
 
-## Import (2 minutes)
+Each signup becomes a **Person** in Twenty CRM with:
 
-1. n8n UI → Workflows → **Import from file** → `waitlist-workflow.json`.
-2. Open the **Append to Sheet** node → create/select your **Google Sheets
-   credential** (Google account OAuth, Sheets scope) → pick the spreadsheet
-   and the tab (create one named `Waitlist` with header row:
-   `email | source | receivedAt | userAgent`).
-3. Save, then toggle the workflow **Active**.
+- `leadSource`: `waitlist_<source>_<lang>` (e.g. `waitlist_hero_th`)
+- `leadStatus`: `WAITLIST`
+- `leadScore`: `70` (inbound intent outranks cold open-data leads)
+- `leadDedupeKey`: `waitlist:<lowercased email>` — resubmits are ignored
+
+If the Worker is unreachable the form keeps the email in the visitor's
+`localStorage` (`exl-waitlist-local`) and shows an error. Nothing re-sends that
+entry automatically — it is a local record only.
 
 ## Endpoint contract
 
-`POST /webhook/waitlist` — JSON body:
+`POST /waitlist` — JSON body:
 
 ```json
 {
@@ -28,14 +28,28 @@ workflow is what makes entries durable.
 }
 ```
 
-- `200 { "ok": true }` — stored.
-- `400 { "ok": false, "error": "invalid_email" }` — bad address.
-- CORS allowlist is set on the Webhook node (prod, prelive, preview, and
-  localhost dev). Add new preview origins there when needed.
+- `200 { "ok": true }` — stored, or already on the list
+- `400 { "ok": false, "error": "invalid_email" }` — bad address
+- `502 { "ok": false, "error": "crm_unavailable" }` — Twenty rejected the write
+
+CORS allowlist: `excited.live`, `www.excited.live`, `prelive.excited.live`,
+`excited-live-landing.pages.dev` (production landing project), and
+`localhost:4321`. The PR-preview project
+(`<branch>.excited-live-landing-preview.pages.dev`) and the landing prelive
+project (`excited-live-landing-prelive.pages.dev`) are **not** on the Worker
+allowlist yet, so form posts from those origins fail CORS.
+
+## Env
+
+`PUBLIC_WAITLIST_WEBHOOK_URL` overrides the endpoint at build time. No landing
+workflow sets it today, so every environment uses the default above.
+`PUBLIC_N8N_WAITLIST_WEBHOOK` is still read as a second fallback for old build
+environments — leave it unset so signups never route to the retired n8n
+webhook.
 
 ## Notes
 
-- Emails are lowercased/deduplicated by the Sheet's own filtering later;
-  the workflow does not block duplicates (idempotence left to the sheet).
+- `waitlist-workflow.json` in this folder is the retired n8n workflow, kept for
+  history only; nothing reads it.
 - Honeypot field (`company_website`) is filled by bots only; the form ignores
-  submissions that fill it client-side, so it never reaches this webhook.
+  submissions that fill it client-side, so it never reaches the Worker.

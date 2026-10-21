@@ -94,6 +94,11 @@ const STEPS: OnboardingStepView[] = [
 test.describe("HomeOnboardingChecklist Visual", () => {
 	test("renders the horizontal stepper with only the active step panel", async ({ mount }) => {
 		const component = await mount("HomeOnboardingChecklist", {
+			method: "manual",
+			onSelectMethod: noop,
+			mcpUrl: "https://api.excited.live/mcp",
+			webappUrl: "https://app.excited.live",
+			onCreateAgentKey: async () => "elk_test_key",
 			steps: STEPS,
 			activeIndex: 3,
 			isComplete: false,

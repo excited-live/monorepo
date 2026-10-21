@@ -37,6 +37,73 @@ export const strings: Dictionary = {
 		en: "Sign-in is not available in this environment.",
 		th: "การเข้าสู่ระบบไม่พร้อมใช้งานในสภาพแวดล้อมนี้",
 	},
+	"auth.consent.title": { en: "Allow access to your account", th: "อนุญาตให้เข้าถึงบัญชีของคุณ" },
+	"auth.consent.subtitle": {
+		en: "{client} wants to connect to your excited.live books.",
+		th: "{client} ต้องการเชื่อมต่อกับบัญชี excited.live ของคุณ",
+	},
+	"auth.consent.scopesHeading": { en: "This lets the agent:", th: "สิ่งนี้จะให้สิทธิ์เอเจนต์:" },
+	"auth.consent.allow": { en: "Allow", th: "อนุญาต" },
+	"auth.consent.deny": { en: "Deny", th: "ปฏิเสธ" },
+	"auth.consent.signInRequired": {
+		en: "Sign in to approve this connection.",
+		th: "เข้าสู่ระบบเพื่ออนุมัติการเชื่อมต่อนี้",
+	},
+	"auth.consent.error": {
+		en: "Could not complete the request. Please try again.",
+		th: "ไม่สามารถดำเนินการได้ กรุณาลองอีกครั้ง",
+	},
+	"auth.consent.unknownClient": {
+		en: "This connection request is invalid or has expired. Ask your agent to start again.",
+		th: "คำขอเชื่อมต่อนี้ไม่ถูกต้องหรือหมดอายุแล้ว โปรดให้เอเจนต์ของคุณเริ่มใหม่",
+	},
+	"auth.scope.onboarding": {
+		en: "Help set up your books and track onboarding progress",
+		th: "ช่วยตั้งค่าบัญชีของคุณและติดตามความคืบหน้าการเริ่มต้นใช้งาน",
+	},
+	"auth.scope.accountingRead": {
+		en: "Read your businesses, assets, income, expenses and liabilities",
+		th: "อ่านข้อมูลธุรกิจ ทรัพย์สิน รายรับ ค่าใช้จ่าย และหนี้สินของคุณ",
+	},
+	"auth.scope.accountingWrite": {
+		en: "Add and edit your businesses, assets, income, expenses and liabilities",
+		th: "เพิ่มและแก้ไขข้อมูลธุรกิจ ทรัพย์สิน รายรับ ค่าใช้จ่าย และหนี้สินของคุณ",
+	},
+	"auth.device.title": { en: "Connect your agent", th: "เชื่อมต่อเอเจนต์ของคุณ" },
+	"auth.device.subtitle": {
+		en: "Enter the code your agent showed you, then approve the connection.",
+		th: "กรอกรหัสที่เอเจนต์ของคุณแสดงให้คุณเห็น แล้วอนุมัติการเชื่อมต่อ",
+	},
+	"auth.device.codeLabel": { en: "Device code", th: "รหัสอุปกรณ์" },
+	"auth.device.continue": { en: "Continue", th: "ดำเนินการต่อ" },
+	"auth.device.approve": { en: "Approve", th: "อนุมัติ" },
+	"auth.device.deny": { en: "Deny", th: "ปฏิเสธ" },
+	"auth.device.client": { en: "Request from {client}", th: "คำขอจาก {client}" },
+	"auth.device.unknownClient": { en: "an unknown agent", th: "เอเจนต์ที่ไม่รู้จัก" },
+	"auth.device.signInRequired": {
+		en: "Sign in to approve this code.",
+		th: "เข้าสู่ระบบเพื่ออนุมัติรหัสนี้",
+	},
+	"auth.device.invalidCode": {
+		en: "That code is invalid or has expired.",
+		th: "รหัสนี้ไม่ถูกต้องหรือหมดอายุแล้ว",
+	},
+	"auth.device.alreadyProcessed": {
+		en: "This code has already been used.",
+		th: "รหัสนี้ถูกใช้งานแล้ว",
+	},
+	"auth.device.success": {
+		en: "You can go back to your agent.",
+		th: "คุณกลับไปที่เอเจนต์ของคุณได้แล้ว",
+	},
+	"auth.device.denied": {
+		en: "Access was denied. You can go back to your agent.",
+		th: "ปฏิเสธการเข้าถึงแล้ว คุณกลับไปที่เอเจนต์ของคุณได้",
+	},
+	"auth.device.genericError": {
+		en: "Something went wrong. Please try again.",
+		th: "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง",
+	},
 	"metric.netWorth": { en: "Net worth", th: "มูลค่าสุทธิ" },
 	"metric.cashFlow": { en: "Cash flow", th: "กระแสเงินสด" },
 	"period.all": { en: "All", th: "ทั้งหมด" },

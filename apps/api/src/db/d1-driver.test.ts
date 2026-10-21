@@ -62,6 +62,7 @@ describe("D1 exec() fidelity", () => {
 		expect(report.applied).toEqual([
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		// The positive side of the fix: every statement, DDL included, went

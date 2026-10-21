@@ -29,13 +29,14 @@ describe("migrations", () => {
 		expect(db.migrations).toEqual([
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		const tables = await db.driver.all<{ name: string }>(
 			"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
 		)
 		expect(tables.map((table) => table.name)).toEqual(
-			expect.arrayContaining(["plans", "user_settings", "user_onboarding", "d1_migrations"]),
+			expect.arrayContaining(["plans", "user_settings", "user_onboarding", "deviceCode", "d1_migrations"]),
 		)
 		db.driver.close()
 	})
@@ -50,6 +51,7 @@ describe("migrations", () => {
 		expect(ledger.map((row) => row.name)).toEqual([
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		expect(ledger[0]?.applied_at).toBeTruthy()
@@ -62,6 +64,7 @@ describe("migrations", () => {
 		expect(after.map((row) => row.name)).toEqual([
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		second.driver.close()
@@ -82,7 +85,7 @@ describe("migrations", () => {
 		old.close()
 
 		const upgraded = await resolveDb(undefined, { [DB_FILE_ENV]: file })
-		expect(upgraded.migrations).toEqual(["0002_onboarding_method.sql"])
+		expect(upgraded.migrations).toEqual(["0002_onboarding_method.sql", "0003_device_authorization.sql"])
 
 		const columns = await upgraded.driver.all<{ name: string }>("PRAGMA table_info(user_onboarding)")
 		expect(columns.map((column) => column.name)).toContain("method")

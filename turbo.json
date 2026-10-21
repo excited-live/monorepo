@@ -20,10 +20,12 @@
 			"outputs": [".output/**", "dist/**"]
 		},
 		"dev": {
+			"dependsOn": ["^build"],
 			"cache": false,
 			"persistent": true
 		},
 		"dev:api": {
+			"dependsOn": ["^build"],
 			"cache": false,
 			"persistent": true
 		},

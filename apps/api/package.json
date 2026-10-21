@@ -8,6 +8,7 @@
 		"./client": "./src/client.ts"
 	},
 	"scripts": {
+		"predev": "pnpm turbo run build --filter=\"@excited-live/api^...\"",
 		"dev": "tsx watch --exclude \"**/node_modules/**\" src/index.ts",
 		"dev:api": "tsx watch --exclude \"**/node_modules/**\" src/index.ts",
 		"build": "tsup src/index.ts src/worker.ts --format esm --clean",

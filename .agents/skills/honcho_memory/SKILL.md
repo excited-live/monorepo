@@ -46,12 +46,12 @@ Honcho is integrated into the **FromSukong unified MCP gateway**:
 - **Rule**: Check tools in FromSukong MCP first in every flow (`honcho_*`, `github-gitobs_*`, `cloud-flare_*`, `mobbin_*`, `portal_*`).
 - **Workspace ID**: `hermes`
 - **User Name**: `prame`
-- **Harness support**:
+- **Harness support** (project-scoped config in the repo, one entry per harness):
   - Claude Code: configured in `.mcp.json`
-  - OpenCode: configured in `opencode.json` (and `~/.config/opencode/opencode.json`) under `mcp.fromsukong`
-  - Antigravity / Gemini: configured in `.gemini/mcp_config.json` (and `~/.gemini/config/mcp_config.json`)
-  - Codex: configured in `~/.codex/config.toml` under `[mcp_servers.fromsukong]`
-  - Cursor: configured in `~/.cursor/mcp.json`
+  - OpenCode: configured in `opencode.json` under `mcp.fromsukong`
+  - Antigravity / Gemini: configured in `.gemini/mcp_config.json` and `.antigravity/mcp_config.json`
+  - Codex: configured in `.codex/config.toml` under `[mcp_servers.fromsukong]`
+  - Never add a second global entry for the same gateway in user dotfiles: it duplicates every tool.
 
 ## 4. Environment variables
 

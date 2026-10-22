@@ -23,10 +23,12 @@ The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/m
   - `cloud-flare_*`: Cloudflare docs, worker/Pages deployment status, and diagnostics.
   - `mobbin_*`: UI/UX design search for mobile and web screens, flows, and sections.
   - `portal_*`: Service portal server listing and toggling.
-- **Native harness configuration in this repo**:
+- **Native harness configuration in this repo** (project-scoped is canonical, one entry per harness):
   - **Claude Code**: configured in `.mcp.json` (`fromsukong` via `npx -y mcp-remote https://mcp.fromsukong.com/mcp`).
   - **OpenCode**: configured in `opencode.json` (`fromsukong` local mcp-remote command).
+  - **Codex**: configured in `.codex/config.toml` (`fromsukong` stdio mcp-remote command).
   - **Antigravity CLI / Gemini**: configured in `.gemini/mcp_config.json` and `.antigravity/mcp_config.json`.
+  - Do not register the gateway a second time in user dotfiles (`~/.codex/config.toml`, `~/.claude.json`, `~/.config/opencode/opencode.jsonc`, `~/.gemini/config/mcp_config.json`): two entries for one gateway means two copies of every tool.
 
 ## PR & merge pipeline
 

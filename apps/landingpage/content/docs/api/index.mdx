@@ -54,6 +54,9 @@ Examples use `$API_URL` for the API base URL and `$TOKEN` for your bearer token.
 | `GET` | [`/api/v1/accounting/ledger/{yearMonth}`](/docs/api/accounting) | Get computed monthly ledger |
 | `GET` | [`/api/v1/accounting/cash-flows`](/docs/api/accounting) | Get the cash-flow feed for a month |
 | `GET` | [`/api/v1/accounting/projection`](/docs/api/accounting) | Get treasury balance per month around a centre month |
+| `GET` | [`/api/v1/agent-keys`](/docs/api/auth) | List agent API keys |
+| `POST` | [`/api/v1/agent-keys`](/docs/api/auth) | Mint an agent API key |
+| `DELETE` | [`/api/v1/agent-keys/{id}`](/docs/api/auth) | Revoke an agent API key |
 | `GET` | [`/api/v1/auth/me`](/docs/api/auth) | Current session |
 | `GET` | [`/api/v1/catalog/suggest`](/docs/api/catalog) | Search the catalog |
 | `POST` | [`/api/v1/catalog/resolve`](/docs/api/catalog) | Resolve autofill values |

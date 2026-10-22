@@ -27,7 +27,16 @@ import {
 import { useFinances, useAppUI } from "../../../state";
 import { t } from "../../../i18n";
 import { formatMoney } from "../../../utils/format";
-import { useOnboarding, useUpdateOnboarding } from "../../../service";
+import {
+	getAgentWebappUrl,
+	getMcpServerUrl,
+	type OnboardingMethod,
+	useCreateAgentKey,
+	useOnboarding,
+	useSetOnboardingMethod,
+	useUpdateOnboarding,
+} from "../../../service";
+import { useAgentProgressPolling } from "./useAgentProgressPolling";
 
 export function useHome() {
 	const {
@@ -66,6 +75,9 @@ export function useHome() {
 
 	const onboardingQuery = useOnboarding("biz-mobile");
 	const updateOnboarding = useUpdateOnboarding("biz-mobile");
+	const setOnboardingMethod = useSetOnboardingMethod("biz-mobile");
+	const createAgentKey = useCreateAgentKey();
+	const onboardingMethod = onboardingQuery.data?.method ?? null;
 
 	// Server payloads carry plain step ids; keep only known steps so a stale or
 	// malformed value can never fabricate a phantom checklist entry.
@@ -186,6 +198,9 @@ export function useHome() {
 	const isLiabilityResolved = onboardingSteps.some(
 		(step) => step.id === "add_liability" && (step.status === "done" || step.status === "skipped"),
 	);
+
+	// Live agent progress: only poll while the agent path is the active view.
+	useAgentProgressPolling(onboardingMethod === "agent" && !onboardingComplete);
 
 	const updateProgress = (mutate: (current: OnboardingProgress) => OnboardingProgress) => {
 		const next = mutate(progress);
@@ -343,6 +358,15 @@ export function useHome() {
 		skipStep("add_liability");
 	};
 
+	const selectOnboardingMethod = (method: OnboardingMethod) => {
+		setOnboardingMethod.mutate(method);
+	};
+
+	const mintAgentKey = async (agentId: string): Promise<string> => {
+		const created = await createAgentKey.mutateAsync({ agentId });
+		return created.key;
+	};
+
 	return {
 		accounts,
 		lang,
@@ -382,6 +406,11 @@ export function useHome() {
 		setActiveEntityId,
 		setActiveTab,
 		// Onboarding
+		onboardingMethod,
+		selectOnboardingMethod,
+		mintAgentKey,
+		mcpUrl: getMcpServerUrl(),
+		webappUrl: getAgentWebappUrl(),
 		onboardingSteps,
 		onboardingActiveIndex,
 		onboardingComplete,

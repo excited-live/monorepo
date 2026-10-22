@@ -4,4 +4,6 @@ export * from "./HomeTreasuryPanel";
 export * from "./HomeEntitiesSection";
 export * from "./HomeCareerOnboarding";
 export * from "./HomeOnboardingChecklist";
+export * from "./OnboardingMethodChooser";
+export * from "./OnboardingAgentSetup";
 export * from "./CareerDrawer";

@@ -23,13 +23,15 @@
 		"node": ">=22.13.0"
 	},
 	"dependencies": {
-		"@excited-live/auth": "workspace:*",
 		"@excited-live/accounting": "workspace:*",
+		"@excited-live/auth": "workspace:*",
 		"@excited-live/sim": "workspace:*",
 		"@excited-live/tax": "workspace:*",
 		"@hono/node-server": "^1.13.8",
+		"@modelcontextprotocol/sdk": "^1.32.1",
 		"hono": "^4.7.4",
 		"hono-openapi": "^1.3.5",
+		"jose": "^6.2.12",
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {

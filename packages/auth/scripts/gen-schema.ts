@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url"
 import { DatabaseSync } from "node:sqlite"
 import { getMigrations } from "better-auth/db/migration"
 import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-dialect"
-import { bearer, jwt } from "better-auth/plugins"
+import { bearer, deviceAuthorization, jwt } from "better-auth/plugins"
 import { apiKey } from "@better-auth/api-key"
 import { oauthProvider } from "@better-auth/oauth-provider"
 
@@ -43,7 +43,7 @@ const config = {
 		type: "sqlite" as const,
 		transaction: false,
 	},
-	plugins: [bearer(), apiKey(), jwt(), oauthProvider({ loginPage: "/sign-in" })],
+	plugins: [bearer(), apiKey(), jwt(), oauthProvider({ loginPage: "/sign-in", consentPage: "/consent" }), deviceAuthorization()],
 }
 
 const migrations = await getMigrations(config as never, { throwOnUnsafe: false })

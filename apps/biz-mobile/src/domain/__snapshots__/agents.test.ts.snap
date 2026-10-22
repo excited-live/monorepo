@@ -1,0 +1,101 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildAgentPrompt > builds a keyless Claude Code command when the environment needs no key 1`] = `
+"Add the excited.live MCP server, then help me set up my books.
+
+Run:
+claude mcp add --transport http excited-live https://api.excited.live/mcp
+
+Reload your tools, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."
+`;
+
+exports[`buildAgentPrompt > builds the Claude Code install command with a key 1`] = `
+"Add the excited.live MCP server, then help me set up my books.
+
+Run:
+claude mcp add --transport http excited-live https://api.excited.live/mcp --header "Authorization: Bearer elk_live_test_key"
+
+Reload your tools, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in Thai."
+`;
+
+exports[`buildAgentPrompt > drops the header and asks for sign-in on Claude Code OAuth 1`] = `
+"Add the excited.live MCP server, then help me set up my books.
+
+Run:
+claude mcp add --transport http excited-live https://api.excited.live/mcp
+
+Sign in when your client opens the browser.
+Reload your tools, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."
+`;
+
+exports[`buildAgentPrompt > falls back to generic wording for unverified clients 1`] = `"Add a remote Streamable-HTTP MCP server named "excited-live" at https://api.excited.live/mcp with the header "Authorization: Bearer elk_live_test_key". Reload your tools, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."`;
+
+exports[`buildAgentPrompt > gives chat apps a short connector prompt 1`] = `"Use the excited.live connector (MCP server at https://api.excited.live/mcp), then help me set up my books. Call get_onboarding_status and follow the server's guide. Talk to me in Thai."`;
+
+exports[`buildAgentPrompt > walks a cloud agent through the device flow 1`] = `
+"Connect to excited.live and help me set up my books.
+
+1. POST https://app.excited.live/api/auth/device/code with client_id=excited-live-agent.
+2. Send me the verification_uri_complete link from the response.
+3. Poll https://app.excited.live/api/auth/device/token every 5 seconds with grant_type=urn:ietf:params:oauth:grant-type:device_code, device_code and client_id=excited-live-agent until you get an access token.
+4. Add the MCP server https://api.excited.live/mcp with the header "Authorization: Bearer <access token>", reload your tools, then call get_onboarding_status and follow the server's guide.
+
+Talk to me in Thai."
+`;
+
+exports[`buildAgentPrompt > writes the Codex config table 1`] = `
+"Add this MCP server to ~/.codex/config.toml, then help me set up my books.
+
+[mcp_servers.excited-live]
+url = "https://api.excited.live/mcp"
+http_headers = { Authorization = "Bearer elk_live_test_key" }
+
+Restart Codex, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."
+`;
+
+exports[`buildAgentPrompt > writes the Cursor mcp.json block 1`] = `
+"Add this MCP server to ~/.cursor/mcp.json, then help me set up my books.
+
+{
+  "mcpServers": {
+    "excited-live": {
+      "url": "https://api.excited.live/mcp",
+      "headers": { "Authorization": "Bearer elk_live_test_key" }
+    }
+  }
+}
+
+Reload MCP servers, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."
+`;
+
+exports[`buildAgentPrompt > writes the Gemini CLI httpUrl entry 1`] = `
+"Add this MCP server to ~/.gemini/settings.json, then help me set up my books.
+
+{
+  "mcpServers": {
+    "excited-live": {
+      "httpUrl": "https://api.excited.live/mcp",
+      "headers": { "Authorization": "Bearer elk_live_test_key" }
+    }
+  }
+}
+
+Restart Gemini CLI, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in English."
+`;
+
+exports[`buildAgentPrompt > writes the OpenCode remote entry 1`] = `
+"Add this to opencode.json, then help me set up my books.
+
+{
+  "mcp": {
+    "excited-live": {
+      "type": "remote",
+      "url": "https://api.excited.live/mcp",
+      "enabled": true,
+      "headers": { "Authorization": "Bearer elk_live_test_key" }
+    }
+  }
+}
+
+Reload your tools, then call get_onboarding_status (or run the onboard_me prompt) and follow the server's guide. Talk to me in Thai."
+`;

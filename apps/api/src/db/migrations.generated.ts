@@ -92,6 +92,8 @@ create table "oauthConsent" ("id" text not null primary key, "clientId" text not
 
 create table "oauthClientAssertion" ("id" text not null primary key, "expiresAt" date not null);
 
+create table "deviceCode" ("id" text not null primary key, "deviceCode" text not null, "userCode" text not null, "userId" text, "expiresAt" date not null, "status" text not null, "lastPolledAt" date, "pollingInterval" integer, "clientId" text, "scope" text);
+
 create index "session_userId_idx" on "session" ("userId");
 
 create index "account_userId_idx" on "account" ("userId");
@@ -133,6 +135,10 @@ create index "oauthConsent_clientId_idx" on "oauthConsent" ("clientId");
 create index "oauthConsent_userId_idx" on "oauthConsent" ("userId");
 
 create unique index "oauthClientResource_clientId_resourceId_uidx" on "oauthClientResource" ("clientId", "resourceId");
+
+create unique index "deviceCode_deviceCode_uidx" on "deviceCode" ("deviceCode");
+
+create unique index "deviceCode_userCode_uidx" on "deviceCode" ("userCode");
 -- END BETTER AUTH SCHEMA
 
 -- Accounting store: normalized tables, one per resource (base table plus one
@@ -364,6 +370,32 @@ CREATE INDEX IF NOT EXISTS accounting_transfers_from_asset_id_idx ON accounting_
 CREATE INDEX IF NOT EXISTS accounting_transfers_to_asset_id_idx ON accounting_transfers (to_asset_id);
 
 CREATE INDEX IF NOT EXISTS accounting_transfers_to_liability_id_idx ON accounting_transfers (to_liability_id);
+`,
+	},
+	{
+		name: "0002_onboarding_method.sql",
+		sql: `-- 0002_onboarding_method.sql — how the user chose to onboard.
+--
+-- "agent" when the MCP onboarding tools completed a step (and "manual" when the
+-- app stepper ran). NULL when the user has not chosen yet. Same ledger rules as
+-- 0001: one statement per semicolon on its own line.
+
+ALTER TABLE user_onboarding ADD COLUMN method TEXT;
+`,
+	},
+	{
+		name: "0003_device_authorization.sql",
+		sql: `-- RFC 8628 device authorization (Better Auth deviceAuthorization plugin) for
+-- the agent sign-in link. Apps/api/migrations/0001_init.sql already ships the
+-- table for fresh databases via packages/auth gen:schema; this migration adds
+-- it to databases created before the plugin was enabled (the 0001 block is
+-- recorded as applied and is never re-run). IF NOT EXISTS makes it a no-op on
+-- fresh databases.
+create table if not exists "deviceCode" ("id" text not null primary key, "deviceCode" text not null, "userCode" text not null, "userId" text, "expiresAt" date not null, "status" text not null, "lastPolledAt" date, "pollingInterval" integer, "clientId" text, "scope" text);
+
+create unique index if not exists "deviceCode_deviceCode_uidx" on "deviceCode" ("deviceCode");
+
+create unique index if not exists "deviceCode_userCode_uidx" on "deviceCode" ("userCode");
 `,
 	},
 ]

@@ -111,8 +111,35 @@ Env vars:
 | `EXCITED_API_DB_PATH` | `.data/excited-live.sqlite` (relative to the process cwd) | Local SQLite file |
 | `EXCITED_API_AUTO_MIGRATE` | on | `0` skips boot migrations (e.g. when wrangler owns them) |
 | `PORT` | `8000` | HTTP port |
+| `EXCITED_WEBAPP_URL` | unset | Webapp origin that hosts the MCP authorization server (`<origin>/api/auth`). When set, `/mcp` also accepts OAuth JWT access tokens and serves the protected-resource metadata; unset keeps the A1 behaviour (API keys, sessions, dev passthrough). |
+| `BETTER_AUTH_URL` | request origin | Canonical public origin of THIS API. Used in the `WWW-Authenticate` challenge and to compute the OAuth audience (`<origin>/mcp`); set it behind a proxy so both match the webapp's `EXCITED_API_URL`. |
 
 Local runs need Node >= 22.13 (`node:sqlite` without a flag).
+
+## MCP sign-in link (OAuth 2.1 + device flow)
+
+`/mcp` is a protected resource (RFC 9728). Discovery:
+
+- `GET /.well-known/oauth-protected-resource`
+- `GET /.well-known/oauth-protected-resource/mcp`
+
+Both return `resource` (`<api origin>/mcp`), `authorization_servers`
+(`<EXCITED_WEBAPP_URL>/api/auth`), `scopes_supported`
+(`onboarding`, `accounting:read`, `accounting:write`) and
+`bearer_methods_supported: ["header"]`. They answer 404 when
+`EXCITED_WEBAPP_URL` is unset.
+
+The authorization server itself runs on the WEBAPP mount (it has the sign-in
+and consent UI plus the browser cookies). The API only verifies tokens, in
+this order (see `src/modules/mcp/mcp.auth.ts`): API key (`elk_…`) → OAuth JWT
+(signature via the webapp JWKS, plus issuer, audience and expiry; scopes come
+from the `scope` claim, with `onboarding` granting `onboarding:read` +
+`onboarding:write`) → Better Auth session bearer (device-flow tokens and the
+mobile session) → dev passthrough when auth is unconfigured.
+
+The device flow (`/api/auth/device/code` → user approves on the webapp
+`/device` → `/api/auth/device/token`) issues a first-party Better Auth session,
+so it resolves through the session branch above rather than as a JWT.
 
 ## Deployment readiness (no action taken here)
 

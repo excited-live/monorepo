@@ -9,6 +9,7 @@ export * from "./investments";
 export * from "./balance-sheet";
 export * from "./cashflows";
 export * from "./normalize";
+export * from "./onboarding";
 export * as commands from "./commands";
 export * from "./commands";
 export * from "./book";

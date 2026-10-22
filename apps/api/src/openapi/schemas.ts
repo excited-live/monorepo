@@ -294,6 +294,7 @@ export const UserOnboardingSchema = z
 		completedAt: z.string().nullable().optional(),
 		done: z.array(z.string()),
 		skipped: z.array(z.string()),
+		method: z.enum(["agent", "manual"]).nullable().describe("How the user chose to onboard; null when not chosen yet."),
 		updatedAt: z.string(),
 	})
 	.meta({ id: "UserOnboarding", description: "Per-user onboarding progress and completion status per app." })
@@ -304,5 +305,6 @@ export const UpdateUserOnboardingSchema = z
 		isCompleted: z.boolean().optional(),
 		done: z.array(z.string()).optional(),
 		skipped: z.array(z.string()).optional(),
+		method: z.enum(["agent", "manual"]).nullable().optional().describe("Pass `null` to clear the stored method."),
 	})
 	.meta({ id: "UpdateUserOnboarding", description: "Payload to update user onboarding progress." })

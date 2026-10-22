@@ -1590,6 +1590,21 @@
 							"type": "string"
 						}
 					},
+					"method": {
+						"anyOf": [
+							{
+								"type": "string",
+								"enum": [
+									"agent",
+									"manual"
+								]
+							},
+							{
+								"type": "null"
+							}
+						],
+						"description": "How the user chose to onboard; null when not chosen yet."
+					},
 					"updatedAt": {
 						"type": "string"
 					}
@@ -1600,6 +1615,7 @@
 					"isCompleted",
 					"done",
 					"skipped",
+					"method",
 					"updatedAt"
 				],
 				"description": "Per-user onboarding progress and completion status per app."
@@ -1624,6 +1640,21 @@
 						"items": {
 							"type": "string"
 						}
+					},
+					"method": {
+						"description": "Pass `null` to clear the stored method.",
+						"anyOf": [
+							{
+								"type": "string",
+								"enum": [
+									"agent",
+									"manual"
+								]
+							},
+							{
+								"type": "null"
+							}
+						]
 					}
 				},
 				"description": "Payload to update user onboarding progress."
@@ -6266,6 +6297,275 @@
 							"type": "string",
 							"pattern": "^\\d{4}-\\d{2}-\\d{2}$"
 						}
+					}
+				]
+			}
+		},
+		"/api/v1/agent-keys": {
+			"post": {
+				"operationId": "createAgentKey",
+				"tags": [
+					"Auth"
+				],
+				"summary": "Mint an agent API key",
+				"description": "Creates a 90-day key scoped to onboarding and accounting, owned by the signed-in user. The full key is returned once.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"agentId": {
+										"type": "string",
+										"minLength": 1
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": [
+									"agentId"
+								]
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "The new key. The `key` field is shown only here.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"id": {
+											"type": "string"
+										},
+										"key": {
+											"type": "string",
+											"description": "The full key. Returned only on creation."
+										},
+										"name": {
+											"type": [
+												"string",
+												"null"
+											]
+										},
+										"start": {
+											"type": [
+												"string",
+												"null"
+											]
+										},
+										"expiresAt": {
+											"type": [
+												"string",
+												"null"
+											]
+										}
+									},
+									"required": [
+										"id",
+										"key",
+										"name",
+										"start",
+										"expiresAt"
+									]
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Malformed request.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Auth is not configured in this environment.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "listAgentKeys",
+				"tags": [
+					"Auth"
+				],
+				"summary": "List agent API keys",
+				"description": "Keys owned by the signed-in user. The secret is never returned.",
+				"responses": {
+					"200": {
+						"description": "The user's keys.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"keys": {
+											"type": "array",
+											"items": {
+												"type": "object",
+												"properties": {
+													"id": {
+														"type": "string"
+													},
+													"name": {
+														"type": [
+															"string",
+															"null"
+														]
+													},
+													"start": {
+														"type": [
+															"string",
+															"null"
+														]
+													},
+													"agentId": {
+														"type": [
+															"string",
+															"null"
+														]
+													},
+													"createdAt": {
+														"type": "string"
+													},
+													"expiresAt": {
+														"type": [
+															"string",
+															"null"
+														]
+													},
+													"lastRequest": {
+														"type": [
+															"string",
+															"null"
+														]
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"start",
+													"agentId",
+													"createdAt",
+													"expiresAt",
+													"lastRequest"
+												]
+											}
+										}
+									},
+									"required": [
+										"keys"
+									]
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Auth is not configured in this environment.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/agent-keys/{id}": {
+			"delete": {
+				"operationId": "revokeAgentKey",
+				"tags": [
+					"Auth"
+				],
+				"summary": "Revoke an agent API key",
+				"description": "Deletes one of the signed-in user's keys. Another user's key is a 404.",
+				"responses": {
+					"200": {
+						"description": "Key revoked.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Ok"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Key not found.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Auth is not configured in this environment.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Error"
+								}
+							}
+						}
+					}
+				},
+				"parameters": [
+					{
+						"schema": {
+							"type": "string"
+						},
+						"in": "path",
+						"name": "id",
+						"required": true
 					}
 				]
 			}

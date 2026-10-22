@@ -14,8 +14,14 @@ import type {
 	OnboardingStepStatus,
 	OnboardingStepView,
 } from "../../../../domain/onboarding";
+import type { OnboardingMethod } from "../../../../service/onboarding/onboarding.api";
+import { OnboardingAgentSetup } from "../OnboardingAgentSetup";
+import { OnboardingMethodChooser } from "../OnboardingMethodChooser";
 
 export interface HomeOnboardingChecklistProps {
+	/** Persisted setup path: chooser when null, manual stepper or agent setup after. */
+	method: OnboardingMethod | null;
+	onSelectMethod: (method: OnboardingMethod) => void;
 	steps: OnboardingStepView[];
 	activeIndex: number;
 	isComplete: boolean;
@@ -26,6 +32,11 @@ export interface HomeOnboardingChecklistProps {
 	onReopenStep: (id: OnboardingStepId) => void;
 	onAddEntry: (id: OnboardingStepId, entityId: string) => void;
 	onEditEntry: (id: OnboardingStepId, entryId: string, entityId: string) => void;
+	/** MCP endpoint shown to agents. */
+	mcpUrl: string;
+	/** Webapp origin for link sign-in; null hides those options. */
+	webappUrl: string | null;
+	onCreateAgentKey: (agentId: string) => Promise<string>;
 }
 
 const EntryRow: React.FC<{ entry: OnboardingEntryView; onEdit: () => void }> = ({ entry, onEdit }) => (
@@ -47,6 +58,8 @@ const EntryRow: React.FC<{ entry: OnboardingEntryView; onEdit: () => void }> = (
  * every step is done or skipped the whole section disappears.
  */
 export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = ({
+	method,
+	onSelectMethod,
 	steps,
 	activeIndex,
 	isComplete,
@@ -56,6 +69,9 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 	onReopenStep,
 	onAddEntry,
 	onEditEntry,
+	mcpUrl,
+	webappUrl,
+	onCreateAgentKey,
 }) => {
 	const { t } = useT();
 	const [viewOverride, setViewOverride] = useState<number | null>(null);
@@ -70,6 +86,21 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 	}, [activeIndex]);
 
 	if (isComplete) return null;
+
+	if (method === null) return <OnboardingMethodChooser onSelect={onSelectMethod} />;
+
+	if (method === "agent") {
+		return (
+			<OnboardingAgentSetup
+				steps={steps}
+				isComplete={isComplete}
+				mcpUrl={mcpUrl}
+				webappUrl={webappUrl}
+				createAgentKey={onCreateAgentKey}
+				onUseManual={() => onSelectMethod("manual")}
+			/>
+		);
+	}
 
 	const viewIndex = viewOverride ?? activeIndex;
 	const viewed = steps[viewIndex] ?? steps[Math.max(activeIndex, 0)];
@@ -219,6 +250,14 @@ export const HomeOnboardingChecklist: React.FC<HomeOnboardingChecklistProps> = (
 				</div>
 
 				{panel}
+
+				<PlainButton
+					type="button"
+					onClick={() => onSelectMethod("agent")}
+					className="cursor-pointer self-start text-[12px] font-medium text-slate underline underline-offset-2 active:text-ink"
+				>
+					{t("onboarding.agent.useAgent")}
+				</PlainButton>
 			</Stack>
 		</SectionCard>
 	);

@@ -3,6 +3,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { AUTO_MIGRATE_ENV, DB_FILE_ENV, resolveDb } from "."
+import { MIGRATION_FILES } from "./migrations.generated"
+import { createNodeSqliteDriver } from "./node-sqlite"
+import { splitStatements } from "./sql"
 
 const tempDirs: string[] = []
 
@@ -25,13 +28,15 @@ describe("migrations", () => {
 		expect(db.mode).toBe("node-sqlite")
 		expect(db.migrations).toEqual([
 			"0001_init.sql",
+			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		const tables = await db.driver.all<{ name: string }>(
 			"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
 		)
 		expect(tables.map((table) => table.name)).toEqual(
-			expect.arrayContaining(["plans", "user_settings", "user_onboarding", "d1_migrations"]),
+			expect.arrayContaining(["plans", "user_settings", "user_onboarding", "deviceCode", "d1_migrations"]),
 		)
 		db.driver.close()
 	})
@@ -45,6 +50,8 @@ describe("migrations", () => {
 		)
 		expect(ledger.map((row) => row.name)).toEqual([
 			"0001_init.sql",
+			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		expect(ledger[0]?.applied_at).toBeTruthy()
@@ -56,9 +63,33 @@ describe("migrations", () => {
 		const after = await second.driver.all<{ name: string }>("SELECT name FROM d1_migrations")
 		expect(after.map((row) => row.name)).toEqual([
 			"0001_init.sql",
+			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
 		])
 
 		second.driver.close()
+	})
+
+	it("adds the onboarding method column to an existing (0001) database", async () => {
+		const file = tempDbFile()
+
+		// Build a pre-0002 database by hand: baseline schema + the ledger row.
+		const old = await createNodeSqliteDriver(file)
+		await old.exec(
+			"CREATE TABLE d1_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+		)
+		const baseline = MIGRATION_FILES.find((migration) => migration.name === "0001_init.sql");
+		expect(baseline).toBeTruthy()
+		for (const statement of splitStatements(baseline!.sql)) await old.exec(statement)
+		await old.run("INSERT INTO d1_migrations (name) VALUES (?)", ["0001_init.sql"])
+		old.close()
+
+		const upgraded = await resolveDb(undefined, { [DB_FILE_ENV]: file })
+		expect(upgraded.migrations).toEqual(["0002_onboarding_method.sql", "0003_device_authorization.sql"])
+
+		const columns = await upgraded.driver.all<{ name: string }>("PRAGMA table_info(user_onboarding)")
+		expect(columns.map((column) => column.name)).toContain("method")
+		upgraded.driver.close()
 	})
 
 	it("does not touch the database when auto-migrate is disabled", async () => {

@@ -16,6 +16,7 @@ describe("onboarding store", () => {
 		expect(onboarding.completedAt).toBeNull();
 		expect(onboarding.done).toEqual(["create_account"]);
 		expect(onboarding.skipped).toEqual([]);
+		expect(onboarding.method).toBeNull();
 	});
 
 	it("saves progress and updates done/skipped steps", async () => {
@@ -44,6 +45,25 @@ describe("onboarding store", () => {
 		const read = await store.get("user-3");
 		expect(read.isCompleted).toBe(true);
 		expect(read.completedAt).toBe(saved.completedAt);
+	});
+
+	it("round-trips the onboarding method and can clear it", async () => {
+		const saved = await store.save("user-method", { method: "agent" });
+		expect(saved.method).toBe("agent");
+		expect((await store.get("user-method")).method).toBe("agent");
+
+		const manual = await store.save("user-method", { method: "manual" });
+		expect(manual.method).toBe("manual");
+
+		const cleared = await store.save("user-method", { method: null });
+		expect(cleared.method).toBeNull();
+		expect((await store.get("user-method")).method).toBeNull();
+	});
+
+	it("keeps the method when a save omits it", async () => {
+		await store.save("user-method-keep", { method: "agent" });
+		const saved = await store.save("user-method-keep", { done: ["create_account", "add_income"] });
+		expect(saved.method).toBe("agent");
 	});
 
 	it("keeps apps isolated for the same user", async () => {

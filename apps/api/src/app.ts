@@ -9,7 +9,9 @@ import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
 import { documentation, jsonResponse } from "./openapi/docs"
 import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
+import { createAgentKeysRouter } from "./routes/agent-keys"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
+import { createMcpRouter } from "./modules/mcp/mcp.route"
 import { createCatalogRouter } from "./routes/catalog"
 import { createPlanRouter } from "./routes/plan"
 import { createOnboardingRouter } from "./routes/onboarding"
@@ -43,7 +45,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		"*",
 		cors({
 			origin: (origin) => origin || "*",
-			allowHeaders: ["Content-Type", "Authorization", "x-user-id"],
+			allowHeaders: ["Content-Type", "Authorization", "x-user-id", "x-api-key", "Mcp-Protocol-Version", "Mcp-Session-Id"],
 			exposeHeaders: ["set-auth-token"],
 			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			credentials: true,
@@ -100,6 +102,12 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		await next()
 	})
 
+	app.use("/mcp", async (c, next) => {
+		driverPromise ??= getDb(c.env).then((resolved) => resolved.driver)
+		c.set("db", await driverPromise)
+		await next()
+	})
+
 	// Resolve identity from a Bearer session (Better Auth tokens mount); 401s
 	// unauthenticated calls while auth is configured, x-user-id passthrough
 	// otherwise. Runs before the routers so plan/settings see the pinned id.
@@ -107,6 +115,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 
 	const routes = app
 		.route("/api/v1/accounting", createAccountingRouter())
+		.route("/api/v1/agent-keys", createAgentKeysRouter())
 		.route("/api/v1/auth", createAuthRouter())
 		.route("/api/v1/catalog", createCatalogRouter())
 		.route("/api/v1/plan", createPlanRouter())
@@ -117,6 +126,10 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	// The OpenAPI document, generated from the route annotations above. Mounted
 	// outside /api/v1 so it stays public like /health.
 	app.get("/openapi.json", openAPIRouteHandler(app, { documentation }))
+
+	// The MCP server has its own auth (API keys or sessions) and is mounted
+	// outside /api/v1 so the REST identity middleware does not 401 key calls.
+	app.route("/", createMcpRouter())
 
 	return routes
 }

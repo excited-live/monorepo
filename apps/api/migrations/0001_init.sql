@@ -76,6 +76,8 @@ create table "oauthConsent" ("id" text not null primary key, "clientId" text not
 
 create table "oauthClientAssertion" ("id" text not null primary key, "expiresAt" date not null);
 
+create table "deviceCode" ("id" text not null primary key, "deviceCode" text not null, "userCode" text not null, "userId" text, "expiresAt" date not null, "status" text not null, "lastPolledAt" date, "pollingInterval" integer, "clientId" text, "scope" text);
+
 create index "session_userId_idx" on "session" ("userId");
 
 create index "account_userId_idx" on "account" ("userId");
@@ -117,6 +119,10 @@ create index "oauthConsent_clientId_idx" on "oauthConsent" ("clientId");
 create index "oauthConsent_userId_idx" on "oauthConsent" ("userId");
 
 create unique index "oauthClientResource_clientId_resourceId_uidx" on "oauthClientResource" ("clientId", "resourceId");
+
+create unique index "deviceCode_deviceCode_uidx" on "deviceCode" ("deviceCode");
+
+create unique index "deviceCode_userCode_uidx" on "deviceCode" ("userCode");
 -- END BETTER AUTH SCHEMA
 
 -- Accounting store: normalized tables, one per resource (base table plus one

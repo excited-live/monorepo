@@ -63,6 +63,7 @@ The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/m
   - `debugging` — before proposing a fix for any bug, test failure, CI failure, or regression.
   - `delegating_work` — multi-part implementation or any time you are about to spawn a subagent.
   - `writing_agent_docs` — creating or editing a skill, changing this file, or encoding a lesson after a run.
+  - `verify` — proving a user-facing change on the real app (isolated local api + biz-mobile, sign-up and agent/MCP journeys, screenshot evidence) before a PR, or reproducing a bug a user saw.
 
 ## Setup & commands
 

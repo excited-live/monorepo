@@ -25,6 +25,8 @@ Before the first edit, write these at the top of the decision trail (section 3):
 3. **Playbook**, picked from section 2.
 4. **Skills to load**, from the AGENTS.md list. Load each before touching its area, not after.
 
+A fresh worktree has no `node_modules`: run `pnpm install --frozen-lockfile` before any check, or a missing binary looks like a failure.
+
 Ground the framing in what exists: `honcho_memory` for prior decisions, `git log` for recent work in the area, `docs/PRD.md` for scope. The product is MCP first: the user's own agent is the primary client, and the apps are where people check in. When a task trades API or MCP work against app UI, the agent surface wins.
 
 ## 2. Pick the playbook
@@ -77,8 +79,9 @@ No completion claim without fresh verification output from this session. Before 
 | Ready for PR | `pnpm build && pnpm typecheck && pnpm lint --max-warnings=0` all exit 0 |
 | Engine tests pass | `pnpm test` or `pnpm --filter <pkg> test` output, 0 failures |
 | Sim math unchanged or correct | `python3 scripts/recompute-mvp.py` agrees with the engine |
+| User-facing change works | the `verify` skill: a journey that covers it PASSes on the local stack, evidence path quoted in the PR |
 | UI change is safe | `pnpm test:visual` / `pnpm test:visual:mobile` run, snapshot diffs explained (local pixel noise is expected, see AGENTS.md rule 6) |
-| Bug fixed | the original repro loop now passes, and a regression test went red before the fix |
+| Bug fixed | the original repro loop now passes, and a regression test went red before the fix. A bug seen in the app gets its repro as a `verify` journey |
 | Subagent finished | `git diff` of its branch read by you, checks rerun by you |
 | Requirements met | the ask re-read line by line against the diff |
 
@@ -92,6 +95,8 @@ Before pushing a PR branch:
 2. An independent review of the full diff against the ask, by a fresh agent on a different model family than the one that wrote the code (for example Claude reviews DeepSeek or GPT work, and the reverse). Dispatch it with the diff, the ask, and the issue, read-only. Your own reread, and a review command running on your own model, do not count. For money and tax changes, this review plus test coverage is what lets the PR ship as `NO`. Auth changes stay `YES` regardless.
 3. Each finding is fixed or dismissed with a concrete reason in the trail. Review bots and reviewers file real bugs and also non-issues; judge each on its merits.
 4. Record the reviewer's model and verdict in the trail, so the PR's attention flag can be checked.
+
+One way to run it from any harness: `git diff origin/main... > /tmp/pr.diff`, then `opencode run --standalone -m <provider/model> -f /tmp/pr.diff "<read-only review brief>"`. Provider credits change; probe a model with `opencode run --standalone -m <model> "reply with OK"` first. A reviewer that times out or prints nothing has given no verdict, not a clean one: rerun it, on another model if needed.
 
 ## 7. Finish the PR
 

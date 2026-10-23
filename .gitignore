@@ -35,3 +35,6 @@ Thumbs.db
 
 # Agent decision trails (see .agents/skills/autonomous_run)
 .audit/
+
+# Local verification stack state and evidence (see .agents/skills/verify)
+.verify/

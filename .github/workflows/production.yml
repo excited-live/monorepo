@@ -13,10 +13,14 @@ env:
 
 jobs:
   production:
-    if: github.event.inputs.confirm == 'PROD'
+    # Two gates: the typed confirmation, and the dispatched ref. A run started
+    # from any branch other than main never starts a job.
+    if: github.event.inputs.confirm == 'PROD' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: pnpm/action-setup@v6
         with:
           version: 10.12.0

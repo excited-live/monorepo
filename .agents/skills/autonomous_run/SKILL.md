@@ -61,7 +61,7 @@ Stop and ask for exactly these:
 - Irreversible or destructive operations (data deletion, force-push, history rewrites on shared branches).
 - Security-sensitive actions (credentials, auth changes in production, anything touching secrets).
 - Outward side effects AGENTS.md reserves for humans: merging, pushing to `main`, production deploys, messages to customers or the public. Deploying `apps/api` to prelive is allowed, through `.github/workflows/api-prelive.yml` (see the `deployment_ci` skill): `gh workflow run api-prelive.yml --ref <branch>` or a push to `main`. Never improvise a `wrangler deploy` from a laptop.
-- Money or tax math you cannot cover with tests. Flag it `Human attention needed: YES` and keep building around it. Covered math plus a different-model review ships as `NO` (AGENTS.md PR rules).
+- Money or tax math you cannot cover with tests. Flag it `Human attention needed: YES` and keep building around it. Covered math plus a cross-family review (section 6) ships as `NO` (AGENTS.md PR rules).
 
 Mid-run discoveries are yours: a flaky test, a broken skill, a stale doc. Fix small ones in place and note them in the trail. Put unrelated fixes in their own PR so the main diff stays reviewable.
 
@@ -92,11 +92,24 @@ No completion claim without fresh verification output from this session. Before 
 Before pushing a PR branch:
 
 1. The done criteria in AGENTS.md rule 6 pass, with output read.
-2. An independent review of the full diff against the ask, by a fresh agent on a different model family than the one that wrote the code (for example Claude reviews DeepSeek or GPT work, and the reverse). Dispatch it with the diff, the ask, and the issue, read-only. Your own reread, and a review command running on your own model, do not count. For money and tax changes, this review plus test coverage is what lets the PR ship as `NO`. Auth changes stay `YES` regardless.
+2. An independent review of the full diff against the ask, by a fresh agent on a different model family than the one that wrote the code. The harness pins (AGENTS.md rule 8) put the family in the harness: OpenCode (DeepSeek) work is reviewed by an agy (Gemini) agent or a Claude Code or Codex agent, agy work by an OpenCode (DeepSeek) agent or a Claude Code or Codex agent. Claude Code, Codex, and Hermes reviewers count only when their model is a different family than the implementer's. A reviewer in the implementer's own harness is not independent under this rule, whatever model it names. Dispatch it with the diff, the ask, and the issue, read-only. Your own reread, and a review command running on your own model, do not count. For money and tax changes, this review plus test coverage is what lets the PR ship as `NO`. Auth changes stay `YES` regardless.
 3. Each finding is fixed or dismissed with a concrete reason in the trail. Review bots and reviewers file real bugs and also non-issues; judge each on its merits.
 4. Record the reviewer's model and verdict in the trail, so the PR's attention flag can be checked.
 
-One way to run it from any harness: `git diff origin/main... > /tmp/pr.diff`, then `opencode run --standalone -m <provider/model> -f /tmp/pr.diff "<read-only review brief>"`. Provider credits change; probe a model with `opencode run --standalone -m <model> "reply with OK"` first. A reviewer that times out or prints nothing has given no verdict, not a clean one: rerun it, on another model if needed.
+Run it on another harness. Write the diff first, then dispatch from the repo root so the reviewer can read the code as well as the patch:
+
+```bash
+git fetch origin
+d=$(mktemp -d)
+git diff origin/main... > "$d/pr.diff"
+# OpenCode implementer:
+agy --model gemini-3.8-flash-high --dangerously-skip-permissions --add-dir "$d" -p="Read $d/pr.diff and <read-only review brief>"
+# agy implementer:
+opencode run --standalone -m 'opencode-go/deepseek-v4.1-flash#max' -f "$d/pr.diff" "<read-only review brief>"
+# Claude Code or Codex implementer: either line above works
+```
+
+Headless agy needs `--dangerously-skip-permissions` to use tools; the brief keeps the review read-only, so confirm `git status` is still clean afterwards. Claude Code and Codex take the same read-only brief and diff. Probe a pin with `opencode run --standalone -m 'opencode-go/deepseek-v4.1-flash#max' "reply with OK"` or `agy --model gemini-3.8-flash-high -p="reply with OK"` before a long dispatch. A reviewer that times out or prints nothing has given no verdict, not a clean one: rerun it, and if the pin itself is retired, replace it under `delegating_work` section 3.
 
 ## 7. Finish the PR
 

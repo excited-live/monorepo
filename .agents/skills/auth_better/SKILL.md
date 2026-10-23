@@ -101,9 +101,13 @@ binding lookup runs at request time (module-load time is too early on Pages).
   user in (cookie), then the page resumes. A signed-in visitor sees a
   "continue or sign out" card instead of the form; duplicate/invalid-email/
   weak-password errors map to dedicated strings. The client
-  (`createAuthClient` from `@excited-live/auth`) posts to the handler on the
-  same origin; the `tanstackStartCookies()` plugin (last in the plugin array,
-  packages/auth) delegates Set-Cookie to the Start runtime.
+  (`createAuthClient` from `@excited-live/auth/client`) posts to the handler on
+  the same origin; the `tanstackStartCookies()` plugin — imported from
+  `@excited-live/auth/tanstack-start` and passed to `createAuth` as
+  `cookiesPlugin`, last in the plugin array — delegates Set-Cookie to the Start
+  runtime. It is injected rather than imported inside `packages/auth` so the
+  tokens mount (apps/api, Workers bundle) never pulls the TanStack/React
+  runtime.
 
 ## 5. The route guard (in start.ts, issue #46)
 

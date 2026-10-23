@@ -84,6 +84,6 @@ pnpm test:visual:mobile:update # re-record mobile screenshot baselines
 
 - **Minimal diffs**: Smallest change satisfying the task. No drive-by formatting or unsolicited refactors.
 - **Git isolation**: Work in a branch or dedicated worktree. Check `git log origin/main..HEAD` before pushing.
-- **Deploys**: Automatic for PR previews and prelive (`main`). Agents may deploy `apps/api` to prelive once its deploy path exists (#146; see the `deployment_ci` skill). Production deploys are manual and human-only.
+- **Deploys**: Automatic for PR previews and prelive (`main`) — webapp, landing, and the `apps/api` Worker (`excited-live-api-prelive`, via `api-prelive.yml`). Agents may deploy `apps/api` to prelive (#146); production deploys are manual and human-only.
 - **Task inbox**: GitHub issues on `fromsukong/excited.live` are the one tracker. Pick work up from there, link the issue in the PR (`Closes #N`), and file follow-ups there, not in other trackers.
 - **References**: `docs/PRD.md` (scope source of truth), `DEVELOPMENT.md` (dev details), `.agents/skills/README.md`, `.agents/skills/mobile_architecture/references/page_component_structure.md`.

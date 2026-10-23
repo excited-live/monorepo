@@ -60,7 +60,7 @@ Stop and ask for exactly these:
 
 - Irreversible or destructive operations (data deletion, force-push, history rewrites on shared branches).
 - Security-sensitive actions (credentials, auth changes in production, anything touching secrets).
-- Outward side effects AGENTS.md reserves for humans: merging, pushing to `main`, production deploys, messages to customers or the public. Deploying `apps/api` to prelive is allowed, through the deploy path documented in the `deployment_ci` skill. Until #146 lands there is no such path: do not improvise a `wrangler deploy`.
+- Outward side effects AGENTS.md reserves for humans: merging, pushing to `main`, production deploys, messages to customers or the public. Deploying `apps/api` to prelive is allowed, through `.github/workflows/api-prelive.yml` (see the `deployment_ci` skill): `gh workflow run api-prelive.yml --ref <branch>` or a push to `main`. Never improvise a `wrangler deploy` from a laptop.
 - Money or tax math you cannot cover with tests. Flag it `Human attention needed: YES` and keep building around it. Covered math plus a different-model review ships as `NO` (AGENTS.md PR rules).
 
 Mid-run discoveries are yours: a flaky test, a broken skill, a stale doc. Fix small ones in place and note them in the trail. Put unrelated fixes in their own PR so the main diff stays reviewable.

@@ -9,9 +9,9 @@ description: >-
 
 # Deployment & CI Skill
 
-Three deploy tiers. PR previews are automatic, pushes to `main` go to prelive, and production is a manual human action. Agents never deploy to production. The one deploy an agent may run is `apps/api` to prelive (decided by Prame 2026-10-23). Its deploy path is not wired yet (#146): until that lands, there is nothing to run, so do not improvise a `wrangler deploy`. Every other deploy goes through the workflows.
+Three deploy tiers. PR previews are automatic, pushes to `main` go to prelive (webapp, landing, and the `apps/api` Worker since #146), and production is a manual human action. Agents never deploy to production and never push to `main` themselves. The one deploy an agent may run by hand is `apps/api` to prelive (decided by Prame 2026-10-23) — it is wired now, so run `api-prelive.yml`, don't improvise a `wrangler deploy` from a laptop. Every other deploy goes through the workflows.
 
-Workflows live in `.github/workflows/`. All build and deploy workflows use Node 22 and pnpm 10.12.0; the 9 deploy workflows pin wrangler via `WRANGLER_VERSION`.
+Workflows live in `.github/workflows/`. All build and deploy workflows use Node 22 and pnpm 10.12.0; every deploy workflow pins wrangler via `WRANGLER_VERSION`.
 
 ---
 
@@ -26,8 +26,13 @@ The sanitized branch name: lowercased, every non `[a-z0-9-]` character becomes `
 **Tier 2: prelive (on push to `main`).**
 - `prelive.yml` → `excited-live-prelive` (main webapp, `VITE_API_MODE=live`).
 - `landing-prelive.yml` → `excited-live-landing-prelive` (path-filtered like landing-preview).
+- `api-prelive.yml` → Worker `excited-live-api-prelive` (REST `/api/v1/*` + `/mcp`), `wrangler deploy --env prelive`; path-filtered to `apps/api/**`, `packages/**`, the lockfile, `turbo.json` and the workflow itself.
 
-All three deploy with `--branch=main`.
+The two Pages deploys pass `--branch=main`; the Worker deploy is environment-scoped through `[env.prelive]` in `apps/api/wrangler.toml`.
+
+**Migrations on the API.** One owner only: the Worker's boot-time runner (`apps/api/src/db/apply.ts`, ledger `d1_migrations`). `api-prelive.yml` deliberately never runs `wrangler d1 migrations apply` — two writers on one ledger is how a schema ends up half-applied, and the deploy token does not need D1 permission this way. The workflow pushes `BETTER_AUTH_SECRET` from the repo secret `PRELIVE_BETTER_AUTH_SECRET` *before* the deploy, because `wrangler secret put` creates the Worker when it is missing; that way no version ever serves traffic unconfigured.
+
+**Never put DDL on the request path.** The runner reads the ledger first and only creates `d1_migrations` when it is missing. The first version issued `CREATE TABLE IF NOT EXISTS` on every cold start; on D1 that schema write deadlocked prelive traffic (authenticated requests hung for the full 30 s wall clock at ~3 ms CPU, about half of them, until the isolate died). Steady state must stay a single SELECT per isolate. Symptom to remember: a request that hangs with `outcome: canceled` and near-zero `cpuTime` in `wrangler tail` is waiting on D1, not computing.
 
 **Tier 3: production (manual only).**
 - `production.yml` → `excited-live` (app.excited.live). Triggered by `workflow_dispatch` with a `confirm` input that must be typed as `PROD`; the job checks `github.event.inputs.confirm == 'PROD'`.
@@ -35,9 +40,9 @@ All three deploy with `--branch=main`.
 
 Agents never trigger production workflows, for any reason, including "just testing". Merges are Prame's call too.
 
-## 2. The workflow set (15 files)
+## 2. The workflow set (12 files)
 
-- Deploy tiers: `preview.yml` / `prelive.yml` / `production.yml` (main webapp), `landing-preview.yml` / `landing-prelive.yml` / `landing-production.yml`.
+- Deploy tiers: `preview.yml` / `prelive.yml` / `production.yml` (main webapp), `landing-preview.yml` / `landing-prelive.yml` / `landing-production.yml`, `api-prelive.yml` (apps/api Worker).
 - `pr-tests.yml` ("PR Checks"): PR lint + affected-package tests (section 3).
 - Preview metadata: `pr-description.yml`, `landing-pr-description.yml`. They run on `workflow_run` completion of the matching preview workflow and write the preview URLs into the PR body between the `AUTO-PREVIEWS` (main webapp), and `AUTO-LANDING-PREVIEWS` (landing) markers.
 - Cleanup: `pr-cleanup.yml` removes preview deployments for the branch on `pull_request` closed, for both `excited-live` and `excited-live-landing-preview`.

@@ -1,0 +1,91 @@
+name: API Deploy Prelive
+
+# Deploys apps/api (REST + MCP) to the prelive Worker `excited-live-api-prelive`.
+#
+# Authorization: Prame approved agent deploys of apps/api to PRELIVE (2026-10-23,
+# issue #146). Production stays manual and human-only — the top-level
+# environment in apps/api/wrangler.toml is deliberately unprovisioned, and this
+# workflow only ever passes `--env prelive`.
+#
+# Migrations are NOT applied here on purpose: the Worker owns them (boot-time
+# runner in apps/api/src/db/apply.ts, ledger `d1_migrations`). Two writers on
+# one ledger is how a schema ends up half-applied.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "turbo.json"
+      - ".github/workflows/api-prelive.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: api-prelive
+  cancel-in-progress: true
+
+env:
+  WRANGLER_VERSION: "4.127.1"
+
+jobs:
+  prelive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build api
+        run: pnpm exec turbo run build --filter=@excited-live/api
+
+      # Secret first, deploy second: `wrangler secret put` creates the Worker
+      # when it does not exist yet, so the first version that ever serves
+      # traffic already has BETTER_AUTH_SECRET and never boots in the
+      # "unconfigured" dev-passthrough mode (#140).
+      - name: Push BETTER_AUTH_SECRET to the Worker
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BETTER_AUTH_SECRET: ${{ secrets.PRELIVE_BETTER_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BETTER_AUTH_SECRET:-}" ]; then
+            echo "PRELIVE_BETTER_AUTH_SECRET is not set; refusing to deploy an unauthenticated API." >&2
+            exit 1
+          fi
+          printf '%s' "$BETTER_AUTH_SECRET" |
+            npx --yes wrangler@${{ env.WRANGLER_VERSION }} secret put BETTER_AUTH_SECRET --env prelive
+
+      - name: Deploy prelive
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@${{ env.WRANGLER_VERSION }} deploy --env prelive
+
+      # Same two assertions issue #146 calls "done": auth is enforced, no dev
+      # passthrough. A deploy that boots unconfigured fails here instead of
+      # shipping an open /mcp.
+      - name: Smoke — auth is enforced on the deployed Worker
+        run: |
+          set -euo pipefail
+          api=https://excited-live-api-prelive.preamza02.workers.dev
+          for attempt in $(seq 1 10); do
+            mcp=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$api/mcp" || true)
+            settings=$(curl -sS -o /dev/null -w '%{http_code}' "$api/api/v1/settings" || true)
+            echo "attempt $attempt: POST /mcp -> $mcp, GET /api/v1/settings -> $settings"
+            if [ "$mcp" = "401" ] && [ "$settings" = "401" ]; then
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "API is not enforcing auth after deploy (want 401/401)" >&2
+          exit 1

@@ -38,3 +38,6 @@ Thumbs.db
 
 # Local verification stack state and evidence (see .agents/skills/verify)
 .verify/
+
+# wrangler local build/runtime artifacts
+.wrangler/

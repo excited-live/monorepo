@@ -36,7 +36,11 @@ describe("database resolution", () => {
 		])
 
 		// The migrator goes through prepare/bind/run, not a local file handle.
-		expect(stub.calls.some((call) => call.startsWith("prepare INSERT INTO d1_migrations"))).toBe(true)
+		// `INSERT OR IGNORE`: two processes can boot against one fresh database,
+		// so the ledger write must tolerate the row already existing.
+		expect(
+			stub.calls.some((call) => call.startsWith("prepare INSERT OR IGNORE INTO d1_migrations")),
+		).toBe(true)
 
 		const planStore = createPlanStore(db.driver)
 		const settingsStore = createSettingsStore(db.driver)

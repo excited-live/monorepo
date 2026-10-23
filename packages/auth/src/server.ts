@@ -5,7 +5,6 @@ import {
 	type BetterAuthPlugin,
 } from "better-auth"
 import { bearer, deviceAuthorization, jwt } from "better-auth/plugins"
-import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-dialect"
 import { apiKey } from "@better-auth/api-key"
@@ -53,6 +52,20 @@ export interface AuthInput {
 	 * needs. `baseURL` is then mandatory (the issuer is derived from it).
 	 */
 	oauth?: AuthOAuthInput
+	/**
+	 * Framework cookie integration for the `cookies` mount, injected by the
+	 * caller: `apps/webapp` passes `tanstackStartCookies()` from
+	 * `@excited-live/auth/tanstack-start`.
+	 *
+	 * It is injected rather than imported here because
+	 * `better-auth/tanstack-start` pulls `@tanstack/react-start-server`, which
+	 * needs TanStack Start's virtual modules (`#tanstack-start-entry`). Those
+	 * only exist inside a Vite build, so a top-level import here made the
+	 * `tokens` mount unbundleable for the Workers runtime (apps/api), where no
+	 * framework runtime exists anyway. Always pushed LAST — see the ordering
+	 * note in `createAuth`.
+	 */
+	cookiesPlugin?: BetterAuthPlugin
 }
 
 /** OAuth scopes every Better Auth AS advertises (OIDC defaults). */
@@ -147,6 +160,16 @@ export function createAuth(input: AuthInput): Auth {
 	}
 	const tokenMount = input.mount === "tokens" || input.mount === "both"
 	const cookiesMount = input.mount === "cookies" || input.mount === "both"
+	// A plain `cookies` mount is the browser-facing webapp instance: without
+	// the injected TanStack Start plugin no Set-Cookie is ever written, so fail
+	// loudly at construction instead of shipping a sign-in that silently does
+	// not persist. `both` is exempt on purpose — it is the test mount, which
+	// runs outside TanStack Start.
+	if (input.mount === "cookies" && !input.cookiesPlugin) {
+		throw new Error(
+			"[auth] the cookies mount needs cookiesPlugin: pass tanstackStartCookies() from @excited-live/auth/tanstack-start",
+		)
+	}
 	const as = input.oauth
 	const loginPage = input.oauthLoginPage ?? "/sign-in"
 	const consentPage = input.oauthConsentPage ?? "/consent"
@@ -199,8 +222,9 @@ export function createAuth(input: AuthInput): Auth {
 		// offline_access is what gives mobile apps refresh tokens.
 		plugins.push(oauthProvider({ loginPage, consentPage }))
 	}
-	// Cookie integration LAST (see the ordering note below).
-	if (cookiesMount) plugins.push(tanstackStartCookies())
+	// Cookie integration LAST (see the ordering note below). Injected by the
+	// caller: only the webapp has the TanStack Start runtime it plugs into.
+	if (cookiesMount && input.cookiesPlugin) plugins.push(input.cookiesPlugin)
 	// Token plugins first; the cookie integration must stay LAST in the array
 	// (better-auth warns otherwise: its after-hooks own the framework cookie
 	// store, and plugins running after it can drop Set-Cookie headers).

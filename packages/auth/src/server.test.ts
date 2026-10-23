@@ -243,6 +243,19 @@ describe("auth foundation", () => {
 			).rejects.toThrow()
 		})
 
+		it("requires cookiesPlugin for the cookies mount", () => {
+			const db = freshFileDb()
+			applySchema(db)
+			expect(() =>
+				createAuth({
+					database: { kind: "node-sqlite", database: db },
+					secret: SECRET,
+					baseURL: BASE_URL,
+					mount: "cookies",
+				}),
+			).toThrow("cookiesPlugin")
+		})
+
 		it("requires baseURL for the tokens mount", () => {
 			const db = freshFileDb()
 			applySchema(db)

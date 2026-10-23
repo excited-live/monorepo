@@ -32,9 +32,10 @@ The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/m
 
 ## PR & merge pipeline
 
-- **Review is local, not in the PR.** Run the local review gate before pushing; the PR itself carries no review content.
+- **Review is local, not in the PR.** Run the local review gate (`autonomous_run` skill, section 6) before pushing; the PR itself carries no review content.
 - **PR body format.** First line: `**Human attention needed:** YES — <one-line why>` or `**Human attention needed:** NO`. Then a short `## Summary` (what changed + why, a few bullets). Preview links are auto-appended; add nothing else.
-  - YES when: money/tax math, auth, data, infra, user-visible behavior, or anything not fully verified. NO when: docs/CI-only, mechanical, verified safe.
+  - YES when: auth, data, infra, user-visible behavior, or anything not fully verified. NO when: docs/CI-only, mechanical, verified safe.
+  - Money/tax math is NO only when tests cover the changed math (golden tests, plus `scripts/recompute-*.py` where they apply) **and** an independent review agent on a different model family than the implementer approved it. Otherwise YES.
 - **Auto-merge.** Arm it right after opening the PR: `gh pr merge <number> --auto --squash`. Arm from a user account (the assistant's credentials), never a bot/`GITHUB_TOKEN` — bot-armed merges do not trigger the deploy workflows. `main` is protected: GitHub merges automatically once Prame approves and the required checks pass — squash only.
 - **Never merge or push to `main` yourself.** After Prame approves, do not push anything: a new push dismisses his approval and blocks the merge.
 
@@ -57,6 +58,11 @@ The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/m
   - `i18n_platform` — only when touching locale resolution, dictionaries, or en/th strings (webapp and biz-mobile).
   - `landing_seo` — only when touching `apps/landingpage`, its meta/SEO layer, or its content pipeline.
   - `auth_better` — only when touching authentication, the middleware chain, or auth routes.
+- **Workflow skills** (how to work, not what the code is). Load on demand like the domain skills:
+  - `autonomous_run` — any task you drive unattended (Orca workspace, Paperclip issue, "run until done"), when picking up another agent's work, and before claiming anything is done. Defines the done predicate, when to stop and ask, the decision trail, and the local review gate.
+  - `debugging` — before proposing a fix for any bug, test failure, CI failure, or regression.
+  - `delegating_work` — multi-part implementation or any time you are about to spawn a subagent.
+  - `writing_agent_docs` — creating or editing a skill, changing this file, or encoding a lesson after a run.
 
 ## Setup & commands
 
@@ -77,5 +83,6 @@ pnpm test:visual:mobile:update # re-record mobile screenshot baselines
 
 - **Minimal diffs**: Smallest change satisfying the task. No drive-by formatting or unsolicited refactors.
 - **Git isolation**: Work in a branch or dedicated worktree. Check `git log origin/main..HEAD` before pushing.
-- **Deploys**: Automatic for PR previews and prelive (`main`). Production deploys are manual and human-only.
+- **Deploys**: Automatic for PR previews and prelive (`main`). Agents may deploy `apps/api` to prelive once its deploy path exists (#146; see the `deployment_ci` skill). Production deploys are manual and human-only.
+- **Task inbox**: GitHub issues on `fromsukong/excited.live` are the one tracker. Pick work up from there, link the issue in the PR (`Closes #N`), and file follow-ups there, not in other trackers.
 - **References**: `docs/PRD.md` (scope source of truth), `DEVELOPMENT.md` (dev details), `.agents/skills/README.md`, `.agents/skills/mobile_architecture/references/page_component_structure.md`.

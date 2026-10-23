@@ -9,7 +9,7 @@ description: >-
 
 # Deployment & CI Skill
 
-Three deploy tiers, one rule: agents never deploy. PR previews are automatic, pushes to `main` go to prelive, and production is a manual human action. No deploys of any kind without explicit human approval (AGENTS.md deploy model).
+Three deploy tiers. PR previews are automatic, pushes to `main` go to prelive, and production is a manual human action. Agents never deploy to production. The one deploy an agent may run is `apps/api` to prelive (decided by Prame 2026-10-23). Its deploy path is not wired yet (#146): until that lands, there is nothing to run, so do not improvise a `wrangler deploy`. Every other deploy goes through the workflows.
 
 Workflows live in `.github/workflows/`. All build and deploy workflows use Node 22 and pnpm 10.12.0; the 9 deploy workflows pin wrangler via `WRANGLER_VERSION`.
 
@@ -86,7 +86,7 @@ grep -rln "SANITIZED_BRANCH\|sanitize" .github/workflows/
 1. Before opening a PR: run the narrowest relevant checks (`pnpm lint --max-warnings=0`, the affected package's tests). Do not run the whole workspace "just in case".
 2. Push only your own commits: `git log origin/main..HEAD` first (shared clone rules in AGENTS.md).
 3. After opening the PR: check `PR Checks`. Lint must be green; the test job may be skipped for docs-only changes. For deploy workflows, the build steps must pass and the deploy step should end with "Deployment complete!" plus an alias URL. A deploy auth failure against the Cloudflare API means the repo credential (section 7), not your change.
-4. Never trigger production, never merge. Hand the PR to Prame; merges and deploys wait for him.
+4. Never trigger production, never merge. Hand the PR to Prame; merges and production deploys wait for him. The only agent-run deploy is `apps/api` to prelive (section 1).
 5. Report state honestly: which checks ran, which passed, which failed, and why.
 
 ## 9. Source of truth and known drift

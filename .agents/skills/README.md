@@ -42,9 +42,10 @@ The **FromSukong MCP** (`fromsukong`) is the unified MCP gateway for `excited.li
   - `mobbin_*`: Mobile and web UI patterns, screens, and flows.
   - `portal_*`: Unified server management and toggles.
 
-Project configurations:
+Project configurations (one entry per harness, project-scoped is canonical):
 - Claude Code: `.mcp.json`
 - OpenCode: `opencode.json`
+- Codex: `.codex/config.toml`
 - Antigravity CLI / Gemini: `.gemini/mcp_config.json` and `.antigravity/mcp_config.json`
 
 ## Conventions

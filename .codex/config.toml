@@ -1,0 +1,8 @@
+# Project-scoped MCP configuration for Codex (trusted projects only).
+# Canonical source for the FromSukong unified MCP gateway in this repo.
+# Same endpoint as the other harnesses (.mcp.json, opencode.json,
+# .gemini/mcp_config.json, .antigravity/mcp_config.json).
+[mcp_servers.fromsukong]
+command = "npx"
+args = ["-y", "mcp-remote", "https://mcp.fromsukong.com/mcp"]
+startup_timeout_sec = 60

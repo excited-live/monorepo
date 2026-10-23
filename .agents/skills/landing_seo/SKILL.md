@@ -54,7 +54,7 @@ public/                       # robots.txt, _headers, katex.min.css, fonts, og.p
                               # logo-mark.png, logo-wordmark.png, blog/, demo/ (web planner),
                               # app/{mobile,desktop}/*.webp (generated, see below)
 BLOG.md                       # the blog/slides authoring contract (read before writing a post)
-n8n/                          # waitlist endpoint contract (section 4); real automation JSON
+waitlist/                     # waitlist endpoint contract (section 4)
 ```
 
 ## 2. Meta and SEO layer (layout.astro)
@@ -121,32 +121,35 @@ which are no-ops wherever GA never loaded. Nothing breaks where GA is absent.
 
 ## 4. The waitlist flow (WaitlistForm.tsx)
 
-The form posts to the n8n webhook:
+The form posts to the Cloudflare Worker `excited-waitlist`
+(`https://leads.fromsukong.com/waitlist`):
 
 ```ts
-const WEBHOOK_URL = import.meta.env.PUBLIC_N8N_WAITLIST_WEBHOOK ?? "https://n8n.fromsukong.com/webhook/waitlist"
+const WEBHOOK_URL =
+  import.meta.env.PUBLIC_WAITLIST_WEBHOOK_URL || "https://leads.fromsukong.com/waitlist"
 ```
 
-(Env var name only; the value is real infrastructure and never committed.)
+(Env override only; the default is the real endpoint and never changes per PR.)
 
 Behavior, verified in the component:
 
 - Honeypot field `company_website` (hidden via aria-hidden and tabIndex -1). A bot
   that fills it silently gets status "success" with NO backend touch.
 - Client email validation; invalid input shows `invalidEmail` message.
-- POSTs JSON `{ email, lang, source ("hero"|"footer"), page: location.pathname,
-  sentAt }` with Content-Type application/json.
+- POSTs JSON `{ email, lang, source ("hero"|"footer"), page: location.pathname }`
+  with Content-Type application/json.
+- `400 invalid_email` from the Worker renders the inline validation message and is
+  NOT parked in localStorage (it is a validation answer, not an outage).
 - On success shows the success card (plus `gtag?.("event", "generate_lead", ...)`
   where GA is loaded).
-- On fetch failure the email is saved to localStorage under `exl-waitlist-local`
-  (deduplicated) and the error card explains the on-device fallback. Nobody is lost
-  when n8n is down.
+- On 502 / fetch failure the email is saved to localStorage under
+  `exl-waitlist-local` (deduplicated, write-only) and the error card explains the
+  on-device fallback. Nothing re-sends that list automatically.
 
-The endpoint contract, CORS allowlist, and what activating the workflow means live in
-`apps/landingpage/n8n/README.md` (sheet columns, 200/400 shapes, allowlist includes
-prod, prelive, preview origins, and localhost dev). The workflow JSON
-(`n8n/waitlist-workflow.json`) is REAL infra: never edit it from a UI PR; changes go
-through the automation owner.
+The endpoint contract (Twenty Person fields, 200/400/405/502 shapes, CORS
+allowlist, env) lives in `apps/landingpage/waitlist/README.md`. The Worker source
+is NOT in this repo: it lives in `leadgen/worker/waitlist` on hs1, so endpoint
+changes are a Worker deploy, never a landing PR.
 
 ## 5. Sitemap, robots, headers
 
@@ -234,8 +237,9 @@ reused. Preview URLs are ephemeral per branch; do not cite them as permanent.
 
 ## 9. Pitfalls
 
-- The n8n workflow JSON is real infra: do not edit, rename, or reformat it from a
-  landing PR.
+- The waitlist backend is a Cloudflare Worker (`leads.fromsukong.com`); its source
+  lives in `leadgen/worker/waitlist` on hs1, not here. Never route signups back to
+  n8n (retired 2026-10-19) and never re-add a workflow JSON to this repo.
 - GA loads only on the production hostname. A "my event never fires in preview" bug
   report is usually the shim working as designed: verify on production, or trust the
   code path + typecheck.

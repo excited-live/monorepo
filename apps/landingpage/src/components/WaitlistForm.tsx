@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 
 const WEBHOOK_URL =
 	(import.meta.env.PUBLIC_WAITLIST_WEBHOOK_URL as string | undefined) ||
-	(import.meta.env.PUBLIC_N8N_WAITLIST_WEBHOOK as string | undefined) ||
 	'https://leads.fromsukong.com/waitlist';
 
 const HP_FIELD = 'company_website';
@@ -86,7 +85,6 @@ export default function WaitlistForm({ dark = false }: { dark?: boolean }) {
 					lang,
 					source,
 					page: window.location.pathname,
-					sentAt: new Date().toISOString(),
 				}),
 			});
 			if (!res.ok) {

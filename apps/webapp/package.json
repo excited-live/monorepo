@@ -9,6 +9,7 @@
 		"start": "node .output/server/index.mjs",
 		"lint": "eslint .",
 		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
 		"test:visual": "playwright test",
 		"test:visual:update": "playwright test --update-snapshots"
 	},
@@ -33,6 +34,7 @@
 		"@types/react-dom": "catalog:",
 		"@vitejs/plugin-react": "catalog:",
 		"typescript": "catalog:",
-		"vite": "catalog:"
+		"vite": "catalog:",
+		"vitest": "catalog:"
 	}
 }

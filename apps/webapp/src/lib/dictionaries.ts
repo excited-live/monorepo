@@ -27,6 +27,50 @@ export const strings: Dictionary = {
 	},
 	"auth.email": { en: "Email", th: "อีเมล" },
 	"auth.password": { en: "Password", th: "รหัสผ่าน" },
+	"auth.name": { en: "Name", th: "ชื่อ" },
+	"auth.passwordHint": { en: "At least 8 characters.", th: "อย่างน้อย 8 ตัวอักษร" },
+	"auth.createAccount": { en: "Create account", th: "สร้างบัญชี" },
+	"auth.switchToSignUp": {
+		en: "New to excited.live? Create an account",
+		th: "ยังไม่มีบัญชี? สร้างบัญชีใหม่",
+	},
+	"auth.switchToSignIn": {
+		en: "Already have an account? Sign in",
+		th: "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ",
+	},
+	"auth.signUpTitle": {
+		en: "Create your excited.live account",
+		th: "สร้างบัญชี excited.live ของคุณ",
+	},
+	"auth.signUpSubtitle": {
+		en: "Start your plan and connect your agent.",
+		th: "เริ่มวางแผนของคุณและเชื่อมต่อเอเจนต์",
+	},
+	"auth.signUpError.nameRequired": {
+		en: "Enter your name.",
+		th: "กรุณากรอกชื่อของคุณ",
+	},
+	"auth.signUpError.duplicate": {
+		en: "An account with this email already exists. Sign in instead.",
+		th: "อีเมลนี้มีบัญชีอยู่แล้ว เข้าสู่ระบบแทน",
+	},
+	"auth.signUpError.invalidEmail": {
+		en: "Enter a valid email address.",
+		th: "กรุณากรอกอีเมลที่ถูกต้อง",
+	},
+	"auth.signUpError.weakPassword": {
+		en: "Password must be at least 8 characters.",
+		th: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
+	},
+	"auth.alreadySignedInTitle": {
+		en: "You're already signed in",
+		th: "คุณเข้าสู่ระบบอยู่แล้ว",
+	},
+	"auth.alreadySignedIn": {
+		en: "Signed in as {email}.",
+		th: "เข้าสู่ระบบในชื่อ {email}",
+	},
+	"auth.continue": { en: "Continue", th: "ดำเนินการต่อ" },
 	"auth.continueWithGoogle": { en: "Continue with Google", th: "ดำเนินการต่อด้วย Google" },
 	"auth.error.invalidCredentials": {
 		en: "Sign-in failed. Check your email and password.",

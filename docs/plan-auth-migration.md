@@ -1,6 +1,6 @@
 # Auth Migration Plan — WorkOS → Better Auth
 
-> Status: Phase 1 merged (#99). Phases 2–4 delivered in feat/better-auth-webapp-and-biz.
+> Status: **Completed.** Phase 1 merged in #99, phases 2 to 4 in #101. Kept as the design record for `packages/auth`; the `auth_better` skill describes the current state. The tax apps it mentions were removed in #116.
 > Scope: every app that touches auth today, verified in code on 2026-10-13.
 
 ## 1. Why
@@ -110,7 +110,7 @@ apps/api (Workers)       mount #2 — tokens for native + public API
 - Replace `loginWithWorkOS` with: fetch authorize URL from api (or hardcode our own `/oauth2/authorize` URL) → `AndroidNative.openBrowser` / window fallback (unchanged mechanics) → deep-link back with `code` → exchange for Bearer token → store token (not PII) in storage.
 - Update `SettingsView` / `SignInView` strings: "Sign In with WorkOS AuthKit" → neutral/bilingual strings via the design system.
 - Use the `excitedlive://` scheme; register the redirect URI on the OIDC client config.
-- `apps/tax-mobile`: no auth today; nothing to change. It inherits `packages/auth` when F-30+ adds it.
+- `apps/tax-mobile`: no auth today; nothing to change (app removed in #116).
 
 ### Phase 5 — Cutover & cleanup
 

@@ -119,11 +119,11 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 4. **[prd-mvp.md](prd-mvp.md) (Math & Sheet Baseline)** — The Google Sheet spec that proved the 50-year simulation and TH 2026 tax optimizer formulas (`packages/sim` + `packages/tax`).
 5. **[prd-mlp.md](prd-mlp.md) (Detailed Web App — Paid Conversion Core)** — `apps/webapp`: 5-minute onboarding wizard, 50-year life-story chart, Monte Carlo P10–P90 bands, scenario toggles, what-if sliders, and external agent MCP/API integration.
 6. **[prd-post-mlp.md](prd-post-mlp.md) (Phased Expansion & Backlog)** — Trigger-based roadmap: Time OS (Pillar 2), Health OS / Cal AI (Pillar 3), Built-in Proactive Agent Workflows, Real Exit-Tax Modeling, US Tax, and Deferred B2B Advisor / White-Label tier.
-7. **[pricing.md](pricing.md) (Monetization & Funnel Spec, predates the 2026-10-23 MCP-first decision)** — Consumer-first funnel (Free Mobile/Tax top-of-funnel + Affiliate → $109/yr Detailed Webapp → Pro Mobile Ecosystem for Money + Time + Health; Advisor B2B deferred).
+7. **[pricing.md](pricing.md) (Monetization & Funnel Spec)** — Consumer-first funnel (Free biz-mobile top-of-funnel + Affiliate → $109/yr Detailed Webapp → Pro Mobile Ecosystem for Money + Time + Health; Advisor B2B deferred).
 8. **[prd-flows.md](prd-flows.md) & [wireframe-biz-mobile.md](wireframe-biz-mobile.md)** — Screen-by-screen user flows, Mobbin references, and mobile UI ergonomics.
 9. **[plan-auth-migration.md](plan-auth-migration.md)** — Unified identity and token architecture (`packages/auth` via Better Auth + Cloudflare D1: web cookies, mobile bearer tokens, and scoped `apiKey` / OAuth for external agents).
 
-> **Docs that predate the 2026-10-23 MCP-first decision** still describe the removed `apps/tax-webapp` / `apps/tax-mobile` and `packages/biz` in places: `pricing.md`, `prd-mlp.md`, `prd-flows.md`, `plan-auth-migration.md`. Where they conflict with this file, this file wins. Pricing for agent (MCP) access is an open question.
+> **Open question:** pricing for agent (MCP) access. [pricing.md](pricing.md) puts the agent API inside the $109/year webapp plan, which predates the MCP-first decision.
 
 ---
 

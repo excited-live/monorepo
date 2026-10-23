@@ -1,7 +1,7 @@
 # PRD — Pricing & Monetization Funnel (Consumer-First OS Model)
 
 > **Parent**: [PRD.md](PRD.md) · **Detailed Web App**: [prd-mlp.md](prd-mlp.md) · **Mobile Entry**: [prd-biz-mobile.md](prd-biz-mobile.md) · **Expansion**: [prd-post-mlp.md](prd-post-mlp.md)  
-> **Revision 4 (2026-10-17)**: All-in on the **Consumer (B2C) Funnel**. Mobile apps (`biz-mobile`, `tax-mobile`) and `tax-webapp` serve as the free top-of-funnel habit; the detailed 50-year web planner (`apps/webapp`) is the Stage 1 paid conversion engine ($109/year); Mobile/OS Pro plans unlock as Time and Health pillars ship. B2B Advisor seats are deferred to Priority 2 backlog.
+> **Revision 4 (2026-10-17)**: All-in on the **Consumer (B2C) Funnel**. The mobile app (`biz-mobile`) serves as the free top-of-funnel habit (the standalone tax apps were removed in #116); the detailed 50-year web planner (`apps/webapp`) is the Stage 1 paid conversion engine ($109/year); Mobile/OS Pro plans unlock as Time and Health pillars ship. B2B Advisor seats are deferred to Priority 2 backlog.
 
 ---
 
@@ -10,7 +10,6 @@
 ```mermaid
 graph TD
     subgraph Stage0["Top of Funnel (Free Consumer Habit + Provider Affiliates)"]
-        TaxFree["apps/tax-webapp & tax-mobile<br/>Free TH 2026 Tax Calculator"]
         BizFree["apps/biz-mobile (Base)<br/>Free Cash, Burn, Gear & Slip Capture"]
     end
 
@@ -28,7 +27,6 @@ graph TD
         OSPro["Excited.Live Full OS Pro<br/>Adds Cal AI Health & Macro Tracking<br/>Synced Across All Platforms & Agents"]
     end
 
-    TaxFree --> WebTrial
     BizFree --> WebTrial
     WebSub --> MobilePro
     MobilePro --> OSPro
@@ -38,14 +36,13 @@ graph TD
 
 ## 2. Consumer Tiers & Funnel Rules
 
-### 2.1 Free Top-of-Funnel (`biz-mobile`, `tax-mobile`, `tax-webapp`)
+### 2.1 Free Top-of-Funnel (`biz-mobile`)
 - **Price**: **Free ($0)**
 - **What's Included**:
-  - **`apps/tax-webapp` & `apps/tax-mobile`**: Full Thailand 2026 personal income tax calculator, deduction breakdown, and ThaiESG/RMF quick estimate (zero signup required).
   - **`apps/biz-mobile` (Base)**: Multi-entity cash reserve, recurring subscription burn, straight-line hardware depreciation, Fulltime Job "UNTIL" card, capital transfers, and base Thai bank e-slip capture.
 - **Provider-Side Monetization (Contextual Affiliates / Sponsorships)**:
-  - Before charging free mobile/tax users, we monetize high-intent moments via honest, math-aligned affiliate or sponsorship placements (e.g., recommended ThaiESG / RMF funds when a user calculates their tax deduction gap, or high-yield savings / solopreneur tools inside `biz-mobile`).
-  - **Strict Honesty Rule**: Affiliate links never alter the deterministic math in `packages/tax`, `packages/biz`, or `packages/sim`.
+  - Before charging free mobile users, we monetize high-intent moments via honest, math-aligned affiliate or sponsorship placements (e.g., recommended ThaiESG / RMF funds when a user calculates their tax deduction gap, or high-yield savings / solopreneur tools inside `biz-mobile`).
+  - **Strict Honesty Rule**: Affiliate links never alter the deterministic math in `packages/tax`, `packages/accounting`, or `packages/sim`.
 
 ### 2.2 Stage 1 Paid Core: Detailed Web Planner (`apps/webapp`)
 - **Price**: **$109 / year** (THB display equivalent: **฿3,690 / year**), preceded by a **7-day free trial**.

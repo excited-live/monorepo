@@ -1,11 +1,11 @@
 # excited.live Mobile (`biz-mobile`) — PRD, Mobile Architecture & UI Specification
 
-> **Status**: Ship Priority #1 — Active Top-of-Funnel Consumer App (Updated 2026-10-17)  
-> **Target Package**: [`apps/biz-mobile`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/biz-mobile)  
-> **Core Engine**: [`packages/accounting`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/accounting) (`@excited-live/accounting` pure TypeScript math & command engine)  
-> **API & Agent Surface**: [`apps/api/src/modules/accounting/`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/api/src/modules/accounting/) (`/api/v1/accounting` hexagonal module + MCP tools)  
-> **Design Tokens**: Canonical Mastercard Design System ([`DESIGN.md`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/DESIGN.md) & [`@excited-live/design-system`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/design-system))  
-> **Native Framework**: Tauri v2 Mobile (Android first, iOS ready — identical pattern to [`apps/tax-mobile`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/apps/tax-mobile))
+> **Status**: Check-in companion for the MCP-first product (direction changed 2026-10-23, see [PRD.md](PRD.md)). Previously Ship Priority #1 (2026-10-17).  
+> **Target Package**: [`apps/biz-mobile`](../apps/biz-mobile)  
+> **Core Engine**: [`packages/accounting`](../packages/accounting) (`@excited-live/accounting` pure TypeScript math & command engine)  
+> **API & Agent Surface**: [`apps/api/src/modules/accounting/`](../apps/api/src/modules/accounting/) (`/api/v1/accounting` hexagonal module + MCP tools)  
+> **Design Tokens**: Canonical Mastercard Design System ([`DESIGN.md`](../DESIGN.md) & [`@excited-live/design-system`](../packages/design-system))  
+> **Native Framework**: Tauri v2 Mobile (Android first, iOS ready)
 
 ---
 
@@ -72,7 +72,7 @@ Items fully depreciated floor at ฿0.
 
 ## 3. Visual & Mobile Ergonomics Specification
 
-The mobile UI follows the luxury, paper-like minimalism of the **Mastercard Design System** and ergonomic mobile benchmarks (Google Pay hero wallet / Revolut / `apps/tax-mobile`):
+The mobile UI follows the luxury, paper-like minimalism of the **Mastercard Design System** and ergonomic mobile benchmarks (Google Pay hero wallet / Revolut):
 
 ### 3.1 Design Tokens
 - **Canvas Cream (`#F3F0EE`)**: Page background, zero harsh digital white, zero neon gradients.
@@ -159,9 +159,9 @@ graph TD
 ### US-BIZ-007: Pure Math Package & Verification Gate `[shipped]`
 **Description:** As an engineer, I want all financial computations encapsulated in a zero-dependency pure TypeScript package verified by golden tests and an independent Python script.  
 **Acceptance Criteria:**
-- [x] Package [`packages/biz`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/packages/biz) contains zero DOM, zero network, and zero UI dependencies.
+- [x] Package [`packages/accounting`](../packages/accounting) contains zero DOM, zero network, and zero UI dependencies.
 - [x] Golden unit test suite validates exact baseline numbers: ฿2,577.50 / ฿537.23 / ฿3,114.73.
-- [x] Python independent validation script [`scripts/recompute-biz.py`](file:///home/prame/.t3/worktrees/excited.live/t3-f65d84f8/scripts/recompute-biz.py) calculates identical outputs to 2 decimal places.
+- [x] Python independent validation script [`scripts/recompute-accounting.py`](../scripts/recompute-accounting.py) calculates identical outputs to 2 decimal places.
 
 ### US-BIZ-008: First-Run Onboarding Journey `[planned]`
 **Description:** As a new user opening `excited.live` for the first time, I want to replace the example data with my own in under three minutes so the hero card shows my cash and my runway, not someone else's numbers. Flows: F-50 to F-55 in [prd-flows.md](prd-flows.md).  
@@ -218,7 +218,6 @@ excited.live/
 │   │   └── package.json          # @excited-live/biz-mobile
 │   ├── api/                      # Hono BFF on Cloudflare Workers + D1
 │   │   └── src/modules/accounting/ # Hexagonal /api/v1/accounting (route, service, domain, repo)
-│   └── tax-mobile/               # Reference Tauri v2 mobile app
 ├── packages/
 │   ├── accounting/               # Pure Accounting Math, Commands & Wealth Engine (@excited-live/accounting)
 │   │   ├── src/                  # types, wealth.ts, commands/, catalog.ts

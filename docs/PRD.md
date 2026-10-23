@@ -1,6 +1,6 @@
 # excited.live — Master Business & Product PRD (Single Source of Truth)
 
-> **Status**: Living Single Source of Truth — Updated 2026-10-17 (Strategic Alignment with Prame: Agentic-Era Customer Software OS, Biz-Mobile First, MeowJot-Style Slip Capture, External Agent / BYOA Priority, Money → Time → Health Horizon, Consumer-First Funnel).  
+> **Status**: Living Single Source of Truth. Updated 2026-10-23: **MCP first**. The user's own AI agent is the first-class client; people open the mobile or web app only when they want to know something. Previous update 2026-10-17 (Strategic Alignment with Prame: Agentic-Era Customer Software OS, Biz-Mobile First, MeowJot-Style Slip Capture, External Agent / BYOA Priority, Money → Time → Health Horizon, Consumer-First Funnel).  
 > **Motto**: "(I am) excited to live". `FromSukong` content funnels attention into the `excited.live` ecosystem.
 
 ---
@@ -16,7 +16,9 @@ As software shifts from manual CRUD dashboards to personal AI agents (Claude, Ch
 1. **Proactive Zero-Friction Capture (Sensor Layer)**: Get real-world user data into the system as seamlessly as possible—starting with **MeowJot (เหมียวจด) style Thai bank e-slip reading** on mobile/API for Money, activity-duration tagging on existing spend/career items for Time, and **Cal AI style photo/multimodal logging** for Health.
 2. **Pure Deterministic Engines (`packages/*`)**: Zero-hallucination TypeScript math engines (`@excited-live/accounting`, `@excited-live/tax`, `@excited-live/sim`, and future `@excited-live/time` & `@excited-live/health`) verified against independent Python recompute gates.
 3. **Open Agent Surface — Bring Your Own Agent (`apps/api` + MCP + Scoped Keys)**: Instead of forcing users into an isolated in-app chatbot, we prioritize **opening the platform (`REST API` + `MCP` + `OpenAPI` + `llms.txt`)** with scoped Better Auth API keys so the **user's own personal AI agents** can read their numbers, ingest slips/events, run simulations, and stage actions on their behalf.
-4. **High-Trust Human Cockpits (`apps/*` Mobile & Web)**: Fast, tactile mobile companions (`apps/biz-mobile`, `apps/tax-mobile`) for daily capture and instant runway awareness, channeling users into deep web workspaces (`apps/webapp`, `apps/tax-webapp`) for 50-year life visualization and decision sign-off.
+4. **High-Trust Human Cockpits (`apps/*` Mobile & Web)**: Fast, tactile mobile companions (`apps/biz-mobile`) for instant runway awareness, channeling users into deep web workspaces (`apps/webapp`) for 50-year life visualization and decision sign-off. These are check-in surfaces: daily capture and questions flow through the user's own agent (layer 3), and people open the apps when they want to know something.
+
+**Build order (decided 2026-10-23): MCP first.** Layer 3 ships as the product before the cockpits are finished. Agents are first-class users, so every capability lands in the API and MCP server first and in app UI second.
 
 ---
 
@@ -26,10 +28,12 @@ As software shifts from manual CRUD dashboards to personal AI agents (Claude, Ch
 graph LR
     subgraph Pillar1["1. MONEY (Now — Focus #1)"]
         BizMobile["apps/biz-mobile<br/>Burn, Runway, Gear & Slip Scan"]
-        TaxApps["apps/tax-webapp & tax-mobile<br/>TH 2026 Tax Engine"]
+        MCP["apps/api MCP + REST<br/>User's own agent (first-class)"]
+        TaxEngine["packages/tax<br/>TH 2026 Tax Engine"]
         WebApp["apps/webapp (Paid Core)<br/>50-Yr Life Sim & Monte Carlo"]
+        MCP -->|Check-in surface| BizMobile
         BizMobile -->|Graduates to deep planning| WebApp
-        TaxApps -->|Funnels into| WebApp
+        TaxEngine -->|Served through| MCP
     end
 
     subgraph Pillar2["2. TIME (Next Expansion)"]
@@ -49,12 +53,15 @@ graph LR
 ```
 
 ### Pillar 1: Financial OS (Current Priority)
-- **Step 1A — Ship `apps/biz-mobile` First (Top-of-Funnel Daily Companion)**:
+- **Step 0: MCP First (Agents as First-Class Users)**:
+  - Ship `apps/api` with the MCP server and scoped agent keys as the product itself. A user connects their own agent (Claude, ChatGPT, Hermes, Claude Code) and does onboarding, capture, and questions through it.
+  - Launch blockers and order live in [followups-ai-native-onboarding.md](followups-ai-native-onboarding.md) (GitHub issues #136 to #143).
+- **Step 1A — `apps/biz-mobile` as the Check-In Companion**:
   - Solves immediate day-to-day financial clarity on mobile without accounting bloat: **Personal cash & burn runway**, **Fulltime Job career/salary "UNTIL" countdown**, **Multi-business side-hustle runways (`FromSukong`, etc.)**, **straight-line hardware depreciation**, and **capital transfers**.
   - **Proactive Slip Ingestion (MeowJot / เหมียวจด capability)**: Read Thai bank transfer e-slips (PromptPay QR payload + OCR) via mobile share sheet / camera / album or external agent upload, automatically recording expenses, matching recurring bills (preventing double-counting), and exposing the ledger via App, REST API, and MCP.
 - **Step 1B — Channel Engaged Users to `apps/webapp` (Detailed 50-Year Life Planner)**:
-  - Once users love tracking their present reality in `biz-mobile` (or calculating tax in `tax-webapp` / `tax-mobile`), we channel them into `apps/webapp` to answer *"Can I afford this life over the next 50 years?"*
-  - Syncs current-year income, recurring burn, and business cashflows from `biz` directly into `packages/sim`'s 50-year projection, Monte Carlo P10–P90 bands, scenario toggles, what-if sliders, and ThaiESG/RMF tax optimizer.
+  - Once users love tracking their present reality in `biz-mobile` or through their agent, we channel them into `apps/webapp` to answer *"Can I afford this life over the next 50 years?"*
+  - Syncs current-year income, recurring burn, and business cashflows from `accounting` directly into `packages/sim`'s 50-year projection, Monte Carlo P10–P90 bands, scenario toggles, what-if sliders, and ThaiESG/RMF tax optimizer.
 
 ### Pillar 2: Time Management OS (Horizon 2)
 - **Zero-Cold-Start Time Planner**: Traditional time trackers fail because users have to build categories from scratch. Because Pillar 1 already knows **what the user spends on** (subscriptions, transit/BTS, rent), **where they live**, and **what jobs/businesses they operate** (`fulltime_job`, `business`), the user simply inputs **how many hours they spend on each existing entity/activity**.
@@ -93,7 +100,7 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 > Full pricing specification lives in [pricing.md](pricing.md). B2B Advisor seats and enterprise white-label are **deferred to second priority (Post-MLP backlog)** so we go 100% all-in on the consumer flywheel first.
 
 1. **Free Top-of-Funnel (Habit & Graph Acquisition)**:
-   - **`apps/biz-mobile`** (Burn, Runway, Gear Depreciation, Slip Capture) and **`apps/tax-webapp` / `apps/tax-mobile`** (TH 2026 Tax Calculator) launch as **free consumer entry points**.
+   - The **MCP server** (connect your own agent to your books) and **`apps/biz-mobile`** (Burn, Runway, Gear Depreciation, Slip Capture) are the consumer entry points. TH 2026 tax answers reach users through their agent via `packages/tax`. Pricing for agent access is an open question for [pricing.md](pricing.md).
    - **Contextual Provider Monetization (Affiliate / Sponsorship)**: Before charging casual mobile users, we monetize free top-of-funnel traffic via high-trust, contextual financial/tool affiliates (e.g., ThaiESG/RMF fund providers, high-yield savings, solopreneur tools) strictly aligned with the user's math.
 2. **Stage 1 Paid Core — Detailed Web Planner (`apps/webapp`)**:
    - Users who want the full 50-year life simulation, Monte Carlo survival bands, scenario toggles, and tax-advantaged vs. S&P 500 real-return optimizer upgrade to the **$109/year subscription** (with a **7-day free trial**).
@@ -107,20 +114,23 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 ## 5. PRD Corpus Map (Document Index)
 
 1. **[PRD.md](PRD.md) (This file)** — Master Business Vision, Agentic OS Architecture, 3-Pillar Roadmap (Money → Time → Health), Consumer Funnel, and Global Principles.
-2. **[prd-biz-mobile.md](prd-biz-mobile.md) (Current Ship Priority #1)** — `apps/biz-mobile` + `packages/accounting` + `/api/v1/accounting`: Multi-entity solopreneur cash/burn/runway, straight-line gear depreciation, capital transfers, **MeowJot-style e-slip ingestion**, and Agent/MCP endpoints.
-3. **[prd-mvp.md](prd-mvp.md) (Math & Sheet Baseline)** — The Google Sheet spec that proved the 50-year simulation and TH 2026 tax optimizer formulas (`packages/sim` + `packages/tax`).
-4. **[prd-mlp.md](prd-mlp.md) (Detailed Web App — Paid Conversion Core)** — `apps/webapp`: 5-minute onboarding wizard, 50-year life-story chart, Monte Carlo P10–P90 bands, scenario toggles, what-if sliders, and external agent MCP/API integration.
-5. **[prd-post-mlp.md](prd-post-mlp.md) (Phased Expansion & Backlog)** — Trigger-based roadmap: Time OS (Pillar 2), Health OS / Cal AI (Pillar 3), Built-in Proactive Agent Workflows, Real Exit-Tax Modeling, US Tax, and Deferred B2B Advisor / White-Label tier.
-6. **[pricing.md](pricing.md) (Monetization & Funnel Spec)** — Consumer-first funnel (Free Mobile/Tax top-of-funnel + Affiliate → $109/yr Detailed Webapp → Pro Mobile Ecosystem for Money + Time + Health; Advisor B2B deferred).
-7. **[prd-flows.md](prd-flows.md) & [wireframe-biz-mobile.md](wireframe-biz-mobile.md) & [tax-mobile-prd-and-ui-spec.md](tax-mobile-prd-and-ui-spec.md)** — Screen-by-screen user flows, Mobbin references, and mobile UI ergonomics.
-8. **[plan-auth-migration.md](plan-auth-migration.md)** — Unified identity and token architecture (`packages/auth` via Better Auth + Cloudflare D1: web cookies, mobile bearer tokens, and scoped `apiKey` / OAuth for external agents).
+2. **[plan-ai-native-onboarding.md](plan-ai-native-onboarding.md) & [followups-ai-native-onboarding.md](followups-ai-native-onboarding.md) (Current Ship Priority #1: MCP-first launch)**: the MCP server, agent keys, agent sign-in link, and the ordered launch blockers.
+3. **[prd-biz-mobile.md](prd-biz-mobile.md) (Check-In Companion App)** — `apps/biz-mobile` + `packages/accounting` + `/api/v1/accounting`: Multi-entity solopreneur cash/burn/runway, straight-line gear depreciation, capital transfers, **MeowJot-style e-slip ingestion**, and Agent/MCP endpoints.
+4. **[prd-mvp.md](prd-mvp.md) (Math & Sheet Baseline)** — The Google Sheet spec that proved the 50-year simulation and TH 2026 tax optimizer formulas (`packages/sim` + `packages/tax`).
+5. **[prd-mlp.md](prd-mlp.md) (Detailed Web App — Paid Conversion Core)** — `apps/webapp`: 5-minute onboarding wizard, 50-year life-story chart, Monte Carlo P10–P90 bands, scenario toggles, what-if sliders, and external agent MCP/API integration.
+6. **[prd-post-mlp.md](prd-post-mlp.md) (Phased Expansion & Backlog)** — Trigger-based roadmap: Time OS (Pillar 2), Health OS / Cal AI (Pillar 3), Built-in Proactive Agent Workflows, Real Exit-Tax Modeling, US Tax, and Deferred B2B Advisor / White-Label tier.
+7. **[pricing.md](pricing.md) (Monetization & Funnel Spec, predates the 2026-10-23 MCP-first decision)** — Consumer-first funnel (Free Mobile/Tax top-of-funnel + Affiliate → $109/yr Detailed Webapp → Pro Mobile Ecosystem for Money + Time + Health; Advisor B2B deferred).
+8. **[prd-flows.md](prd-flows.md) & [wireframe-biz-mobile.md](wireframe-biz-mobile.md)** — Screen-by-screen user flows, Mobbin references, and mobile UI ergonomics.
+9. **[plan-auth-migration.md](plan-auth-migration.md)** — Unified identity and token architecture (`packages/auth` via Better Auth + Cloudflare D1: web cookies, mobile bearer tokens, and scoped `apiKey` / OAuth for external agents).
+
+> **Docs that predate the 2026-10-23 MCP-first decision** still describe the removed `apps/tax-webapp` / `apps/tax-mobile` and `packages/biz` in places: `pricing.md`, `prd-mlp.md`, `prd-flows.md`, `plan-auth-migration.md`. Where they conflict with this file, this file wins. Pricing for agent (MCP) access is an open question.
 
 ---
 
 ## 6. Global Architectural Principles (All Phases & Pillars)
 
-- **P1 (Pure Deterministic Engines)**: All domain math (`packages/biz`, `packages/tax`, `packages/sim`, and future `time`/`health`) lives in pure TypeScript packages—zero network, zero DOM, zero framework imports, verified by golden tests and independent Python recompute scripts.
-- **P2 (Sheet & Golden Parity)**: Long-term projection and tax modules port the proven MVP sheet tabs 1:1; `packages/biz` reproduces verified solopreneur baseline targets to 2 decimal places.
+- **P1 (Pure Deterministic Engines)**: All domain math (`packages/accounting`, `packages/tax`, `packages/sim`, and future `time`/`health`) lives in pure TypeScript packages—zero network, zero DOM, zero framework imports, verified by golden tests and independent Python recompute scripts.
+- **P2 (Sheet & Golden Parity)**: Long-term projection and tax modules port the proven MVP sheet tabs 1:1; `packages/accounting` reproduces verified solopreneur baseline targets to 2 decimal places.
 - **P3 (Single API & Storage Boundary)**: `apps/api` (Hono + Cloudflare D1) is the unified backend boundary for web, mobile sync, and external AI agents. Local-first mobile state syncs cleanly to `/api/v1/*`.
 - **P4 (Agent-Ready by Default)**: Every feature and data model added to `excited.live` must be queryable and operable by the user's external AI agent via `/api/v1/*` and MCP using scoped Better Auth API keys—not trapped inside UI-only state.
 - **P5 (Two-Tier Mutation Safety)**: Daily ledger capture (slips, subscriptions, time/meal logs) supports direct authenticated agent writes with audit tags; structural 50-year life-plan edits require staged proposal diffs accepted by the human.

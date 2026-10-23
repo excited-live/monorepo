@@ -2,6 +2,11 @@ name: Landing Deploy Production
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type PROD to confirm production deploy"
+        required: true
+        default: ""
 
 concurrency:
   group: landing-production
@@ -12,9 +17,14 @@ env:
 
 jobs:
   production:
+    # Same two gates as Deploy Production: a typed confirmation and a main-only
+    # ref. Neither a wrong input nor a feature-branch dispatch can reach a step.
+    if: github.event.inputs.confirm == 'PROD' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: pnpm/action-setup@v6
         with:
           version: 10.12.0

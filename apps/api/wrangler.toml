@@ -52,5 +52,7 @@ vars = { BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.d
 [[env.prelive.d1_databases]]
 binding = "DB"
 database_name = "excited-live-api-prelive"
-database_id = "REPLACE_WITH_DATABASE_ID"
+# Created 2026-10-23 (APAC). Shared with the webapp prelive later (#139): both
+# mounts must point at this one database and use one BETTER_AUTH_SECRET.
+database_id = "f7bd3f26-5296-4832-96a3-1cbb01046112"
 migrations_dir = "migrations"

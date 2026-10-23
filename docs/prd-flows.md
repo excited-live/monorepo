@@ -18,8 +18,6 @@ App map:
 | App | What it is | Route root |
 | --- | --- | --- |
 | `apps/webapp` | Core product. Plan, chart, inputs, assistant. | `/_layout` |
-| `apps/tax-webapp` | Standalone TH/US income-tax calculator. | `/` |
-| `apps/tax-mobile` | Tauri v2 Android scaffold. View/summarize first. | `/`, `/about` |
 | `apps/biz-mobile` | excited.live. Solopreneur spend, revenue, depreciation, runway (Tauri v2). | `/` |
 | `apps/landingpage` | Marketing, waitlist, blog, docs. | `/` |
 | `apps/api` | BFF. Not user-facing, specced as the boundary in section 6. | `/api/v1` |
@@ -227,135 +225,9 @@ References:
 - [Copilot: Client detail](https://mobbin.com/flows/d2652c8f-f9ba-4b9b-9bc1-a19c39a42d4f). Borrow the client detail panel.
 - [Time2book: Clients](https://mobbin.com/flows/35ea68d4-c9e9-49ff-accf-934bb34438bc). Borrow the client list pattern.
 
-## 2. tax-webapp
+## 2. tax-webapp and 3. tax-mobile (removed)
 
-### F-20 Open, language, country `[shipped]`
-
-Goal: a visitor answers one question, how much income tax will I pay, live in the browser, without an account.
-Entry: `/`. Single route.
-Steps:
-1. The header shows the brand lockup, the app name, and an EN / ไทย segmented toggle.
-2. The hero states the question in one line and one sub-line.
-3. A country switch offers Thailand and United States. Choosing US shows a placeholder banner and a placeholder badge.
-States: empty, the form starts with empty money fields, visibly untouched, not zeroes. loading, a small query-status line confirms the engine sync. error, a validation problem zeroes the result and lists the warnings in the assumptions panel.
-Exit: the visitor reads a number, or continues to more inputs.
-Route / screen: `/` (`apps/tax-webapp/src/routes/index.tsx`).
-References:
-- [Oyster: Using salary insights tool](https://mobbin.com/flows/1370cef5-5f96-4089-9d8a-2f6f5116cb74). Borrow the number-forward tool framing.
-- [Airbnb: Estimating earnings](https://mobbin.com/flows/623a1812-f435-4989-81d0-23a2644396ad). Borrow the income-to-number estimate framing for the hero.
-- Copy note: hero `{ en: "How much income tax will you pay?", th: "คุณจะจ่ายภาษีเท่าไหร่?" }`, sub `{ en: "Estimate your individual income tax, live, in your browser.", th: "ประเมินภาษีเงินได้บุคคลธรรมดาแบบสด ๆ ในเบราว์เซอร์" }`.
-
-### F-21 Enter income `[shipped]`
-
-Goal: the visitor enters gross income per Thai income type, with expense deductions applied automatically.
-Entry: the income card in the left column.
-Steps:
-1. One money field per income category from the engine config (employment first by default).
-2. Typing shows live thousand separators and keeps the caret in place.
-3. Leaving a field empty keeps it empty, not zero.
-4. The result panel updates on each valid keystroke.
-States: empty, fields are visibly empty. loading, none. error, half-typed text reverts on blur rather than committing junk.
-Exit: move on to deductions.
-Route / screen: `/`, `MoneyInput`, income card.
-References:
-- [YNAB: Adding an expected income](https://mobbin.com/flows/05580d79-3fd8-4765-83cd-5623a6cc232d). Borrow income entry rows; it mirrors Thai income-type complexity.
-- [Quicken: Setting a custom amount](https://mobbin.com/flows/09202d2f-5c1d-407f-b9f9-36d302b8d802). Borrow the single amount-entry step.
-- Copy note: hints short, `{ en: "Gross amounts per income type. Expense deductions are applied automatically.", th: "กรอกรายได้ขั้นต้นของแต่ละประเภท ระบบจะหักค่าใช้จ่ายให้อัตโนมัติ" }`.
-
-### F-22 Deductions and household `[shipped]`
-
-Goal: the visitor adds what they actually paid; caps apply themselves.
-Entry: the deductions card and the allowances card.
-Steps:
-1. Deduction fields: insurance, mortgage interest, donations, then SSF, RMF, provident fund.
-2. The household picker offers single, married, married with kids, with parents, and pre-fills the common setup.
-3. Family allowance counters step up and down with clear limits.
-4. The personal allowance is always included and shown as such.
-5. Tax already paid: withheld at source and paid in advance.
-States: empty, fields empty. loading, none. error, a value over a cap is counted at the cap and the savings panel marks it as capped.
-Exit: read results.
-Route / screen: `/`, `AllowanceSection`, `CountStepper`.
-References:
-- [Oyster: Using equity tax calculator](https://mobbin.com/flows/31f6a976-539f-4ece-bbad-a9ca5db1a9f0) (ref06). Borrow inputs-with-results and the methodology note; matches our honest-estimate posture.
-- Copy note: deduction labels plain Thai, `{ en: "Insurance premiums", th: "เบี้ยประกันภัย" }`, `{ en: "Provident fund", th: "กองทุนสำรองเลี้ยงชีพ" }`.
-
-### F-23 Read results `[shipped]`
-
-Goal: the visitor sees net tax, what it is made of, and what the deductions saved, without spin.
-Entry: the results column.
-Steps:
-1. Net tax headline, with a balance line: refund, to pay, or fully settled.
-2. A metric list walks gross income, expense deductions, assessable income, itemized deductions, allowances, taxable income, tax liability, credits, effective rate, marginal rate.
-3. A savings panel compares without deductions and with deductions, then lists the exact saving per line and marks capped lines.
-4. A bracket table shows each bracket, rate, taxable amount, and tax; untouched brackets render as a dash.
-5. An assumptions panel lists the engine's simplifications and any warnings.
-States: empty, all-zero inputs give a zero result with the engine warnings listed. loading, none. error, validation problems are listed in the assumptions panel.
-Exit: adjust inputs, or move to the webapp.
-Route / screen: `/`, results column, `SavingsPanel`, `BracketRow`.
-References:
-- [Oyster: Using salary insights tool](https://mobbin.com/flows/1370cef5-5f96-4089-9d8a-2f6f5116cb74). Borrow the number-forward result list.
-- [Quicken: Calculating retirement projections](https://mobbin.com/flows/16d37ef8-fe5c-4316-9b37-b36e375c532f) (ref04). Borrow the assumptions panel as a first-class result, not a footnote.
-- Copy note: `{ en: "Net tax", th: "ภาษีที่ต้องชำระ" }`, `{ en: "You save", th: "คุณประหยัดได้" }`, `{ en: "Fully settled", th: "ชำระครบแล้ว" }`.
-
-### F-24 Cross-link into webapp `[planned]`
-
-Goal: a visitor who has outgrown the calculator continues in the webapp with their numbers carried over.
-Entry: a quiet continue link under the results.
-Steps:
-1. The link hands the entered income and household values to the webapp's first-run path.
-2. The visitor lands in the wizard or chart with those values prefilled, and can create an account from there.
-States: empty, no entered values means the link just goes to the webapp start. loading, a light handoff. error, a failed handoff drops to the plain webapp start, never a dead end.
-Exit: the visitor is in the webapp with a starting plan.
-Route / screen: planned cross-app link from `/` to the webapp first-run.
-References:
-- [Airbnb: Estimating earnings](https://mobbin.com/flows/623a1812-f435-4989-81d0-23a2644396ad). Borrow the estimate-to-action handoff framing.
-- No reference in the set covers a cross-app handoff. Stated, not forced.
-
-## 3. tax-mobile
-
-### F-30 Launch `[shipped: scaffold]`
-
-Goal: the app opens fast to a single calculator, no account, no setup.
-Entry: app launch, `/`.
-Steps:
-1. Splash, then the calculator. The about link sits in a corner.
-States: empty, the calculator opens with an example gross income. loading, a short query-status check. error, a plain error line with retry.
-Exit: type a number.
-Route / screen: `/` (`apps/tax-mobile/src/routes/index.tsx`, Tauri v2 Android scaffold).
-References:
-- [Cash App: Taxes](https://mobbin.com/flows/bc295407-7f31-420e-b70f-1acd7e7fd8c0). Borrow the compact tax entry point.
-- Copy note: keep it three words, `{ en: "How much tax?", th: "ภาษีเท่าไหร่?" }`.
-
-### F-31 Calculator steps `[planned]`
-
-Goal: a step-by-step tax estimate on a phone, help available at each step.
-Entry: the open calculator.
-Steps:
-1. Income first, one field, big number pad.
-2. Then optional deductions, one screen, skippable.
-3. Then household, one screen, skippable.
-4. A progress hint and a help affordance on each step.
-States: empty, skippable steps default to TH values. loading, compute is local, so results appear without a spinner. error, invalid input blocks the next step with a reason.
-Exit: results.
-Route / screen: `/`, planned.
-References:
-- [Cash App: Estimating tax refund](https://mobbin.com/flows/96be6863-50d1-41b7-8151-d78322c5f2e3) (ref07). Borrow the step-by-step tax estimate on mobile, help landing into the estimate.
-- [Origin: Tax](https://mobbin.com/flows/d37108b7-2e4e-4d9b-88d2-1c7783324a5c). Borrow the tax summary screens on mobile.
-
-### F-32 Results `[planned]`
-
-Goal: one screen, one number, plus what it is made of.
-Entry: the end of the calculator steps.
-Steps:
-1. Net tax as the hero number.
-2. Three or four supporting metrics below it.
-3. A short assumptions note, collapsed by default.
-States: empty, not reachable with no input. loading, none. error, inline note if validation fails.
-Exit: share or restart.
-Route / screen: `/`, planned.
-References:
-- [Origin: Tax](https://mobbin.com/flows/d37108b7-2e4e-4d9b-88d2-1c7783324a5c). Borrow the mobile tax summary.
-- [Cash App: Estimating tax refund](https://mobbin.com/flows/96be6863-50d1-41b7-8151-d78322c5f2e3) (ref07). Borrow keeping the estimate shareable and calm.
+Both apps were deleted in #116. Tax answers now reach users through their own agent (MCP, see [PRD.md](PRD.md)) backed by `packages/tax`. Flows F-20 to F-24 and F-30 to F-32 are retired.
 
 ## 4. landingpage
 
@@ -564,7 +436,7 @@ The api is the single boundary every flow crosses (P3). Specced here so flows st
 
 - Mobile surface (trigger: MLP activated plus mobile demand). View and summarize: headline answers, chart, goal status. Minimal editing; serious planning stays on web.
 - White-label for advisors (trigger: first advisor pilot). Branding, advisor dashboard, client management, export. Overlaps F-11.
-- US tax expansion (trigger: TH proves out plus US demand). Makes the hidden US engine real in the wizard and tax tab. Until then, the US option in tax-webapp stays a marked placeholder.
+- US tax expansion (trigger: TH proves out plus US demand). Makes the hidden US engine real in the wizard and tax tab. Until then, the US engine stays hidden in code.
 - Corporate tax module (trigger: an advisor pilot asks).
 - Per-goal wallets (trigger: users outgrow the shared goal wallet).
 - Public API for your own AI (trigger: MLP live plus demand). One contract, several doors: MCP server plus OpenAPI plus docs. Writes stay proposal-based, applied only by web acceptance (the F-07 invariant).
@@ -572,7 +444,7 @@ The api is the single boundary every flow crosses (P3). Specced here so flows st
 
 ## 8. Reference index
 
-Counts: 42 references linked across 30 flows. Two flows carry no reference from the set and say so instead of forcing one (F-09 settings, F-43 blog and docs). Four flows state that no reference fits one specific detail (F-01 sign-in form, F-06 sliders, F-24 cross-app handoff, F-41 screenshot carousel) and build that detail on our own design language. F-53 states one more such detail (optional equipment step).
+Two flows carry no reference from the set and say so instead of forcing one (F-09 settings, F-43 blog and docs). Three flows state that no reference fits one specific detail (F-01 sign-in form, F-06 sliders, F-41 screenshot carousel) and build that detail on our own design language. F-53 states one more such detail (optional equipment step).
 
 Per flow:
 
@@ -589,14 +461,6 @@ Per flow:
 | F-09 | none in set (stated) |
 | F-10 | Semrush Upgrading a plan (ref05), Evernote Subscribing to a plan, beehiiv Subscriptions, beehiiv View plan |
 | F-11 | QuickBooks Customer hub, Copilot Client detail, Time2book Clients |
-| F-20 | Oyster Using salary insights tool, Airbnb Estimating earnings |
-| F-21 | YNAB Adding an expected income, Quicken Setting a custom amount |
-| F-22 | Oyster Using equity tax calculator (ref06) |
-| F-23 | Oyster Using salary insights tool, Quicken Calculating retirement projections (ref04) |
-| F-24 | Airbnb Estimating earnings |
-| F-30 | Cash App Taxes |
-| F-31 | Cash App Estimating tax refund (ref07), Origin Tax |
-| F-32 | Origin Tax, Cash App Estimating tax refund (ref07) |
 | F-40 | ISO Meet (ref08), Base |
 | F-41 | Revolut Total wealth |
 | F-42 | ISO Meet (ref08), Threads |
@@ -614,7 +478,7 @@ Notable picks: Semrush for the trial-to-subscription flow (ref05) is the closest
 ## 9. Our ways: where we deviate from a reference
 
 - References are study pointers, never copied. We take pacing, layout ideas, and framing, not pixels.
-- Sign-in, sliders, the settings form, the cross-app handoff, and the screenshot carousel have no reference in the set. We build them on our own design language rather than force a borrow.
+- Sign-in, sliders, the settings form, and the screenshot carousel have no reference in the set. We build them on our own design language rather than force a borrow.
 - Principles win on conflict: TH tax only user-facing (P6, P7), pure engines (P2), one backend boundary (P3), bilingual `{ en, th }` (P4), Astryx-first (P5). Where a reference shows a pattern that breaks one of these, we note the deviation and keep our way.
 - Copy: ours stays short, spoken, and calm. No hype, no em-dashes in EN, no AI-isms.
 - Honesty: estimates are labeled as estimates. Placeholder jurisdictions carry a visible placeholder banner. No reference's "bigger number" framing overrides our honest-estimate posture.
@@ -628,6 +492,5 @@ These do not block the flows; they are decisions the flows currently assume.
 
 1. F-02 wizard step order. The brief says income, expenses, retirement, then goals (per US-101). Confirm this order vs goals before retirement.
 2. F-05 and F-06 entry point. Scenario toggles and sliders could live above the chart, beside it, or in the left column. Confirm the placement so the chart stays the hero.
-3. F-24 cross-app handoff. Carry tax-webapp inputs into the webapp first-run, or keep the two apps fully separate.
-4. F-51 first-entity default. The plan proposes personal first in the chip order. Confirm the order, and whether fulltime job should be hidden for users who only want a business.
-5. F-55 sign-in timing. Confirm sign-in stays optional at v1 and that cross-device sync waits for the v1 backend story rather than being implied by the sign-in copy.
+3. F-51 first-entity default. The plan proposes personal first in the chip order. Confirm the order, and whether fulltime job should be hidden for users who only want a business.
+4. F-55 sign-in timing. Confirm sign-in stays optional at v1 and that cross-device sync waits for the v1 backend story rather than being implied by the sign-in copy.

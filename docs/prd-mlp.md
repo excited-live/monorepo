@@ -1,13 +1,13 @@
 # PRD — Detailed Web App (`apps/webapp` MLP)
 
 > **Parent**: [PRD.md](PRD.md) · **Prior phase**: [prd-mvp.md](prd-mvp.md) · **Mobile funnel entry**: [prd-biz-mobile.md](prd-biz-mobile.md) · **Next phase**: [prd-post-mlp.md](prd-post-mlp.md) · **Pricing**: [pricing.md](pricing.md)  
-> **Strategic Role**: While [`apps/biz-mobile`](prd-biz-mobile.md) and [`apps/tax-webapp`](prd-flows.md) act as the fast, free top-of-funnel consumer habits, **`apps/webapp` is the detailed 50-year life simulation studio and primary revenue engine** ($109/year subscription after a 7-day free trial).
+> **Strategic Role**: While the MCP server and [`apps/biz-mobile`](prd-biz-mobile.md) act as the top-of-funnel consumer entry points (pricing for agent access is an open question, see [PRD.md](PRD.md)), **`apps/webapp` is the detailed 50-year life simulation studio and primary revenue engine** ($109/year subscription after a 7-day free trial).
 
 ---
 
 ## 1. Overview
 
-Turn the proven MVP math (`packages/sim` + `packages/tax`) and the user's daily financial reality from `packages/biz` into a lovable, detailed web application where a new user has a working 50-year plan in 5 minutes (or imports their `biz-mobile` baseline in one click), sees their life story on one chart, explores scenarios with toggles and sliders, and lets **their own personal AI agent** (via MCP / API keys) inspect their plan and stage before/after proposals for human acceptance.
+Turn the proven MVP math (`packages/sim` + `packages/tax`) and the user's daily financial reality from `packages/accounting` into a lovable, detailed web application where a new user has a working 50-year plan in 5 minutes (or imports their `biz-mobile` baseline in one click), sees their life story on one chart, explores scenarios with toggles and sliders, and lets **their own personal AI agent** (via MCP / API keys) inspect their plan and stage before/after proposals for human acceptance.
 
 ## 2. Goals
 
@@ -113,7 +113,7 @@ Turn the proven MVP math (`packages/sim` + `packages/tax`) and the user's daily 
 
 ## 4. Functional Requirements
 
-- **FR-10**: `apps/webapp` calls `packages/sim`, `packages/tax`, and `packages/biz` through a clean service layer (`plan-service.ts`) backed by `apps/api` (Hono + Cloudflare D1).
+- **FR-10**: `apps/webapp` calls `packages/sim`, `packages/tax`, and `packages/accounting` through a clean service layer (`plan-service.ts`) backed by `apps/api` (Hono + Cloudflare D1).
 - **FR-11**: All long-term plan mutations from external AI agents or scenario promotions pass through a single proposal/diff reducer so US-103, US-104, US-105, and US-106 share one code path.
 - **FR-12**: The onboarding wizard (US-101) is the default entry path for any user without a saved plan, with an option to seed from their `biz-mobile` account data.
 

@@ -17,6 +17,7 @@ export default defineConfig({
 	],
 	define: {
 		__TAURI_DEV_HOST__: JSON.stringify(process.env.TAURI_DEV_HOST || ""),
+		"import.meta.env.TAURI_DEV_HOST": JSON.stringify(process.env.TAURI_DEV_HOST || ""),
 	},
 	resolve: {
 		alias: {

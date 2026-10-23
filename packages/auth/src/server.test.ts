@@ -269,3 +269,16 @@ describe("auth foundation", () => {
 		})
 	})
 })
+
+describe("runtime schema check (#158)", () => {
+	it("is off: its shared promise dies with the first request on Workers and hangs the rest", () => {
+		const auth = createAuth({
+			database: { kind: "node-sqlite", database: freshFileDb() },
+			secret: "schema-check-test-secret-0123456789abcdef",
+			baseURL: "http://localhost:8787/api/v1/auth",
+			mount: "tokens",
+		})
+		const options = (auth as unknown as { options: { advanced?: { database?: { validateSchema?: boolean } } } }).options
+		expect(options.advanced?.database?.validateSchema).toBe(false)
+	})
+})

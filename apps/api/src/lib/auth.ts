@@ -25,16 +25,19 @@ import { resolveDbFile } from "../db"
 const SQLITE_MODULE = "node:sqlite"
 
 /**
- * Cache for the NODE path only (dev server, tests): a long-lived process with
- * no per-request I/O context.
+ * Cached instance, shared across requests.
  *
- * It must never hold an instance built over a D1 binding. `betterAuth()` starts
- * its `init()` promise eagerly, inside whichever request called it first; on
- * Workers that request's I/O context is torn down when its response is sent, so
- * a promise it started and did not finish never settles, and every later
- * request in the isolate that awaits the cached instance hangs (#158: an
- * anonymous 401 on /api/v1/* or /mcp built the instance, then every sign-up and
- * get-session on that isolate hung at ~3 ms CPU).
+ * On Workers a promise a request starts and leaves pending when it ends never
+ * settles, so anything cached that holds one hangs every later request in the
+ * isolate (#158: an anonymous 401 on /api/v1/* or /mcp built the instance, then
+ * every sign-up and get-session on that isolate hung at ~3 ms CPU). Better Auth
+ * has two such promises:
+ *
+ *  - `init()` starts eagerly in the building request. We await `$context` there
+ *    and publish the instance only afterwards (D1 path).
+ *  - the runtime schema check memoizes ONE shared promise per adapter, started
+ *    by whichever request touches the adapter first. It is switched off in
+ *    packages/auth (`advanced.database.validateSchema`); migrations own the schema.
  */
 let cached: { key: string; auth: Auth } | null = null
 
@@ -106,11 +109,21 @@ export async function getTokensAuth(requestUrl: string, env?: unknown): Promise<
 			google: googleProvider(),
 		})
 
-	// Workers: one instance per call, owned by the calling request (see `cached`).
-	const binding = (env as { DB?: unknown } | undefined)?.DB
-	if (isD1Database(binding)) return build({ kind: "d1", database: binding })
+	if (cached && cached.key === key) return cached.auth
 
-	if (!cached || cached.key !== key) cached = { key, auth: build(await resolveAuthDatabase(env)) }
+	const database = await resolveAuthDatabase(env)
+	if (database.kind !== "d1") {
+		// Node (dev server, tests): one long-lived process, no request contexts,
+		// and one SQLite handle that must not be opened twice.
+		cached = { key, auth: build(database) }
+		return cached.auth
+	}
+
+	const auth = build(database)
+	// Settle init in THIS request's context before anyone else can see the instance.
+	await auth.$context
+	// Concurrent first requests each build their own; the first to settle wins.
+	if (!cached || cached.key !== key) cached = { key, auth }
 	return cached.auth
 }
 

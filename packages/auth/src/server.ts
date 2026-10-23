@@ -249,6 +249,16 @@ export function createAuth(input: AuthInput): Auth {
 				}
 			: undefined,
 		database: kyselyAdapter(buildKysely(input.database), { type: "sqlite", transaction: false }),
+		advanced: {
+			database: {
+				// The runtime schema check memoizes ONE shared promise per adapter
+				// (a `sqlite_master` read started by whichever request touches the
+				// adapter first). On Workers that promise dies with its request and
+				// every later caller of the same instance hangs (#158). Our schema is
+				// owned by the migrations in apps/api.
+				validateSchema: false,
+			},
+		},
 		plugins,
 	}) as Auth
 }

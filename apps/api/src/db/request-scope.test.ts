@@ -71,14 +71,16 @@ describe("D1 requests share no in-flight state (#158)", () => {
 		expect(stub.calls.length).toBe(before)
 	})
 
-	it("getTokensAuth: each call over a D1 binding builds its own instance", async () => {
+	it("getTokensAuth: an instance is published for reuse only after its init settled", async () => {
 		process.env.BETTER_AUTH_SECRET = "scope-test-secret-0123456789abcdef0123456789"
 		const stub = createD1SqliteStub(tempDbFile())
 		const env = { DB: stub.binding }
-		const first = await getTokensAuth("http://localhost:8787/api/v1/auth/get-session", env)
-		const second = await getTokensAuth("http://localhost:8787/api/v1/auth/get-session", env)
+		const url = "http://localhost:8787/api/v1/auth/get-session"
+		const first = await getTokensAuth(url, env)
 		expect(first).not.toBeNull()
-		expect(second).not.toBe(first)
+		// Reused on the hot path, and its context is already settled.
+		expect(await getTokensAuth(url, env)).toBe(first)
+		await expect(settles(first!.$context)).resolves.toBe(true)
 	})
 
 	it("an anonymous 401 first does not stop sign-up and get-session from answering", async () => {

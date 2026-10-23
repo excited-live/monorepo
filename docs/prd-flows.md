@@ -279,7 +279,7 @@ Steps:
 6. A hidden honeypot silently accepts bot submissions.
 States: empty, the plain form plus the no-spam note. loading, the button reads joining. error, either the invalid-email line or the saved-on-device line.
 Exit: success, with the founding-member framing.
-Route / screen: `/`, `WaitlistForm` (posts to the n8n webhook; source is hero or footer).
+Route / screen: `/`, `WaitlistForm` (posts to the waitlist Worker at `leads.fromsukong.com/waitlist`, which writes a Person to Twenty CRM; source is hero or footer).
 References:
 - [ISO Meet](https://mobbin.com/sites/sections/c494bf4c-177f-4b26-830f-1168406fd48f) (ref08). Borrow the minimal waitlist block.
 - [Threads](https://mobbin.com/sites/sections/c8e9015d-f414-4f69-ba88-c0b7a4cae42c). Borrow the waitlist treatment in a footer at scale.

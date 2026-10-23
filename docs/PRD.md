@@ -100,7 +100,7 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 > Full pricing specification lives in [pricing.md](pricing.md). B2B Advisor seats and enterprise white-label are **deferred to second priority (Post-MLP backlog)** so we go 100% all-in on the consumer flywheel first.
 
 1. **Free Top-of-Funnel (Habit & Graph Acquisition)**:
-   - The **MCP server** (connect your own agent to your books) and **`apps/biz-mobile`** (Burn, Runway, Gear Depreciation, Slip Capture) are the consumer entry points. TH 2026 tax answers reach users through their agent via `packages/tax`. Pricing for agent access is an open question for [pricing.md](pricing.md).
+   - The **MCP server** (connect your own agent to your books) and **`apps/biz-mobile`** (Burn, Runway, Gear Depreciation, Slip Capture) are the consumer entry points. TH 2026 tax answers reach users through their agent via `packages/tax`. Agent (MCP) access is free; see [pricing.md](pricing.md) §2.1.
    - **Contextual Provider Monetization (Affiliate / Sponsorship)**: Before charging casual mobile users, we monetize free top-of-funnel traffic via high-trust, contextual financial/tool affiliates (e.g., ThaiESG/RMF fund providers, high-yield savings, solopreneur tools) strictly aligned with the user's math.
 2. **Stage 1 Paid Core — Detailed Web Planner (`apps/webapp`)**:
    - Users who want the full 50-year life simulation, Monte Carlo survival bands, scenario toggles, and tax-advantaged vs. S&P 500 real-return optimizer upgrade to the **$109/year subscription** (with a **7-day free trial**).
@@ -123,7 +123,7 @@ To balance **zero-friction daily capture** with **long-term plan safety**:
 8. **[prd-flows.md](prd-flows.md) & [wireframe-biz-mobile.md](wireframe-biz-mobile.md)** — Screen-by-screen user flows, Mobbin references, and mobile UI ergonomics.
 9. **[plan-auth-migration.md](plan-auth-migration.md)** — Unified identity and token architecture (`packages/auth` via Better Auth + Cloudflare D1: web cookies, mobile bearer tokens, and scoped `apiKey` / OAuth for external agents).
 
-> **Open question:** pricing for agent (MCP) access. [pricing.md](pricing.md) puts the agent API inside the $109/year webapp plan, which predates the MCP-first decision.
+> **Decided 2026-10-23:** agent (MCP) access is free. Paid planner features stay paid whether reached from the app or an agent. See [pricing.md](pricing.md) §2.1.
 
 ---
 

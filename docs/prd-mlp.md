@@ -1,7 +1,7 @@
 # PRD — Detailed Web App (`apps/webapp` MLP)
 
 > **Parent**: [PRD.md](PRD.md) · **Prior phase**: [prd-mvp.md](prd-mvp.md) · **Mobile funnel entry**: [prd-biz-mobile.md](prd-biz-mobile.md) · **Next phase**: [prd-post-mlp.md](prd-post-mlp.md) · **Pricing**: [pricing.md](pricing.md)  
-> **Strategic Role**: While the MCP server and [`apps/biz-mobile`](prd-biz-mobile.md) act as the top-of-funnel consumer entry points (pricing for agent access is an open question, see [PRD.md](PRD.md)), **`apps/webapp` is the detailed 50-year life simulation studio and primary revenue engine** ($109/year subscription after a 7-day free trial).
+> **Strategic Role**: While the MCP server and [`apps/biz-mobile`](prd-biz-mobile.md) act as the top-of-funnel consumer entry points (agent access is free, see [pricing.md](pricing.md) §2.1), **`apps/webapp` is the detailed 50-year life simulation studio and primary revenue engine** ($109/year subscription after a 7-day free trial).
 
 ---
 

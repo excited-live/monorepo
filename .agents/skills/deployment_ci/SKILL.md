@@ -34,6 +34,8 @@ The two Pages deploys pass `--branch=main`; the Worker deploy is environment-sco
 
 **Never put DDL on the request path.** The runner reads the ledger first and only creates `d1_migrations` when it is missing. The first version issued `CREATE TABLE IF NOT EXISTS` on every cold start; on D1 that schema write deadlocked prelive traffic (authenticated requests hung for the full 30 s wall clock at ~3 ms CPU, about half of them, until the isolate died). Steady state must stay a single SELECT per isolate. Symptom to remember: a request that hangs with `outcome: canceled` and near-zero `cpuTime` in `wrangler tail` is waiting on D1, not computing.
 
+**Never cache an in-flight promise or a Better Auth instance at module scope on Workers.** A promise a request starts and leaves pending when it ends never settles (its I/O context is gone), so every later request in the isolate that awaits it hangs at ~3 ms CPU (#158). `betterAuth()` starts its `init()` eagerly, so an anonymous 401 that merely *built* the instance was enough to poison sign-up and get-session. On D1, build the auth instance per request and share only settled facts. Local repro on the real runtime: `apps/api/scripts/auth-hang-probe.mjs` against `wrangler dev --env prelive --local` (it sends the anonymous 401s first, which is the trigger); `api-prelive.yml` runs a real sign-up smoke after each deploy.
+
 **Tier 3: production (manual only).**
 - `production.yml` → `excited-live` (app.excited.live). Triggered by `workflow_dispatch` with a `confirm` input that must be typed as `PROD`; the job checks `github.event.inputs.confirm == 'PROD'`.
 - `landing-production.yml` → `excited-live-landing`, plain `workflow_dispatch` (no confirm field as of this audit; treat it extra carefully).

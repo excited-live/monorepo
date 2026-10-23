@@ -24,6 +24,18 @@ import { resolveDbFile } from "../db"
 
 const SQLITE_MODULE = "node:sqlite"
 
+/**
+ * Cache for the NODE path only (dev server, tests): a long-lived process with
+ * no per-request I/O context.
+ *
+ * It must never hold an instance built over a D1 binding. `betterAuth()` starts
+ * its `init()` promise eagerly, inside whichever request called it first; on
+ * Workers that request's I/O context is torn down when its response is sent, so
+ * a promise it started and did not finish never settles, and every later
+ * request in the isolate that awaits the cached instance hangs (#158: an
+ * anonymous 401 on /api/v1/* or /mcp built the instance, then every sign-up and
+ * get-session on that isolate hung at ~3 ms CPU).
+ */
 let cached: { key: string; auth: Auth } | null = null
 
 export function tokensAuthConfigured(): boolean {
@@ -84,19 +96,21 @@ export async function getTokensAuth(requestUrl: string, env?: unknown): Promise<
 	const secret = process.env.BETTER_AUTH_SECRET
 	if (!secret) return null
 	const key = `${requestOrigin(requestUrl)}/api/v1/auth`
-	if (!cached || cached.key !== key) {
-		cached = {
-			key,
-			auth: createAuth({
-				database: await resolveAuthDatabase(env),
-				secret,
-				baseURL: key,
-				trustedOrigins: trustedOrigins(),
-				mount: "tokens",
-				google: googleProvider(),
-			}),
-		}
-	}
+	const build = (database: AuthDatabase): Auth =>
+		createAuth({
+			database,
+			secret,
+			baseURL: key,
+			trustedOrigins: trustedOrigins(),
+			mount: "tokens",
+			google: googleProvider(),
+		})
+
+	// Workers: one instance per call, owned by the calling request (see `cached`).
+	const binding = (env as { DB?: unknown } | undefined)?.DB
+	if (isD1Database(binding)) return build({ kind: "d1", database: binding })
+
+	if (!cached || cached.key !== key) cached = { key, auth: build(await resolveAuthDatabase(env)) }
 	return cached.auth
 }
 

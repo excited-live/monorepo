@@ -92,19 +92,19 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		})
 	})
 
-	// Resolve the persistence backend once per app instance, on first request
-	// (on Workers the D1 binding is only visible through the request env).
-	let driverPromise: Promise<SqlDriver> | null = options.db ? Promise.resolve(options.db) : null
+	// Resolve the persistence backend per request (on Workers the D1 binding is
+	// only visible through the request env). Never cache the in-flight promise
+	// here: getDb owns what is safe to share across requests (see its note, #158).
+	const resolveDriver = (env: unknown): Promise<SqlDriver> =>
+		options.db ? Promise.resolve(options.db) : getDb(env).then((resolved) => resolved.driver)
 
 	app.use("/api/v1/*", async (c, next) => {
-		driverPromise ??= getDb(c.env).then((resolved) => resolved.driver)
-		c.set("db", await driverPromise)
+		c.set("db", await resolveDriver(c.env))
 		await next()
 	})
 
 	app.use("/mcp", async (c, next) => {
-		driverPromise ??= getDb(c.env).then((resolved) => resolved.driver)
-		c.set("db", await driverPromise)
+		c.set("db", await resolveDriver(c.env))
 		await next()
 	})
 

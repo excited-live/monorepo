@@ -56,6 +56,11 @@ migrations_dir = "migrations"
 name = "excited-live-api-prelive"
 vars = { BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.dev", EXCITED_WEBAPP_URL = "https://prelive.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://prelive.excited.live" }
 
+# Workers Logs: console output and request traces land in the dashboard and the
+# telemetry API. Added for #158, when a hang left no events to read.
+[env.prelive.observability]
+enabled = true
+
 [[env.prelive.d1_databases]]
 binding = "DB"
 database_name = "excited-live-api-prelive"

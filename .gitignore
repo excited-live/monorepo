@@ -21,6 +21,7 @@ playwright-report/
 # Environment files: real secrets must never be committed (see .env.example)
 .env
 .env.*
+.dev.vars
 !.env.example
 
 # IDE

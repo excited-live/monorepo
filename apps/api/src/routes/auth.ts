@@ -105,12 +105,12 @@ export function createIdentityMiddleware(): MiddlewareHandler<ApiEnv> {
 			await next();
 			return;
 		}
+		// Anonymous calls 401 without building an auth instance at all.
 		const authHeader = c.req.header("authorization");
-		const auth = await getTokensAuth(c.req.url, c.env);
-		const session =
-			auth && authHeader?.toLowerCase().startsWith("bearer ")
-				? await auth.api.getSession({ headers: c.req.raw.headers })
-				: null;
+		const auth = authHeader?.toLowerCase().startsWith("bearer ")
+			? await getTokensAuth(c.req.url, c.env)
+			: null;
+		const session = auth ? await auth.api.getSession({ headers: c.req.raw.headers }) : null;
 		if (!session?.user) {
 			return c.json({ error: "Unauthorized" }, 401);
 		}

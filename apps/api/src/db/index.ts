@@ -46,10 +46,14 @@ export function autoMigrateEnabled(env: Record<string, string | undefined> = pro
 /**
  * Build a resolved database (and apply pending migrations) for the given
  * runtime env. Exported for tests and for the standalone proof script.
+ *
+ * `skipMigrations` lets a caller that already proved the schema current skip
+ * the ledger read.
  */
 export async function resolveDb(
 	env?: unknown,
 	processEnv: Record<string, string | undefined> = process.env,
+	options: { skipMigrations?: boolean } = {},
 ): Promise<ResolvedDb> {
 	const binding =
 		typeof env === "object" && env !== null ? (env as { DB?: unknown }).DB : undefined
@@ -59,24 +63,57 @@ export async function resolveDb(
 		: await createNodeSqliteDriver(resolveDbFile(processEnv))
 
 	const location = driver.kind === "d1" ? "DB (D1 binding)" : resolveDbFile(processEnv)
-	const report = autoMigrateEnabled(processEnv)
-		? await applyMigrations(driver)
-		: { applied: [] as string[], alreadyApplied: [] as string[] }
+	const report =
+		autoMigrateEnabled(processEnv) && !options.skipMigrations
+			? await applyMigrationsWithRetry(driver)
+			: { applied: [] as string[], alreadyApplied: [] as string[] }
 
 	return { driver, mode: driver.kind, location, migrations: report.applied }
 }
 
+/**
+ * Two cold requests can both find the schema behind and race the same
+ * migration (the loser trips on a non-idempotent statement). One retry
+ * re-reads the ledger, which by then holds the winner's work.
+ */
+async function applyMigrationsWithRetry(driver: SqlDriver) {
+	try {
+		return await applyMigrations(driver)
+	} catch {
+		return await applyMigrations(driver)
+	}
+}
+
 let cached: Promise<ResolvedDb> | null = null
 
+/** D1 bindings whose schema a request has already proven current in this isolate. */
+const migratedBindings = new WeakSet<object>()
+
 /**
- * Process-wide (or isolate-wide) cached database handle.
+ * Database handle for this request's env.
  *
- * One SQLite handle per process keeps the connection count at one; the promise
- * is cached so concurrent first requests cannot open the file twice.
+ * Node (dev server, tests): one SQLite handle per process; the promise is
+ * cached so concurrent first requests cannot open the file twice.
+ *
+ * D1 (Workers): NOTHING in flight is shared between requests. A D1 query
+ * started by request A belongs to A's I/O context; when A ends (response sent
+ * or client gone) a promise it left pending never settles, and caching that
+ * promise at module scope hangs every later request in the isolate (#158).
+ * Each request builds its own cheap driver instead, and only the settled fact
+ * "this binding is migrated" is remembered. After the first successful boot
+ * the hot path does no migration work at all.
  */
-export function getDb(env?: unknown): Promise<ResolvedDb> {
-	cached ??= resolveDb(env)
-	return cached
+export async function getDb(env?: unknown): Promise<ResolvedDb> {
+	const binding =
+		typeof env === "object" && env !== null ? (env as { DB?: unknown }).DB : undefined
+	if (!isD1Database(binding)) {
+		cached ??= resolveDb(env)
+		return cached
+	}
+	const migrated = migratedBindings.has(binding)
+	const resolved = await resolveDb(env, process.env, { skipMigrations: migrated })
+	migratedBindings.add(binding)
+	return resolved
 }
 
 /** Drop the cached handle (tests / scripts that reopen the same file). */

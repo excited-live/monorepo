@@ -35,11 +35,22 @@ const COPY = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+type Copy = typeof COPY;
+type CopyEntry = { [K in keyof Copy['en']]: string };
+type CopyOverrides = { [L in keyof Copy]?: Partial<CopyEntry> };
+
 function readLang(): 'en' | 'th' {
 	return document.documentElement.dataset.lang === 'th' ? 'th' : 'en';
 }
 
-export default function WaitlistForm({ dark = false }: { dark?: boolean }) {
+export default function WaitlistForm({
+	dark = false,
+	copy,
+}: {
+	dark?: boolean;
+	/** Per-language overrides so a page can keep its own locked copy. */
+	copy?: CopyOverrides;
+}) {
 	const [lang, setLang] = useState<'en' | 'th'>('en');
 	const [email, setEmail] = useState('');
 	const [status, setStatus] = useState<Status>('idle');
@@ -55,7 +66,7 @@ export default function WaitlistForm({ dark = false }: { dark?: boolean }) {
 		return () => observer.disconnect();
 	}, []);
 
-	const t = COPY[lang];
+	const t = { ...COPY[lang], ...(copy?.[lang] ?? {}) };
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();

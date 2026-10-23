@@ -2,1137 +2,1457 @@
 import Layout from '@/components/layout.astro';
 import WaitlistForm from '@/components/WaitlistForm';
 import LangSelect from '@/components/LangSelect';
-import '@/styles/landing-motion.css';
 
-const title = 'excited.live — Know your runway across every project';
+const title = 'excited.live — Ask your money';
 const description =
-	'A free Android app that shows how long your cash lasts across your day job, side projects and every business, in one place. Join the waitlist.';
+	'Connect your agent to your books over MCP. Ask about cash, bills and runway in Claude.ai, ChatGPT or Claude Code.';
 
+// Every link into the product carries the path only; the inline script at the
+// end of the page rewrites it to the prelive webapp on prelive/preview hosts so
+// a preview can never create a production account.
 const appSchema = {
 	'@type': 'SoftwareApplication',
 	name: 'excited.live',
 	description,
 	applicationCategory: 'FinanceApplication',
-	operatingSystem: 'Android',
+	operatingSystem: 'Web, Android',
 	inLanguage: ['en', 'th'],
-	offers: { '@type': 'Offer', price: '0', priceCurrency: 'THB' },
 	publisher: { '@id': 'https://excited.live/#org' },
 };
-
-// Example data. Mirrors the demo fixtures behind the app screenshots
-// (apps/biz-mobile/src/testing/landing-fixtures.ts), so the toggle and the
-// phone never disagree.
-const entities = [
-	{
-		name: 'Mint Living',
-		tag: { en: 'Personal', th: 'ส่วนตัว' },
-		runway: 17,
-		fill: 71,
-		cash: '฿1,025,600',
-		burn: '฿60,440',
-		bx: '12%',
-		by: '34%',
-		br: '-5deg',
-	},
-	{
-		name: 'Bean Coffee',
-		tag: { en: 'Business', th: 'ธุรกิจ' },
-		runway: 16,
-		fill: 67,
-		cash: '฿760,100',
-		burn: '฿47,500',
-		bx: '-4%',
-		by: '-24%',
-		br: '4deg',
-	},
-	{
-		name: 'Mint Studio',
-		tag: { en: 'Business', th: 'ธุรกิจ' },
-		runway: 20,
-		fill: 83,
-		cash: '฿519,700',
-		burn: '฿26,000',
-		bx: '-22%',
-		by: '16%',
-		br: '-3deg',
-	},
-];
-
-const noise = [
-	{ icon: '📊', en: 'money_final_v7.xlsx', th: 'money_final_v7.xlsx', nx: '4%', ny: '7%', nr: '-4deg' },
-	{ icon: '🏦', en: '3 bank apps', th: 'แอปธนาคาร 3 แอป', nx: '63%', ny: '5%', nr: '3deg' },
-	{ icon: '💬', en: 'LINE: slips', th: 'LINE: สลิป', nx: '5%', ny: '80%', nr: '4deg', extra: true },
-	{ icon: '🧾', en: 'POS export.csv', th: 'POS export.csv', nx: '68%', ny: '82%', nr: '-3deg', extra: true },
-];
-
-const asks = [
-	{
-		en: 'How much can I spend on the café?',
-		th: 'ใช้เงินกับร้านกาแฟได้เท่าไหร่?',
-		nx: '33%',
-		ny: '13%',
-		nr: '-2deg',
-	},
-	{
-		en: 'How long is the studio’s runway?',
-		th: 'สตูดิโอไปต่อได้อีกกี่เดือน?',
-		nx: '56%',
-		ny: '50%',
-		nr: '2deg',
-	},
-	{
-		en: '…and what about my own life?',
-		th: 'แล้วชีวิตส่วนตัวล่ะ?',
-		nx: '6%',
-		ny: '57%',
-		nr: '-3deg',
-	},
-];
-
-const media = [
-	{
-		img: '/app/mobile/runway.webp',
-		shift: '0%',
-		h: { en: 'Runway, not just a balance', th: 'รันเวย์ ไม่ใช่แค่ยอดเงิน' },
-		p: {
-			en: 'See months of cash left, your monthly net burn, and whether you are default alive.',
-			th: 'เห็นว่าเงินพออีกกี่เดือน เผาเงินสุทธิเท่าไหร่ และรอดไหม',
-		},
-	},
-	{
-		img: '/app/mobile/expenses.webp',
-		shift: '-54%',
-		h: { en: 'Every bill, smoothed', th: 'ทุกบิล เฉลี่ยเป็นรายเดือน' },
-		p: {
-			en: 'Yearly and quarterly charges become one monthly number, with renewal alerts a week ahead.',
-			th: 'ค่าใช้จ่ายรายปีและรายไตรมาสถูกแปลงเป็นตัวเลขรายเดือน พร้อมเตือนล่วงหน้า 7 วัน',
-		},
-	},
-	{
-		img: '/app/mobile/gear.webp',
-		shift: '-52%',
-		h: { en: 'Gear that depreciates honestly', th: 'อุปกรณ์ที่ค่าเสื่อมถูกต้อง' },
-		p: {
-			en: 'Your laptop becomes a monthly cost, not a lump-sum surprise.',
-			th: 'โน้ตบุ๊กกลายเป็นต้นทุนรายเดือน ไม่ใช่ก้อนใหญ่ที่โผล่มาให้ตกใจ',
-		},
-	},
-];
-
-const minis = [
-	{
-		icon: '💼',
-		h: { en: 'Payday countdown', th: 'นับถอยหลังวันเงินเดือน' },
-		p: {
-			en: 'Your day job gets an UNTIL card: days to payday and months to your freedom buffer.',
-			th: 'งานประจำมีการ์ด UNTIL บอกวันถึงเงินเดือน และอีกกี่เดือนถึงเงินสำรองอิสรภาพ',
-		},
-	},
-	{
-		icon: '🏪',
-		h: { en: 'Many businesses, one app', th: 'หลายธุรกิจ แอปเดียว' },
-		p: {
-			en: 'Each venture gets its own cash, bills and runway. Switch in one tap.',
-			th: 'แต่ละธุรกิจมีเงินสด บิล และรันเวย์ของตัวเอง สลับได้ในแตะเดียว',
-		},
-	},
-	{
-		icon: '🔁',
-		h: { en: 'Move money, keep the math', th: 'โอนเงินเข้าธุรกิจ ตัวเลขยังเป๊ะ' },
-		p: {
-			en: 'Inject capital from personal into a business and both runways update instantly.',
-			th: 'ใส่ทุนจากส่วนตัวเข้าธุรกิจ แล้วรันเวย์ทั้งสองฝั่งอัปเดตทันที',
-		},
-	},
-];
 ---
 
 <Layout title={title} description={description} schema={appSchema}>
-	<!-- Motion arms before the hero paints: no-JS and reduced-motion visitors get
-	     the static page, everyone else gets the choreography. See landing-motion.css. -->
-	<script is:inline data-astro-rerun>
-		(function () {
-			try {
-				if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-					document.documentElement.classList.add('motion');
-				}
-			} catch (e) {
-				/* matchMedia unavailable — leave the static page */
-			}
-		})();
-	</script>
-
-	<!-- ============ NAV ============ -->
-	<div class="nav-wrap">
-		<nav class="nav-pill" aria-label="Main">
-			<a class="nav-brand" href="/" aria-label="excited.live">
-				<img src="/logo-mark.png" alt="" width="28" height="28" />
-				<span>excited<span class="brand-dot">.live</span></span>
-			</a>
-			<div class="nav-links">
-				<a href="#features">
-					<span data-lang-en>Features</span>
-					<span data-lang-th>ฟีเจอร์</span>
+	<div class="ask-page" id="top">
+		<div class="wrap">
+			<nav class="nav" aria-label="Main">
+				<a class="brand" href="/" aria-label="excited.live home">
+					<img src="/logo-mark.png" alt="" width="26" height="26" />
+					<b>excited<span>.live</span></b>
 				</a>
-				<a href="#next">
-					<span data-lang-en>Coming next</span>
-					<span data-lang-th>เร็ว ๆ นี้</span>
-				</a>
-				<a href="/blog">
-					<span data-lang-en>Blog</span>
-					<span data-lang-th>บล็อก</span>
-				</a>
-				<a href="/docs">
-					<span data-lang-en>Docs</span>
-					<span data-lang-th>เอกสาร</span>
-				</a>
-			</div>
-			<div class="nav-actions">
-				<LangSelect client:load />
-				<a class="btn-ink" href="#waitlist">
-					<span data-lang-en>Join waitlist</span>
-					<span data-lang-th>ลงทะเบียน</span>
-				</a>
-			</div>
-		</nav>
-	</div>
-
-	<!-- ============ HERO ============ -->
-	<header class="hero" id="waitlist">
-		<div class="hero-inner">
-			<p class="eyebrow" data-load style="--ld: 0">
-				<span data-lang-en>Free Android app</span>
-				<span data-lang-th>แอป Android ฟรี</span>
-			</p>
-			<h1>
-				<span data-lang-en>
-					<span class="line" style="--ld: 80"><span>Every project.</span></span>
-					<span class="line" style="--ld: 170"><span>Every baht.</span></span>
-					<span class="line" style="--ld: 260"><span>One <span class="accent">runway</span>.</span></span>
-				</span>
-				<span data-lang-th>
-					<span class="line" style="--ld: 80"><span>ทุกโปรเจกต์ ทุกบาท</span></span>
-					<span class="line" style="--ld: 170"><span>ใน<span class="accent">รันเวย์เดียว</span></span></span>
-				</span>
-			</h1>
-			<p class="hero-sub" data-load style="--ld: 380">
-				<span data-lang-en>
-					See how long your cash lasts across your day job, your side projects and your
-					businesses. One free app, one honest number.
-				</span>
-				<span data-lang-th>
-					ดูว่าเงินพออีกกี่เดือน ทั้งเงินเดือน ไซด์โปรเจกต์ และธุรกิจ
-					ในแอปฟรีแอปเดียว ตัวเลขเดียวที่ไม่หลอกตัวเอง
-				</span>
-			</p>
-			<div class="hero-perks" data-load style="--ld: 470">
-				<span class="perk-chip">
-					<span class="dot"></span>
-					<span data-lang-en>Free</span>
-					<span data-lang-th>ฟรี</span>
-				</span>
-				<span class="perk-chip">
-					<span class="dot"></span>
-					<span data-lang-en>Works offline</span>
-					<span data-lang-th>ใช้ได้แบบออฟไลน์</span>
-				</span>
-				<span class="perk-chip">
-					<span class="dot"></span>
-					<span data-lang-en>Made for Thai life</span>
-					<span data-lang-th>ออกแบบมาเพื่อคนไทย</span>
-				</span>
-			</div>
-			<div data-load style="--ld: 560"><WaitlistForm client:visible /></div>
-		</div>
-
-		<div class="hero-visual">
-			<svg class="hero-orbit" viewBox="0 0 520 640" preserveAspectRatio="none" aria-hidden="true">
-				<path d="M 30 600 C 40 380, 120 160, 470 40" />
-				<circle class="beacon" r="3.5" cx="0" cy="0">
-					<animateMotion dur="16s" repeatCount="indefinite" path="M 30 600 C 40 380, 120 160, 470 40" />
-				</circle>
-			</svg>
-			<div class="phone" data-load style="--ld: 220">
-				<div class="phone-screen">
-					<img
-						src="/app/mobile/home.webp"
-						width="780"
-						height="1568"
-						alt="The excited.live app showing consolidated wealth and three accounts: a personal account with a payday countdown and two businesses"
-						fetchpriority="high"
-					/>
+				<div class="links">
+					<a href="#how">
+						<span data-lang-en>How it works</span>
+						<span data-lang-th>วิธีใช้งาน</span>
+					</a>
+					<a href="#humans">
+						<span data-lang-en>For humans</span>
+						<span data-lang-th>สำหรับมนุษย์</span>
+					</a>
+					<a href="#faq">
+						<span data-lang-en>FAQ</span>
+						<span data-lang-th>คำถามที่พบบ่อย</span>
+					</a>
 				</div>
-			</div>
-			<span class="float-chip chip-a" data-load style="--ld: 620">
-				<span class="dot"></span>
-				<span data-lang-en>Runway <span data-count="17">17</span> mo</span>
-				<span data-lang-th>รันเวย์ <span data-count="17">17</span> เดือน</span>
-			</span>
-			<span class="float-chip chip-b" data-load style="--ld: 700">
-				<span data-lang-en>Payday in 10 days</span>
-				<span data-lang-th>อีก 10 วันเงินเดือนออก</span>
-			</span>
-			<span class="float-chip chip-c" data-load style="--ld: 780">
-				<span data-lang-en>3 businesses, 1 view</span>
-				<span data-lang-th>3 ธุรกิจ ดูที่เดียว</span>
-			</span>
-		</div>
-	</header>
+				<div class="navact">
+					<a class="signin" href="https://app.excited.live/sign-in" data-app-link="/sign-in">
+						<span data-lang-en>Sign in</span>
+						<span data-lang-th>เข้าสู่ระบบ</span>
+					</a>
+					<a
+						class="btn sm"
+						href="https://app.excited.live/sign-in?mode=signup&returnPathname=%2Fdevice"
+						data-app-link="/sign-in?mode=signup&returnPathname=%2Fdevice"
+						data-connect
+					>
+						<span data-lang-en>Connect your agent</span>
+						<span data-lang-th>เชื่อมต่อเอเจนต์</span>
+					</a>
+				</div>
+			</nav>
 
-	<!-- ============ BEFORE / AFTER ============ -->
-	<section class="section" id="problem">
-		<div class="section-head">
-			<p class="eyebrow">
-				<span data-lang-en>Before and after</span>
-				<span data-lang-th>ก่อน และ หลัง</span>
-			</p>
-			<h2>
-				<span data-lang-en>Too many projects. No single answer.</span>
-				<span data-lang-th>หลายโปรเจกต์ แต่ไม่มีคำตอบเดียว</span>
-			</h2>
-			<p>
-				<span data-lang-en>
-					Flip the switch and see what changes when every project, business and your own
-					life share one runway.
-				</span>
-				<span data-lang-th>
-					กดสวิตช์ดูว่าจะเปลี่ยนไปแค่ไหน เมื่อทุกโปรเจกต์ ทุกธุรกิจ
-					และชีวิตส่วนตัวอยู่ในรันเวย์เดียว
-				</span>
-			</p>
-		</div>
-
-		<div class="chaos" data-state="after">
-			<div class="switch" role="group" aria-label="Before and after">
-				<button type="button" class="switch-btn" data-view="before" aria-pressed="false">
-					<span data-lang-en>Before</span>
-					<span data-lang-th>ก่อน</span>
-				</button>
-				<button type="button" class="switch-btn" data-view="after" aria-pressed="true">
-					<span data-lang-en>With excited.live</span>
-					<span data-lang-th>มี excited.live</span>
-				</button>
-			</div>
-
-			<div class="chaos-stage">
-				<div class="chaos-total">
-					<p class="eyebrow">
-						<span data-lang-en>Consolidated wealth</span>
-						<span data-lang-th>ความมั่งคั่งรวม</span>
-					</p>
-					<span class="total-num swap">
-						<span class="is-before">฿ ???</span>
-						<span class="is-after" data-odometer="2305400">฿2,305,400</span>
+			<div class="tabs">
+				<div class="pill">
+					<a class="on" href="#top">
+						<span data-lang-en>For your agent</span>
+						<span data-lang-th>สำหรับเอเจนต์</span>
+					</a>
+					<a href="#humans">
+						<span data-lang-en>For humans</span>
+						<span data-lang-th>สำหรับมนุษย์</span>
+					</a>
+				</div>
+				<div class="tabs-end">
+					<span class="tabnote">
+						<span data-lang-en>No install</span>
+						<span data-lang-th>ไม่ต้องติดตั้ง</span>
 					</span>
-					<span class="total-hint swap">
-						<span class="is-before">
-							<span data-lang-en>nobody knows</span>
-							<span data-lang-th>ไม่มีใครรู้</span>
-						</span>
-						<span class="is-after">
-							<span data-lang-en>across 3 accounts</span>
-							<span data-lang-th>รวม 3 บัญชี</span>
-						</span>
-					</span>
+					<LangSelect client:idle />
 				</div>
-
-				<div class="ent-grid">
-					{
-						entities.map((e) => (
-							<article class="ent" style={`--bx:${e.bx};--by:${e.by};--br:${e.br};--fill:${e.fill}%`}>
-								<div class="ent-top">
-									<span class="ent-name">{e.name}</span>
-									<span class="ent-tag">
-										<span data-lang-en>{e.tag.en}</span>
-										<span data-lang-th>{e.tag.th}</span>
-									</span>
-								</div>
-								<div class="ent-runway swap">
-									<span class="is-before">
-										??<small>
-											<span data-lang-en>mo</span>
-											<span data-lang-th>เดือน</span>
-										</small>
-									</span>
-									<span class="is-after">
-										{e.runway}<small>
-											<span data-lang-en>mo runway</span>
-											<span data-lang-th>เดือน รันเวย์</span>
-										</small>
-									</span>
-								</div>
-								<div class="ent-bar" aria-hidden="true">
-									<span />
-								</div>
-								<div class="ent-rows">
-									<div>
-										<span>
-											<span data-lang-en>Cash</span>
-											<span data-lang-th>เงินสด</span>
-										</span>
-										<b class="swap">
-											<span class="is-before">฿ ???</span>
-											<span class="is-after">{e.cash}</span>
-										</b>
-									</div>
-									<div>
-										<span>
-											<span data-lang-en>Burn / mo</span>
-											<span data-lang-th>ค่าใช้จ่าย/เดือน</span>
-										</span>
-										<b class="swap">
-											<span class="is-before">฿ ???</span>
-											<span class="is-after">{e.burn}</span>
-										</b>
-									</div>
-								</div>
-							</article>
-						))
-					}
-				</div>
-
-				{
-					noise.map((n) => (
-						<span
-							class={`noise${n.extra ? ' noise--extra' : ''}`}
-							style={`--nx:${n.nx};--ny:${n.ny};--nr:${n.nr}`}
-							aria-hidden="true"
-						>
-							<span>{n.icon}</span>
-							<span data-lang-en>{n.en}</span>
-							<span data-lang-th>{n.th}</span>
-						</span>
-					))
-				}
-				{
-					asks.map((a) => (
-						<span class="ask" style={`--nx:${a.nx};--ny:${a.ny};--nr:${a.nr}`} aria-hidden="true">
-							<span data-lang-en>{a.en}</span>
-							<span data-lang-th>{a.th}</span>
-						</span>
-					))
-				}
 			</div>
-
-			<div class="chaos-caption" aria-live="polite">
-				<p class="is-before">
-					<span data-lang-en>Five tools, three projects, and still no answer.</span>
-					<span data-lang-th>5 เครื่องมือ 3 โปรเจกต์ แต่ยังตอบไม่ได้</span>
-				</p>
-				<p class="is-after">
-					<span data-lang-en>One view. Every runway. Updated as you log.</span>
-					<span data-lang-th>มุมมองเดียว เห็นทุกรันเวย์ อัปเดตทุกครั้งที่จด</span>
-				</p>
-			</div>
-			<p class="chaos-example">
-				<span data-lang-en>Example data from the app.</span>
-				<span data-lang-th>ข้อมูลตัวอย่างจากในแอป</span>
-			</p>
-		</div>
-	</section>
-
-	<!-- ============ FEATURES ============ -->
-	<section class="section" id="features">
-		<div class="section-head">
-			<p class="eyebrow">
-				<span data-lang-en>What is inside</span>
-				<span data-lang-th>มีอะไรในแอป</span>
-			</p>
-			<h2>
-				<span data-lang-en>Built for people who run more than one thing.</span>
-				<span data-lang-th>สร้างมาเพื่อคนที่ทำมากกว่าหนึ่งอย่าง</span>
-			</h2>
-			<p>
-				<span data-lang-en>
-					Cash, bills and gear for you and every venture, with honest math underneath.
-				</span>
-				<span data-lang-th>
-					เงินสด บิล และอุปกรณ์ ของคุณและทุกธุรกิจ ด้วยการคำนวณที่ตรงไปตรงมา
-				</span>
-			</p>
 		</div>
 
-		<div class="bento">
-			{
-				media.map((m) => (
-					<article class="bento-card">
-						<div class="bento-copy">
-							<h3>
-								<span data-lang-en>{m.h.en}</span>
-								<span data-lang-th>{m.h.th}</span>
-							</h3>
-							<p>
-								<span data-lang-en>{m.p.en}</span>
-								<span data-lang-th>{m.p.th}</span>
-							</p>
-						</div>
-						<div class="bento-shot">
-							<img src={m.img} alt="" loading="lazy" width="780" height="1500" style={`transform:translateY(${m.shift})`} />
-						</div>
-					</article>
-				))
-			}
-		</div>
-
-		<div class="perk-cards is-tight">
-			{
-				minis.map((m) => (
-					<article class="perk-card">
-						<span class="perk-icon" aria-hidden="true">
-							{m.icon}
-						</span>
-						<h3>
-							<span data-lang-en>{m.h.en}</span>
-							<span data-lang-th>{m.h.th}</span>
-						</h3>
-						<p>
-							<span data-lang-en>{m.p.en}</span>
-							<span data-lang-th>{m.p.th}</span>
+		<main>
+			<section class="hero">
+				<div class="wrap hero-grid">
+					<div class="hero-copy">
+						<p class="eyebrow">
+							<i aria-hidden="true"></i>
+							<span data-lang-en>For Claude, ChatGPT &amp; Claude Code</span>
+							<span data-lang-th>ใช้ได้กับ Claude, ChatGPT และ Claude Code</span>
 						</p>
-					</article>
-				))
-			}
-		</div>
-	</section>
-
-	<!-- ============ HOW IT WORKS ============ -->
-	<section class="section" id="how">
-		<div class="section-head">
-			<p class="eyebrow">
-				<span data-lang-en>How it works</span>
-				<span data-lang-th>ใช้งานอย่างไร</span>
-			</p>
-			<h2>
-				<span data-lang-en>Three steps to an honest number.</span>
-				<span data-lang-th>สามขั้นตอนสู่ตัวเลขที่จริงใจ</span>
-			</h2>
-		</div>
-
-		<div class="orbit-stage">
-			<svg class="orbit-svg" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
-				<path d="M 200 170 C 420 30, 780 30, 1000 170" />
-				<circle class="beacon" r="3.5" cx="0" cy="0">
-					<animateMotion dur="18s" repeatCount="indefinite" path="M 200 170 C 420 30, 780 30, 1000 170" />
-				</circle>
-			</svg>
-			<div class="orbit-item">
-				<div class="orbit-circle">
-					<span class="step-num">01</span>
-					<span class="step-title">
-						<span data-lang-en>Add your accounts</span>
-						<span data-lang-th>เพิ่มบัญชีของคุณ</span>
-					</span>
-					<span class="satellite" aria-hidden="true">🏦</span>
-				</div>
-				<p class="orbit-caption">
-					<span data-lang-en>Personal, your job, every business.</span>
-					<span data-lang-th>ส่วนตัว งานประจำ และทุกธุรกิจ</span>
-				</p>
-			</div>
-			<div class="orbit-item">
-				<div class="orbit-circle">
-					<span class="step-num">02</span>
-					<span class="step-title">
-						<span data-lang-en>Log bills and gear</span>
-						<span data-lang-th>จดบิลและอุปกรณ์</span>
-					</span>
-					<span class="satellite" aria-hidden="true">🧾</span>
-				</div>
-				<p class="orbit-caption">
-					<span data-lang-en>A minute each. No accounting degree.</span>
-					<span data-lang-th>ไม่ถึงนาทีต่อรายการ ไม่ต้องจบบัญชี</span>
-				</p>
-			</div>
-			<div class="orbit-item">
-				<div class="orbit-circle">
-					<span class="step-num">03</span>
-					<span class="step-title">
-						<span data-lang-en>Read your runway</span>
-						<span data-lang-th>ดูรันเวย์</span>
-					</span>
-					<span class="satellite" aria-hidden="true">🧭</span>
-				</div>
-				<p class="orbit-caption">
-					<span data-lang-en>Know how long you can last, today.</span>
-					<span data-lang-th>รู้ทันทีว่าไปต่อได้อีกกี่เดือน</span>
-				</p>
-			</div>
-		</div>
-	</section>
-
-	<!-- ============ COMING NEXT ============ -->
-	<section class="section" id="next">
-		<div class="next-panel">
-			<p class="eyebrow">
-				<span data-lang-en>Coming next</span>
-				<span data-lang-th>เร็ว ๆ นี้</span>
-			</p>
-			<h2>
-				<span data-lang-en>Your bank slips will log themselves.</span>
-				<span data-lang-th>สลิปโอนเงินจะจดตัวเอง</span>
-			</h2>
-			<p class="next-lede">
-				<span data-lang-en>
-					We are building the part nobody enjoys: typing in every transfer.
-				</span>
-				<span data-lang-th>เรากำลังทำส่วนที่ไม่มีใครอยากทำ คือนั่งพิมพ์ทุกการโอนเอง</span>
-			</p>
-
-			<div class="next-grid">
-				<article class="next-card next-card--lead">
-					<div>
-						<span class="tag-soon">
-							<span data-lang-en>Coming next</span>
-							<span data-lang-th>เร็ว ๆ นี้</span>
-						</span>
-						<h3 style="margin-top: 16px;">
-							<span data-lang-en>Thai bank slip reading</span>
-							<span data-lang-th>อ่านสลิปธนาคารไทย</span>
-						</h3>
-						<p style="margin-top: 12px;">
+						<h1>
 							<span data-lang-en>
-								Share a slip from your banking app and it lands in your ledger. Bills you
-								already track are marked paid instead of counted twice.
+								<span class="h1line">How long can</span>
+								<span class="h1line"><em>the café</em> last?</span>
 							</span>
 							<span data-lang-th>
-								แชร์สลิปจากแอปธนาคาร แล้วรายการเข้าบัญชีให้เลย
-								บิลที่ติดตามอยู่แล้วจะถูกติ๊กว่าจ่ายแล้ว ไม่นับซ้ำ
+								<span class="h1line">ร้านเรา</span>
+								<span class="h1line"><em>ไปต่อได้อีกกี่เดือน?</em></span>
+							</span>
+						</h1>
+						<p class="sub">
+							<span data-lang-en>
+								Your agent already knows your cash, bills and runway. Ask it a question like
+								this one — in the chat you already use.
+							</span>
+							<span data-lang-th>
+								เอเจนต์ของคุณรู้เงินสด บิล และรันเวย์อยู่แล้ว ถามคำถามแบบนี้ได้เลยในแชทที่คุณใช้อยู่
+							</span>
+						</p>
+						<div class="ctarow">
+							<a
+								class="btn lg"
+								href="https://app.excited.live/sign-in?mode=signup&returnPathname=%2Fdevice"
+								data-app-link="/sign-in?mode=signup&returnPathname=%2Fdevice"
+								data-connect
+							>
+								<span data-lang-en>Connect your agent</span>
+								<span data-lang-th>เชื่อมต่อเอเจนต์</span>
+								<span class="ar" aria-hidden="true">→</span>
+							</a>
+							<a class="textlink" href="#proof">
+								<span data-lang-en>See it answer something else</span>
+								<span data-lang-th>ดูมันตอบคำถามอื่น</span>
+							</a>
+						</div>
+						<p class="fine">
+							<span data-lang-en>About 30 seconds · Google sign-in · no install</span>
+							<span data-lang-th>ราว 30 วินาที · เข้าสู่ระบบด้วย Google · ไม่ต้องติดตั้ง</span>
+						</p>
+					</div>
+
+					<div
+						class="card"
+						id="proof"
+						role="img"
+						aria-label="Claude answers: 16 months at the current burn, with cash 768,000 baht and burn 47,500 baht per month, read from your books over MCP."
+					>
+						<div class="chead">
+							<span class="av" aria-hidden="true">C</span>
+							<div>
+								<b>Claude</b>
+								<small>
+									<span data-lang-en>connected to your books</span>
+									<span data-lang-th>เชื่อมกับบัญชีคุณแล้ว</span>
+								</small>
+							</div>
+							<span class="live"><i aria-hidden="true"></i>answered · 2s</span>
+						</div>
+						<div class="thread">
+							<p class="q">
+								<span data-lang-en>How long can the café last?</span>
+								<span data-lang-th>ร้านเราไปต่อได้อีกกี่เดือน?</span>
+							</p>
+							<div class="a">
+								<span class="tag">via excited.live MCP</span>
+								<p class="say">
+									<span data-lang-en>At the current burn,</span>
+									<span data-lang-th>ที่อัตราใช้จ่ายตอนนี้</span>
+								</p>
+								<p class="big">
+									<span data-lang-en>16<small>months</small></span>
+									<span data-lang-th>16<small>เดือน</small></span>
+								</p>
+								<p class="say note">
+									<span data-lang-en>and that already includes the new lease.</span>
+									<span data-lang-th>และรวมค่าเช่าสัญญาใหม่ไว้แล้ว</span>
+								</p>
+							</div>
+							<div class="receipt">
+								<div>
+									<span data-lang-en>Cash</span>
+									<span data-lang-th>เงินสด</span>
+									<b>฿768,000</b>
+								</div>
+								<div>
+									<span data-lang-en>Burn</span>
+									<span data-lang-th>ใช้จ่าย</span>
+									<b>฿47,500/mo</b>
+								</div>
+								<div>
+									<span data-lang-en>Updated</span>
+									<span data-lang-th>อัปเดต</span>
+									<b>
+										<span data-lang-en>2 min ago</span>
+										<span data-lang-th>2 นาทีที่แล้ว</span>
+									</b>
+								</div>
+							</div>
+						</div>
+						<div class="cfoot">
+							<span data-lang-en>Read, not typed — from your books</span>
+							<span data-lang-th>อ่านจากบัญชีคุณ ไม่ได้พิมพ์เอง</span>
+							<a class="more" href="#how">
+								<span data-lang-en>Ask another →</span>
+								<span data-lang-th>ถามอีกคำถาม →</span>
+							</a>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="strip">
+				<div class="wrap strip-inner">
+					<span class="lbl">
+						<span data-lang-en>Works with the agent you already use</span>
+						<span data-lang-th>ใช้กับเอเจนต์ที่คุณใช้อยู่</span>
+					</span>
+					<span class="who">Claude.ai · ChatGPT · Claude Code</span>
+					<span class="who soft">
+						<span data-lang-en>One connection · no install</span>
+						<span data-lang-th>หนึ่งการเชื่อมต่อ · ไม่ต้องติดตั้ง</span>
+					</span>
+				</div>
+			</div>
+
+			<section class="features">
+				<div class="wrap">
+					<div class="grid3">
+						<div class="blk">
+							<span class="n">01</span>
+							<h3>
+								<span data-lang-en>It already has the numbers.</span>
+								<span data-lang-th>ตัวเลขอยู่กับมันแล้ว</span>
+							</h3>
+							<p>
+								<span data-lang-en>
+									Your agent reads cash, bills and income through MCP. No CSV, no spreadsheet,
+									no re-typing last month.
+								</span>
+								<span data-lang-th>
+									เอเจนต์อ่านเงินสด บิล และรายได้ผ่าน MCP ไม่ต้องส่งออก CSV ไม่ต้องกรอกสเปรดชีตใหม่
+								</span>
+							</p>
+						</div>
+						<div class="blk">
+							<span class="n">02</span>
+							<h3>
+								<span data-lang-en>It answers where you already are.</span>
+								<span data-lang-th>ตอบในแชทที่คุณใช้อยู่</span>
+							</h3>
+							<p>
+								<span data-lang-en>
+									Claude, ChatGPT or Claude Code. The answer arrives in the same chat — not
+									another dashboard you forget to open.
+								</span>
+								<span data-lang-th>
+									Claude, ChatGPT หรือ Claude Code คำตอบมาในแชทเดิม ไม่ต้องเปิดแดชบอร์ดอีกอัน
+								</span>
+							</p>
+						</div>
+						<div class="blk">
+							<span class="n">03</span>
+							<h3>
+								<span data-lang-en>Nothing is written without you.</span>
+								<span data-lang-th>ไม่มีอะไรถูกบันทึกโดยไม่บอกคุณ</span>
+							</h3>
+							<p>
+								<span data-lang-en>
+									Every entry comes back as a receipt you can read. Approve it, correct it, or
+									undo it with one sentence.
+								</span>
+								<span data-lang-th>
+									ทุกรายการกลับมาเป็นใบเสร็จที่อ่านได้ จะอนุมัติ แก้ หรือย้อนกลับก็สั่งประโยคเดียว
+								</span>
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="how" id="how">
+				<div class="wrap">
+					<div class="shead">
+						<h2>
+							<span data-lang-en>Three minutes of setup. Then it is just a conversation.</span>
+							<span data-lang-th>ตั้งค่าสามนาที จากนั้นมันคือบทสนทนา</span>
+						</h2>
+						<p>
+							<span data-lang-en>
+								The account comes first, because the books need an owner before an agent can
+								write to them.
+							</span>
+							<span data-lang-th>
+								บัญชีมาก่อน เพราะสมุดบัญชีต้องมีเจ้าของก่อนเอเจนต์จะเขียนได้
 							</span>
 						</p>
 					</div>
-					<div class="slip" aria-hidden="true">
-						<span class="slip-head"><span class="ok">✓</span>โอนเงินสำเร็จ</span>
-						<span class="slip-amount">฿540.00</span>
-						<span class="slip-to">AIS Fibre</span>
-						<span class="slip-match">
-							<span data-lang-en>✓ Matched to your monthly bill</span>
-							<span data-lang-th>✓ ตรงกับบิลรายเดือนของคุณ</span>
-						</span>
+					<div class="steps">
+						<div class="step">
+							<span class="n">01</span>
+							<h3>
+								<span data-lang-en>Create your account</span>
+								<span data-lang-th>สร้างบัญชี</span>
+							</h3>
+							<p>
+								<span data-lang-en>
+									One tap with Google. This is the account your agent will read and write.
+								</span>
+								<span data-lang-th>
+									แตะเดียวด้วย Google นี่คือบัญชีที่เอเจนต์จะอ่านและเขียน
+								</span>
+							</p>
+						</div>
+						<div class="step">
+							<span class="n">02</span>
+							<h3>
+								<span data-lang-en>Hand it one sentence</span>
+								<span data-lang-th>ส่งประโยคเดียวให้มัน</span>
+							</h3>
+							<p>
+								<span data-lang-en>
+									Paste it into Claude or ChatGPT. A single-use code connects the account and
+									opens the approval page.
+								</span>
+								<span data-lang-th>
+									วางใน Claude หรือ ChatGPT รหัสใช้ครั้งเดียวจะเชื่อมบัญชีและเปิดหน้าอนุมัติ
+								</span>
+							</p>
+						</div>
+						<div class="step">
+							<span class="n">03</span>
+							<h3>
+								<span data-lang-en>Ask</span>
+								<span data-lang-th>ถาม</span>
+							</h3>
+							<p>
+								<span data-lang-en>
+									Start with “how long can we last?”. Your agent answers from the books and
+									tells you what changed.
+								</span>
+								<span data-lang-th>
+									เริ่มด้วย “เราอยู่ได้อีกนานแค่ไหน?” เอเจนต์ตอบจากบัญชีและบอกว่าอะไรเปลี่ยน
+								</span>
+							</p>
+						</div>
+						<div class="snip">
+							<span class="k">
+								<span data-lang-en>Single-use code</span>
+								<span data-lang-th>รหัสใช้ครั้งเดียว</span>
+							</span>
+							<span class="snip-body">
+								<span data-lang-en>Connect excited.live, then run onboard_me.</span>
+								<span data-lang-th>เชื่อมต่อ excited.live แล้วรัน onboard_me</span>
+							</span>
+						</div>
 					</div>
-				</article>
-
-				<article class="next-card">
-					<span class="tag-soon">
-						<span data-lang-en>Coming next</span>
-						<span data-lang-th>เร็ว ๆ นี้</span>
-					</span>
-					<h3>
-						<span data-lang-en>Three-minute guided setup</span>
-						<span data-lang-th>ตั้งค่าใน 3 นาที</span>
-					</h3>
-					<p>
-						<span data-lang-en>
-							Start from example data, then swap in your own cash, bills and gear step by
-							step.
-						</span>
-						<span data-lang-th>
-							เริ่มจากข้อมูลตัวอย่าง แล้วค่อย ๆ ใส่เงินสด บิล และอุปกรณ์ของคุณทีละขั้น
-						</span>
-					</p>
-				</article>
-
-				<article class="next-card">
-					<span class="tag-soon">
-						<span data-lang-en>Coming next</span>
-						<span data-lang-th>เร็ว ๆ นี้</span>
-					</span>
-					<h3>
-						<span data-lang-en>Bring your own AI agent</span>
-						<span data-lang-th>เอา AI ของคุณมาเชื่อมได้</span>
-					</h3>
-					<p>
-						<span data-lang-en>
-							Ask Claude, ChatGPT or your LINE bot: “How long is the café’s runway?”
-						</span>
-						<span data-lang-th>
-							ถาม Claude, ChatGPT หรือบอท LINE ของคุณได้เลย “ร้านกาแฟไปต่อได้อีกกี่เดือน?”
-						</span>
-					</p>
-				</article>
-			</div>
-		</div>
-	</section>
-
-	<!-- ============ GO DEEPER (web planner) ============ -->
-	<section class="section" id="deeper">
-		<div class="deeper">
-			<div>
-				<p class="eyebrow">
-					<span data-lang-en>Go deeper</span>
-					<span data-lang-th>ไปให้ลึกขึ้น</span>
-				</p>
-				<h2>
-					<span data-lang-en>When tracking feels easy, look 50 years ahead.</span>
-					<span data-lang-th>เมื่อการจดเป็นเรื่องง่าย ลองมองไปข้างหน้า 50 ปี</span>
-				</h2>
-				<p>
-					<span data-lang-en>
-						The excited.live web planner takes the same numbers and simulates your whole
-						life: Monte Carlo ranges, Thai tax and what-if sliders. The app stays free
-						either way.
-					</span>
-					<span data-lang-th>
-						ตัวช่วยวางแผนบนเว็บใช้ตัวเลขชุดเดิมของคุณมาจำลองชีวิตทั้งชีวิต ทั้งช่วงความเป็นไปได้แบบ
-						Monte Carlo ภาษีไทย และสไลเดอร์ลองสมมติ แอปยังฟรีเหมือนเดิม
-					</span>
-				</p>
-				<ul class="deeper-list">
-					<li>
-						<span data-lang-en>Free during early access</span>
-						<span data-lang-th>ฟรีในช่วง Early Access (ยังไม่คิดค่าบริการ)</span>
-					</li>
-					<li>
-						<span data-lang-en>Export your data anytime</span>
-						<span data-lang-th>ส่งออกข้อมูลได้ทุกเมื่อ</span>
-					</li>
-				</ul>
-				<p style="margin-top: 28px;">
-					<a class="btn-outline" href="#join">
-						<span data-lang-en>Join the waitlist</span>
-						<span data-lang-th>ลงทะเบียนรอรับสิทธิ์</span>
-					</a>
-				</p>
-			</div>
-			<div class="browser">
-				<div class="browser-bar" aria-hidden="true"><span></span><span></span><span></span></div>
-				<div class="browser-shot">
-					<img
-						src="/demo/app-03.webp"
-						alt="The excited.live web planner showing a 50-year net worth projection next to editable income, expenses and wallets"
-						loading="lazy"
-						width="2560"
-						height="1720"
-					/>
 				</div>
-			</div>
-		</div>
-	</section>
+			</section>
 
-	<!-- ============ WHY JOIN ============ -->
-	<section class="section" id="perks">
-		<div class="section-head">
-			<p class="eyebrow">
-				<span data-lang-en>Why join the waitlist</span>
-				<span data-lang-th>ทำไมต้องลงทะเบียน</span>
-			</p>
-			<h2>
-				<span data-lang-en>Be first in line when doors open.</span>
-				<span data-lang-th>เป็นคนแรก ๆ ที่ได้เข้าใช้</span>
-			</h2>
-		</div>
+			<section class="faq" id="faq">
+				<div class="wrap faq-grid">
+					<div>
+						<h2>
+							<span data-lang-en>Questions people ask before they connect.</span>
+							<span data-lang-th>คำถามที่คนถามก่อนเชื่อมต่อ</span>
+						</h2>
+						<p class="note">
+							<span data-lang-en>If yours is not here, the docs answer the technical ones in full.</span>
+							<span data-lang-th>ถ้าไม่เจอคำถามของคุณ เอกสารตอบเรื่องเทคนิคไว้ครบ</span>
+						</p>
+					</div>
+					<div>
+						<details open>
+							<summary>
+								<span data-lang-en>Do I need to install anything?</span>
+								<span data-lang-th>ต้องติดตั้งอะไรไหม?</span>
+							</summary>
+							<p>
+								<span data-lang-en>
+									No. Your agent connects over MCP and you keep talking to it in the app you
+									already use. There is no extension, no plugin store, no new app to learn.
+								</span>
+								<span data-lang-th>
+									ไม่ต้อง เอเจนต์เชื่อมผ่าน MCP แล้วคุณคุยกับมันในแอปเดิมได้เลย ไม่มีส่วนขยาย
+									ไม่มีสโตร์ปลั๊กอิน ไม่มีแอปใหม่ให้เรียนรู้
+								</span>
+							</p>
+						</details>
+						<details>
+							<summary>
+								<span data-lang-en>Which agents work at launch?</span>
+								<span data-lang-th>ตอนเปิดตัวใช้กับเอเจนต์ตัวไหนได้บ้าง?</span>
+							</summary>
+							<p>
+								<span data-lang-en>
+									Claude.ai, ChatGPT and Claude Code. Other MCP clients can connect, but we only
+									support those three on the page at launch.
+								</span>
+								<span data-lang-th>
+									Claude.ai, ChatGPT และ Claude Code ไคลเอนต์ MCP อื่นเชื่อมได้
+									แต่ตอนเปิดตัวเราดูแลแค่สามตัวนี้บนหน้าเว็บ
+								</span>
+							</p>
+						</details>
+						<details>
+							<summary>
+								<span data-lang-en>What can the agent actually change?</span>
+								<span data-lang-th>เอเจนต์แก้อะไรได้จริง ๆ?</span>
+							</summary>
+							<p>
+								<span data-lang-en>
+									It can read your books and add or edit the entries it records for you. It
+									cannot move money, and it never sees your password. Every write comes back as a
+									receipt, and you can revoke access at any time.
+								</span>
+								<span data-lang-th>
+									มันอ่านบัญชีได้ และเพิ่มหรือแก้รายการที่มันบันทึกให้คุณ โอนเงินไม่ได้
+									และไม่เคยเห็นรหัสผ่าน ทุกครั้งที่เขียนจะมีใบเสร็จให้ตรวจ
+									และยกเลิกสิทธิ์ได้ทุกเมื่อ
+								</span>
+							</p>
+						</details>
+						<details>
+							<summary>
+								<span data-lang-en>What if I don't use an agent?</span>
+								<span data-lang-th>ถ้าไม่ใช้เอเจนต์ล่ะ?</span>
+							</summary>
+							<p>
+								<span data-lang-en>
+									Then the Android app is for you — same books, same numbers, no setup. It lives
+									in the “For humans” tab, along with the waitlist.
+								</span>
+								<span data-lang-th>
+									งั้นแอป Android เหมาะกับคุณ — บัญชีเดียวกัน ตัวเลขเดียวกัน ไม่ต้องตั้งค่า
+									อยู่ในแท็บ “สำหรับมนุษย์” พร้อมรายชื่อรอรับสิทธิ์
+								</span>
+							</p>
+						</details>
+					</div>
+				</div>
+			</section>
 
-		<div class="perk-cards">
-			<article class="perk-card">
-				<span class="perk-icon" aria-hidden="true">🚀</span>
-				<h3>
-					<span data-lang-en>Early access</span>
-					<span data-lang-th>ลองใช้ก่อนใคร</span>
-				</h3>
-				<p>
-					<span data-lang-en>Get the Android build before the public launch.</span>
-					<span data-lang-th>ได้แอป Android ก่อนเปิดตัวจริง</span>
-				</p>
-			</article>
-			<article class="perk-card">
-				<span class="perk-icon" aria-hidden="true">🗳️</span>
-				<h3>
-					<span data-lang-en>Steer the roadmap</span>
-					<span data-lang-th>กำหนดทิศทางแอป</span>
-				</h3>
-				<p>
-					<span data-lang-en>Vote on what ships next: slip scanning, AI agents, iOS.</span>
-					<span data-lang-th>โหวตว่าอะไรมาก่อน สแกนสลิป เอเจนต์ AI หรือ iOS</span>
-				</p>
-			</article>
-			<article class="perk-card">
-				<span class="perk-icon" aria-hidden="true">🏅</span>
-				<h3>
-					<span data-lang-en>Founders wall</span>
-					<span data-lang-th>กำแพงผู้ร่วมก่อตั้ง</span>
-				</h3>
-				<p>
-					<span data-lang-en>Opt in and your name goes on the app’s founders list.</span>
-					<span data-lang-th>ยินยอมแล้วชื่อของคุณจะอยู่ในรายชื่อผู้ร่วมก่อตั้งในแอป</span>
-				</p>
-			</article>
-		</div>
-	</section>
-
-	<!-- ============ FOOTER ============ -->
-	<footer class="footer">
-		<div class="footer-inner">
-			<div class="footer-main" id="join">
-				<h2>
-					<span data-lang-en>Ready to know your runway?</span>
-					<span data-lang-th>พร้อมรู้รันเวย์ของคุณหรือยัง?</span>
-				</h2>
-				<WaitlistForm client:visible dark />
-
-				<div class="journey">
-					<p class="eyebrow">
-						<span data-lang-en>Follow the journey</span>
-						<span data-lang-th>ติดตามเส้นทางของเรา</span>
-					</p>
-					<div class="journey-links">
-						<a
-							class="journey-link is-live"
-							href="https://www.instagram.com/excited.live/"
-							rel="noopener noreferrer"
-						>
-							Instagram
+			<section class="humans" id="humans">
+				<div class="wrap humans-grid">
+					<div>
+						<p class="eyebrow">
+							<i aria-hidden="true"></i>
+							<span data-lang-en>For humans · Android</span>
+							<span data-lang-th>สำหรับมนุษย์ · Android</span>
+						</p>
+						<h2>
+							<span data-lang-en>The same books, in your pocket.</span>
+							<span data-lang-th>บัญชีเดียวกัน ในกระเป๋าคุณ</span>
+						</h2>
+						<p>
+							<span data-lang-en>
+								Your agent keeps the numbers. The app is where you glance at them: runway,
+								payday, every business in one place. Same books — no second setup.
+							</span>
+							<span data-lang-th>
+								เอเจนต์ดูแลตัวเลขให้ ส่วนแอปคือที่ที่คุณเปิดดูเร็ว ๆ รันเวย์ วันเงินเดือน
+								และทุกธุรกิจในที่เดียว บัญชีเดียวกัน ไม่ต้องตั้งค่าใหม่
+							</span>
+						</p>
+					</div>
+					<div id="waitlist" class="humans-form">
+						<a class="btn" href="#waitlist">
+							<span data-lang-en>Get the Android app</span>
+							<span data-lang-th>รับแอป Android</span>
 						</a>
+						<WaitlistForm
+							client:visible
+							copy={{
+								en: { button: 'Join the waitlist' },
+								th: { button: 'ลงทะเบียนรอรับสิทธิ์' },
+							}}
+						/>
+						<p class="fine">
+							<span data-lang-en>
+								One email at launch · no spam · the agent connection needs no waitlist
+							</span>
+							<span data-lang-th>
+								อีเมลเดียวตอนเปิดตัว · ไม่มีสแปม · การเชื่อมต่อเอเจนต์ไม่ต้องรอ
+							</span>
+						</p>
 					</div>
 				</div>
-			</div>
+			</section>
 
-			<div class="footer-cols">
-				<div class="footer-col">
-					<h4>
-						<span data-lang-en>Product</span>
-						<span data-lang-th>ผลิตภัณฑ์</span>
-					</h4>
-					<a href="#features">
-						<span data-lang-en>Features</span>
-						<span data-lang-th>ฟีเจอร์</span>
-					</a>
-					<a href="#next">
-						<span data-lang-en>Coming next</span>
-						<span data-lang-th>เร็ว ๆ นี้</span>
-					</a>
-					<a href="#deeper">
-						<span data-lang-en>Web planner</span>
-						<span data-lang-th>ตัวช่วยวางแผนบนเว็บ</span>
-					</a>
-					<a href="/blog">
-						<span data-lang-en>Blog</span>
-						<span data-lang-th>บล็อก</span>
-					</a>
-					<a href="/docs">
-						<span data-lang-en>Docs</span>
-						<span data-lang-th>เอกสาร</span>
-					</a>
-					<a href="/docs/help">
-						<span data-lang-en>Help</span>
-						<span data-lang-th>ช่วยเหลือ</span>
-					</a>
+			<section class="final" id="connect">
+				<div class="wrap final-grid">
+					<div>
+						<h2>
+							<span data-lang-en>Ask your own agent.</span>
+							<span data-lang-th>ถามเอเจนต์ของคุณเอง</span>
+						</h2>
+						<p>
+							<span data-lang-en>
+								Open your books once. After that, every money question is one message away.
+							</span>
+							<span data-lang-th>
+								เปิดบัญชีให้มันครั้งเดียว จากนั้นทุกคำถามเรื่องเงินอยู่ห่างแค่ข้อความเดียว
+							</span>
+						</p>
+						<p class="free">
+							<span data-lang-en>Free during early access.</span>
+							<span data-lang-th>ช่วง Early Access ใช้ฟรี</span>
+						</p>
+					</div>
+					<div class="final-cta">
+						<a
+							class="btn lg"
+							href="https://app.excited.live/sign-in?mode=signup&returnPathname=%2Fdevice"
+							data-app-link="/sign-in?mode=signup&returnPathname=%2Fdevice"
+							data-connect
+						>
+							<span data-lang-en>Connect your agent</span>
+							<span data-lang-th>เชื่อมต่อเอเจนต์</span>
+							<span class="ar" aria-hidden="true">→</span>
+						</a>
+						<p class="final-note">
+							<span data-lang-en>Claude · ChatGPT · Claude Code</span>
+							<span data-lang-th>Claude · ChatGPT · Claude Code</span>
+						</p>
+					</div>
 				</div>
-				<div class="footer-col">
-					<h4>
-						<span data-lang-en>Creator</span>
-						<span data-lang-th>ผู้สร้าง</span>
-					</h4>
-					<a href="https://fromsukong.com" rel="noopener noreferrer">FromSukong</a>
-					<a href="https://github.com/fromsukong/excited.live" rel="noopener noreferrer">
-						GitHub</a
-					>
-				</div>
-			</div>
+			</section>
+		</main>
 
-			<div class="footer-bottom">
-				<span>© 2026 FromSukong · <span data-lang-en>Made in Bangkok</span>
-					<span data-lang-th>ทำในกรุงเทพฯ</span></span>
-				<span class="legal-links">
-					<a href="/docs/privacy">
-						<span data-lang-en>Privacy</span>
-						<span data-lang-th>ความเป็นส่วนตัว</span>
-					</a>
-					<a href="/docs/terms">
-						<span data-lang-en>Terms</span>
-						<span data-lang-th>เงื่อนไข</span>
-					</a>
-					<button type="button" data-consent-reset>
-						<span data-lang-en>Cookies</span>
-						<span data-lang-th>คุกกี้</span>
-					</button>
+		<div class="wrap">
+			<footer class="footer">
+				<span>
+					<span data-lang-en>excited.live — your agent keeps the books.</span>
+					<span data-lang-th>excited.live — เอเจนต์ดูแลบัญชีให้</span>
 				</span>
-				<LangSelect client:load variant="dark" />
-			</div>
+				<span class="footer-links">
+					<a href="#how"><span data-lang-en>How it works</span><span data-lang-th>วิธีใช้งาน</span></a>
+					<a href="#humans"><span data-lang-en>For humans</span><span data-lang-th>สำหรับมนุษย์</span></a>
+					<a href="/docs"><span data-lang-en>Docs</span><span data-lang-th>เอกสาร</span></a>
+					<a href="/docs/privacy"><span data-lang-en>Privacy</span><span data-lang-th>ความเป็นส่วนตัว</span></a>
+					<a href="/docs/terms"><span data-lang-en>Terms</span><span data-lang-th>ข้อกำหนด</span></a>
+				</span>
+				<span>© 2026</span>
+			</footer>
 		</div>
-	</footer>
+	</div>
 
-	<script is:inline data-astro-rerun>
-		// Pure-CSS bilingual toggle: flips <html data-lang>, persists to localStorage.
-		document.addEventListener('click', function (event) {
-			const target = event.target.closest('[data-set-lang]');
-			if (!target) return;
-			const lang = target.getAttribute('data-set-lang');
-			document.documentElement.dataset.lang = lang;
-			try {
-				localStorage.setItem('exl-lang', lang);
-			} catch {
-				/* private mode — toggle still works for this page view */
-			}
-		});
-	</script>
-
-	<script is:inline data-astro-rerun>
-		// Before / after switch. Markup ships in the "after" state so the section is
-		// complete without JS; on load we rewind to "before", then play the reveal
-		// once when the section scrolls into view (unless the visitor already clicked).
-		(function () {
-			var stage = document.querySelector('.chaos');
-			var buttons = document.querySelectorAll('.switch-btn');
-			if (!stage || !buttons.length) return;
-			var touched = false;
-			var reduce = false;
-			try {
-				reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			} catch (e) { /* very old browsers: animation is fine */ }
-
-			function setView(view) {
-				stage.setAttribute('data-state', view);
-				buttons.forEach(function (b) {
-					b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === view));
-				});
-			}
-
-			buttons.forEach(function (b) {
-				b.addEventListener('click', function () {
-					touched = true;
-					setView(b.getAttribute('data-view'));
-				});
+	<script is:inline>
+		// Product links on a preview or prelive host must point at the prelive
+		// webapp, never production: a preview must not create a real account.
+		(() => {
+			const host = location.hostname;
+			if (host === 'excited.live' || host === 'www.excited.live') return;
+			document.querySelectorAll('[data-app-link]').forEach((el) => {
+				const path = el.getAttribute('data-app-link');
+				if (path) el.setAttribute('href', 'https://prelive.excited.live' + path);
 			});
-
-			if (reduce || !('IntersectionObserver' in window)) return;
-			setView('before');
-			var observer = new IntersectionObserver(
-				function (entries) {
-					entries.forEach(function (entry) {
-						if (!entry.isIntersecting) return;
-						observer.disconnect();
-						setTimeout(function () {
-							if (!touched) setView('after');
-						}, 1600);
-					});
-				},
-				{ threshold: 0.5 }
-			);
-			observer.observe(stage);
-		})();
-	</script>
-
-	<!-- ============ MOTION (OpenDesign pass — spec in src/styles/landing-motion.css) ============ -->
-	<script is:inline data-astro-rerun>
-		(function () {
-			var root = document.documentElement;
-			if (!root.classList.contains('motion')) return;
-
-			var reduce = false;
-			try {
-				reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			} catch (e) {}
-			if (reduce) {
-				root.classList.remove('motion');
-				return;
-			}
-
-			var rAF = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
-
-			/* --- 1. hero choreography: two frames so the masks set first --- */
-			var hero = document.querySelector('.hero');
-			if (hero) {
-				rAF(function () {
-					rAF(function () {
-						hero.classList.add('is-loaded');
-					});
-				});
-			}
-
-			/* --- 2. reveal tagging: markup stays clean, stagger lives here --- */
-			var groups = [
-				['.section-head', ':scope > *', 70],
-				['.bento', ':scope > .bento-card', 70],
-				['.orbit-stage', ':scope > .orbit-item', 180],
-				['.next-grid', ':scope > .next-card', 80],
-				['.perk-cards', ':scope > .perk-card', 80],
-				['.deeper', ':scope > *', 90]
-			];
-			var targets = [];
-			groups.forEach(function (g) {
-				var parents = document.querySelectorAll(g[0]);
-				Array.prototype.forEach.call(parents, function (parent) {
-					Array.prototype.forEach.call(parent.querySelectorAll(g[1]), function (el, i) {
-						if (el.hasAttribute('data-reveal')) return;
-						el.setAttribute('data-reveal', '');
-						el.style.setProperty('--d', String(Math.min(i, 6) * g[2]));
-						targets.push(el);
-					});
-				});
-			});
-
-			if ('IntersectionObserver' in window) {
-				var io = new IntersectionObserver(
-					function (entries) {
-						entries.forEach(function (entry) {
-							if (!entry.isIntersecting) return;
-							entry.target.classList.add('is-in');
-							io.unobserve(entry.target);
-						});
-					},
-					{ threshold: 0.12, rootMargin: '0px 0px -6% 0px' }
-				);
-				targets.forEach(function (t) {
-					io.observe(t);
-				});
-			} else {
-				targets.forEach(function (t) {
-					t.classList.add('is-in');
-				});
-			}
-
-			/* --- 3. orbit arcs draw themselves, once --- */
-			Array.prototype.forEach.call(
-				document.querySelectorAll('.hero-orbit path, .orbit-svg path'),
-				function (path) {
-					if (typeof path.getTotalLength !== 'function') return;
-					var len = path.getTotalLength();
-					path.style.strokeDasharray = len;
-					path.style.strokeDashoffset = len;
-					var go = function () {
-						path.style.strokeDashoffset = '0';
-					};
-					if (!('IntersectionObserver' in window)) return go();
-					var o = new IntersectionObserver(
-						function (entries) {
-							if (!entries[0].isIntersecting) return;
-							o.disconnect();
-							setTimeout(go, 120);
-						},
-						{ threshold: 0.15 }
-					);
-					o.observe(path);
-				}
-			);
-
-			/* --- 4. one rAF pointer parallax on the hero visual (desktop only) --- */
-			var visual = document.querySelector('.hero-visual');
-			var fine = false;
-			try {
-				fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-			} catch (e) {}
-			if (visual && hero && fine) {
-				var tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
-				var loop = function () {
-					cx += (tx - cx) * 0.12;
-					cy += (ty - cy) * 0.12;
-					visual.style.transform = 'translate3d(' + cx.toFixed(2) + 'px,' + cy.toFixed(2) + 'px,0)';
-					if (Math.abs(tx - cx) > 0.1 || Math.abs(ty - cy) > 0.1) {
-						raf = rAF(loop);
-					} else {
-						raf = 0;
-					}
-				};
-				hero.addEventListener(
-					'pointermove',
-					function (e) {
-						var r = hero.getBoundingClientRect();
-						tx = ((e.clientX - r.left) / r.width - 0.5) * 16;
-						ty = ((e.clientY - r.top) / r.height - 0.5) * 12;
-						if (!raf) raf = rAF(loop);
-					},
-					{ passive: true }
-				);
-			}
-
-			/* --- 5. counters: runway chip + consolidated total --- */
-			function countUp(el, target, prefix, format) {
-				var t0 = 0;
-				var step = function (ts) {
-					if (!t0) t0 = ts;
-					var p = Math.min((ts - t0) / 900, 1);
-					var value = target * (1 - Math.pow(1 - p, 3));
-					el.textContent = prefix + format(Math.round(value));
-					if (p < 1) {
-						rAF(step);
-					} else {
-						el.textContent = prefix + format(target);
-					}
-				};
-				rAF(step);
-			}
-
-			Array.prototype.forEach.call(document.querySelectorAll('[data-count]'), function (el) {
-				var target = parseFloat(el.getAttribute('data-count')) || 0;
-				el.textContent = '0';
-				if (!('IntersectionObserver' in window)) {
-					el.textContent = String(target);
-					return;
-				}
-				var o = new IntersectionObserver(
-					function (entries) {
-						if (!entries[0].isIntersecting) return;
-						o.disconnect();
-						countUp(el, target, '', function (n) {
-							return String(n);
-						});
-					},
-					{ threshold: 0.4 }
-				);
-				o.observe(el);
-			});
-
-			Array.prototype.forEach.call(document.querySelectorAll('[data-odometer]'), function (el) {
-				var target = parseFloat(el.getAttribute('data-odometer')) || 0;
-				el.textContent = '฿0';
-				if (!('IntersectionObserver' in window)) {
-					el.textContent = '฿' + target.toLocaleString('en-US');
-					return;
-				}
-				var o = new IntersectionObserver(
-					function (entries) {
-						if (!entries[0].isIntersecting) return;
-						o.disconnect();
-						countUp(el, target, '฿', function (n) {
-							return n.toLocaleString('en-US');
-						});
-					},
-					{ threshold: 0.4 }
-				);
-				o.observe(el);
-			});
-
-			/* --- 6. nav condense on scroll, hide on the way down --- */
-			var nav = document.querySelector('.nav-wrap');
-			if (nav) {
-				var last = window.scrollY || 0;
-				var ticking = false;
-				var onScroll = function () {
-					var y = window.scrollY || 0;
-					nav.classList.toggle('is-condensed', y > 80);
-					if (y > 180 && y > last + 6) {
-						nav.classList.add('is-hidden');
-					} else if (y < last - 6 || y < 180) {
-						nav.classList.remove('is-hidden');
-					}
-					last = y;
-					ticking = false;
-				};
-				window.addEventListener(
-					'scroll',
-					function () {
-						if (ticking) return;
-						ticking = true;
-						rAF(onScroll);
-					},
-					{ passive: true }
-				);
-				onScroll();
-			}
-
-			/* --- 7. bento spotlight follows the pointer, desktop only --- */
-			if (fine) {
-				Array.prototype.forEach.call(document.querySelectorAll('.bento-card'), function (card) {
-					card.addEventListener(
-						'pointermove',
-						function (e) {
-							var r = card.getBoundingClientRect();
-							card.style.setProperty('--mx', e.clientX - r.left + 'px');
-							card.style.setProperty('--my', e.clientY - r.top + 'px');
-						},
-						{ passive: true }
-					);
-				});
-			}
 		})();
 	</script>
 </Layout>
+
+<style>
+	.ask-page {
+		--cream: #faf7f1;
+		--cream2: #f2ede2;
+		--paper: #ffffff;
+		--ink: #15140f;
+		--ink2: #34322a;
+		--muted: #6c6759;
+		--faint: #8f8979;
+		--line: #e3dccb;
+		--line2: #d5ccb8;
+		--red: #c41e3a;
+		--orange: #ff7a00;
+		--green: #2c6b4a;
+		--greenbg: #eaf1ec;
+		--serif: 'Noto Serif', 'Noto Serif Thai', Charter, Georgia, serif;
+		--sans: 'Sofia Sans', 'Noto Sans Thai', system-ui, sans-serif;
+		--mono: 'Sofia Sans', 'Noto Sans Thai', system-ui, sans-serif;
+		background: var(--cream);
+		color: var(--ink);
+		font-family: var(--sans);
+		font-size: 16px;
+		line-height: 1.55;
+		overflow-x: clip;
+	}
+	.ask-page :where(*) {
+		box-sizing: border-box;
+	}
+	.ask-page :where(h1, h2, h3, p) {
+		margin: 0;
+	}
+	.ask-page :where(h1, h2, h3) {
+		font-family: var(--serif);
+		font-weight: 500;
+		letter-spacing: -0.022em;
+		line-height: 1.08;
+	}
+	.ask-page :where(a) {
+		color: inherit;
+		text-decoration: none;
+	}
+	.ask-page img {
+		display: block;
+		max-width: 100%;
+	}
+	.wrap {
+		max-width: 1240px;
+		margin: 0 auto;
+		padding: 0 32px;
+	}
+	.mono,
+	.tabnote,
+	.fine,
+	.lbl,
+	.tag,
+	.blk .n,
+	.step .n,
+	.eyebrow {
+		font-size: 11px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+
+	/* nav */
+	.nav {
+		display: flex;
+		align-items: center;
+		gap: 38px;
+		padding: 22px 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		font-family: var(--serif);
+		font-size: 20px;
+		letter-spacing: -0.02em;
+	}
+	.brand b {
+		font-weight: 600;
+	}
+	.brand b span {
+		color: var(--orange);
+	}
+	.links {
+		display: flex;
+		gap: 26px;
+		font-size: 14.5px;
+		color: var(--ink2);
+	}
+	.navact {
+		margin-left: auto;
+		display: flex;
+		align-items: center;
+		gap: 20px;
+	}
+	.signin {
+		font-size: 14.5px;
+		white-space: nowrap;
+	}
+	.signin:hover,
+	.links a:hover {
+		color: var(--orange);
+	}
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 9px;
+		background: var(--ink);
+		color: var(--cream);
+		border: 1px solid var(--ink);
+		border-radius: 9px;
+		padding: 11px 16px;
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 1.2;
+		text-align: center;
+	}
+	.btn:hover {
+		background: #2b2820;
+	}
+	.btn.lg {
+		padding: 17px 23px;
+		font-size: 16px;
+		border-radius: 10px;
+	}
+	.btn.sm {
+		padding: 9px 13px;
+		font-size: 13px;
+	}
+	.btn .ar {
+		color: #eda57d;
+	}
+	/* Anchor resets above are element-level, so state the button colours on the
+	   anchor itself: otherwise a dark button inherits the page ink. */
+	.ask-page a.btn {
+		color: var(--cream);
+	}
+	.ask-page .final a.btn {
+		color: #15140f;
+	}
+
+	/* tabs */
+	.tabs {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 14px;
+		padding: 18px 0 0;
+		position: relative;
+		flex-wrap: wrap;
+	}
+	.pill {
+		display: inline-flex;
+		background: var(--cream2);
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 4px;
+	}
+	.pill a {
+		font-size: 13px;
+		padding: 7px 17px;
+		border-radius: 999px;
+		color: var(--muted);
+		white-space: nowrap;
+	}
+	.pill .on {
+		background: var(--paper);
+		color: var(--ink);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+	}
+	.tabs-end {
+		position: absolute;
+		right: 32px;
+		display: flex;
+		align-items: center;
+		gap: 14px;
+	}
+	.tabnote {
+		color: var(--faint);
+		font-size: 9.5px;
+		white-space: nowrap;
+	}
+
+	/* hero */
+	.hero {
+		display: block;
+		position: static;
+		max-width: none;
+		margin: 0;
+		padding: 54px 0 64px;
+	}
+	.hero-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+		gap: 64px;
+		align-items: center;
+	}
+	.eyebrow {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--muted);
+		font-size: 10.5px;
+		font-weight: 400;
+		letter-spacing: 0.13em;
+		line-height: 1.4;
+	}
+	.eyebrow::before {
+		display: none;
+	}
+	.eyebrow i {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: linear-gradient(120deg, var(--red), var(--orange));
+		flex: none;
+	}
+	h1 {
+		font-size: clamp(42px, 5.4vw, 76px);
+		margin-top: 20px;
+		max-width: 13ch;
+	}
+	.h1line {
+		display: block;
+	}
+	h1 em {
+		font-style: italic;
+		background: linear-gradient(96deg, var(--red), var(--orange));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.sub {
+		font-size: 18px;
+		line-height: 1.6;
+		color: var(--ink2);
+		max-width: 40ch;
+		margin-top: 22px;
+	}
+	.ctarow {
+		display: flex;
+		align-items: center;
+		gap: 22px;
+		margin-top: 28px;
+		flex-wrap: wrap;
+	}
+	.textlink {
+		font-size: 14.5px;
+		color: var(--muted);
+		border-bottom: 1px solid var(--line2);
+		padding-bottom: 2px;
+	}
+	.fine {
+		font-size: 10px;
+		letter-spacing: 0.05em;
+		color: var(--faint);
+		margin-top: 16px;
+		text-transform: none;
+		white-space: normal;
+		max-width: 100%;
+		overflow-wrap: break-word;
+	}
+
+	/* answer card */
+	.card {
+		background: var(--paper);
+		border: 1px solid var(--line);
+		border-radius: 20px;
+		padding: 22px;
+		box-shadow: 0 40px 80px -56px rgba(24, 20, 10, 0.55);
+		position: relative;
+	}
+	.card::before {
+		content: '';
+		position: absolute;
+		inset: 8px -8px -8px 8px;
+		border: 1px solid var(--line);
+		border-radius: 20px;
+		z-index: -1;
+		background: #f6f1e5;
+	}
+	.chead {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding-bottom: 14px;
+		border-bottom: 1px solid var(--line);
+	}
+	.av {
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		background: linear-gradient(145deg, #c8744f, #8a4a2e);
+		color: #fff;
+		font-family: var(--serif);
+		font-size: 15px;
+		display: grid;
+		place-items: center;
+		flex: none;
+	}
+	.chead b {
+		display: block;
+		font-size: 14px;
+		line-height: 1.2;
+	}
+	.chead small {
+		font-size: 11.5px;
+		color: var(--muted);
+	}
+	.live {
+		margin-left: auto;
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 9px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--green);
+		background: var(--greenbg);
+		border: 1px solid #d3e2d7;
+		border-radius: 4px;
+		padding: 3px 6px;
+		white-space: nowrap;
+	}
+	.live i {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--green);
+	}
+	.thread {
+		padding-top: 16px;
+	}
+	.q {
+		margin-left: auto;
+		background: var(--ink);
+		color: #f7f2e7;
+		font-size: 14px;
+		padding: 10px 13px;
+		border-radius: 11px 11px 3px 11px;
+		max-width: 78%;
+		width: fit-content;
+	}
+	.a {
+		margin-top: 12px;
+		background: var(--cream2);
+		border-radius: 3px 11px 11px 11px;
+		padding: 14px 15px;
+	}
+	.tag {
+		display: inline-block;
+		font-size: 8.5px;
+		letter-spacing: 0.08em;
+		color: var(--faint);
+		border: 1px solid var(--line2);
+		border-radius: 4px;
+		padding: 2px 5px;
+		margin-bottom: 8px;
+	}
+	.a .say {
+		font-size: 12.5px;
+		color: var(--muted);
+		letter-spacing: 0.02em;
+	}
+	.a .big {
+		font-family: var(--serif);
+		font-size: 52px;
+		line-height: 1;
+		letter-spacing: -0.04em;
+		margin-top: 2px;
+	}
+	.a .big small {
+		font-family: var(--sans);
+		font-size: 14px;
+		color: var(--ink2);
+		letter-spacing: 0;
+		margin-left: 4px;
+	}
+	.a .note {
+		margin-top: 4px;
+	}
+	.receipt {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 8px;
+		margin-top: 14px;
+		border-top: 1px solid var(--line);
+		padding-top: 12px;
+	}
+	.receipt div span {
+		display: block;
+		font-size: 8.5px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--faint);
+	}
+	.receipt div b {
+		font-size: 13px;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.receipt div {
+		min-width: 0;
+	}
+	.cfoot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-top: 14px;
+		font-size: 11px;
+		color: var(--faint);
+	}
+	.cfoot .more {
+		font-size: 12px;
+		color: var(--ink2);
+		border-bottom: 1px solid var(--line2);
+		padding-bottom: 1px;
+		white-space: nowrap;
+	}
+
+	/* strip */
+	.strip {
+		border-top: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
+		background: #f5f0e5;
+	}
+	.strip-inner {
+		display: flex;
+		align-items: center;
+		gap: 24px;
+		padding: 14px 32px;
+		flex-wrap: wrap;
+	}
+	.lbl {
+		color: var(--faint);
+		font-size: 9.5px;
+		white-space: nowrap;
+	}
+	.who {
+		font-size: 13px;
+		color: var(--ink2);
+	}
+	.who.soft {
+		margin-left: auto;
+		color: var(--faint);
+	}
+
+	/* sections */
+	section {
+		padding: 64px 0;
+	}
+	.shead {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 44px;
+		margin-bottom: 32px;
+	}
+	.shead h2 {
+		font-size: clamp(28px, 3.2vw, 40px);
+		max-width: 20ch;
+	}
+	.shead p {
+		font-size: 14px;
+		color: var(--muted);
+		max-width: 36ch;
+		line-height: 1.6;
+	}
+	.grid3 {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		border-top: 1px solid var(--line2);
+	}
+	.blk {
+		padding: 26px 30px 26px 0;
+		border-right: 1px solid var(--line);
+	}
+	.blk:last-child {
+		border-right: 0;
+		padding-right: 0;
+	}
+	.blk .n {
+		color: var(--orange);
+		font-size: 10px;
+	}
+	.blk h3 {
+		font-size: 21px;
+		margin-top: 10px;
+		line-height: 1.15;
+	}
+	.blk p {
+		font-size: 14px;
+		color: var(--muted);
+		line-height: 1.62;
+		margin-top: 8px;
+		max-width: 32ch;
+	}
+
+	/* how */
+	.how {
+		background: var(--paper);
+		border-top: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
+	}
+	.steps {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 28px;
+		margin-top: 6px;
+	}
+	.step {
+		border-top: 1px solid var(--line2);
+		padding-top: 14px;
+	}
+	.step .n {
+		font-size: 10px;
+		color: var(--faint);
+	}
+	.step h3 {
+		font-size: 17px;
+		margin-top: 6px;
+	}
+	.step p {
+		font-size: 13.5px;
+		color: var(--muted);
+		line-height: 1.58;
+		margin-top: 6px;
+	}
+	.snip {
+		grid-column: 1 / -1;
+		margin-top: 8px;
+		background: var(--cream);
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		padding: 14px 16px;
+		font-size: 12px;
+		color: var(--ink2);
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	.snip .k {
+		color: var(--orange);
+		font-size: 9.5px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.snip-body {
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* faq */
+	.faq-grid {
+		display: grid;
+		grid-template-columns: 0.8fr 1.2fr;
+		gap: 56px;
+		align-items: start;
+	}
+	.faq h2 {
+		font-size: clamp(26px, 3vw, 36px);
+		max-width: 14ch;
+	}
+	.faq .note {
+		font-size: 13px;
+		color: var(--muted);
+		margin-top: 12px;
+		max-width: 32ch;
+	}
+	details {
+		border-bottom: 1px solid var(--line);
+		padding: 15px 0;
+	}
+	details summary {
+		list-style: none;
+		cursor: pointer;
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		font-size: 16px;
+		font-weight: 500;
+	}
+	details summary::-webkit-details-marker {
+		display: none;
+	}
+	details summary::after {
+		content: '+';
+		color: var(--faint);
+		font-weight: 400;
+	}
+	details[open] summary::after {
+		content: '–';
+	}
+	details p {
+		font-size: 14px;
+		color: var(--muted);
+		line-height: 1.6;
+		margin-top: 9px;
+		max-width: 60ch;
+	}
+
+	/* humans */
+	.humans {
+		background: var(--cream2);
+		border-top: 1px solid var(--line);
+		border-bottom: 1px solid var(--line);
+		padding: 44px 0;
+	}
+	.humans-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 50px;
+		align-items: center;
+	}
+	.humans h2 {
+		font-size: 28px;
+		margin-top: 10px;
+	}
+	.humans p {
+		font-size: 13.5px;
+		color: var(--muted);
+		margin-top: 8px;
+		max-width: 38ch;
+		line-height: 1.6;
+	}
+	.humans-form {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		align-items: flex-start;
+	}
+	.humans-form :global(.waitlist) {
+		width: 100%;
+		max-width: 420px;
+	}
+	.humans-form :global(.waitlist-row) {
+		display: flex;
+		gap: 8px;
+	}
+	.humans-form :global(.waitlist-row input) {
+		flex: 1;
+		min-width: 0;
+		background: var(--paper);
+		border: 1px solid var(--line2);
+		border-radius: 8px;
+		padding: 11px 12px;
+		font-family: var(--sans);
+		font-size: 13px;
+		color: var(--ink);
+	}
+	.humans-form :global(.waitlist-row button) {
+		flex: none;
+		background: var(--ink);
+		color: var(--cream);
+		border: 1px solid var(--ink);
+		border-radius: 8px;
+		padding: 11px 14px;
+		font-family: var(--sans);
+		font-size: 13px;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+	.humans-form :global(.waitlist-note) {
+		display: none;
+	}
+	.humans-form :global(.waitlist-error) {
+		color: var(--red);
+		font-size: 12px;
+	}
+	.humans-form :global(.hp-field) {
+		position: absolute;
+		left: -9999px;
+	}
+	.humans-form .fine {
+		margin-top: 2px;
+		text-transform: none;
+	}
+
+	/* final */
+	.final {
+		background: #15140f;
+		color: #f8f3e8;
+		padding: 64px 0;
+	}
+	.final-grid {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 50px;
+		flex-wrap: wrap;
+	}
+	.final h2 {
+		font-size: clamp(30px, 3.6vw, 46px);
+		line-height: 1.06;
+		max-width: 18ch;
+		color: #fbf7ee;
+	}
+	.final p {
+		font-size: 14px;
+		color: #a9a395;
+		margin-top: 12px;
+		max-width: 40ch;
+	}
+	.final .free {
+		font-size: 12px;
+		color: #8e897b;
+		margin-top: 12px;
+	}
+	.final .btn {
+		background: #f8f3e8;
+		color: #15140f;
+		border-color: #f8f3e8;
+	}
+	.final .btn:hover {
+		background: #fff;
+	}
+	.final .btn .ar {
+		color: var(--red);
+	}
+	.final-cta {
+		text-align: right;
+	}
+	.final-note {
+		font-size: 12px;
+		color: #8e897b;
+		margin-top: 10px;
+	}
+
+	/* footer */
+	.footer {
+		margin-top: 0;
+		background: transparent;
+		color: var(--faint);
+		border-radius: 0;
+		padding: 26px 0;
+		display: flex;
+		justify-content: space-between;
+		gap: 20px;
+		flex-wrap: wrap;
+		font-size: 11.5px;
+	}
+	.footer-links {
+		display: flex;
+		gap: 14px;
+		flex-wrap: wrap;
+	}
+
+	@media (max-width: 960px) {
+		.hero-grid {
+			grid-template-columns: 1fr;
+			gap: 44px;
+			padding-top: 8px;
+		}
+		h1 {
+			max-width: 16ch;
+		}
+		.grid3,
+		.steps {
+			grid-template-columns: 1fr;
+		}
+		.blk {
+			border-right: 0;
+			border-bottom: 1px solid var(--line);
+			padding: 20px 0;
+		}
+		.blk:last-child {
+			border-bottom: 0;
+		}
+		.faq-grid {
+			grid-template-columns: 1fr;
+			gap: 26px;
+		}
+		.humans-grid {
+			grid-template-columns: 1fr;
+			gap: 22px;
+		}
+		.shead {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 12px;
+		}
+		.links,
+		.signin {
+			display: none;
+		}
+		.nav {
+			gap: 16px;
+		}
+		.tabs {
+			justify-content: flex-start;
+		}
+		.tabs-end {
+			position: static;
+			margin-left: auto;
+		}
+	}
+
+	@media (max-width: 620px) {
+		.wrap {
+			padding: 0 20px;
+		}
+		.nav {
+			padding: 16px 0;
+		}
+		.btn.sm {
+			padding: 9px 11px;
+			font-size: 12.5px;
+		}
+		.tabs {
+			padding-top: 14px;
+		}
+		.tabs-end {
+			gap: 8px;
+		}
+		.tabnote {
+			display: none;
+		}
+		.pill a {
+			padding: 7px 13px;
+		}
+		h1 {
+			font-size: 40px;
+		}
+		.hero {
+			padding: 28px 0 40px;
+		}
+		.sub {
+			font-size: 16px;
+			margin-top: 18px;
+		}
+		.card {
+			padding: 16px;
+			border-radius: 16px;
+		}
+		.card::before {
+			inset: 6px -5px -5px 5px;
+		}
+		.a .big {
+			font-size: 44px;
+		}
+		.receipt {
+			gap: 6px;
+		}
+		.receipt div b {
+			font-size: 12px;
+		}
+		.strip-inner {
+			padding: 12px 20px;
+			gap: 10px;
+		}
+		.who.soft {
+			margin-left: 0;
+		}
+		section {
+			padding: 44px 0;
+		}
+		.humans {
+			padding: 40px 0;
+		}
+		.final {
+			padding: 48px 0;
+		}
+		.final-grid {
+			gap: 26px;
+		}
+		.final-cta {
+			text-align: left;
+		}
+		.ctarow {
+			gap: 14px;
+		}
+		.textlink {
+			font-size: 13.5px;
+		}
+		.cfoot {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 8px;
+		}
+		.footer {
+			flex-direction: column;
+			gap: 10px;
+		}
+	}
+
+	/* Thai: looped face, roomier leading, never justified (deck, layout notes). */
+	:global(html[data-lang='th']) .ask-page {
+		font-family: 'IBM Plex Sans Thai Looped', 'Noto Sans Thai', sans-serif;
+		line-height: 1.65;
+	}
+	:global(html[data-lang='th']) .ask-page h1,
+	:global(html[data-lang='th']) .ask-page h2,
+	:global(html[data-lang='th']) .ask-page h3 {
+		font-family: 'Noto Serif Thai', 'Noto Serif', serif;
+		line-height: 1.3;
+	}
+	:global(html[data-lang='th']) .ask-page .a .big {
+		line-height: 1.1;
+	}
+</style>

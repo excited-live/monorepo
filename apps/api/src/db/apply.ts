@@ -62,7 +62,10 @@ export async function applyMigrations(driver: SqlDriver): Promise<MigrationRepor
 		for (const statement of splitStatements(file.sql)) {
 			await driver.exec(statement)
 		}
-		await driver.run("INSERT INTO d1_migrations (name) VALUES (?)", [file.name])
+		// IGNORE, not plain INSERT: two processes booting against one fresh
+		// database can both reach this line, and a UNIQUE violation there would
+		// fail a request for no reason. The ledger row already wins either way.
+		await driver.run("INSERT OR IGNORE INTO d1_migrations (name) VALUES (?)", [file.name])
 		applied.push(file.name)
 	}
 

@@ -33,6 +33,12 @@ export async function createNodeSqliteDriver(file: string): Promise<SqlDriver> {
 	const db = new SqliteDatabase(file)
 	// SQLite leaves foreign keys off by default; D1 enforces them, so match it.
 	db.exec("PRAGMA foreign_keys = ON")
+	// Wait for a competing writer instead of failing with SQLITE_BUSY: several
+	// vitest workers share one .data file (and so do concurrent dev processes),
+	// and the boot migration runner is the first writer to race. D1 serialises
+	// server-side, so this only exists to make the local driver behave the same
+	// way instead of surfacing "database is locked" as a 500.
+	db.exec("PRAGMA busy_timeout = 5000")
 
 	return {
 		kind: "node-sqlite",

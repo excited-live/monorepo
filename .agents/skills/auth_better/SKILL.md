@@ -87,14 +87,23 @@ binding lookup runs at request time (module-load time is too early on Pages).
   callbacks, …). GET + POST → `getAuth().handler(request)`. Replaces the three
   WorkOS routes (sign-in, callback, sign-out). Returns 503 (not 404) when auth
   is not configured.
-- `routes/sign-in.tsx`: OUR OWN sign-in page (email/password + Google when
-  enabled) in the design system, `{ en, th }` strings via dictionaries.ts.
-  Reachable signed out. `?returnPathname=/foo` is preserved through
-  `validateSearch` and sanitized (must be a same-origin `/...` path) before
-  navigating after sign-in. The client (`createAuthClient` from
-  `@excited-live/auth`) posts to the handler on the same origin; the
-  `tanstackStartCookies()` plugin (last in the plugin array, packages/auth)
-  delegates Set-Cookie to the Start runtime.
+- `routes/sign-in.tsx`: OUR OWN sign-in + create-account page (email/password +
+  name for sign-up, Google when enabled) in the design system, `{ en, th }`
+  strings via dictionaries.ts. Reachable signed out. `?returnPathname=/foo` is
+  preserved through `validateSearch` and sanitized (must be a same-origin
+  `/...` path) before navigating after auth. `?mode=signup` opens the
+  create-account form directly; the in-page switch keeps the raw flow query.
+  Both modes share `lib/auth-flow.ts` (`postAuthDestination`): an MCP OAuth
+  authorization query is forwarded verbatim to
+  `/api/auth/oauth2/authorize` (UI-only params such as `returnPathname`/`mode`
+  stripped), otherwise the sanitized return path is used, so sign-up resumes
+  the OAuth and device flows exactly like sign-in. Better Auth signs the new
+  user in (cookie), then the page resumes. A signed-in visitor sees a
+  "continue or sign out" card instead of the form; duplicate/invalid-email/
+  weak-password errors map to dedicated strings. The client
+  (`createAuthClient` from `@excited-live/auth`) posts to the handler on the
+  same origin; the `tanstackStartCookies()` plugin (last in the plugin array,
+  packages/auth) delegates Set-Cookie to the Start runtime.
 
 ## 5. The route guard (in start.ts, issue #46)
 

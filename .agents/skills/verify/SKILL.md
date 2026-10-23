@@ -70,4 +70,4 @@ Stops exactly the process groups `up` started (each pid file also records the st
 
 - `apps/webapp` (TanStack Start on `:3000`). Its Playwright component tests (`pnpm test:visual`) cover components, not journeys.
 - The Tauri native shell (Android, iOS). This drives the same React app in Chromium; native-only paths (Google sign-in, share sheet, `TAURI_DEV_HOST`) need a device or emulator.
-- Deployed environments. When #146 lands, the same journeys can target prelive by pointing the URLs at it.
+- Deployed environments. The API is on prelive (`https://excited-live-api-prelive.preamza02.workers.dev`), but `drive.mjs` only targets localhost and prelive sign-up hangs today (#158). Once #158 is fixed, add a URL override so the same journeys run against prelive.

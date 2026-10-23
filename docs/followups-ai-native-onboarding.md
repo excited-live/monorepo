@@ -32,12 +32,10 @@ These are tracked in the issues above. They're listed here so nobody rediscovers
 
 - **Link sign-in is off until configured.** It needs `BETTER_AUTH_URL` and
   `EXCITED_API_URL` on the webapp and `EXCITED_WEBAPP_URL` on the API (#139).
-- **`apps/api` is not deployed anywhere yet.** `apps/api/wrangler.toml` has only a
-  placeholder D1 database id (`REPLACE_WITH_DATABASE_ID`), no workflow deploys it, so `/mcp` returns 404 on prelive
-  (checked 2026-10-23). Deploying it to prelive (#146) comes before #139.
+- **`apps/api` is on prelive, but auth hangs.** #151 deployed it to `https://excited-live-api-prelive.preamza02.workers.dev` (`/health` 200, `/mcp` and `/api/v1/*` 401 without credentials). Its Better Auth endpoints (sign-up, sign-in, get-session) hang on most requests (#158), which blocks #139.
 - **Dev passthrough once deployed.** Without `BETTER_AUTH_SECRET`, `/mcp`
   accepts unauthenticated calls into the `default` bucket. The first public
-  deploy must set the secret (#140).
+  deploy must set the secret (#140). The prelive deploy sets it (`api-prelive.yml`).
 - **Device-flow tokens are full sessions,** not scoped like agent keys (#141).
 - **Unverified agent setup text:** the Claude.ai and ChatGPT connector steps,
   and the config snippets for Antigravity, Windsurf, VS Code, Cline and Zed in

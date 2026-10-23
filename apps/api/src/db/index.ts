@@ -65,23 +65,10 @@ export async function resolveDb(
 	const location = driver.kind === "d1" ? "DB (D1 binding)" : resolveDbFile(processEnv)
 	const report =
 		autoMigrateEnabled(processEnv) && !options.skipMigrations
-			? await applyMigrationsWithRetry(driver)
+			? await applyMigrations(driver)
 			: { applied: [] as string[], alreadyApplied: [] as string[] }
 
 	return { driver, mode: driver.kind, location, migrations: report.applied }
-}
-
-/**
- * Two cold requests can both find the schema behind and race the same
- * migration (the loser trips on a non-idempotent statement). One retry
- * re-reads the ledger, which by then holds the winner's work.
- */
-async function applyMigrationsWithRetry(driver: SqlDriver) {
-	try {
-		return await applyMigrations(driver)
-	} catch {
-		return await applyMigrations(driver)
-	}
 }
 
 let cached: Promise<ResolvedDb> | null = null

@@ -32,3 +32,6 @@ playwright-report/
 # OS
 .DS_Store
 Thumbs.db
+
+# Agent decision trails (see .agents/skills/autonomous_run)
+.audit/

@@ -17,6 +17,13 @@ One directory per skill, `snake_case`, each with a `SKILL.md`:
 - `landing_seo/`: the Astro marketing site, meta/OG/JSON-LD layer, waitlist flow, blog and docs pipeline.
 - `auth_better/`: Better Auth (packages/auth) — webapp cookies mount, api tokens mount, the middleware chain, the opt-in page gate.
 
+Workflow skills (how to work, adapted from obra/superpowers, Lauren Tan's pstack, and mattpocock/skills):
+
+- `autonomous_run/`: the contract for unattended work: done predicate, rulings over stalls, decision trail in `.audit/`, evidence before claims, the local review gate, pause and handoff.
+- `debugging/`: red-capable feedback loop first, minimise, ranked hypotheses, root-cause fix, regression test.
+- `delegating_work/`: plan in the repo, task briefs, model per task, worktree isolation, review every diff.
+- `writing_agent_docs/`: what goes in AGENTS.md vs a skill vs a reference file, trigger wording, proving a skill works.
+
 ## Native harness support & symlinks
 
 `.agents/skills/` is the canonical single source of truth for all skills. To support multiple agent tools natively without duplicating skill content, each skill directory is individually symlinked:
@@ -63,5 +70,5 @@ Project configurations (one entry per harness, project-scoped is canonical):
 
 ## The learning loop
 
-- When a piece of work establishes a new convention, or a review or bugfix reveals a class-level lesson, update the matching skill: in the same PR when the change is small, otherwise in a focused follow-up PR.
+- When a piece of work establishes a new convention, or a review or bugfix reveals a class-level lesson, update the matching skill: in the same PR when the change is small, otherwise in a focused follow-up PR. `writing_agent_docs` covers how.
 - Never edit a skill to weaken a safety rule (engine purity, no-raw-HTML, secrets, deploy gates). Fix the code or the process instead, and update the skill to match.

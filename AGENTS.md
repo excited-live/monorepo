@@ -65,6 +65,12 @@ The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/m
   - `writing_agent_docs` — creating or editing a skill, changing this file, or encoding a lesson after a run.
   - `verify` — proving a user-facing change on the real app (isolated local api + biz-mobile, sign-up and agent/MCP journeys, screenshot evidence) before a PR, or reproducing a bug a user saw.
 
+## Agent surface ownership
+
+`.agents/OWNERSHIP.md` names the owner of every agent-facing file here: skills and this file
+are Agents Productivity, the MCP gateway service and CI/CD are Infra, `main` is Prame. Read it
+before a change that spans two of those, and name the second owner as reviewer in the PR body.
+
 ## Setup & commands
 
 ```bash

@@ -2,6 +2,8 @@
 
 Project-local agent skills for the excited.live repo. Every agent that works here (Hermes, OpenCode, Claude Code, Codex, agy) should start from these.
 
+Who owns this folder and the rest of the agent surface in the repo: `.agents/OWNERSHIP.md`.
+
 ## What lives here
 
 One directory per skill, `snake_case`, each with a `SKILL.md`:

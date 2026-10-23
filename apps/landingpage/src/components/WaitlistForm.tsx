@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
 const WEBHOOK_URL =
-	(import.meta.env.PUBLIC_WAITLIST_WEBHOOK_URL as string | undefined) ??
-	(import.meta.env.PUBLIC_N8N_WAITLIST_WEBHOOK as string | undefined) ??
+	(import.meta.env.PUBLIC_WAITLIST_WEBHOOK_URL as string | undefined) ||
+	(import.meta.env.PUBLIC_N8N_WAITLIST_WEBHOOK as string | undefined) ||
 	'https://leads.fromsukong.com/waitlist';
 
 const HP_FIELD = 'company_website';
 
-type Status = 'idle' | 'sending' | 'success' | 'error';
+type Status = 'idle' | 'sending' | 'success' | 'error' | 'invalid';
 
 const COPY = {
 	en: {
@@ -89,7 +89,16 @@ export default function WaitlistForm({ dark = false }: { dark?: boolean }) {
 					sentAt: new Date().toISOString(),
 				}),
 			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			if (!res.ok) {
+				// 400 invalid_email is a validation answer, not an outage — never
+				// park it in the on-device list.
+				const body = (await res.json().catch(() => null)) as { error?: string } | null;
+				if (res.status === 400 && body?.error === 'invalid_email') {
+					setStatus('invalid');
+					return;
+				}
+				throw new Error(`HTTP ${res.status}`);
+			}
 			setStatus('success');
 			// GA4 lead event — no-op where GA isn't loaded (previews, localhost).
 			window.gtag?.('event', 'generate_lead', { method: 'waitlist', source });
@@ -131,7 +140,7 @@ export default function WaitlistForm({ dark = false }: { dark?: boolean }) {
 					value={email}
 					onChange={(e) => {
 						setEmail(e.target.value);
-						if (status === 'error') setStatus('idle');
+						if (status === 'error' || status === 'invalid') setStatus('idle');
 					}}
 					placeholder={t.placeholder}
 					aria-label={t.placeholder}
@@ -149,7 +158,7 @@ export default function WaitlistForm({ dark = false }: { dark?: boolean }) {
 					{status === 'sending' ? t.sending : t.button}
 				</button>
 			</div>
-			{status === 'error' && !EMAIL_RE.test(email.trim()) ? (
+			{status === 'invalid' || (status === 'error' && !EMAIL_RE.test(email.trim())) ? (
 				<p className="waitlist-error" role="alert">
 					{t.invalidEmail}
 				</p>

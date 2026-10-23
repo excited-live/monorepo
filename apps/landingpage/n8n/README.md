@@ -32,12 +32,13 @@ entry automatically — it is a local record only.
 - `400 { "ok": false, "error": "invalid_email" }` — bad address
 - `502 { "ok": false, "error": "crm_unavailable" }` — Twenty rejected the write
 
-CORS allowlist: `excited.live`, `www.excited.live`, `prelive.excited.live`,
-`excited-live-landing.pages.dev` (production landing project), and
-`localhost:4321`. The PR-preview project
-(`<branch>.excited-live-landing-preview.pages.dev`) and the landing prelive
-project (`excited-live-landing-prelive.pages.dev`) are **not** on the Worker
-allowlist yet, so form posts from those origins fail CORS.
+The form maps `400 invalid_email` to its inline validation message; `502` and
+network failures fall back to the on-device record.
+
+CORS allowlist: `excited.live`, `www.excited.live`, `prelive.excited.live`, the
+production landing project (`excited-live-landing.pages.dev`), the landing
+prelive project (`excited-live-landing-prelive.pages.dev`), PR previews
+(`<branch>.excited-live-landing-preview.pages.dev`), and `localhost:4321`.
 
 ## Env
 

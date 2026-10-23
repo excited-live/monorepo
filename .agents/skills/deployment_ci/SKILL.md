@@ -30,7 +30,9 @@ The sanitized branch name: lowercased, every non `[a-z0-9-]` character becomes `
 
 The two Pages deploys pass `--branch=main`; the Worker deploy is environment-scoped through `[env.prelive]` in `apps/api/wrangler.toml`.
 
-**Migrations on the API.** One owner only: the Worker's boot-time runner (`apps/api/src/db/apply.ts`, ledger `d1_migrations`). `api-prelive.yml` deliberately never runs `wrangler d1 migrations apply` — two writers on one ledger is how a schema ends up half-applied. The workflow pushes `BETTER_AUTH_SECRET` from the repo secret `PRELIVE_BETTER_AUTH_SECRET` *before* the deploy, because `wrangler secret put` creates the Worker when it is missing; that way no version ever serves traffic unconfigured.
+**Migrations on the API.** One owner only: the Worker's boot-time runner (`apps/api/src/db/apply.ts`, ledger `d1_migrations`). `api-prelive.yml` deliberately never runs `wrangler d1 migrations apply` — two writers on one ledger is how a schema ends up half-applied, and the deploy token does not need D1 permission this way. The workflow pushes `BETTER_AUTH_SECRET` from the repo secret `PRELIVE_BETTER_AUTH_SECRET` *before* the deploy, because `wrangler secret put` creates the Worker when it is missing; that way no version ever serves traffic unconfigured.
+
+**Never put DDL on the request path.** The runner reads the ledger first and only creates `d1_migrations` when it is missing. The first version issued `CREATE TABLE IF NOT EXISTS` on every cold start; on D1 that schema write deadlocked prelive traffic (authenticated requests hung for the full 30 s wall clock at ~3 ms CPU, about half of them, until the isolate died). Steady state must stay a single SELECT per isolate. Symptom to remember: a request that hangs with `outcome: canceled` and near-zero `cpuTime` in `wrangler tail` is waiting on D1, not computing.
 
 **Tier 3: production (manual only).**
 - `production.yml` → `excited-live` (app.excited.live). Triggered by `workflow_dispatch` with a `confirm` input that must be typed as `PROD`; the job checks `github.event.inputs.confirm == 'PROD'`.

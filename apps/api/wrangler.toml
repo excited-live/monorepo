@@ -35,10 +35,17 @@ migrations_dir = "migrations"
 # ---------------------------------------------------------------------------
 # prelive — the only environment CI deploys.
 #
-# Migrations have ONE owner here: the Worker's own boot-time runner
-# (src/db/apply.ts, ledger `d1_migrations`). CI must never also run
-# `wrangler d1 migrations apply` — two writers on one ledger is how a schema
-# ends up half-applied.
+# Migrations have ONE owner here: the Worker's boot-time runner
+# (src/db/apply.ts, ledger `d1_migrations`, the same ledger
+# `wrangler d1 migrations apply` uses). CI never runs migrations, so the deploy
+# token does not need D1 permission.
+#
+# The runner reads the ledger first and only issues DDL when the table is
+# missing. That ordering is load-bearing: the original `CREATE TABLE IF NOT
+# EXISTS` on every cold start was a schema write on a hot request path, and on
+# D1 it deadlocked prelive traffic on 2026-10-23 — authenticated requests hung
+# for the full wall clock at ~3 ms CPU, roughly half the time, until the isolate
+# died. Steady state is now one SELECT per isolate.
 #
 # BETTER_AUTH_URL is the Worker's own origin (the app appends /api/v1/auth),
 # EXCITED_WEBAPP_URL is the issuer the MCP OAuth surface advertises, and

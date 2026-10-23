@@ -24,6 +24,25 @@ export interface MigrationReport {
 }
 
 /**
+ * Read the ledger, or null when the table does not exist yet (fresh database).
+ *
+ * Read first, DDL second, on purpose: `CREATE TABLE IF NOT EXISTS` still takes
+ * a schema lock even when the table is already there, and on D1 that write on a
+ * hot request path is what deadlocked prelive traffic on 2026-10-23 (requests
+ * hung for the full wall clock at ~3 ms CPU, roughly half the time). In steady
+ * state this is now one cheap SELECT per isolate; the DDL only ever runs
+ * against a database that has no ledger.
+ */
+async function readLedger(driver: SqlDriver): Promise<Set<string> | null> {
+	try {
+		const rows = await driver.all<{ name: string }>("SELECT name FROM d1_migrations")
+		return new Set(rows.map((row) => row.name))
+	} catch {
+		return null
+	}
+}
+
+/**
  * Apply every migration that is not yet recorded, in filename order.
  *
  * Idempotent: re-running applies nothing. Each file is applied statement by
@@ -31,9 +50,11 @@ export interface MigrationReport {
  * boot retries it.
  */
 export async function applyMigrations(driver: SqlDriver): Promise<MigrationReport> {
-	await driver.exec(MIGRATIONS_TABLE_DDL)
-	const rows = await driver.all<{ name: string }>("SELECT name FROM d1_migrations")
-	const recorded = new Set(rows.map((row) => row.name))
+	let recorded = await readLedger(driver)
+	if (recorded === null) {
+		await driver.exec(MIGRATIONS_TABLE_DDL)
+		recorded = new Set<string>()
+	}
 
 	const applied: string[] = []
 	for (const file of MIGRATION_FILES) {

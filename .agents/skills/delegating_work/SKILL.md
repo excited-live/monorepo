@@ -2,8 +2,8 @@
 name: delegating_work
 description: >-
   How the lead agent splits work for subagents in excited.live: write the plan into the repo, cut it
-  into independent tasks with exact files and done commands, pick the cheapest model that can do
-  each task, isolate every writer in its own worktree, and review every diff before it merges. Use
+  into independent tasks with exact files and done commands, dispatch the pinned model per harness,
+  isolate every writer in its own worktree, and review every diff before it merges. Use
   this skill for multi-part implementation, parallel investigation, or any time you are about to
   spawn a subagent.
 ---
@@ -31,16 +31,22 @@ Slice vertically. Each task is a narrow but complete path that ends green on its
 - **Shared writes** (the same file, `pnpm-lock.yaml`, a shared type in `packages/*`) serialize, or better, land the shared part first as its own task and fan out after.
 - Prefer one owner for tightly coupled code. Parallel fan-out pays off for independent artifacts: separate packages, audits, competing prototypes.
 
-## 3. Pick the model per task
+## 3. Dispatch the pinned model
 
-Use the least capable model that can finish the task in few turns.
+The pins are in AGENTS.md rule 8: OpenCode subagents run `opencode-go/deepseek-v4.1-flash#max`, agy subagents run `gemini-3.8-flash-high`. The guardrail fixes the model, so the tiers below differ only in the brief; the final review is the exception, moving to another harness. Default implementers to OpenCode unless the task says otherwise.
 
-- **Mechanical** (1 to 2 files, complete spec, or the brief contains the exact code): the cheapest tier. Prame's standing preference for implementers is a cheap model via OpenCode. Provider credits change, so probe before dispatching: `opencode run --standalone -m <provider/model> "reply with OK"`.
-- **Integration** (multi-file, follows existing patterns): a mid tier.
-- **Design, debugging, and the final review**: the strongest model available.
-- **Reviews** scale with the diff's risk and always run on a different model family than the implementer. Money, tax, auth, and data changes always get a strong reviewer.
+- **Mechanical** (1 to 2 files, complete spec): the exact code or the precise edit list in the brief.
+- **Integration** (multi-file, follows existing patterns): the files to copy and the commands to run in the brief.
+- **Design and debugging**: the constraints, the failure, and the evidence you expect back in the brief.
+- **The final review**: another harness. OpenCode work goes to an agy (Gemini) agent, or to Claude Code or Codex; agy work goes to an OpenCode (DeepSeek) agent, or to Claude Code or Codex. A reviewer in the implementer's own harness is not independent, whatever model it names. Claude Code, Codex, and Hermes reviewers count only when their model is a different family than the implementer's. Money, tax, auth, and data changes always get this review.
 
-Name the model explicitly on every dispatch. An omitted model usually inherits the lead's model, the most expensive one. Cheap models that take three times the turns cost more, so a mid tier is the floor for vague briefs.
+Name the model on every dispatch. An omitted model in an OpenCode or agy dispatch usually inherits the lead's model, which breaks the pin. A vague brief costs turns, so tighten it before dispatch.
+
+**Pin checks.** Probe with `opencode run --standalone -m 'opencode-go/deepseek-v4.1-flash#max' "reply with OK"` or `agy --model gemini-3.8-flash-high -p="reply with OK"`. The `#max` suffix is OpenCode's variant syntax (`provider/model#variant`, see `opencode run --help`). See what a harness still offers with `opencode models` and `agy models`.
+
+**Retirement.** Change a pin only when its harness no longer lists that model, or the provider announces a deprecation. A model that is still listed but failing (credits, rate limit, auth) is an outage: retry, run the review from another harness, and flag the PR `Human attention needed: YES` if it blocks the work. If the implementer's harness is down, stop or move the work to the other harness. Do not swap the pin for an outage. The provider prefix is part of the pin: if the same model moves to another provider, that is also a pin change.
+
+When a pin is really retired, pick the closest current model in the same family and tier, keep its effort level (`#max` stays max, `-high` stays high), and update AGENTS.md rule 8, this section, and `autonomous_run` in a small `docs/*` PR of its own. Until that PR merges, the old pin stays the rule and the work stops or moves to another harness.
 
 ## 4. Write the brief
 

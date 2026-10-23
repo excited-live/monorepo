@@ -21,7 +21,7 @@ Workflow skills (how to work, adapted from obra/superpowers, Lauren Tan's pstack
 
 - `autonomous_run/`: the contract for unattended work: done predicate, rulings over stalls, decision trail in `.audit/`, evidence before claims, the local review gate, pause and handoff.
 - `debugging/`: red-capable feedback loop first, minimise, ranked hypotheses, root-cause fix, regression test.
-- `delegating_work/`: plan in the repo, task briefs, model per task, worktree isolation, review every diff.
+- `delegating_work/`: plan in the repo, task briefs, pinned model per harness, worktree isolation, review every diff.
 - `writing_agent_docs/`: what goes in AGENTS.md vs a skill vs a reference file, trigger wording, proving a skill works.
 - `verify/`: launch an isolated local stack, drive user and agent (MCP) journeys with Playwright, capture evidence. Its `features/` folder is the journey map.
 

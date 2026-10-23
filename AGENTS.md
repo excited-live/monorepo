@@ -11,6 +11,7 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 5. **Don't edit generated files**: `routeTree.gen.ts`, `pnpm-lock.yaml`, `dist/`, `.output/`.
 6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component or page under `apps/webapp/src/components`, `apps/biz-mobile/src/components`, or `apps/biz-mobile/src/pages`, also run visual tests (`pnpm test:visual` or `pnpm test:visual:mobile`) and commit any updated `__snapshots__` PNGs. Baselines must be captured on the CI runner (workflow_dispatch → "Re-record baselines on the CI runner"), never on your machine — local pixel diffs are expected and are not a failure signal.
 7. **Check FromSukong MCP tools first**: In every workflow, always check tools in the FromSukong MCP gateway (`fromsukong`) first. This is the unified MCP gateway (`https://mcp.fromsukong.com/mcp`).
+8. **Subagent model pin**: OpenCode subagents, implementers and reviewers alike, run `opencode-go/deepseek-v4.1-flash#max`. agy subagents run `gemini-3.8-flash-high`. Name the model on every dispatch and never substitute another one from those harnesses. A reviewer in the implementer's own harness does not satisfy the cross-family gate, whatever model it names. Probes, provider identity, and the pin retirement procedure are in `delegating_work` section 3.
 
 ## MCP gateway & tools (FromSukong)
 

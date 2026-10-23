@@ -160,6 +160,16 @@ export function createAuth(input: AuthInput): Auth {
 	}
 	const tokenMount = input.mount === "tokens" || input.mount === "both"
 	const cookiesMount = input.mount === "cookies" || input.mount === "both"
+	// A plain `cookies` mount is the browser-facing webapp instance: without
+	// the injected TanStack Start plugin no Set-Cookie is ever written, so fail
+	// loudly at construction instead of shipping a sign-in that silently does
+	// not persist. `both` is exempt on purpose — it is the test mount, which
+	// runs outside TanStack Start.
+	if (input.mount === "cookies" && !input.cookiesPlugin) {
+		throw new Error(
+			"[auth] the cookies mount needs cookiesPlugin: pass tanstackStartCookies() from @excited-live/auth/tanstack-start",
+		)
+	}
 	const as = input.oauth
 	const loginPage = input.oauthLoginPage ?? "/sign-in"
 	const consentPage = input.oauthConsentPage ?? "/consent"

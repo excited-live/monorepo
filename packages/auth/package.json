@@ -16,6 +16,11 @@
 			"types": "./dist/client.d.ts",
 			"import": "./dist/client.js",
 			"require": "./dist/client.cjs"
+		},
+		"./tanstack-start": {
+			"types": "./dist/tanstack-start.d.ts",
+			"import": "./dist/tanstack-start.js",
+			"require": "./dist/tanstack-start.cjs"
 		}
 	},
 	"files": [

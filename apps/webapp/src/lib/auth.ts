@@ -1,4 +1,5 @@
 import { createAuth, type Auth, type AuthD1DatabaseLike, type AuthDatabase } from "@excited-live/auth"
+import { tanstackStartCookies } from "@excited-live/auth/tanstack-start"
 import { authEnv, betterAuthConfigured, googleProviderConfig, oauthProviderConfig } from "./auth-config"
 import path from "node:path"
 
@@ -55,6 +56,9 @@ async function createAuthAsync(): Promise<Auth> {
 		secret: authEnv("BETTER_AUTH_SECRET")!,
 		baseURL: authEnv("BETTER_AUTH_URL") || undefined,
 		mount: "cookies",
+		// The TanStack Start cookie bridge lives on its own subpath so the API
+		// (tokens mount, Workers bundle) never inherits the framework runtime.
+		cookiesPlugin: tanstackStartCookies(),
 		google: googleProviderConfig(),
 		oauth: oauth
 			? {

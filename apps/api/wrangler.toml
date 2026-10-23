@@ -1,8 +1,11 @@
 # Cloudflare Workers config for the excited.live API.
 #
-# Deployment is NOT wired yet — this file makes the D1 binding and the Workers
-# entry point repo-ready so the future deploy task is mechanical.
-# Nothing here provisions anything: no `wrangler d1 create`, no deploy.
+# Two environments:
+#   * top level     -> production (`excited-live-api`). NOT provisioned and NOT
+#     deployed by CI: production deploys stay manual and human-only.
+#   * [env.prelive] -> `excited-live-api-prelive`, deployed by
+#     `.github/workflows/api-prelive.yml` on every push to `main` that touches
+#     the API (issue #146).
 #
 # Runtime resolution (src/db/index.ts):
 #   1. env.DB (this D1 binding)  -> D1
@@ -12,12 +15,42 @@ name = "excited-live-api"
 main = "dist/worker.js"
 compatibility_date = "2026-08-30"
 
-# Provisioning (future task, needs Prame's go):
-#   npx wrangler d1 create excited-live-api
-#   -> paste the printed database_id below
-#   npx wrangler d1 migrations apply excited-live-api --remote
+# Required, not cosmetic: the app reads secrets and vars through `process.env`
+# (src/lib/auth.ts:30,84), which Workers backfills from the Worker's bindings
+# only when nodejs_compat is on. Without it BETTER_AUTH_SECRET is invisible,
+# auth reports "unconfigured", and /mcp falls back to dev passthrough on a
+# public URL (#140).
+compatibility_flags = ["nodejs_compat"]
+
+# Production — deliberately unprovisioned. Keep it that way until a human
+# launches: `npx wrangler d1 create excited-live-api`, paste the id, then
+# `npx wrangler d1 migrations apply excited-live-api --remote` only if that
+# environment turns the boot-time runner off.
 [[d1_databases]]
 binding = "DB"
 database_name = "excited-live-api"
+database_id = "REPLACE_WITH_DATABASE_ID"
+migrations_dir = "migrations"
+
+# ---------------------------------------------------------------------------
+# prelive — the only environment CI deploys.
+#
+# Migrations have ONE owner here: the Worker's own boot-time runner
+# (src/db/apply.ts, ledger `d1_migrations`). CI must never also run
+# `wrangler d1 migrations apply` — two writers on one ledger is how a schema
+# ends up half-applied.
+#
+# BETTER_AUTH_URL is the Worker's own origin (the app appends /api/v1/auth),
+# EXCITED_WEBAPP_URL is the issuer the MCP OAuth surface advertises, and
+# BETTER_AUTH_TRUSTED_ORIGINS is what lets the prelive webapp call this API
+# cross-origin from a browser.
+# ---------------------------------------------------------------------------
+[env.prelive]
+name = "excited-live-api-prelive"
+vars = { BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.dev", EXCITED_WEBAPP_URL = "https://prelive.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://prelive.excited.live" }
+
+[[env.prelive.d1_databases]]
+binding = "DB"
+database_name = "excited-live-api-prelive"
 database_id = "REPLACE_WITH_DATABASE_ID"
 migrations_dir = "migrations"

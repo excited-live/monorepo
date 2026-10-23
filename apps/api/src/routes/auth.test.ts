@@ -74,6 +74,12 @@ const SETTINGS_BODY = { profileName: "Alex Designer", gender: "female" };
 
 describe("api/v1/auth (unconfigured)", () => {
 	it("answers 503 on /me and keeps x-user-id passthrough on data routes", async () => {
+		// Own database file: without this the suite falls back to the shared
+		// .data/ default that other test files open at the same time, and
+		// SQLite answers "database is locked" instead of reaching the route.
+		process.env[DB_FILE_ENV] = tempDbFile();
+		resetDbCache();
+
 		const app = createApp();
 
 		const me = await app.request("/api/v1/auth/me");

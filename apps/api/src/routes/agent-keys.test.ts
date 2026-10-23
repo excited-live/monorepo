@@ -138,6 +138,11 @@ describe("api/v1/agent-keys", () => {
 	});
 
 	it("answers 503 when auth is not configured", async () => {
+		// Own database file: the shared .data/ default is opened by other test
+		// files in parallel and SQLite answers "database is locked".
+		process.env[DB_FILE_ENV] = tempDbFile();
+		resetDbCache();
+
 		const app = createApp();
 		const res = await app.request("/api/v1/agent-keys");
 		expect(res.status).toBe(503);

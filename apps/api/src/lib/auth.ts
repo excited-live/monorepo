@@ -24,6 +24,21 @@ import { resolveDbFile } from "../db"
 
 const SQLITE_MODULE = "node:sqlite"
 
+/**
+ * Cached instance, shared across requests.
+ *
+ * On Workers a promise a request starts and leaves pending when it ends never
+ * settles, so anything cached that holds one hangs every later request in the
+ * isolate (#158: an anonymous 401 on /api/v1/* or /mcp built the instance, then
+ * every sign-up and get-session on that isolate hung at ~3 ms CPU). Better Auth
+ * has two such promises:
+ *
+ *  - `init()` starts eagerly in the building request. We await `$context` there
+ *    and publish the instance only afterwards (D1 path).
+ *  - the runtime schema check memoizes ONE shared promise per adapter, started
+ *    by whichever request touches the adapter first. It is switched off in
+ *    packages/auth (`advanced.database.validateSchema`); migrations own the schema.
+ */
 let cached: { key: string; auth: Auth } | null = null
 
 export function tokensAuthConfigured(): boolean {
@@ -84,19 +99,31 @@ export async function getTokensAuth(requestUrl: string, env?: unknown): Promise<
 	const secret = process.env.BETTER_AUTH_SECRET
 	if (!secret) return null
 	const key = `${requestOrigin(requestUrl)}/api/v1/auth`
-	if (!cached || cached.key !== key) {
-		cached = {
-			key,
-			auth: createAuth({
-				database: await resolveAuthDatabase(env),
-				secret,
-				baseURL: key,
-				trustedOrigins: trustedOrigins(),
-				mount: "tokens",
-				google: googleProvider(),
-			}),
-		}
+	const build = (database: AuthDatabase): Auth =>
+		createAuth({
+			database,
+			secret,
+			baseURL: key,
+			trustedOrigins: trustedOrigins(),
+			mount: "tokens",
+			google: googleProvider(),
+		})
+
+	if (cached && cached.key === key) return cached.auth
+
+	const database = await resolveAuthDatabase(env)
+	if (database.kind !== "d1") {
+		// Node (dev server, tests): one long-lived process, no request contexts,
+		// and one SQLite handle that must not be opened twice.
+		cached = { key, auth: build(database) }
+		return cached.auth
 	}
+
+	const auth = build(database)
+	// Settle init in THIS request's context before anyone else can see the instance.
+	await auth.$context
+	// Concurrent first requests each build their own; the first to settle wins.
+	if (!cached || cached.key !== key) cached = { key, auth }
 	return cached.auth
 }
 

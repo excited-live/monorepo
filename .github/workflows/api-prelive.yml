@@ -89,3 +89,32 @@ jobs:
           done
           echo "API is not enforcing auth after deploy (want 401/401)" >&2
           exit 1
+
+      # A route that never reaches the database proves nothing about auth. Run a
+      # real sign-up, then read the new session back with its bearer token (an
+      # authenticated get-session hits the database; an anonymous one does not),
+      # each with a hard timeout, so a request that hangs (#158: ~3 ms CPU, never
+      # answers) fails the deploy instead of shipping. The anonymous 401s above
+      # ran first on purpose: that ordering is what used to poison a fresh isolate.
+      - name: Smoke — sign-up and session read answer
+        run: |
+          set -euo pipefail
+          api=https://excited-live-api-prelive.preamza02.workers.dev
+          fail=0
+          for attempt in $(seq 1 3); do
+            email="verify+$(date +%s)-${attempt}@example.com"
+            signup=$(curl -sS -m 15 -w '\n%{http_code}' -X POST "$api/api/v1/auth/sign-up/email" \
+              -H 'content-type: application/json' -H "origin: $api" \
+              -d "{\"name\":\"V\",\"email\":\"$email\",\"password\":\"verify-pass-1234\"}" || printf '\nhang')
+            signup_code=$(printf '%s' "$signup" | tail -n1)
+            token=$(printf '%s' "$signup" | sed '$d' | jq -r '.token // empty' 2>/dev/null || true)
+            [ -n "$token" ] && echo "::add-mask::$token"
+            session=$(curl -sS -m 15 -o /dev/null -w '%{http_code}' -H "authorization: Bearer $token" \
+              "$api/api/v1/auth/get-session" || echo hang)
+            echo "attempt $attempt: sign-up -> $signup_code, get-session (bearer) -> $session"
+            if [ "$signup_code" != "200" ] || [ -z "$token" ] || [ "$session" != "200" ]; then fail=1; fi
+          done
+          if [ "$fail" != "0" ]; then
+            echo "Better Auth did not answer correctly on the deployed Worker (want 200/200 x3)" >&2
+            exit 1
+          fi

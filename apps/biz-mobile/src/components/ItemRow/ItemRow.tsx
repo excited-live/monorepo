@@ -3,7 +3,7 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { BADGE_TONE_CLASS, type Tone } from "../../utils/ui";
-import { EntityThumb } from "../EntityThumb";
+import { EntityThumb, type EntityThumbKind } from "../EntityThumb";
 import { ListItemCard } from "../ListItemCard";
 
 
@@ -16,8 +16,10 @@ const TONE_CLASS: Record<Tone, string> = {
 export interface ItemRowProps {
 	name: string;
 	imageUrl?: string;
-	/** Replaces the initials fallback when there is no image (emoji, currency sign...). */
-	fallback?: string;
+	/** Record kind for the generated tile when there is no image. */
+	kind?: EntityThumbKind;
+	/** Glyph for non-record rows (ledger actions) instead of a kind tile or initials. */
+	glyph?: string;
 	/** Title row content; defaults to `name`. */
 	title?: React.ReactNode;
 	sub?: React.ReactNode;
@@ -36,7 +38,8 @@ export interface ItemRowProps {
 export const ItemRow: React.FC<ItemRowProps> = ({
 	name,
 	imageUrl,
-	fallback,
+	kind,
+	glyph,
 	title,
 	sub,
 	details,
@@ -48,7 +51,7 @@ export const ItemRow: React.FC<ItemRowProps> = ({
 	onClick,
 }) => (
 	<ListItemCard onClick={onClick}>
-		{fallback && !imageUrl ? <EntityThumb name={fallback} /> : <EntityThumb name={name} imageUrl={imageUrl} />}
+		{glyph ? <EntityThumb name={glyph} /> : <EntityThumb name={name} imageUrl={imageUrl} kind={kind} />}
 		<Stack gap={0.5} className="min-w-0 flex-1">
 			{title ?? (
 				<Text maxLines={1} className="text-[15px] font-semibold text-ink">

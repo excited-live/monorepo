@@ -110,7 +110,7 @@ export const ManagementAssetsSection: React.FC<ManagementAssetsSectionProps> = (
 								key={wallet.id}
 								name={wallet.name}
 								imageUrl={wallet.imageUrl}
-								fallback="฿"
+								kind="wallet"
 								title={
 									<HStack gap={1.5} align="center">
 										<Text maxLines={1} className="text-[15px] font-semibold text-ink">
@@ -160,6 +160,7 @@ export const ManagementAssetsSection: React.FC<ManagementAssetsSectionProps> = (
 									key={gear.id}
 									name={gear.name}
 									imageUrl={gear.imageUrl}
+									kind={gear.raw.kind === "investment" ? "investment" : "gear"}
 									sub={`Bought ${gear.purchaseDate} • Cost: ฿${formatMoney(gear.cost)}`}
 									details={
 										<HStack gap={2} align="center">

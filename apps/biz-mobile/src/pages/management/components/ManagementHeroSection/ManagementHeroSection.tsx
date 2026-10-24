@@ -7,9 +7,17 @@ import { CapitalHeroCard } from "../CapitalHeroCard";
 import { LedgerHeroCard } from "../LedgerHeroCard";
 import { HeroCarousel } from "../HeroCarousel";
 import { FIXTURE_USER_SESSION } from "../../../../testing/fixtures";
+import { heroBackgroundImage } from "../../../../utils/ui";
 
 const FACE_SHOWN = "pointer-events-auto z-[2]";
 const FACE_HIDDEN = "pointer-events-none invisible absolute inset-0 z-[1] opacity-0";
+
+/** Absolute box behind the floating hero card: image cover or generated brand cover. */
+const HERO_BG_BOX =
+	"absolute top-0 -right-4 -left-4 z-[1] mt-[calc(-1*(56px+max(0px,env(safe-area-inset-top)-14px)))] h-[calc(440px+max(0px,env(safe-area-inset-top)))] w-[calc(100%+32px)] overflow-hidden";
+/** Same bottom fade into the page surface for both covers; keeps the hero card text readable. */
+const HERO_SCRIM =
+	"pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(20,20,19,0.35)_0%,rgba(20,20,19,0.08)_35%,rgba(20,20,19,0.2)_65%,rgba(252,251,250,0.95)_100%)]";
 
 export interface ManagementHeroSectionProps {
 	accounts: EntityAccount[];
@@ -38,24 +46,26 @@ export const ManagementHeroSection: React.FC<ManagementHeroSectionProps> = ({
 	onConfigureBiz = () => {},
 	onNavigateToSettings = () => {},
 }) => {
-	const bgImg =
-		activeAccount.type === "personal"
-			? activeAccount.careerImageUrl || activeAccount.imageUrl || userSession?.avatarUrl
-			: activeAccount.imageUrl;
+	const bgImg = heroBackgroundImage(activeAccount, userSession?.avatarUrl);
 
 	return (
 		<>
-			{/* Full-width background image */}
+			{/* Full-width background image, or a generated brand gradient when there is none */}
 			{bgImg ? (
-				<Stack className="absolute top-0 -right-4 -left-4 z-[1] mt-[calc(-1*(56px+max(0px,env(safe-area-inset-top)-14px)))] h-[calc(440px+max(0px,env(safe-area-inset-top)))] w-[calc(100%+32px)] overflow-hidden bg-ink">
+				<Stack className={`${HERO_BG_BOX} bg-ink`}>
 					<Img
 						src={bgImg}
 						alt={activeAccount.name}
 						className="block size-full object-cover object-[center_30%] [filter:brightness(0.85)_saturate(1.2)]"
 					/>
-					<Stack className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(20,20,19,0.35)_0%,rgba(20,20,19,0.08)_35%,rgba(20,20,19,0.2)_65%,rgba(252,251,250,0.95)_100%)]" />
+					<Stack className={HERO_SCRIM} />
 				</Stack>
-			) : null}
+			) : (
+				<Stack className={`${HERO_BG_BOX} bg-ink`}>
+					<Stack className="absolute inset-0 bg-[linear-gradient(140deg,var(--ink-black)_0%,var(--charcoal)_42%,var(--clay-brown)_80%,var(--signal-orange)_100%)]" />
+					<Stack className={HERO_SCRIM} />
+				</Stack>
+			)}
 
 			{/* Floating Hero Card: upper 80% over org background, lower 20% over app sheet */}
 			<Stack className="relative z-[15] mt-2 w-full">

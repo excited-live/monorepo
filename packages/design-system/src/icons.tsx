@@ -77,6 +77,39 @@ export const WalletIcon = rawIcon(
 		<path d="M7 14.4h3.2" />
 	</>,
 );
+export const BriefcaseIcon = rawIcon(
+	<>
+		<rect x="3.4" y="7.4" width="17.2" height="12.2" rx="2.2" />
+		<path d="M9 7.4V5.7a1.8 1.8 0 0 1 1.8-1.8h2.4a1.8 1.8 0 0 1 1.8 1.8v1.7" />
+		<path d="M3.4 12.2h17.2M10.2 12.2v2.3h3.6v-2.3" />
+	</>,
+);
+export const ReceiptIcon = rawIcon(
+	<>
+		<path d="M6 3.8h12v16.4l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6-2.4-1.6V3.8Z" />
+		<path d="M9 8.2h6M9 11.6h6M9 15h3.4" />
+	</>,
+);
+export const CardIcon = rawIcon(
+	<>
+		<rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.4" />
+		<path d="M2.8 9.4h18.4" />
+		<rect x="6" y="12.6" width="3.6" height="2.8" rx="0.8" />
+	</>,
+);
+export const BuildingIcon = rawIcon(
+	<>
+		<path d="M4.5 20.5V5.2a1.7 1.7 0 0 1 1.7-1.7h6.6a1.7 1.7 0 0 1 1.7 1.7v15.3" />
+		<path d="M14.5 9.5h3.3a1.7 1.7 0 0 1 1.7 1.7v9.3M3 20.5h18" />
+		<path d="M7.6 7.2h.01M11.4 7.2h.01M7.6 10.6h.01M11.4 10.6h.01M7.6 14h.01M11.4 14h.01" />
+	</>,
+);
+export const BoxIcon = rawIcon(
+	<>
+		<path d="m12 3.4 8 4.3v8.6l-8 4.3-8-4.3V7.7l8-4.3Z" />
+		<path d="m4.4 7.9 7.6 4.2 7.6-4.2M12 12.1v8.3" />
+	</>,
+);
 export const ChevronLeftIcon = rawIcon(<path d="M14.5 5.5 8 12l6.5 6.5" />);
 export const ChevronRightIcon = rawIcon(<path d="M9.5 5.5 16 12l-6.5 6.5" />);
 export const TuneIcon = rawIcon(

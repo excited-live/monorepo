@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CATALOG_PRESETS } from "@excited-live/accounting";
 import { apiKeyApi } from "@excited-live/auth";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Hono } from "hono";
@@ -18,6 +19,11 @@ const SECRET = "test-secret-for-mcp-tests";
 const BASE_URL = "http://localhost:8787";
 const EMAIL = "mcp@excited.live";
 const PASSWORD = "correct-horse-battery";
+
+const FIGMA = CATALOG_PRESETS.find((item) => item.id === "tool_figma")!;
+const MACBOOK = CATALOG_PRESETS.find((item) => item.id === "gear_macbook_pro")!;
+const CAR_LOAN = CATALOG_PRESETS.find((item) => item.id === "liab_car_loan")!;
+const AGODA = CATALOG_PRESETS.find((item) => item.id === "company_agoda")!;
 
 const tempDirs: string[] = [];
 
@@ -132,6 +138,8 @@ describe("/mcp", () => {
 		const initResult = init.json?.result as { serverInfo: { name: string }; instructions?: string };
 		expect(initResult.serverInfo.name).toBe("excited-live");
 		expect(initResult.instructions).toContain("excited.live");
+		expect(initResult.instructions).toContain("Images are picked automatically from the catalog.");
+		expect(initResult.instructions).toContain("Guide version: 2.");
 
 		const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" }, key);
 		expect(list.status).toBe(200);
@@ -227,6 +235,255 @@ describe("/mcp", () => {
 		);
 		expect(expenseStep?.status).toBe("done");
 		expect(statusResult.structuredContent?.method).toBe("agent");
+	});
+
+	it("stores the catalog image on a created expense", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 30,
+				method: "tools/call",
+				params: {
+					name: "add_expense",
+					arguments: { name: "Figma Professional", category: "subscription", amount: 450, cycle: "monthly" },
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.expense as { imageUrl?: string }).imageUrl).toBe(FIGMA.imageUrl);
+	});
+
+	it("stores no image for an unmatched expense name", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 31,
+				method: "tools/call",
+				params: {
+					name: "add_expense",
+					arguments: { name: "My Corner Shop", category: "other", amount: 100 },
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.expense as { imageUrl?: string }).imageUrl).toBeUndefined();
+	});
+
+	it("ignores an imageUrl sent by the agent", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const sent = "https://example.com/agent-picked.png";
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 32,
+				method: "tools/call",
+				params: {
+					name: "add_expense",
+					arguments: { name: "Figma Professional", category: "subscription", amount: 450, imageUrl: sent },
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		const imageUrl = (result.structuredContent?.expense as { imageUrl?: string }).imageUrl;
+		expect(imageUrl).toBe(FIGMA.imageUrl);
+		expect(imageUrl).not.toBe(sent);
+	});
+
+	it("stores the career cover image on employment income", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 33,
+				method: "tools/call",
+				params: {
+					name: "add_income",
+					arguments: { kind: "employment", name: "Agoda", category: "career", amount: 120000 },
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.income as { imageUrl?: string }).imageUrl).toBe(AGODA.coverImageUrl);
+	});
+
+	it("uses the employer for the career cover image on employment income", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 35,
+				method: "tools/call",
+				params: {
+					name: "add_income",
+					arguments: {
+						kind: "employment",
+						name: "Monthly Salary",
+						category: "salary",
+						amount: 120000,
+						employment: { employer: AGODA.name },
+					},
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.income as { imageUrl?: string }).imageUrl).toBe(AGODA.coverImageUrl);
+	});
+
+	it("stores no image on a created business, even when the agent sends one", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const created = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 36,
+				method: "tools/call",
+				params: {
+					name: "create_business",
+					arguments: { name: "Corner Shop", imageUrl: "https://example.com/agent-picked.png" },
+				},
+			},
+			key,
+		);
+		const result = created.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.entity as { imageUrl?: string }).imageUrl).toBeUndefined();
+	});
+
+	it("stores the catalog image on a created fixed asset", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 37,
+				method: "tools/call",
+				params: {
+					name: "add_asset",
+					arguments: {
+						kind: "fixed",
+						name: MACBOOK.name,
+						category: "workstation",
+						cost: 89900,
+						acquiredOn: "2026-01-01",
+						usefulLifeMonths: 36,
+					},
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.asset as { imageUrl?: string }).imageUrl).toBe(MACBOOK.imageUrl);
+	});
+
+	it("stores the catalog image on a created liability", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 38,
+				method: "tools/call",
+				params: {
+					name: "add_liability",
+					arguments: {
+						kind: "loan",
+						name: CAR_LOAN.name,
+						category: "car_loan",
+						loan: { principal: 500000, termMonths: 60, originatedOn: "2026-01-01" },
+					},
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.liability as { imageUrl?: string }).imageUrl).toBe(CAR_LOAN.imageUrl);
+	});
+
+	it("stores no image for an unmatched liability name", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 39,
+				method: "tools/call",
+				params: {
+					name: "add_liability",
+					arguments: {
+						kind: "loan",
+						name: "Personal loan from friend",
+						category: "personal",
+						loan: { principal: 10000, termMonths: 12, originatedOn: "2026-01-01" },
+					},
+				},
+			},
+			key,
+		);
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.liability as { imageUrl?: string }).imageUrl).toBeUndefined();
+	});
+
+	it("hides imageUrl from the create tool inputs", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const list = await rpc(app, { jsonrpc: "2.0", id: 34, method: "tools/list" }, key);
+		const tools = (list.json?.result as { tools: Array<{ name: string; description: string; inputSchema: unknown }> })
+			.tools;
+		const createTools = tools.filter((tool) =>
+			["create_business", "add_asset", "add_liability", "add_income", "add_expense"].includes(tool.name),
+		);
+		expect(createTools).toHaveLength(5);
+		expect(JSON.stringify(createTools.map((tool) => tool.inputSchema))).not.toContain("imageUrl");
+		expect(createTools.every((tool) => tool.description.endsWith("The image is picked automatically."))).toBe(true);
 	});
 
 	it("denies a tool whose scope the key lacks", async () => {

@@ -6,6 +6,7 @@ import {
 	isOnboardingComplete,
 	isOnboardingStepId,
 	ONBOARDING_STEPS,
+	pickSuggestedImage,
 	resolveCatalogAmount,
 	searchCatalog,
 	type CatalogItem,
@@ -42,12 +43,30 @@ const optionalEntityUnion = (schema: { options: readonly z.ZodObject<z.ZodRawSha
 		],
 	);
 
+/** Hide `imageUrl` from the agent: the create tools pick the image server-side. */
+const withoutImage = <S extends z.ZodObject<z.ZodRawShape>>(schema: S) => schema.omit({ imageUrl: true });
+const withoutImageUnion = (schema: { options: readonly z.ZodObject<z.ZodRawShape>[] }) =>
+	z.discriminatedUnion(
+		"kind",
+		schema.options.map((option) => option.omit({ imageUrl: true })) as unknown as [
+			z.ZodObject<z.ZodRawShape>,
+			...z.ZodObject<z.ZodRawShape>[],
+		],
+	);
+
+/** Drop an agent-sent image so the server-picked one always wins. */
+function stripImageUrl(raw: Record<string, unknown>): Record<string, unknown> {
+	const copy = { ...raw };
+	delete copy.imageUrl;
+	return copy;
+}
+
 const emptyInput = z.object({});
 
-const AssetInput = optionalEntityUnion(CreateAssetBody);
-const IncomeInput = optionalEntityUnion(CreateIncomeBody);
-const LiabilityInput = optionalEntityUnion(CreateLiabilityBody);
-const ExpenseInput = optionalEntity(CreateExpenseBody);
+const AssetInput = withoutImageUnion(optionalEntityUnion(CreateAssetBody));
+const IncomeInput = withoutImageUnion(optionalEntityUnion(CreateIncomeBody));
+const LiabilityInput = withoutImageUnion(optionalEntityUnion(CreateLiabilityBody));
+const ExpenseInput = withoutImage(optionalEntity(CreateExpenseBody));
 
 const StepInput = z.object({
 	stepId: z.enum(ONBOARDING_STEPS.map((step) => step.id) as [OnboardingStepId, ...OnboardingStepId[]]),
@@ -170,11 +189,13 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 	{
 		name: "create_business",
 		title: "Create a business",
-		description: "Creates a business entity (and its default cash wallet). The personal entity is created automatically.",
-		inputSchema: input(CreateEntityBody),
+		description:
+			"Creates a business entity (and its default cash wallet). The personal entity is created automatically. The image is picked automatically.",
+		inputSchema: input(withoutImage(CreateEntityBody)),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
-			const body = parseBody(CreateEntityBody, { ...raw, type: "business" });
+			const body = parseBody(CreateEntityBody, { ...stripImageUrl(raw), type: "business" });
+			body.imageUrl = pickSuggestedImage(body.name, { kind: "business" });
 			return { entity: await ctx.accounting.createEntity(ctx.userId, body) };
 		},
 	},
@@ -182,25 +203,31 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		name: "add_asset",
 		title: "Add an asset",
 		description:
-			"Creates a cash wallet, a fixed asset (gear, laptop, vehicle, property) or an investment. Defaults to the personal entity.",
+			"Creates a cash wallet, a fixed asset (gear, laptop, vehicle, property) or an investment. Defaults to the personal entity. The image is picked automatically.",
 		inputSchema: input(AssetInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
-			const body = parseBody(CreateAssetBody, { ...raw, entityId: raw.entityId ?? (await personalEntityId(ctx)) });
+			const body = parseBody(CreateAssetBody, {
+				...stripImageUrl(raw),
+				entityId: raw.entityId ?? (await personalEntityId(ctx)),
+			});
+			body.imageUrl = pickSuggestedImage(body.name, { kind: "asset", assetKind: body.kind });
 			return { asset: await ctx.accounting.createAsset(ctx.userId, body) };
 		},
 	},
 	{
 		name: "add_liability",
 		title: "Add a liability",
-		description: "Creates a loan, revolving credit card or other liability. Defaults to the personal entity.",
+		description:
+			"Creates a loan, revolving credit card or other liability. Defaults to the personal entity. The image is picked automatically.",
 		inputSchema: input(LiabilityInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
 			const body = parseBody(CreateLiabilityBody, {
-				...raw,
+				...stripImageUrl(raw),
 				entityId: raw.entityId ?? (await personalEntityId(ctx)),
 			});
+			body.imageUrl = pickSuggestedImage(body.name, { kind: "liability" });
 			return { liability: await ctx.accounting.createLiability(ctx.userId, body) };
 		},
 	},
@@ -208,22 +235,33 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		name: "add_income",
 		title: "Add income",
 		description:
-			"Creates an income stream (employment, business, investment or other). Defaults to the personal entity. Career salary goes through the app's career editor.",
+			"Creates an income stream (employment, business, investment or other). Defaults to the personal entity. Career salary goes through the app's career editor. The image is picked automatically.",
 		inputSchema: input(IncomeInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
-			const body = parseBody(CreateIncomeBody, { ...raw, entityId: raw.entityId ?? (await personalEntityId(ctx)) });
+			const body = parseBody(CreateIncomeBody, {
+				...stripImageUrl(raw),
+				entityId: raw.entityId ?? (await personalEntityId(ctx)),
+			});
+			const subject = { kind: "income", incomeKind: body.kind } as const;
+			const employer = body.kind === "employment" ? body.employment?.employer : undefined;
+			body.imageUrl =
+				(employer ? pickSuggestedImage(employer, subject) : undefined) ?? pickSuggestedImage(body.name, subject);
 			return { income: await ctx.accounting.createIncome(ctx.userId, body) };
 		},
 	},
 	{
 		name: "add_expense",
 		title: "Add an expense",
-		description: "Creates an expense or subscription. Defaults to the personal entity.",
+		description: "Creates an expense or subscription. Defaults to the personal entity. The image is picked automatically.",
 		inputSchema: input(ExpenseInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
-			const body = parseBody(CreateExpenseBody, { ...raw, entityId: raw.entityId ?? (await personalEntityId(ctx)) });
+			const body = parseBody(CreateExpenseBody, {
+				...stripImageUrl(raw),
+				entityId: raw.entityId ?? (await personalEntityId(ctx)),
+			});
+			body.imageUrl = pickSuggestedImage(body.name, { kind: "expense" });
 			return { expense: await ctx.accounting.createExpense(ctx.userId, body) };
 		},
 	},

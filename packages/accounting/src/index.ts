@@ -3,6 +3,7 @@ export * from "./math";
 export * from "./seed";
 export * from "./ledger";
 export * from "./catalog";
+export * from "./image";
 export * from "./wealth";
 export * from "./liabilities";
 export * from "./investments";

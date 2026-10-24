@@ -64,7 +64,11 @@ export const HomeEntitiesSection: React.FC<HomeEntitiesSectionProps> = ({
 									}
 								}}
 							>
-								<EntityThumb imageUrl={acc.imageUrl} name={acc.name} />
+								<EntityThumb
+									imageUrl={acc.imageUrl}
+									name={acc.name}
+									kind={acc.type === "business" ? "business" : undefined}
+								/>
 								<Stack gap={0.5} className="min-w-0 flex-1">
 									<Text maxLines={1} className="text-[15px] font-semibold text-ink">
 										{acc.name}
@@ -92,13 +96,7 @@ export const HomeEntitiesSection: React.FC<HomeEntitiesSectionProps> = ({
 											className="block size-11 shrink-0 rounded-[12px] object-cover"
 										/>
 									) : (
-										<HStack
-											justify="center"
-											align="center"
-											className="size-11 shrink-0 rounded-[12px] bg-signal/10 text-[13px] font-bold uppercase text-signal"
-										>
-											{(acc.careerTitle || acc.name).slice(0, 2)}
-										</HStack>
+										<EntityThumb kind="income" name={acc.careerTitle || acc.name} />
 									)}
 									<Stack gap={0.5} className="min-w-0 flex-1">
 										<HStack width="100%" justify="between" align="center" gap={2}>

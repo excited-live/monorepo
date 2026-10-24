@@ -9,13 +9,14 @@ import { Text } from "@astryxdesign/core/Text";
 import { EntityThumb } from "../EntityThumb";
 import { useModalBack } from "../../hooks/useModalBack";
 import { calculateEntityCashOnHand } from "@excited-live/accounting";
-import { useFinances, useAppUI } from "../../state";
+import { useFinances, useAppUI, useUserData } from "../../state";
 import { formatMoney } from "../../utils/format";
-import { GLASS_PILL } from "../../utils/ui";
+import { GLASS_PILL, heroBackgroundImage } from "../../utils/ui";
 
 export const Header: React.FC = () => {
 	const { accounts, hardware, subscriptions, revenues, liabilities, transfers } = useFinances();
 	const { activeEntityId, setActiveEntityId, activeTab, today } = useAppUI();
+	const { userSession } = useUserData();
 	const [isOpen, setIsOpen] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
 
@@ -31,7 +32,13 @@ export const Header: React.FC = () => {
 
 	const activeAccount = accounts.find((a) => a.id === activeEntityId) || accounts[0]!;
 	const isCentered = activeTab === "home" || activeTab === "settings";
-	const isDarkBg = activeTab === "capital" && activeAccount.type === "business";
+	// A business hero always sits on its own cover; a personal one only has an image when
+	// the career cover, entity image or avatar resolves — otherwise it draws the dark
+	// generated cover, so the header must switch to light-on-dark text there too.
+	const isDarkBg =
+		activeTab === "capital" &&
+		(activeAccount.type === "business" ||
+			heroBackgroundImage(activeAccount, userSession.avatarUrl) === undefined);
 	const onDark = isDarkBg && !isScrolled;
 
 	return (
@@ -76,7 +83,9 @@ export const Header: React.FC = () => {
 									: `${GLASS_PILL} text-ink active:bg-[#eae6e2]/90`
 							}`}
 						>
-							<Text className="truncate [font:inherit]">{activeAccount.name}</Text>
+							<Text className={`truncate [font:inherit] ${onDark ? "text-cream" : "text-ink"}`}>
+								{activeAccount.name}
+							</Text>
 							<Text className={`text-[11px] ${onDark ? "text-cream/70" : "text-slate"}`}>▾</Text>
 						</PlainButton>
 					)}

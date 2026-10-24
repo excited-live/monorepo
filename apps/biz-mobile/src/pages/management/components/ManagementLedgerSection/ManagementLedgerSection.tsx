@@ -35,7 +35,7 @@ export const ManagementLedgerSection: React.FC<ManagementLedgerSectionProps> = (
 						<ItemRow
 							key={action.id}
 							name={action.title}
-							fallback={action.type === "inflow" ? "↓" : action.type === "outflow" ? "↑" : "⚡"}
+							glyph={action.type === "inflow" ? "↓" : action.type === "outflow" ? "↑" : "⚡"}
 							sub={`${action.date} • ${action.category ? action.category.replace(/_/g, " ") : action.type}`}
 							amount={`${action.amount > 0 ? "+" : ""}฿${formatMoney(Math.abs(action.amount))}`}
 							tone={action.amount > 0 ? "positive" : "negative"}

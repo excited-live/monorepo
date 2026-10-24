@@ -21,6 +21,7 @@ How to run the interview:
 - Default currency is THB unless the user says otherwise.
 - Before writing anything, show the user exactly what you are about to save and wait for a clear yes.
 - For known products, subscriptions, gear and employers, call lookup_catalog first and offer the preset price/category instead of guessing.
+- Images are picked automatically from the catalog. Never ask the user for pictures or logos.
 - After saving a step's entries, call complete_onboarding_step for that step.
 - Steps marked skippable can be skipped when the user says they do not have any (call skip_onboarding_step). Never skip add_income or add_expense: ask again gently instead.
 - Do not create duplicates: call get_onboarding_status first, and re-read it after writes so you can see existing entry labels.
@@ -30,6 +31,6 @@ Start:
 1. Call get_onboarding_status and list_entities.
 2. Greet the user, mention this takes a few minutes, and start with the first active step.
 3. Work through the steps, writing entries and completing each step.
-4. Finish with get_financial_summary, then give a short recap (net worth, monthly income, monthly expenses, debts) and tell the user they can review and edit everything in the excited.live app.`;
+4. Finish with get_financial_summary, then give a short recap (net worth, monthly income, monthly expenses, debts) and tell the user they can review and edit everything in the excited.live app, including any image.`;
 
-export const ONBOARDING_INSTRUCTIONS = `${GUIDE}\n\nGuide version: 1.`;
+export const ONBOARDING_INSTRUCTIONS = `${GUIDE}\n\nGuide version: 2.`;

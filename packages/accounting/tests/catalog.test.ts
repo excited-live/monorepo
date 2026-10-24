@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	findBestCatalogMatch,
+	findStrictCatalogMatch,
 	resolveCatalogAmount,
 	resolveFaviconUrl,
 	searchCatalog,
@@ -69,5 +70,28 @@ describe("catalog", () => {
 		expect(mortgage?.name).toBe("Home Mortgage");
 		expect(mortgage?.category).toBe("mortgage");
 		expect(findBestCatalogMatch("mortgage", "subscription")).toBeNull();
+	});
+
+	it("strictly matches exact names, aliases and word-boundary prefixes only", () => {
+		expect(findStrictCatalogMatch("Figma Professional", "subscription")?.id).toBe("tool_figma");
+		expect(findStrictCatalogMatch("figma", "subscription")?.id).toBe("tool_figma");
+		expect(findStrictCatalogMatch("Figma Professional Team", "subscription")?.id).toBe("tool_figma");
+		expect(findStrictCatalogMatch("Figmac", "subscription")).toBeNull();
+		expect(findStrictCatalogMatch("figmaer", "subscription")).toBeNull();
+		expect(findStrictCatalogMatch("Professional Figma", "subscription")).toBeNull();
+		expect(findStrictCatalogMatch("Pro Savings", "subscription")).toBeNull();
+		expect(findStrictCatalogMatch("figma", "career")).toBeNull();
+	});
+
+	it("never prefix-matches an alias", () => {
+		expect(findStrictCatalogMatch("Tablet Samsung", "hardware")).toBeNull();
+		expect(findStrictCatalogMatch("tablet", "hardware")?.id).toBe("gear_ipad_pro");
+		expect(findStrictCatalogMatch("Make coffee", "subscription")).toBeNull();
+		expect(findStrictCatalogMatch("make", "subscription")?.id).toBe("tool_make");
+		expect(findStrictCatalogMatch("Personal loan from friend", "liability")).toBeNull();
+	});
+
+	it("prefers the longest matching name", () => {
+		expect(findStrictCatalogMatch("GitHub Copilot monthly", "subscription")?.id).toBe("tool_copilot");
 	});
 });

@@ -7,6 +7,7 @@ import { FormField, InputField, SelectField } from "../../../../components/FormF
 import { ModalPage } from "../../../../components/ModalPage";
 import { AutofillBanner, SuggestionChips } from "../../../../components/AutofillHints";
 import { CurrencyInput } from "../../../../components/CurrencyInput";
+import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { resolveCatalogAmount, type LiabilityCategory, type LiabilityStream } from "@excited-live/accounting";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
@@ -57,6 +58,7 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 	const [name, setName] = useState("");
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState<LiabilityCategory>(defaultCategory);
+	const [imageUrl, setImageUrl] = useState("");
 	const [notes, setNotes] = useState("");
 	const [startMonth, setStartMonth] = useState(currentMonth);
 	const [endMonth, setEndMonth] = useState("");
@@ -68,6 +70,7 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 		if (values.category && typeOptions.some((option) => option.value === values.category)) {
 			setCategory(values.category as LiabilityCategory);
 		}
+		if (values.imageUrl !== undefined) setImageUrl(values.imageUrl);
 	};
 
 	const { suggestions, matchedItem, handleQueryChange, applySuggestion, markTouched, resetTouched } =
@@ -82,15 +85,18 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 			setName(initialData.name);
 			setAmount(String(initialData.amount));
 			setCategory(initialData.category);
+			setImageUrl(initialData.imageUrl || "");
 			setNotes(initialData.notes || "");
 			setStartMonth(initialData.startMonth || currentMonth);
 			setEndMonth(initialData.endMonth || "");
 			markTouched("amount");
 			markTouched("category");
+			markTouched("imageUrl");
 		} else {
 			setName("");
 			setAmount("");
 			setCategory(isPersonal ? "mortgage" : "business_loan");
+			setImageUrl("");
 			setNotes("");
 			setStartMonth(currentMonth);
 			setEndMonth("");
@@ -102,7 +108,7 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 
 	const handleNameChange = (val: string) => {
 		setName(val);
-		handleQueryChange(val, { amount, category });
+		handleQueryChange(val, { amount, category, imageUrl });
 	};
 
 	const handleAmountChange = (val: string) => {
@@ -128,6 +134,7 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 				category,
 				startMonth,
 				endMonth: endMonth || undefined,
+				imageUrl: imageUrl || undefined,
 				notes: notes.trim() || undefined,
 			});
 		} else {
@@ -139,6 +146,7 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 				active: true,
 				startMonth,
 				endMonth: endMonth || undefined,
+				imageUrl: imageUrl || undefined,
 				notes: notes.trim() || undefined,
 			});
 		}
@@ -199,6 +207,12 @@ export const AddLiabilityDrawer: React.FC<AddLiabilityDrawerProps> = ({
 			<Text className="text-[13px] text-slate">
 				Recurring debt payment charged monthly against <strong>{activeAccount.name}</strong>. Counted into the run rate.
 			</Text>
+
+			<ModalImageSection
+				value={imageUrl}
+				onChange={(v) => setImageUrl(v ?? "")}
+				onUserTouched={() => markTouched("imageUrl")}
+			/>
 
 			<Stack as="form" id="liability-form" gap={4} width="100%" onSubmit={handleSubmit}>
 				<SelectField

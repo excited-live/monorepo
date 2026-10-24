@@ -822,3 +822,37 @@ export function findBestCatalogMatch(
 	);
 	return prefixMatch || results[0] || null;
 }
+
+/**
+ * Finds a preset only when the query names it outright: an exact name or alias,
+ * or a query that starts with the preset name and continues on a word boundary.
+ * A prefix is never matched against an alias, because generic aliases ("tablet",
+ * "make", "personal loan") would pick the wrong preset.
+ *
+ * Unlike findBestCatalogMatch, a bare substring never matches. Callers that
+ * store an image want a wrong logo to fall back to the app's generated tile
+ * rather than guess at a partial name.
+ */
+export function findStrictCatalogMatch(
+	query: string,
+	filterType?: CatalogItem["type"],
+): CatalogItem | null {
+	const trimmed = query.trim().toLowerCase();
+	if (!trimmed) return null;
+
+	const candidates = CATALOG_PRESETS.filter((item) => !filterType || item.type === filterType);
+	const exactMatch = candidates.find((item) =>
+		[item.name, ...item.aliases].some((term) => term.toLowerCase() === trimmed),
+	);
+	if (exactMatch) return exactMatch;
+
+	// "figma professional team" matches Figma Professional, "figmaer" does not; the longest name wins.
+	let best: { item: CatalogItem; length: number } | null = null;
+	for (const item of candidates) {
+		const name = item.name.toLowerCase();
+		if (!trimmed.startsWith(name)) continue;
+		if (!/^[^\p{L}\p{N}]/u.test(trimmed.slice(name.length))) continue;
+		if (!best || name.length > best.length) best = { item, length: name.length };
+	}
+	return best?.item ?? null;
+}

@@ -51,7 +51,7 @@ export const ManagementIncomeSection: React.FC<ManagementIncomeSectionProps> = (
 			{isPersonal && activeAccount.salary && !hasConfiguredSalary && (
 				<ItemRow
 					name="Primary Career Income"
-					fallback="💼"
+					kind="income"
 					sub={`Payday Day ${activeAccount.paydayDayOfMonth ?? 28} • Net Monthly`}
 					amount={`+฿${formatMoney(activeAccount.salary)}`}
 					tone="positive"
@@ -69,6 +69,7 @@ export const ManagementIncomeSection: React.FC<ManagementIncomeSectionProps> = (
 							key={rev.id}
 							name={rev.name}
 							imageUrl={rev.imageUrl}
+							kind="income"
 							sub={`${rev.source.replace(/_/g, " ")} • ${rev.frequency}`}
 							amount={`+฿${formatMoney(rev.amount)}`}
 							tone="positive"

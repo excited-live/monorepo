@@ -49,6 +49,7 @@ export const ManagementExpenseSection: React.FC<ManagementExpenseSectionProps> =
 							key={sub.id}
 							name={sub.name}
 							imageUrl={sub.imageUrl}
+							kind="expense"
 							sub={`Billed ${sub.cycle} • Due day ${sub.nextRenewalDate?.slice(8) || "01"} • ${sub.category}`}
 							amount={`-฿${formatMoney(sub.amount)}`}
 							tone="negative"
@@ -64,7 +65,7 @@ export const ManagementExpenseSection: React.FC<ManagementExpenseSectionProps> =
 							<ItemRow
 								key={tItem.id}
 								name={tItem.note || "Capital Deployed"}
-								fallback="CI"
+								kind="expense"
 								sub={`Seed to business • ${tItem.date}`}
 								amount={`-฿${formatMoney(tItem.amount)}`}
 								tone="negative"

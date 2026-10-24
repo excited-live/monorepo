@@ -1,1 +1,1 @@
-export { EntityThumb, type EntityThumbProps } from "./EntityThumb";
+export { EntityThumb, type EntityThumbKind, type EntityThumbProps } from "./EntityThumb";

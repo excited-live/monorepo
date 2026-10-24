@@ -46,7 +46,7 @@ export const ManagementLiabilitySection: React.FC<ManagementLiabilitySectionProp
 							key={liab.id}
 							name={liab.name}
 							imageUrl={liab.imageUrl}
-							fallback="💳"
+							kind="liability"
 							sub={`Debt Payment • ${liab.category.replace(/_/g, " ")}`}
 							amount={`-฿${formatMoney(liab.amount)}`}
 							tone="negative"

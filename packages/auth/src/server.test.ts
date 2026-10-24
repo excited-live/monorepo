@@ -190,6 +190,59 @@ describe("auth foundation", () => {
 			expect(metadata.issuer).toContain("localhost")
 		})
 
+		// The prelive MCP authorization server (issue #154) depends on all three
+		// of these on the same instance: /ok answers, the metadata issuer is
+		// <baseURL>/api/auth (what apps/api advertises), and a public PKCE client
+		// can register itself. With `mount: "both"` the cookies mount is absent,
+		// but the OAuth provider, scopes and resource binding are the prelive
+		// configuration, so a regression here fails before a deploy does.
+		it("registers an MCP client and advertises the API resource (oauth configured)", async () => {
+			const db = freshFileDb()
+			applySchema(db)
+			const auth = createAuth({
+				database: { kind: "node-sqlite", database: db },
+				secret: SECRET,
+				baseURL: BASE_URL,
+				mount: "both",
+				oauth: {
+					resource: "https://api.example.com/mcp",
+					deviceVerificationUri: "https://app.example.com/device",
+				},
+			})
+
+			const ok = await auth.handler(new Request(`${BASE_URL}/api/auth/ok`))
+			expect(ok.status).toBe(200)
+
+			const metadataResponse = await auth.handler(
+				new Request(`${BASE_URL}/api/auth/.well-known/oauth-authorization-server`),
+			)
+			expect(metadataResponse.status).toBe(200)
+			const metadata = (await metadataResponse.json()) as {
+				issuer?: string
+				registration_endpoint?: string
+			}
+			expect(metadata.issuer).toBe(`${BASE_URL}/api/auth`)
+			expect(metadata.registration_endpoint).toBe(`${BASE_URL}/api/auth/oauth2/register`)
+
+			const registerResponse = await auth.handler(
+				new Request(`${BASE_URL}/api/auth/oauth2/register`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						client_name: "prelive-test",
+						redirect_uris: ["https://example.com/callback"],
+						grant_types: ["authorization_code", "refresh_token"],
+						response_types: ["code"],
+						token_endpoint_auth_method: "none",
+						scope: "openid profile email offline_access",
+					}),
+				}),
+			)
+			expect([200, 201]).toContain(registerResponse.status)
+			const client = (await registerResponse.json()) as { client_id?: string }
+			expect(client.client_id).toBeTruthy()
+		})
+
 		it("rejects a wrong password", async () => {
 			const db = freshFileDb()
 			applySchema(db)

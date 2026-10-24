@@ -1,0 +1,127 @@
+#!/usr/bin/env node
+/**
+ * Guard + Pages deployment-config builder for the prelive auth split (#154).
+ *
+ * The MCP authorization server is the prelive webapp (Pages), the protected
+ * resource is the prelive API (Worker), and they must agree on three things or
+ * OAuth breaks silently:
+ *
+ *   1. the same D1 database (sessions + JWKS written by one, read by the other)
+ *   2. issuer = <webapp origin>/api/auth exactly as the API advertises it
+ *   3. resource = <api origin>/mcp exactly as the webapp binds tokens to
+ *
+ * `node scripts/check-prelive-auth-config.mjs` validates the checked-in files
+ * and fails CI on drift. `--json` additionally prints the Pages project
+ * `deployment_configs` body that prelive.yml PATCHes into the Pages project:
+ * `wrangler pages deploy` only sends a hash of the configuration file, so the
+ * bindings and vars have to be applied to the project explicitly.
+ *
+ * Both TOML files are read as text so this needs no dependency.
+ */
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const read = (file) => readFileSync(path.join(root, file), "utf8")
+
+const PAGES_CONFIG = "apps/webapp/wrangler.prelive.toml"
+const API_CONFIG = "apps/api/wrangler.toml"
+const PROJECT_NAME = "excited-live-prelive"
+const API_ORIGIN = "https://excited-live-api-prelive.preamza02.workers.dev"
+const WEBAPP_ORIGIN = "https://prelive.excited.live"
+const DATABASE_ID = "f7bd3f26-5296-4832-96a3-1cbb01046112"
+
+/** Text of one TOML section/table header, up to the next header. */
+function section(text, header) {
+	// Header must start a line: comments mention these headers too.
+	const start = text.search(new RegExp(`^${header.replace(/[[\]]/g, "\\$&")}\\s*$`, "m"))
+	if (start < 0) return ""
+	const rest = text.slice(start + header.length)
+	const next = rest.search(/\n\s*\[/)
+	return next < 0 ? rest : rest.slice(0, next)
+}
+
+/** First string value for `key` in a blob of TOML. */
+function stringValue(text, key) {
+	const match = text.match(new RegExp(`\\b${key}\\s*=\\s*"([^"]+)"`))
+	return match?.[1]
+}
+
+/** String array value for `key` in a blob of TOML. */
+function stringArray(text, key) {
+	const match = text.match(new RegExp(`\\b${key}\\s*=\\s*\\[([^\\]]*)\\]`))
+	if (!match) return undefined
+	return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1])
+}
+
+const problems = []
+const expect = (label, actual, wanted) => {
+	if (actual !== wanted) problems.push(`${label}: expected ${JSON.stringify(wanted)}, found ${JSON.stringify(actual)}`)
+}
+
+const apiToml = read(API_CONFIG)
+const pagesToml = read(PAGES_CONFIG)
+
+const apiPrelive = section(apiToml, "[env.prelive]")
+const apiDb = section(apiToml, "[[env.prelive.d1_databases]]")
+const pagesVars = section(pagesToml, "[vars]")
+const pagesDb = section(pagesToml, "[[d1_databases]]")
+
+const apiOrigin = stringValue(apiPrelive, "BETTER_AUTH_URL")
+const apiWebappOrigin = stringValue(apiPrelive, "EXCITED_WEBAPP_URL")
+const apiDatabaseId = stringValue(apiDb, "database_id")
+
+const pagesName = stringValue(pagesToml, "name")
+const pagesOrigin = stringValue(pagesVars, "BETTER_AUTH_URL")
+const pagesApiOrigin = stringValue(pagesVars, "EXCITED_API_URL")
+const pagesDatabaseId = stringValue(pagesDb, "database_id")
+const pagesDatabaseName = stringValue(pagesDb, "database_name")
+const compatibilityDate = stringValue(pagesToml, "compatibility_date")
+const compatibilityFlags = stringArray(pagesToml, "compatibility_flags")
+
+expect("apps/api [env.prelive] BETTER_AUTH_URL", apiOrigin, API_ORIGIN)
+expect("apps/api [env.prelive] EXCITED_WEBAPP_URL", apiWebappOrigin, WEBAPP_ORIGIN)
+expect("apps/api [env.prelive] D1 database_id", apiDatabaseId, DATABASE_ID)
+expect(`${PAGES_CONFIG} name`, pagesName, PROJECT_NAME)
+expect(`${PAGES_CONFIG} [vars] BETTER_AUTH_URL`, pagesOrigin, WEBAPP_ORIGIN)
+expect(`${PAGES_CONFIG} [vars] EXCITED_API_URL`, pagesApiOrigin, apiOrigin)
+expect(`${PAGES_CONFIG} D1 binding`, stringValue(pagesDb, "binding"), "DB")
+expect(`${PAGES_CONFIG} D1 database_name`, pagesDatabaseName, "excited-live-api-prelive")
+expect(`${PAGES_CONFIG} D1 database_id must equal the API's (shared sessions/JWKS)`, pagesDatabaseId, apiDatabaseId)
+if (!compatibilityDate) problems.push(`${PAGES_CONFIG} compatibility_date is missing`)
+if (!compatibilityFlags?.includes("nodejs_compat")) problems.push(`${PAGES_CONFIG} compatibility_flags must include nodejs_compat`)
+
+if (problems.length > 0) {
+	console.error("Prelive auth configuration is inconsistent:\n")
+	for (const problem of problems) console.error(`  - ${problem}`)
+	console.error(`\nFix ${PAGES_CONFIG} or apps/api/wrangler.toml [env.prelive], not the CI.`)
+	process.exit(1)
+}
+
+// `wrangler pages deploy` sends sha256 of the configuration file it read; the
+// Pages project must carry the same hash or the deployment is rejected as
+// out of sync. prelive.yml copies the file to apps/webapp/wrangler.toml, so
+// the bytes hashed here are exactly the bytes deployed.
+if (process.argv.includes("--json")) {
+	const body = {
+		deployment_configs: {
+			production: {
+				d1_databases: { DB: { id: pagesDatabaseId } },
+				env_vars: {
+					BETTER_AUTH_URL: { type: "plain_text", value: pagesOrigin },
+					EXCITED_API_URL: { type: "plain_text", value: pagesApiOrigin },
+				},
+				compatibility_date: compatibilityDate,
+				compatibility_flags: compatibilityFlags,
+				wrangler_config_hash: createHash("sha256").update(readFileSync(path.join(root, PAGES_CONFIG))).digest("hex"),
+			},
+		},
+	}
+	process.stdout.write(JSON.stringify(body))
+} else {
+	console.log(
+		`Prelive auth configuration OK: issuer ${pagesOrigin}/api/auth, resource ${pagesApiOrigin}/mcp, D1 ${apiDatabaseId}`
+	)
+}

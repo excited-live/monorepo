@@ -93,4 +93,15 @@ export default tseslint.config(
 			"react/forbid-elements": ["error", { forbid: FORBIDDEN_HTML }],
 		},
 	},
+	{
+		// Node-run repository scripts (CI helpers). Nothing here ships to the
+		// browser, so the Node globals they use are declared rather than mocked.
+		files: ["scripts/**/*.mjs"],
+		languageOptions: {
+			globals: {
+				console: "readonly",
+				process: "readonly",
+			},
+		},
+	},
 );

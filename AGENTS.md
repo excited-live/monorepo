@@ -5,19 +5,20 @@ Contract for any AI agent working in this repo (Hermes, OpenCode, Claude Code, C
 ## Core rules
 
 1. **Never commit directly to `main`**. Work on a branch (`feat/*`, `fix/*`, `docs/*`) and open a PR.
-2. **Never commit secrets, tokens, or `.env` files**. Credentials belong in local user dotfiles or GitHub repo secrets.
+2. **Never commit secrets, tokens, or `.env` files**. Credentials belong in local user dotfiles or Gitea repo/org secrets, which Infra owns; a committed config may name an environment variable, never hold its value.
 3. **Pure logic in `packages/*`**: No network, DOM, framework imports, or locale/timezone dependencies.
 4. **Bilingual UI strings**: Always `{ en, th }`, English first.
 5. **Don't edit generated files**: `routeTree.gen.ts`, `pnpm-lock.yaml`, `dist/`, `.output/`.
 6. **Done criteria**: `pnpm build && pnpm typecheck && pnpm lint` must pass (0 warnings) before opening a PR. If you changed a component or page under `apps/webapp/src/components`, `apps/biz-mobile/src/components`, or `apps/biz-mobile/src/pages`, also run visual tests (`pnpm test:visual` or `pnpm test:visual:mobile`) and commit any updated `__snapshots__` PNGs. Baselines must be captured on the CI runner (workflow_dispatch → "Re-record baselines on the CI runner"), never on your machine — local pixel diffs are expected and are not a failure signal.
-7. **Check FromSukong MCP tools first**: In every workflow, always check tools in the FromSukong MCP gateway (`fromsukong`) first. This is the unified MCP gateway (`https://mcp.fromsukong.com/mcp`).
+7. **Do not depend on the FromSukong MCP gateway**: `https://mcp.fromsukong.com/mcp` is inert by Prame's decision — Cloudflare's edge cannot reach the tailnet-only backend (`100.64/10`), so calls fail instead of returning tools. Use Gitea for PRs, issues and reviews, and the repo's own `pnpm` scripts for checks. If Infra revives the gateway behind a public, Access-protected tunnel, this rule changes in the same PR.
 8. **Subagent model pin**: OpenCode subagents, implementers and reviewers alike, run `opencode-go/deepseek-v4.1-flash#max`. agy subagents run `gemini-3.8-flash-high`. Name the model on every dispatch and never substitute another one from those harnesses. A reviewer in the implementer's own harness does not satisfy the cross-family gate, whatever model it names. Probes, provider identity, and the pin retirement procedure are in `delegating_work` section 3.
 
 ## MCP gateway & tools (FromSukong)
 
 The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/mcp`) for `excited.live`.
 
-- **Rule: Check FromSukong MCP tools first in every flow.** Before performing actions via external tools or manual fallbacks, check if a FromSukong MCP tool provides the capability.
+> **Status 2026-10-23 — not usable (see rule 7).** The gateway is inert; the suites below are the intended surface, not a working dependency.
+
 - **Unified tool suites**:
   - `honcho_*`: Shared memory, semantic context search, peer discovery, and cross-agent coordination across workspaces.
   - `github-gitobs_*`: Pull requests, issues, commits, branches, and repository operations.
@@ -65,6 +66,12 @@ The **FromSukong MCP** is the unified MCP gateway (`https://mcp.fromsukong.com/m
   - `delegating_work` — multi-part implementation or any time you are about to spawn a subagent.
   - `writing_agent_docs` — creating or editing a skill, changing this file, or encoding a lesson after a run.
   - `verify` — proving a user-facing change on the real app (isolated local api + biz-mobile, sign-up and agent/MCP journeys, screenshot evidence) before a PR, or reproducing a bug a user saw.
+
+## Agent surface ownership
+
+`.agents/OWNERSHIP.md` names the owner of every agent-facing file here: skills and this file
+are Agents Productivity, the MCP gateway service and CI/CD are Infra, `main` is Prame. Read it
+before a change that spans two of those, and name the second owner as reviewer in the PR body.
 
 ## Setup & commands
 

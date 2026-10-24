@@ -2,6 +2,8 @@
 
 Project-local agent skills for the excited.live repo. Every agent that works here (Hermes, OpenCode, Claude Code, Codex, agy) should start from these.
 
+Who owns this folder and the rest of the agent surface in the repo: `.agents/OWNERSHIP.md`.
+
 ## What lives here
 
 One directory per skill, `snake_case`, each with a `SKILL.md`:
@@ -37,6 +39,16 @@ To keep all harness symlinks synchronized after adding or renaming skills, run:
 ```bash
 ./scripts/sync-skills.sh
 ```
+
+To verify the skill surface without changing it (frontmatter, symlink targets, no real
+content in a harness folder), run:
+```bash
+./scripts/check-skills.sh   # or: pnpm check:skills
+```
+
+Codex has no skills folder by design: it reads `AGENTS.md` and `.codex/config.toml`, so
+`sync-skills.sh` does not create `.codex/skills/`. Ownership of every folder on this page is
+in [`.agents/OWNERSHIP.md`](./OWNERSHIP.md).
 
 ## Unified MCP gateway (FromSukong)
 

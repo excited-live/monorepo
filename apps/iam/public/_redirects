@@ -1,0 +1,8 @@
+# SPA fallback for a direct-upload Pages project.
+#
+# Cloudflare Pages reads routing from `_redirects` in the *uploaded* directory;
+# a `[[redirects]]` table in wrangler.toml is never installed by
+# `wrangler pages deploy`, so without this file every client route 404s on a
+# hard refresh (/data, /tokens, /sign-in). Existing files (assets, index.html)
+# are served first, so this only catches deep links.
+/*    /index.html    200

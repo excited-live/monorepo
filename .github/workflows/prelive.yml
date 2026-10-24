@@ -6,6 +6,7 @@ on:
 
 env:
   WRANGLER_VERSION: "4.127.1"
+  PRELIVE_PROJECT: excited-live-prelive
 
 jobs:
   prelive:
@@ -20,16 +21,140 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      # The webapp is the MCP authorization server for prelive and the API is
+      # the protected resource. If they disagree on the D1 database or on the
+      # issuer/resource origins, OAuth fails only at runtime (#154), so fail
+      # before deploying.
+      - name: Check prelive auth configuration
+        run: node scripts/check-prelive-auth-config.mjs
+
       - name: Build webapp
         working-directory: apps/webapp
         env:
           VITE_API_MODE: live
         run: pnpm --filter @excited-live/webapp^... build && pnpm build
+
+      - name: Ensure prelive Pages project
+        working-directory: apps/webapp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages project create "$PRELIVE_PROJECT" --production-branch main || true
+
+      # `wrangler pages deploy` uploads a configuration *hash*, not the bindings
+      # or vars, so a wrangler.toml alone never binds D1 on a direct-upload
+      # project. Apply the prelive deployment config here: the shared D1
+      # binding, the two auth vars, compatibility, and the hash of the config
+      # file the deploy step will install (a stale hash is how a deployment
+      # ends up rejected as out of sync). PATCH merges by key, so the
+      # BETTER_AUTH_SECRET pushed next is preserved.
+      - name: Apply prelive Pages bindings and vars
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          body=$(node scripts/check-prelive-auth-config.mjs --json)
+          echo "Patching $PRELIVE_PROJECT deployment_configs.production:"
+          printf '%s' "$body" | jq -c '.deployment_configs.production | {d1_databases, env_vars, compatibility_date, compatibility_flags, wrangler_config_hash}'
+          response=$(curl -sS -m 30 -X PATCH \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PRELIVE_PROJECT" \
+            -H "authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'content-type: application/json' \
+            --data "$body" \
+            -w '\n%{http_code}')
+          status=$(printf '%s' "$response" | tail -n1)
+          payload=$(printf '%s' "$response" | sed '$d')
+          printf '%s\n' "$payload" | jq -r 'if .success then "Project updated: \(.result.name)" else (.errors[]? | "CF error \(.code): \(.message)") end' || printf '%s\n' "$payload"
+          if [ "$status" != "200" ]; then
+            echo "::error::PATCH on Pages project $PRELIVE_PROJECT returned $status (needs a token with Pages:Edit). Nothing was deployed."
+            exit 1
+          fi
+
+      # Same value api-prelive.yml pushes to the Worker: the webapp (cookies
+      # mount) signs sessions and issues OAuth/JWKS material, the API (tokens
+      # mount + /mcp resource server) verifies it. Different values mean every
+      # prelive session and access token is invalid.
+      #
+      # Secret first, deploy second, so the first deployment that serves traffic
+      # already has an authorization server instead of the "not configured in
+      # this environment" 503.
+      - name: Push BETTER_AUTH_SECRET to the prelive Pages project
+        working-directory: apps/webapp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BETTER_AUTH_SECRET: ${{ secrets.PRELIVE_BETTER_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BETTER_AUTH_SECRET:-}" ]; then
+            echo "PRELIVE_BETTER_AUTH_SECRET is not set; refusing to deploy a prelive webapp without an authorization server." >&2
+            exit 1
+          fi
+          printf '%s' "$BETTER_AUTH_SECRET" |
+            npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages secret put BETTER_AUTH_SECRET --project-name "$PRELIVE_PROJECT"
+
+      # Pages has no `--config` flag and always reads the wrangler.toml of the
+      # working directory — which must be apps/webapp so Pages bundles
+      # functions/ (the SSR entry). Install the prelive config for this job
+      # only; the checked-in apps/webapp/wrangler.toml stays the
+      # production/preview config.
       - name: Deploy prelive
         working-directory: apps/webapp
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages project create excited-live-prelive --production-branch main || true
-          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist/client --project-name=excited-live-prelive --branch=main --commit-dirty=true
+          set -euo pipefail
+          cp wrangler.prelive.toml wrangler.toml
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist/client --project-name="$PRELIVE_PROJECT" --branch=main --commit-dirty=true
+
+      # Proof, not a conclusion: the four assertions in #154, with the raw
+      # responses echoed so a failure shows what the deployment returned.
+      # Retried because a fresh Pages deployment takes a few seconds to
+      # propagate.
+      - name: Smoke — prelive MCP authorization server
+        run: |
+          set -euo pipefail
+          issuer=https://prelive.excited.live/api/auth
+          api=https://excited-live-api-prelive.preamza02.workers.dev
+          reg_body='{"client_name":"prelive-ci-smoke","redirect_uris":["https://example.com/callback"],"grant_types":["authorization_code","refresh_token"],"response_types":["code"],"token_endpoint_auth_method":"none","scope":"openid profile email offline_access"}'
+
+          meta_code=000
+          ok_code=000
+          for attempt in $(seq 1 10); do
+            meta_code=$(curl -sS -m 20 -o /tmp/meta.json -w '%{http_code}' "$issuer/.well-known/oauth-authorization-server" || echo 000)
+            ok_code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$issuer/ok" || echo 000)
+            echo "attempt $attempt: metadata -> $meta_code, /ok -> $ok_code"
+            if [ "$meta_code" = "200" ] && [ "$ok_code" = "200" ]; then break; fi
+            sleep 5
+          done
+
+          echo "--- GET $issuer/.well-known/oauth-authorization-server ($meta_code)"
+          cat /tmp/meta.json; echo
+          echo "--- GET $issuer/ok ($ok_code)"
+          ok_body=$(curl -sS -m 20 "$issuer/ok" || true); echo "$ok_body"
+
+          reg=$(curl -sS -m 20 -w '\n%{http_code}' -X POST "$issuer/oauth2/register" -H 'content-type: application/json' -d "$reg_body" || printf '\n000')
+          reg_code=$(printf '%s' "$reg" | tail -n1)
+          reg_json=$(printf '%s' "$reg" | sed '$d')
+          echo "--- POST $issuer/oauth2/register ($reg_code)"
+          echo "$reg_json"
+
+          mcp_code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -X POST "$api/mcp" || echo 000)
+          echo "--- POST $api/mcp without a token ($mcp_code)"
+
+          fail=0
+          [ "$meta_code" = "200" ] || { echo "::error::authorization-server metadata is $meta_code, want 200"; fail=1; }
+          [ "$ok_code" = "200" ] || { echo "::error::/api/auth/ok is $ok_code, want 200"; fail=1; }
+          [ "$reg_code" = "200" ] || [ "$reg_code" = "201" ] || { echo "::error::dynamic client registration is $reg_code, want 200/201"; fail=1; }
+          [ "$mcp_code" = "401" ] || { echo "::error::POST /mcp without a token is $mcp_code, want 401"; fail=1; }
+
+          chosen_issuer=$(jq -r '.issuer // empty' /tmp/meta.json)
+          client_id=$(printf '%s' "$reg_json" | jq -r '.client_id // empty')
+          echo "issuer=$chosen_issuer client_id=$client_id"
+          [ "$chosen_issuer" = "$issuer" ] || { echo "::error::metadata issuer is '$chosen_issuer', want '$issuer'"; fail=1; }
+          [ -n "$client_id" ] || { echo "::error::registration returned no client_id"; fail=1; }
+          exit "$fail"

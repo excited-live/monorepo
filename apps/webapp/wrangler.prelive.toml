@@ -1,0 +1,43 @@
+# Cloudflare Pages configuration for the PRELIVE webapp (#154, #139).
+#
+# This is a template: .github/workflows/prelive.yml installs it as
+# apps/webapp/wrangler.toml for the prelive deploy only, because
+# `wrangler pages deploy` has no `--config` flag and always reads the
+# wrangler.toml of the current directory — and it must run from apps/webapp so
+# Pages picks up `functions/` (the SSR entry). The checked-in
+# apps/webapp/wrangler.toml therefore stays the production/PR-preview config:
+# binding the prelive D1 there would point production and every preview at the
+# prelive database.
+#
+# Bindings do not travel with `wrangler pages deploy` (it only sends a hash of
+# this file); prelive.yml applies `deployment_configs.production` to the Pages
+# project through the API before deploying, using the values below. Keep them in
+# sync — scripts/check-prelive-auth-config.mjs fails CI when they drift.
+#
+# The auth server (the `cookies` mount of packages/auth) wires itself up only
+# when it sees BETTER_AUTH_SECRET (a Pages secret pushed by prelive.yml) and
+# both vars below. Its issuer is <BETTER_AUTH_URL>/api/auth, exactly what
+# apps/api advertises in /.well-known/oauth-protected-resource for prelive
+# (EXCITED_WEBAPP_URL in apps/api/wrangler.toml [env.prelive]).
+
+name = "excited-live-prelive"
+compatibility_date = "2026-08-30"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist/client"
+
+# Runtime vars on Pages, read through process.env by src/lib/auth-config.ts.
+[vars]
+# Webapp origin: the OAuth issuer becomes https://prelive.excited.live/api/auth.
+BETTER_AUTH_URL = "https://prelive.excited.live"
+# API origin: the MCP resource/audience becomes <this>/mcp.
+EXCITED_API_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
+
+# The SAME D1 database as apps/api [env.prelive]: user/session/account/jwks/
+# oauthClient/oauthResource/oauthConsent/deviceCode rows are shared between the
+# webapp (cookies mount, issuer of tokens) and the API (tokens mount + /mcp
+# resource server). A different database here means sessions and JWKS the API
+# cannot validate.
+[[d1_databases]]
+binding = "DB"
+database_name = "excited-live-api-prelive"
+database_id = "f7bd3f26-5296-4832-96a3-1cbb01046112"

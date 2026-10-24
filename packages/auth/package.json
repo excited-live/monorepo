@@ -21,6 +21,11 @@
 			"types": "./dist/tanstack-start.d.ts",
 			"import": "./dist/tanstack-start.js",
 			"require": "./dist/tanstack-start.cjs"
+		},
+		"./flow": {
+			"types": "./dist/flow.d.ts",
+			"import": "./dist/flow.js",
+			"require": "./dist/flow.cjs"
 		}
 	},
 	"files": [

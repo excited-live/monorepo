@@ -29,9 +29,26 @@ function isD1Binding(value: unknown): value is AuthD1DatabaseLike {
 	)
 }
 
+/**
+ * The `DB` D1 binding, if this process has one.
+ *
+ * On Cloudflare Pages it is NOT on `process.env`: the runtime populates that
+ * only with text (vars and secrets) and stringifies anything else, so a D1
+ * binding is never there. `functions/[[path]].ts` publishes the binding map on
+ * `globalThis` before rendering; local dev and tests keep using process.env.
+ */
+function d1Binding(): AuthD1DatabaseLike | undefined {
+	const fromProcessEnv = (globalThis as { process?: { env?: Record<string, unknown> } }).process?.env?.DB
+	if (isD1Binding(fromProcessEnv)) return fromProcessEnv
+	const fromPages = (globalThis as { __CF_ENV?: Record<string, unknown> }).__CF_ENV?.DB
+	if (isD1Binding(fromPages)) return fromPages
+	return undefined
+}
+
+
 async function resolveAuthDatabase(): Promise<AuthDatabase> {
-	const binding = (globalThis as { process?: { env?: Record<string, unknown> } }).process?.env?.DB
-	if (isD1Binding(binding)) return { kind: "d1", database: binding }
+	const binding = d1Binding()
+	if (binding) return { kind: "d1", database: binding }
 	// Literal dynamic imports: rolldown (vite) externalizes node builtins. The
 	// computed-specifier workaround in apps/api is esbuild-specific.
 	const { mkdirSync } = (await import("node:fs")) as typeof import("node:fs")

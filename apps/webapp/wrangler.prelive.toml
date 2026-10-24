@@ -31,6 +31,11 @@ pages_build_output_dir = "dist/client"
 BETTER_AUTH_URL = "https://prelive.excited.live"
 # API origin: the MCP resource/audience becomes <this>/mcp.
 EXCITED_API_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
+# Backend origin for the BFF (src/lib/bff-proxy.ts): /api/v1/* is proxied
+# here. Without it the fallback is http://localhost:8000, which workerd cannot
+# resolve — Cloudflare answers every /api/v1/* call with 1016 "Origin DNS
+# error" before the API sees it.
+BACKEND_API_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
 
 # The SAME D1 database as apps/api [env.prelive]: user/session/account/jwks/
 # oauthClient/oauthResource/oauthConsent/deviceCode rows are shared between the

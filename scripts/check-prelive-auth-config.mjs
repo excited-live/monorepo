@@ -76,6 +76,7 @@ const apiDatabaseId = stringValue(apiDb, "database_id")
 const pagesName = stringValue(pagesToml, "name")
 const pagesOrigin = stringValue(pagesVars, "BETTER_AUTH_URL")
 const pagesApiOrigin = stringValue(pagesVars, "EXCITED_API_URL")
+const pagesBackendOrigin = stringValue(pagesVars, "BACKEND_API_URL")
 const pagesDatabaseId = stringValue(pagesDb, "database_id")
 const pagesDatabaseName = stringValue(pagesDb, "database_name")
 const compatibilityDate = stringValue(pagesToml, "compatibility_date")
@@ -87,6 +88,9 @@ expect("apps/api [env.prelive] D1 database_id", apiDatabaseId, DATABASE_ID)
 expect(`${PAGES_CONFIG} name`, pagesName, PROJECT_NAME)
 expect(`${PAGES_CONFIG} [vars] BETTER_AUTH_URL`, pagesOrigin, WEBAPP_ORIGIN)
 expect(`${PAGES_CONFIG} [vars] EXCITED_API_URL`, pagesApiOrigin, apiOrigin)
+// The BFF (src/lib/bff-proxy.ts) proxies /api/v1/* to this origin; unset means
+// http://localhost:8000 inside workerd, i.e. Cloudflare 1016 on every call.
+expect(`${PAGES_CONFIG} [vars] BACKEND_API_URL`, pagesBackendOrigin, apiOrigin)
 expect(`${PAGES_CONFIG} D1 binding`, stringValue(pagesDb, "binding"), "DB")
 expect(`${PAGES_CONFIG} D1 database_name`, pagesDatabaseName, "excited-live-api-prelive")
 expect(`${PAGES_CONFIG} D1 database_id must equal the API's (shared sessions/JWKS)`, pagesDatabaseId, apiDatabaseId)
@@ -112,6 +116,7 @@ if (process.argv.includes("--json")) {
 				env_vars: {
 					BETTER_AUTH_URL: { type: "plain_text", value: pagesOrigin },
 					EXCITED_API_URL: { type: "plain_text", value: pagesApiOrigin },
+					BACKEND_API_URL: { type: "plain_text", value: pagesBackendOrigin },
 				},
 				compatibility_date: compatibilityDate,
 				compatibility_flags: compatibilityFlags,
@@ -122,6 +127,6 @@ if (process.argv.includes("--json")) {
 	process.stdout.write(JSON.stringify(body))
 } else {
 	console.log(
-		`Prelive auth configuration OK: issuer ${pagesOrigin}/api/auth, resource ${pagesApiOrigin}/mcp, D1 ${apiDatabaseId}`
+		`Prelive auth configuration OK: issuer ${pagesOrigin}/api/auth, resource ${pagesApiOrigin}/mcp, backend ${pagesBackendOrigin}, D1 ${apiDatabaseId}`
 	)
 }

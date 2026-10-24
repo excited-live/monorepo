@@ -7,8 +7,153 @@ on:
 env:
   WRANGLER_VERSION: "4.127.1"
   PRELIVE_PROJECT: excited-live-prelive
+  IAM_PROJECT: excited-live-iam
+  IAM_DOMAIN: iam.excited.live
+  # The single API, inlined by Vite at build time. `apps/iam/src/lib/env.ts`
+  # falls back to http://localhost:8000, so leaving this unset ships a bundle
+  # that only works on a developer's machine — the same silent-misconfiguration
+  # failure as the webapp's missing BACKEND_API_URL (#26).
+  IAM_API_URL: https://excited-live-api-prelive.preamza02.workers.dev
+  # The OAuth authorization server for iam is the webapp's Better Auth cookies
+  # mount; iam only resumes flows there and never proxies through it.
+  IAM_AUTH_SERVER_URL: https://prelive.excited.live
 
 jobs:
+  # iam.excited.live: a static client SPA with no server and no bindings, so it
+  # only needs a build, a Pages project, a custom domain, and a deploy. Kept in
+  # the same workflow as the webapp because both talk to the prelive API: a
+  # merge that changes the API should redeploy both, in one run and one place.
+  iam:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build iam
+        working-directory: apps/iam
+        env:
+          VITE_API_URL: ${{ env.IAM_API_URL }}
+          VITE_AUTH_SERVER_URL: ${{ env.IAM_AUTH_SERVER_URL }}
+          VITE_ENV_LABEL: prelive
+        run: pnpm --filter @excited-live/iam^... build && pnpm build
+
+      # Prove the artifact before spending a deployment on it. Vite inlines
+      # VITE_* at build, so a missing value is invisible in CI and fatal in the
+      # browser; and without dist/_redirects every deep link 404s on refresh.
+      # (Check the positive only: src/lib/env.ts keeps "http://localhost:8000"
+      # as its code-level fallback, so that string is in every build.)
+      - name: Check the iam build targets the prelive API
+        working-directory: apps/iam
+        env:
+          VITE_API_URL: ${{ env.IAM_API_URL }}
+        run: |
+          set -euo pipefail
+          if ! grep -rq "$IAM_API_URL" dist/assets; then
+            echo "::error::the built bundle never mentions $IAM_API_URL — VITE_API_URL was not inlined, so iam would talk to localhost. Nothing was deployed."
+            exit 1
+          fi
+          if [ ! -f dist/_redirects ]; then
+            echo "::error::dist/_redirects is missing; client routes would 404 on a hard refresh. Nothing was deployed."
+            exit 1
+          fi
+          echo "Bundle targets $IAM_API_URL and ships the SPA fallback."
+
+      # Idempotent provisioning, and no blanket `|| true`: a 403 here means the
+      # token lacks Pages:Edit, which must fail now rather than at the deploy.
+      - name: Ensure iam Pages project and custom domain
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          show() { jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/cf.json 2>/dev/null || cat /tmp/cf.json; }
+
+          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT")
+          if [ "$code" = "404" ]; then
+            code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api" \
+              -H "$auth" -H 'content-type: application/json' \
+              --data "$(jq -cn --arg name "$IAM_PROJECT" '{name:$name, production_branch:"main"}')")
+            if [ "$code" != "200" ]; then
+              echo "::error::creating Pages project $IAM_PROJECT returned $code"
+              show
+              exit 1
+            fi
+            echo "Created Pages project $IAM_PROJECT."
+          elif [ "$code" != "200" ]; then
+            echo "::error::reading Pages project $IAM_PROJECT returned $code (needs a token with Pages:Edit)"
+            show
+            exit 1
+          else
+            echo "Pages project $IAM_PROJECT already exists."
+          fi
+
+          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api/$IAM_PROJECT/domains" \
+            -H "$auth" -H 'content-type: application/json' \
+            --data "$(jq -cn --arg name "$IAM_DOMAIN" '{name:$name}')")
+          case "$code" in
+            200|201) echo "Attached $IAM_DOMAIN to $IAM_PROJECT (proxied CNAME and certificate managed by Cloudflare)." ;;
+            409) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
+            *)
+              echo "::error::attaching $IAM_DOMAIN returned $code"
+              show
+              exit 1
+              ;;
+          esac
+
+      - name: Deploy iam
+        working-directory: apps/iam
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist --project-name="$IAM_PROJECT" --branch=main --commit-dirty=true
+
+      # The only proof that matters: the hostname serves the SPA shell, and a
+      # client route returns that same shell instead of a 404.
+      - name: Smoke — iam SPA on its custom domain
+        run: |
+          set -euo pipefail
+          base="https://$IAM_DOMAIN"
+          root=""
+          for attempt in $(seq 1 18); do
+            root=$(curl -sS -m 20 -o /tmp/root.html -w '%{http_code}' "$base/" || true)
+            [ "$root" = "200" ] && break
+            echo "attempt $attempt: / -> $root"
+            sleep 10
+          done
+          echo "/ -> $root"
+          if [ "$root" != "200" ]; then
+            echo "::error::$base/ returned $root (first custom-domain attach can take minutes for DNS + certificate)"
+            exit 1
+          fi
+          if ! grep -qi '<div id="root"' /tmp/root.html; then
+            echo "::error::$base/ did not return the SPA shell"
+            head -20 /tmp/root.html
+            exit 1
+          fi
+
+          deep=$(curl -sS -m 20 -o /tmp/deep.html -w '%{http_code}' "$base/data" || true)
+          echo "/data -> $deep"
+          if [ "$deep" != "200" ]; then
+            echo "::error::$base/data returned $deep — the SPA fallback (_redirects) is not installed"
+            exit 1
+          fi
+          cmp -s /tmp/root.html /tmp/deep.html || echo "::warning::/data is not byte-identical to / — check the fallback"
+
+      - name: Show the iam deployment URL
+        if: always()
+        run: |
+          echo "iam: https://$IAM_DOMAIN (project $IAM_PROJECT)"
+
   prelive:
     runs-on: ubuntu-latest
     steps:

@@ -8,10 +8,7 @@ pages_build_output_dir = "dist"
 #
 # No bindings, no server: this app is static assets plus the single-API client.
 # Session storage is the browser's; nothing is proxied through Cloudflare.
-#
-# SPA fallback: Pages needs a catch-all so client routes (/data, /tokens,
-# /sign-in) resolve on a hard refresh.
-[[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
+
+# SPA fallback lives in public/_redirects, not here: Pages reads routing from
+# `_redirects` in the uploaded directory, while `wrangler pages deploy` uploads
+# `dist` and never installs a `[[redirects]]` table from this file.

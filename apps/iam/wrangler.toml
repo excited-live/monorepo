@@ -1,0 +1,17 @@
+name = "excited-live-iam"
+compatibility_date = "2026-08-30"
+pages_build_output_dir = "dist"
+
+# Custom domain: iam.excited.live
+#   npx wrangler pages project create excited-live-iam --production-branch main
+#   npx wrangler pages domain add iam.excited.live --project-name excited-live-iam
+#
+# No bindings, no server: this app is static assets plus the single-API client.
+# Session storage is the browser's; nothing is proxied through Cloudflare.
+#
+# SPA fallback: Pages needs a catch-all so client routes (/data, /tokens,
+# /sign-in) resolve on a hard refresh.
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200

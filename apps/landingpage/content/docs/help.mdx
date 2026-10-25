@@ -6,6 +6,26 @@ description: Get started with the app, learn the terms, and reach support.
 Need a hand? This page covers the questions we get most. If you cannot find your
 answer here, [email support](#contact-support) and we will get back to you.
 
+## Connect your agent over MCP
+
+excited.live works with your own AI agent over the Model Context Protocol (MCP). Add
+this server URL to your agent:
+
+```
+https://api.excited.live/mcp
+```
+
+- **Claude Code:** `claude mcp add --scope user --transport http excited https://api.excited.live/mcp`
+- **Codex:** `codex mcp add excited --url https://api.excited.live/mcp`, then run `codex mcp login excited`.
+- **Cursor:** in `~/.cursor/mcp.json` add `{"mcpServers":{"excited":{"url":"https://api.excited.live/mcp"}}}`, then restart Cursor.
+- **Claude:** open Settings → Connectors → Add custom connector, and paste `https://api.excited.live/mcp`.
+- **ChatGPT:** turn on Developer mode in Settings, Apps, Advanced settings, then add a
+  custom MCP connector with the URL.
+
+Your client will ask you to sign in to excited.live when you first connect.
+Then run the `onboard_me` prompt and your agent will interview you and fill in your
+accounts, income, expenses, assets and liabilities.
+
 ## Getting started with the app
 
 1. **Add your accounts.** Start with your personal account, then add each business or
@@ -41,8 +61,10 @@ your freedom buffer.
 ## Coming next
 
 These are in development and not in the app yet: reading Thai bank slips, a guided
-first-run setup, and connecting your own AI agent. Join the [waitlist](/) to vote on
-what ships first.
+first-run setup, and an in-app mobile agent. Connecting your own AI agent over MCP
+(`https://api.excited.live/mcp`) is in final testing.
+Join the [waitlist](/) to vote on what
+ships first.
 
 ## The web planner
 

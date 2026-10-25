@@ -325,22 +325,14 @@ const appSchema = {
             <div class="country-empty-state" id="country-empty-state">No country found</div>
           </div>
         </div>
-        <div class="nav-split-cta" id="nav-auth-cta" data-auth-state="guest">
+        <div class="nav-split-cta" id="nav-auth-cta">
           <!-- State: Guest / Unauthenticated (Default) -->
           <div class="nav-auth-state nav-auth-state--guest" id="nav-state-guest">
-            <a href="https://iam.excited.live/auth/sign-in" class="btn btn-primary nav-auth-btn" data-od-id="nav-btn-signin" aria-label="Sign in to Excited Live">
+            <a href="https://auth.excited.live/sign-in" class="btn btn-primary nav-auth-btn" data-od-id="nav-btn-signin" aria-label="Sign in to Excited Live">
               <span data-lang-en="">Sign In</span>
               <span data-lang-th="">เข้าสู่ระบบ</span>
             </a>
             
-          </div>
-          <!-- State: User / Authenticated (Active Session) -->
-          <div class="nav-auth-state nav-auth-state--user" id="nav-state-user" style="display: none;">
-            <a href="https://iam.excited.live/overview" class="btn btn-primary nav-auth-btn nav-btn-console" data-od-id="nav-btn-console" aria-label="Open Excited IAM Console">
-              <span class="auth-dot" aria-hidden="true"></span>
-              <span data-lang-en="">Open Console</span>
-              <span data-lang-th="">เปิดคอนโซล</span>
-            </a>
           </div>
         </div>
       </div>
@@ -353,18 +345,19 @@ const appSchema = {
         
 
         <div class="hero-editorial-center">
+          {/* TODO(#31): eyebrow claims MCP is available now; flip after Rigel's #31 protocol results (sign-in currently fails discovery on prod). */}
           <div class="eyebrow">
-            <span data-lang-en="">MCP available now</span><span data-lang-th="">MCP พร้อมใช้งานแล้ว</span>
+            <span data-lang-en="">Connect your agent over MCP</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span>
           </div>
           <h1>
             <span data-lang-en="">Financial planning for <span class="xai-swap-container"><span class="xai-swap-roller" aria-label="solopreneurs, first jobber, AI native"><span class="xai-swap-track"><span class="xai-swap-word">solopreneurs.</span><span class="xai-swap-word">first jobber.</span><span class="xai-swap-word">AI native.</span><span class="xai-swap-word" aria-hidden="true">solopreneurs.</span></span></span><span class="xai-swap-underline" aria-hidden="true"></span></span></span>
             <span data-lang-th="">การวางแผนการเงินสำหรับ <span class="xai-swap-container"><span class="xai-swap-roller" aria-label="โซโลพรีเนอร์, First Jobber, AI Native"><span class="xai-swap-track"><span class="xai-swap-word">โซโลพรีเนอร์</span><span class="xai-swap-word">First Jobber</span><span class="xai-swap-word">AI Native</span><span class="xai-swap-word" aria-hidden="true">โซโลพรีเนอร์</span></span></span><span class="xai-swap-underline" aria-hidden="true"></span></span></span>
           </h1>
-          <p class="hero-editorial-sub"><span data-lang-en="">Tax, retirement, asset depreciation, investment tracking, and budgeting — built for your agent and for you.</span><span data-lang-th="">ภาษี การเกษียณ ค่าเสื่อมสินทรัพย์ การติดตามการลงทุน และงบประมาณ — สร้างมาเพื่อเอเจนต์และตัวคุณ</span></p>
+          <p class="hero-editorial-sub"><span data-lang-en="">Connect Claude, ChatGPT, or Claude Code over MCP, then ask your agent to set up your accounts, bills, and runway. Built for your agent and for you.</span><span data-lang-th="">เชื่อมต่อ Claude, ChatGPT หรือ Claude Code ผ่าน MCP แล้วให้เอเจนต์ช่วยตั้งค่าบัญชี บิล และรันเวย์ของคุณ สร้างมาเพื่อเอเจนต์และตัวคุณ</span></p>
           <div class="hero-actions" data-od-id="hero-actions">
             <a href="#final-cta" class="btn btn-primary" data-door-target="agents" data-od-id="hero-btn-getting-started">
-              <span data-lang-en="">Getting Started</span>
-              <span data-lang-th="">เริ่มต้นใช้งาน</span>
+              <span data-lang-en="">Connect your agent</span>
+              <span data-lang-th="">เชื่อมต่อเอเจนต์</span>
             </a>
             <a href="/docs" class="btn btn-secondary" data-od-id="hero-btn-view-docs">
               <span data-lang-en="">View Documentation</span>
@@ -380,13 +373,13 @@ const appSchema = {
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-chat">
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">What’s my runway if March revenue is ฿0?</span><span data-lang-th="">ถ้ารายได้มีนาคมเป็น ฿0 รันเวย์เหลือเท่าไหร่?</span></div>
-                <div class="b-bubble b-bubble--agent"><span data-lang-en="">Runway is 14 months (call: read_runway). ฿2,305,000 cash balance across Mint Living and Bean Coffee.</span><span data-lang-th="">รันเวย์ 14 เดือน (คำสั่ง read_runway) เงินสด ฿2,305,000 รวม Mint Living และ Bean Coffee</span></div>
+                <div class="b-bubble b-bubble--agent"><span data-lang-en="">Runway is 14 months (call: get_treasury_projection). ฿2,305,000 cash balance across Mint Living and Bean Coffee.</span><span data-lang-th="">รันเวย์ 14 เดือน (คำสั่ง get_treasury_projection) เงินสด ฿2,305,000 รวม Mint Living และ Bean Coffee</span></div>
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">Log ฿18,500 server cost to Mint Living.</span><span data-lang-th="">จดค่าเซิร์ฟเวอร์ ฿18,500 เข้า Mint Living</span></div>
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Building for AI Agents</span><span data-lang-th="">ถาม</span></span><span class="b-card-sub"><span data-lang-th="">สด #134</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Use it now→</span><span data-lang-th="">ถามในแชท →</span></span>
+              <div><span class="b-card-label"><span data-lang-en="">Ask your agent</span><span data-lang-th="">ถามเอเจนต์ของคุณ</span></span></div>
+              <span class="b-card-cta"><span data-lang-en="">Ask in your agent →</span><span data-lang-th="">ถามผ่านเอเจนต์ →</span></span>
             </div>
           </a>
 
@@ -396,10 +389,10 @@ const appSchema = {
               <div class="b-terminal">
                 <div class="b-terminal-bar">
                   <span class="b-dot"></span><span class="b-dot"></span><span class="b-dot"></span>
-                  <span class="b-terminal-path">excited.live/mcp · simulate_scenario</span>
+                  <span class="b-terminal-path">api.excited.live/mcp · get_treasury_projection</span>
                 </div>
                 <div class="b-terminal-body">
-                  <div class="b-term-line"><span class="b-term-prompt">&gt;</span><span>excited.simulate_scenario --scenario zero_revenue_q2</span></div>
+                  <div class="b-term-line"><span class="b-term-prompt">&gt;</span><span>excited.get_treasury_projection</span></div>
                   <div class="b-term-meta">running Monte Carlo · 10,000 passes · Thai tax 2026</div>
                   <div class="b-term-row"><span>Mint Living:</span><span class="b-term-value">runway 17m → 12m</span></div>
                   <div class="b-term-row"><span>Bean Coffee:</span><span class="b-term-value">runway 8m → 6m</span></div>
@@ -420,7 +413,7 @@ const appSchema = {
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">Log ฿850 for the gear repair.</span><span data-lang-th="">จด ฿850 ค่าซ่อมอุปกรณ์</span></div>
                 <div class="b-bot-row">
                   <span class="b-bot-avatar">ex</span>
-                  <div class="b-bubble b-bubble--agent"><span data-lang-en="">Logged to Mint Studio (call: log_expense). March burn is now ฿42,300.</span><span data-lang-th="">จดเข้า Mint Studio แล้ว (คำสั่ง log_expense) เบิร์นมีนาคมเป็น ฿42,300</span></div>
+                  <div class="b-bubble b-bubble--agent"><span data-lang-en="">Logged to Mint Studio (call: add_expense). March burn is now ฿42,300.</span><span data-lang-th="">จดเข้า Mint Studio แล้ว (คำสั่ง add_expense) เบิร์นมีนาคมเป็น ฿42,300</span></div>
                 </div>
               </div>
             </div>
@@ -432,7 +425,7 @@ const appSchema = {
 
           <!-- Card 4: Plan (Showcase) -->
           <!-- NOTE: Showcase Animation Demo. Once product launch demo & IAM flow are complete, update with real animated product screencast GIF / MP4 loop. -->
-          <a class="b-product-card b-product-card--3 b-product-card--media" href="https://iam.excited.live/auth/sign-in" id="cap-card-plan" data-od-id="cap-card-plan" aria-label="Plan: open the human workspace · วางแผน: เปิดพื้นที่สำหรับคุณ">
+          <a class="b-product-card b-product-card--3 b-product-card--media" href="https://auth.excited.live/sign-in" id="cap-card-plan" data-od-id="cap-card-plan" aria-label="Plan: open the human workspace · วางแผน: เปิดพื้นที่สำหรับคุณ">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-mosaic">
                 <div class="b-mosaic-cell b-mosaic-cell--hero"><img class="showcase-img showcase-img--mobile" src="/assets/excited/planner-mobile.webp" width="780" height="1636" alt="" loading="lazy" decoding="async"></div>
@@ -482,7 +475,7 @@ const appSchema = {
             <div class="eyebrow">
               <span data-lang-en="">Ready when you are</span><span data-lang-th="">พร้อมเมื่อคุณต้องการ</span>
             </div>
-            <h2 style="margin-top: 12px; margin-bottom: 10px;"><span data-lang-en="">Pick your agent. Get its setup.</span><span data-lang-th="">เลือกเอเจนต์ แล้วรับวิธีตั้งค่า</span></h2>
+            <h2 style="margin-top: 12px; margin-bottom: 10px;"><span data-lang-en="">Connect your agent over MCP.</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span></h2>
             <p style="color:var(--charcoal);"><span data-lang-en="">Each client connects a little differently — from one CLI command to a custom connector. Pick yours and copy the exact setup.</span><span data-lang-th="">แต่ละไคลเอนต์เชื่อมต่อไม่เหมือนกัน ตั้งแต่คำสั่ง CLI เดียวไปจนถึงคอนเนกเตอร์กำหนดเอง เลือกของคุณแล้วคัดลอกวิธีตั้งค่าได้เลย</span></p>
             <p style="color:var(--charcoal); font-size:14px; margin-top:12px;"><span data-lang-en="">Prefer the 50-year planner? </span><span data-lang-th="">อยากใช้แพลนเนอร์ 50 ปี? </span><a href="#cap-card-plan" data-door-target="humans" class="b-cta-human-link"><span data-lang-en="">See the 50-year planner ↑</span><span data-lang-th="">ดูเว็บวางแผน 50 ปี ↑</span></a></p>
           </div>
@@ -507,16 +500,11 @@ const appSchema = {
               </div>
               <p class="b-cta-meta" aria-live="polite" aria-atomic="true"><span id="b-cta-meta-en" data-lang-en="">Claude Code · CLI</span><span id="b-cta-meta-th" data-lang-th="">Claude Code · CLI</span></p>
             </fieldset>
-            <div id="b-auth-hydration-banner" class="auth-hydrated-pill" style="display: none;">
-              <span class="auth-dot" aria-hidden="true"></span>
-              <span data-lang-en="">Active IAM session: token pre-injected (<code>ex_live_79a4...</code>) · 1-click ready</span>
-              <span data-lang-th="">เข้าสู่ระบบแล้ว: ใส่โทเค็น IAM ให้ล่วงหน้า (<code>ex_live_79a4...</code>) · พร้อมใช้งานทันที</span>
-            </div>
             <div class="mono-prompt-box b-cta-prompt" id="b-footer-prompt">Add excited.live to Claude Code:
 
-claude mcp add --scope user --transport http excited https://mcp.excited.live/mcp
+claude mcp add --scope user --transport http excited https://api.excited.live/mcp
 
-Then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.</div>
+Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</div>
             <button type="button" class="btn btn-primary" data-copy-target="b-footer-prompt" data-od-id="b-cta-copy">
               <span class="copy-label-default" data-lang-en="">Copy setup</span>
               <span class="copy-label-default" data-lang-th="">คัดลอกวิธีตั้งค่า</span>
@@ -525,11 +513,16 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
             </button>
             <textarea class="copy-fallback-area" readonly="" aria-label="Fallback copy setup">Add excited.live to Claude Code:
 
-claude mcp add --scope user --transport http excited https://mcp.excited.live/mcp
+claude mcp add --scope user --transport http excited https://api.excited.live/mcp
 
-Then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.</textarea>
+Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</textarea>
           </div>
         </div>
+        {/* TODO(#31): all setupsGuest prompts say "Your client will ask you to sign in to excited.live" (OAuth via auth.excited.live); no sign-in tool exists. Re-check after Rigel's #31 protocol results.
+            TODO(#31): Codex needs `codex mcp login excited` for OAuth; untested.
+            TODO(#31): Claude "Settings → Connectors → Add custom connector" path unverified; DCR/OAuth is #31.
+            TODO(#31): ChatGPT "Settings → Apps → Advanced settings → Developer mode" path unverified; DCR/OAuth is #31.
+            TODO(#31): content/docs/help.mdx mirrors all of the above (Codex login, Claude/ChatGPT paths, sign-in sentence) and says MCP is "in final testing"; flip to "works today" once prod sign-in discovery works. Kept out of help.mdx because its comments leak into dist/api/search.json. */}
         <script is:inline>
           (function () {
             var section = document.querySelector('[data-od-id="dir-b-final-cta"]');
@@ -540,112 +533,50 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
             var metaTh = section.querySelector('#b-cta-meta-th');
             var copyBtn = section.querySelector('[data-copy-target="b-footer-prompt"]');
             var inputs = section.querySelectorAll('.b-pick');
-            var currentAuthState = 'guest';
             var setupsGuest = {
               'claude-code': {
-                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude Code · CLI (Public)',
                 th: 'Claude Code · CLI (สาธารณะ)'
               },
               codex: {
-                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\ncodex mcp login excited\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Codex · CLI (Public)',
                 th: 'Codex · CLI (สาธารณะ)'
               },
               cursor: {
-                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://mcp.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://api.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Cursor · mcp.json (Public)',
                 th: 'Cursor · ไฟล์ mcp.json (สาธารณะ)'
               },
               claude: {
-                prompt: 'Add excited.live to Claude:\n\nCustomize → Connectors → Add custom connector → Web:\nhttps://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Claude:\n\nSettings → Connectors → Add custom connector:\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude · custom connector (Public)',
                 th: 'Claude · คอนเนกเตอร์กำหนดเอง (สาธารณะ)'
               },
               chatgpt: {
-                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'ChatGPT · developer mode (Public)',
                 th: 'ChatGPT · โหมดนักพัฒนา (สาธารณะ)'
               },
               any: {
-                prompt: 'Add excited.live to your MCP client at https://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to your MCP client at https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Any MCP client · streamable HTTP',
                 th: 'ไคลเอนต์ MCP อื่น ๆ · streamable HTTP'
               }
             };
-            var setupsUser = {
-              'claude-code': {
-                prompt: 'Add excited.live to Claude Code (authenticated):\n\nclaude mcp add --scope user --transport http --header "Authorization: Bearer ex_live_79a4e2bc81d" excited https://mcp.excited.live/mcp\n\nThen prompt: "Run read_runway for my projects and report my burn rate."',
-                en: 'Claude Code · CLI (Session Injected 🟢)',
-                th: 'Claude Code · CLI (ใส่โทเค็นแล้ว 🟢)'
-              },
-              codex: {
-                prompt: 'Add excited.live to Codex (authenticated):\n\ncodex mcp add excited --url https://mcp.excited.live/mcp --header "Authorization: Bearer ex_live_79a4e2bc81d"\n\nThen prompt: "Run simulate_scenario for zero revenue in Q2."',
-                en: 'Codex · CLI (Session Injected 🟢)',
-                th: 'Codex · CLI (ใส่โทเค็นแล้ว 🟢)'
-              },
-              cursor: {
-                prompt: 'Add excited.live to Cursor (authenticated):\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": {\n      "url": "https://mcp.excited.live/mcp",\n      "headers": {\n        "Authorization": "Bearer ex_live_79a4e2bc81d"\n      }\n    }\n  }\n}\n\nRestart Cursor and ask: "Check my runway and tax plan for 2026."',
-                en: 'Cursor · mcp.json (Session Injected 🟢)',
-                th: 'Cursor · ไฟล์ mcp.json (ใส่โทเค็นแล้ว 🟢)'
-              },
-              claude: {
-                prompt: 'Add excited.live to Claude (authenticated):\n\nCustomize → Connectors → Add custom connector → Web:\nURL: https://mcp.excited.live/mcp\nHeader: Authorization: Bearer ex_live_79a4e2bc81d\n\nThen ask Claude: "Show my cash balance across Mint Living and Bean Coffee."',
-                en: 'Claude · custom connector (Session Injected 🟢)',
-                th: 'Claude · คอนเนกเตอร์กำหนดเอง (ใส่โทเค็นแล้ว 🟢)'
-              },
-              chatgpt: {
-                prompt: 'Add excited.live to ChatGPT (authenticated):\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nAdd MCP connector at https://mcp.excited.live/mcp with Bearer token ex_live_79a4e2bc81d.\n\nThen ask: "Run read_runway and summarize my burn rate."',
-                en: 'ChatGPT · developer mode (Session Injected 🟢)',
-                th: 'ChatGPT · โหมดนักพัฒนา (ใส่โทเค็นแล้ว 🟢)'
-              },
-              any: {
-                prompt: 'Add excited.live to your MCP client:\n\nURL: https://mcp.excited.live/mcp\nHeader: Authorization: Bearer ex_live_79a4e2bc81d\n\nReady for tool calls (read_runway, simulate_scenario, log_expense).',
-                en: 'Any MCP client · Streamable HTTP (Session Injected 🟢)',
-                th: 'ไคลเอนต์ MCP อื่น ๆ · Streamable HTTP (ใส่โทเค็นแล้ว 🟢)'
-              }
-            };
-            var hydrationBanner = section.querySelector('#b-auth-hydration-banner');
             function render(value) {
-              var setups = (currentAuthState === 'user') ? setupsUser : setupsGuest;
-              var setup = setups[value];
+              var setup = setupsGuest[value];
               if (!setup) return;
               promptEl.textContent = setup.prompt;
               if (fallbackEl) fallbackEl.value = setup.prompt;
               metaEn.textContent = setup.en;
               metaTh.textContent = setup.th;
-              if (hydrationBanner) {
-                hydrationBanner.style.display = (currentAuthState === 'user') ? 'inline-flex' : 'none';
-              }
               if (copyBtn) {
                 copyBtn.querySelectorAll('.copy-label-default').forEach(function (el) { el.style.display = ''; });
                 copyBtn.querySelectorAll('.copy-label-done').forEach(function (el) { el.style.display = 'none'; });
               }
             }
-            window.setLandingAuthState = function(state) {
-              currentAuthState = state;
-              var guestEl = document.getElementById('nav-state-guest');
-              var userEl = document.getElementById('nav-state-user');
-              var navAuthCta = document.getElementById('nav-auth-cta');
-              var simBtns = document.querySelectorAll('.auth-sim-btn');
-              if (navAuthCta) navAuthCta.setAttribute('data-auth-state', state);
-              if (guestEl) guestEl.style.display = (state === 'user') ? 'none' : 'flex';
-              if (userEl) userEl.style.display = (state === 'user') ? 'flex' : 'none';
-              simBtns.forEach(function(b) {
-                var isActive = (b.getAttribute('data-sim-auth') === state);
-                b.classList.toggle('is-active', isActive);
-                b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-              });
-              var checked = section.querySelector('.b-pick:checked');
-              render(checked ? checked.value : 'claude-code');
-              try { localStorage.setItem('excited_auth_sim', state); } catch (e) {}
-            };
-            document.querySelectorAll('.auth-sim-btn').forEach(function(btn) {
-              btn.addEventListener('click', function() {
-                var targetState = btn.getAttribute('data-sim-auth');
-                window.setLandingAuthState(targetState);
-              });
-            });
             Array.prototype.forEach.call(inputs, function (input) {
               input.addEventListener('change', function () {
                 if (!input.checked) return;
@@ -660,14 +591,8 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
                 if (input.value === saved) input.checked = true;
               });
             }
-            var savedAuth = null;
-            try { savedAuth = localStorage.getItem('excited_auth_sim'); } catch (e) {}
-            if (savedAuth && (savedAuth === 'user' || savedAuth === 'guest')) {
-              window.setLandingAuthState(savedAuth);
-            } else {
-              var checked = section.querySelector('.b-pick:checked');
-              render(checked ? checked.value : 'claude-code');
-            }
+            var checked = section.querySelector('.b-pick:checked');
+            render(checked ? checked.value : 'claude-code');
           })();
         </script>
       </div>
@@ -690,8 +615,8 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
           </p>
           <div class="footer-status-pill">
             <span class="status-indicator-dot" aria-hidden="true"></span>
-            <span data-lang-en="">MCP Server v1.0 · Systems Normal</span>
-            <span data-lang-th="">MCP Server v1.0 · ระบบทำงานปกติ</span>
+            <span data-lang-en="">MCP endpoint · api.excited.live/mcp</span>
+            <span data-lang-th="">MCP endpoint · api.excited.live/mcp</span>
           </div>
         </div>
 
@@ -1161,14 +1086,6 @@ html[data-lang="th"] .nav-links a { letter-spacing: 0; }
 .nav-auth-btn:hover { transform: translateY(-1px); }
 .nav-setup-jump { font-size: 13px; font-weight: 600; color: var(--slate); text-decoration: none; padding: 6px 10px; border-radius: var(--pill-radius); transition: color 140ms var(--ease-arrive), background-color 140ms var(--ease-arrive); }
 .nav-setup-jump:hover { color: var(--ink); background-color: var(--canvas); }
-.auth-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35); flex-shrink: 0; display: inline-block; animation: authPulse 2s infinite ease-in-out; }
-@keyframes authPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.85); } }
-.auth-sim-toggle { display: inline-flex; align-items: center; background-color: var(--canvas); border: 1px dashed var(--border); border-radius: var(--pill-radius); padding: 2px; gap: 2px; margin-left: 6px; }
-.auth-sim-btn { border: none; background: transparent; color: var(--slate); font-family: inherit; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: var(--pill-radius); cursor: pointer; transition: all 140ms var(--ease-arrive); }
-.auth-sim-btn:hover { color: var(--ink); }
-.auth-sim-btn[aria-pressed="true"], .auth-sim-btn.is-active { background-color: var(--white); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
-.auth-hydrated-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #065f46; background-color: #d1fae5; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: var(--pill-radius); margin-bottom: 12px; }
-.auth-hydrated-pill code { font-family: "JetBrains Mono", var(--font-mono); font-size: 11.5px; background: rgba(255,255,255,0.7); padding: 1px 5px; border-radius: 4px; }
 
 /* Country & Language Dropdown */
 .country-dropdown-wrap { position: relative; }

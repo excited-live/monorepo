@@ -6,16 +6,21 @@ name: Webapp Production (excited-live-web)
 # Why its own project: the existing Pages project `excited-live` serves a WorkOS
 # AuthKit app that is not ours to overwrite. This project serves the webapp at
 # `auth.excited.live` — the canonical origin and OAuth issuer since 2026-10-25 —
-# with `app.excited.live` as a working alias of the same deployment and
-# excited-live-web.pages.dev alive as well.
+# with `app.excited.live` attached but answering a 308 back to it (one origin,
+# one cookie jar; #54 task 1) and excited-live-web.pages.dev alive as a working
+# alias.
 #
 # Sharing: the D1 binding here is the SAME production database as apps/api, so
 # user/session/jwks/oauth* rows are shared between the webapp mount (issuer of
 # cookies + OAuth tokens) and the API mount (/mcp resource server).
 #
-# Credentials: GitHub org secret CLOUDFLARE_API_TOKEN (Pages:Edit) only — the
-# same one .github/workflows/prelive.yml uses. There is no Cloudflare token on
-# any homelab host, and no agent holds GitHub settings access, so the Pages
+# Credentials: GitHub org secret CLOUDFLARE_API_TOKEN — Pages:Edit on the
+# account AND Zone DNS:Edit on excited.live. The DNS scope was added on
+# 2026-10-25 when this workflow took ownership of the webapp hostnames (the
+# domain step creates/repairs the proxied CNAMEs), so the token's blast radius
+# now covers DNS for the whole excited.live zone, not just Pages. The same
+# secret is used by .github/workflows/prelive.yml. There is no Cloudflare token
+# on any homelab host, and no agent holds GitHub settings access, so the Pages
 # secret is derived deterministically from an existing secret instead of a new
 # one: sha256 HMAC of PRELIVE_BETTER_AUTH_SECRET under a domain-separation
 # label. It is stable across deploys (sessions survive), different from every
@@ -100,14 +105,16 @@ jobs:
           fi
 
       # The deploy owns its hostnames. auth.excited.live is the canonical issuer
-      # the API advertises, app.excited.live is the alias clients already know,
-      # and both must land on THIS project or discovery names an origin that
-      # answers 307 (WorkOS) or 522. Order matters: DNS first, then the Pages
-      # domain — an attach with no CNAME sits "pending / CNAME record not set"
-      # forever (iam.excited.live, 2026-10-24), and a repeat POST answers
-      # 8000018 "already added" rather than 409, so every call is GET-then-act.
-      # This never edits the WorkOS Pages project: it only moves the hostname
-      # attachment off it, which is what the 2026-10-25 flip already did once.
+      # the API advertises; app.excited.live is attached to this project only so
+      # it leaves the WorkOS tenant, and the deployment itself answers a 308 to
+      # the issuer on that host (#54 task 1). Both must land on THIS project or
+      # discovery names an origin that answers 307 (WorkOS) or 522. Order
+      # matters: DNS first, then the Pages domain — an attach with no CNAME sits
+      # "pending / CNAME record not set" forever (iam.excited.live, 2026-10-24),
+      # and a repeat POST answers 8000018 "already added" rather than 409, so
+      # every call is GET-then-act. This never edits the WorkOS Pages project: it
+      # only moves the hostname attachment off it, which is what the 2026-10-25
+      # flip already did once.
       - name: Ensure webapp custom domains and DNS
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -229,9 +236,10 @@ jobs:
           # googleProviderConfig) and the sign-in page hides the button otherwise.
           # Adding the two repository secrets GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
           # is the whole switch; the redirect URI is
-          # https://auth.excited.live/api/auth/callback/google (add
-          # https://app.excited.live/api/auth/callback/google too while the
-          # alias stays reachable).
+          # https://auth.excited.live/api/auth/callback/google. A legacy
+          # https://app.excited.live/api/auth/callback/google URI still works,
+          # because the alias answers 308 and the code/state query survives the
+          # hop, but it is no longer needed.
           if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
             echo "::add-mask::$GOOGLE_CLIENT_SECRET"
             body=$(printf '%s' "$body" | jq -c \
@@ -362,13 +370,13 @@ jobs:
             echo "::warning::dynamic client registration returned $dcr — check the oauthClient table in the production D1"
           fi
 
-          # 6. All three hostnames. auth.excited.live is the canonical issuer the
-          #    API advertises; app.excited.live is the alias every existing
-          #    client already knows; pages.dev must stay alive. Any of them
-          #    answering a 307 (WorkOS) or 522 breaks discovery, and a 200 that
-          #    is HTML means the hostname landed on another project.
+          # 6. Two origins answer, one redirects. auth.excited.live is the
+          #    canonical issuer the API advertises; excited-live-web.pages.dev is
+          #    the deployment origin that stays alive. Any of them answering a
+          #    307 (WorkOS) or 522 breaks discovery, and a 200 that is HTML means
+          #    the hostname landed on another project.
           issuer_base="https://auth.excited.live"
-          for host_base in https://auth.excited.live https://app.excited.live "https://$WEB_PROJECT.pages.dev"; do
+          for host_base in https://auth.excited.live "https://$WEB_PROJECT.pages.dev"; do
             dsession=""
             for attempt in $(seq 1 24); do
               dsession=$(curl -sS -m 20 -o /tmp/d.out -D /tmp/d.h -w '%{http_code}' "$host_base/api/auth/get-session" || true)
@@ -381,6 +389,20 @@ jobs:
             grep -qi 'application/json' /tmp/d.h || { echo "::error::$host_base/api/auth/get-session did not answer JSON (not our webapp?)"; fail=1; }
             if grep -qi 'hosted-authkit\|<html' /tmp/d.out; then echo "::error::$host_base is still serving another app"; fail=1; fi
           done
+
+          # 6b. app.excited.live must NOT serve the app: it answers 308 to the
+          #     canonical origin with the path and query preserved (#54 task 1).
+          #     200 here means a second cookie jar and a split session; 307/301/302
+          #     means the wrong redirect semantics or the old WorkOS host.
+          alias_path="/sign-in?returnPathname=%2Fconsent"
+          alias_code=$(curl -sS -m 20 -o /dev/null -D /tmp/alias.h -w '%{http_code}' "https://app.excited.live$alias_path" || true)
+          alias_location=$(grep -i '^location:' /tmp/alias.h | tr -d '\r' | sed 's/^[Ll]ocation: *//' || true)
+          echo "https://app.excited.live$alias_path -> $alias_code (want 308), location: ${alias_location:-<none>}"
+          [ "$alias_code" = "308" ] || { echo "::error::app.excited.live returned $alias_code — it must 308 to the issuer, not serve the app"; fail=1; }
+          case "$alias_location" in
+            "https://auth.excited.live$alias_path") ;;
+            *) echo "::error::app.excited.live redirected to '${alias_location:-nothing}' — expected https://auth.excited.live$alias_path"; fail=1 ;;
+          esac
 
           # 7. One issuer only: the canonical origin must name itself in every
           #    discovery field, or clients that discover through an alias mint
@@ -406,10 +428,10 @@ jobs:
           [ "$dbad" = "401" ] || fail=1
 
           if [ "$fail" != "0" ]; then
-            echo "::error::the deployment did not serve the authorization server on all three hostnames" >&2
+            echo "::error::the deployment did not serve the authorization server as expected (issuer, pages.dev, alias redirect)" >&2
             exit 1
           fi
-          echo "All authorization-server checks passed: $issuer_base (issuer), https://app.excited.live and $base (aliases)"
+          echo "All authorization-server checks passed: $issuer_base (issuer), $base (deployment origin), https://app.excited.live 308 -> $issuer_base (alias)"
 
       # Evidence for the "no table drift" half of the task: the production D1 is
       # owned by the API's boot-time migration runner, so this only reads. If
@@ -430,4 +452,4 @@ jobs:
 
       - name: Show the deployment URL
         if: always()
-        run: echo "webapp https://auth.excited.live (issuer; project $WEB_PROJECT, aliases https://app.excited.live and https://$WEB_PROJECT.pages.dev)"
+        run: echo "webapp https://auth.excited.live (issuer; project $WEB_PROJECT), https://$WEB_PROJECT.pages.dev (deployment origin), https://app.excited.live (308 -> issuer)"

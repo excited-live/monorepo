@@ -37,7 +37,7 @@ export const Route = createRootRoute({
 				content: getTranslator(match.context.locale).t("app.description"),
 			},
 			{ property: "og:type", content: "website" },
-			{ property: "og:image", content: "https://app.excited.live/og-image.png" },
+			{ property: "og:image", content: "https://auth.excited.live/og-image.png" },
 			{ name: "twitter:card", content: "summary_large_image" },
 		],
 		links: [

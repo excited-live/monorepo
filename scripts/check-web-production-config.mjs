@@ -39,8 +39,10 @@ const FORBIDDEN_PROJECTS = ["excited-live", "excited-live-prelive"]
 const API_ORIGIN = "https://api.excited.live"
 /** The webapp's canonical custom domain and OAuth issuer (since 2026-10-25). */
 const WEBAPP_ORIGIN = "https://auth.excited.live"
-/** Working aliases of the same deployment that must stay reachable while clients repoint. */
-const TRANSITION_ORIGINS = ["https://app.excited.live", "https://excited-live-web.pages.dev"]
+/** Working aliases of the same deployment that must stay reachable while clients repoint.
+ *  app.excited.live is NOT here: it 308-redirects to the issuer (one cookie jar), so it must
+ *  not be trusted as an origin of its own — only the pages.dev deployment origin is. */
+const TRANSITION_ORIGINS = ["https://excited-live-web.pages.dev"]
 const DATABASE_ID = "90bd930e-8bfe-49a4-b58c-b44531c20902"
 const DATABASE_NAME = "excited-live-api-production"
 

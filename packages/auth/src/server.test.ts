@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { DatabaseSync } from "node:sqlite"
 import { afterEach, describe, expect, it } from "vitest"
-import { createAuth } from "./server"
+import { createAuth, OAUTH_CODE_TTL_SECONDS } from "./server"
 import type { AuthD1DatabaseLike } from "./types"
 
 /**
@@ -241,6 +241,75 @@ describe("auth foundation", () => {
 			expect([200, 201]).toContain(registerResponse.status)
 			const client = (await registerResponse.json()) as { client_id?: string }
 			expect(client.client_id).toBeTruthy()
+		})
+
+		// #58 task 4: the signed authorization query (`client_id` + `sig`) that
+		// bounces a signed-out user through /sign-in and create-account carries
+		// its own `exp`. If that expires first, the resume fails after the user
+		// has already made an account. It must last at least 10 minutes.
+		it("issues a signed resume query valid for at least 10 minutes (#58)", async () => {
+			const db = freshFileDb()
+			applySchema(db)
+			const auth = createAuth({
+				database: { kind: "node-sqlite", database: db },
+				secret: SECRET,
+				baseURL: BASE_URL,
+				mount: "both",
+				oauth: {
+					resource: "https://api.example.com/mcp",
+					deviceVerificationUri: "https://app.example.com/device",
+				},
+			})
+
+			const registerResponse = await auth.handler(
+				new Request(`${BASE_URL}/api/auth/oauth2/register`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						client_name: "ttl-test",
+						redirect_uris: ["https://example.com/callback"],
+						grant_types: ["authorization_code", "refresh_token"],
+						response_types: ["code"],
+						token_endpoint_auth_method: "none",
+						scope: "openid profile email offline_access",
+					}),
+				}),
+			)
+			expect([200, 201]).toContain(registerResponse.status)
+			const client = (await registerResponse.json()) as { client_id?: string }
+			expect(client.client_id).toBeTruthy()
+
+			const authorizeQuery = new URLSearchParams({
+				client_id: client.client_id as string,
+				redirect_uri: "https://example.com/callback",
+				response_type: "code",
+				scope: "openid profile email offline_access",
+				state: "state-1",
+				code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+				code_challenge_method: "S256",
+				resource: "https://api.example.com/mcp",
+			})
+			// No session cookie: the provider bounces us to the sign-in page with
+			// the signed authorization query a real create-account flow resumes.
+			const authorize = await auth.handler(
+				new Request(`${BASE_URL}/api/auth/oauth2/authorize?${authorizeQuery}`),
+			)
+			expect(authorize.status).toBe(302)
+
+			const location = new URL(authorize.headers.get("location") ?? "", BASE_URL)
+			expect(location.pathname).toBe("/sign-in")
+			expect(location.searchParams.get("sig")).toBeTruthy()
+
+			const exp = Number(location.searchParams.get("exp"))
+			const issuedAtMs = Number(location.searchParams.get("ba_iat"))
+			expect(Number.isFinite(exp)).toBe(true)
+			expect(Number.isFinite(issuedAtMs)).toBe(true)
+
+			// `exp` is epoch seconds, `ba_iat` is epoch milliseconds.
+			const ttlSeconds = exp - Math.floor(issuedAtMs / 1000)
+			expect(ttlSeconds).toBe(OAUTH_CODE_TTL_SECONDS)
+			expect(ttlSeconds).toBeGreaterThanOrEqual(10 * 60)
+			expect(OAUTH_CODE_TTL_SECONDS).toBeGreaterThanOrEqual(10 * 60)
 		})
 
 		it("rejects a wrong password", async () => {

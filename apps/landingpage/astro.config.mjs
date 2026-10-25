@@ -13,6 +13,7 @@ const rehypePlugins = [...BLOG_REHYPE_PLUGINS];
 
 export default defineConfig({
 	site: 'https://excited.live',
+	redirects: { '/pricing': '/docs/pricing' },
 	markdown: {
 		processor: unified({
 			syntaxHighlight: false,

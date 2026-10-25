@@ -29,6 +29,7 @@ on:
       - "pnpm-lock.yaml"
       - "turbo.json"
       - "scripts/check-web-production-config.mjs"
+      - "scripts/better-auth-secret.mjs"
       - ".github/workflows/webapp-production.yml"
   workflow_dispatch:
 
@@ -137,9 +138,10 @@ jobs:
             echo "PRELIVE_BETTER_AUTH_SECRET is not set; refusing to deploy a webapp without an authorization server." >&2
             exit 1
           fi
-          # Domain-separated derivation: stable across runs, distinct per
-          # environment, and the seed value never leaves the runner.
-          secret=$(printf '%s' "$SEED_SECRET" | openssl dgst -sha256 -hmac 'excited-live-web/production/better-auth-secret/v1' -binary | base64)
+          # One secret for both mounts (packages/auth: "one schema, one secret,
+          # two mounts"). scripts/better-auth-secret.mjs derives it from an
+          # existing secret so neither workflow ever holds the value.
+          secret=$(BETTER_AUTH_SECRET_SEED="$SEED_SECRET" node scripts/better-auth-secret.mjs)
           echo "::add-mask::$secret"
           printf '%s' "$secret" |
             npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages secret put BETTER_AUTH_SECRET --project-name "$WEB_PROJECT"

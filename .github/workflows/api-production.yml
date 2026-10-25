@@ -37,6 +37,7 @@ on:
     branches: [main]
     paths:
       - "apps/api/wrangler.toml"
+      - "scripts/better-auth-secret.mjs"
       - ".github/workflows/api-production.yml"
 
 env:
@@ -131,6 +132,45 @@ jobs:
             exit 1
           fi
           jq -r '.result | "attached \(.hostname) -> \(.service)"' /tmp/put.json
+
+      - name: Push the shared BETTER_AUTH_SECRET to the Worker
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SEED_SECRET: ${{ secrets.PRELIVE_BETTER_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SEED_SECRET:-}" ]; then
+            echo "PRELIVE_BETTER_AUTH_SECRET is not set; refusing to rotate a signing secret without a seed." >&2
+            exit 1
+          fi
+          # The SAME value webapp-production.yml pushes to the Pages project:
+          # the two mounts share one D1, and a mismatch only shows up when the
+          # JWKS private key written by one cannot be decrypted by the other
+          # ("Failed to decrypt private key"), which is a 500 on authorize for
+          # every signed-in user.
+          secret=$(BETTER_AUTH_SECRET_SEED="$SEED_SECRET" node ../../scripts/better-auth-secret.mjs)
+          echo "::add-mask::$secret"
+          printf '%s' "$secret" |
+            npx --yes wrangler@${{ env.WRANGLER_VERSION }} secret put BETTER_AUTH_SECRET
+
+      # The jwks rows in the production D1 were encrypted with whatever secret
+      # the Worker had before this rotation, so they are undecryptable now. One
+      # keypair per database, created on demand by whichever mount signs first.
+      - name: Clear stale JWKS keys left by the previous secret
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} d1 execute excited-live-api-production --remote \
+            --command 'SELECT count(*) AS before FROM "jwks";'
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} d1 execute excited-live-api-production --remote \
+            --command 'DELETE FROM "jwks";'
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} d1 execute excited-live-api-production --remote \
+            --command 'SELECT count(*) AS after FROM "jwks";'
 
       - name: Deploy production API Worker
         working-directory: apps/api

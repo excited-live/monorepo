@@ -16,9 +16,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiV1PlanRouteImport } from './routes/api/v1/plan'
 import { Route as ApiV1SettingsRouteImport } from './routes/api/v1/settings'
-import { Route as ApiV1SimMonteCarloRouteImport } from './routes/api/v1/sim/monte-carlo'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -54,19 +52,9 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1PlanRoute = ApiV1PlanRouteImport.update({
-  id: '/api/v1/plan',
-  path: '/api/v1/plan',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiV1SettingsRoute = ApiV1SettingsRouteImport.update({
   id: '/api/v1/settings',
   path: '/api/v1/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1SimMonteCarloRoute = ApiV1SimMonteCarloRouteImport.update({
-  id: '/api/v1/sim/monte-carlo',
-  path: '/api/v1/sim/monte-carlo',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -77,9 +65,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/settings': typeof LayoutSettingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/v1/plan': typeof ApiV1PlanRoute
   '/api/v1/settings': typeof ApiV1SettingsRoute
-  '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
 }
 export interface FileRoutesByTo {
   '/consent': typeof ConsentRoute
@@ -88,9 +74,7 @@ export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/v1/plan': typeof ApiV1PlanRoute
   '/api/v1/settings': typeof ApiV1SettingsRoute
-  '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,9 +85,7 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/v1/plan': typeof ApiV1PlanRoute
   '/api/v1/settings': typeof ApiV1SettingsRoute
-  '/api/v1/sim/monte-carlo': typeof ApiV1SimMonteCarloRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -114,9 +96,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/settings'
     | '/api/auth/$'
-    | '/api/v1/plan'
     | '/api/v1/settings'
-    | '/api/v1/sim/monte-carlo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/consent'
@@ -125,9 +105,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/'
     | '/api/auth/$'
-    | '/api/v1/plan'
     | '/api/v1/settings'
-    | '/api/v1/sim/monte-carlo'
   id:
     | '__root__'
     | '/_layout'
@@ -137,9 +115,7 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/_layout/'
     | '/api/auth/$'
-    | '/api/v1/plan'
     | '/api/v1/settings'
-    | '/api/v1/sim/monte-carlo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -148,9 +124,7 @@ export interface RootRouteChildren {
   DeviceRoute: typeof DeviceRoute
   SignInRoute: typeof SignInRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiV1PlanRoute: typeof ApiV1PlanRoute
   ApiV1SettingsRoute: typeof ApiV1SettingsRoute
-  ApiV1SimMonteCarloRoute: typeof ApiV1SimMonteCarloRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -204,25 +178,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/v1/plan': {
-      id: '/api/v1/plan'
-      path: '/api/v1/plan'
-      fullPath: '/api/v1/plan'
-      preLoaderRoute: typeof ApiV1PlanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/v1/settings': {
       id: '/api/v1/settings'
       path: '/api/v1/settings'
       fullPath: '/api/v1/settings'
       preLoaderRoute: typeof ApiV1SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/sim/monte-carlo': {
-      id: '/api/v1/sim/monte-carlo'
-      path: '/api/v1/sim/monte-carlo'
-      fullPath: '/api/v1/sim/monte-carlo'
-      preLoaderRoute: typeof ApiV1SimMonteCarloRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -247,9 +207,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeviceRoute: DeviceRoute,
   SignInRoute: SignInRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiV1PlanRoute: ApiV1PlanRoute,
   ApiV1SettingsRoute: ApiV1SettingsRoute,
-  ApiV1SimMonteCarloRoute: ApiV1SimMonteCarloRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

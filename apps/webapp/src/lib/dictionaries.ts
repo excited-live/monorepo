@@ -411,6 +411,44 @@ export const strings: Dictionary = {
 		th: "แก้ตัวเลขด้านล่างได้เลย กราฟ ตัวเลข และแผนจะอัปเดตทันที",
 	},
 
+	// Launch home (#65): signed-in landing while plan/sim are redesigned.
+	"launchHome.eyebrow": { en: "Agent setup", th: "ตั้งค่าเอเจนต์" },
+	"launchHome.title": { en: "Connect your agent", th: "เชื่อมต่อเอเจนต์ของคุณ" },
+	"launchHome.lede": {
+		en: "Your agent can use this MCP address to work with excited.live. The connection flow is in final testing.",
+		th: "เอเจนต์ของคุณใช้ที่อยู่ MCP นี้เพื่อทำงานกับ excited.live ได้ ขั้นตอนเชื่อมต่อกำลังทดสอบขั้นสุดท้าย",
+	},
+	"launchHome.mcpLabel": { en: "MCP server address", th: "ที่อยู่เซิร์ฟเวอร์ MCP" },
+	"launchHome.copy": { en: "Copy address", th: "คัดลอกที่อยู่" },
+	"launchHome.copied": { en: "Copied", th: "คัดลอกแล้ว" },
+	"launchHome.copyFailedLabel": { en: "Copy failed", th: "คัดลอกไม่สำเร็จ" },
+	"launchHome.copiedStatus": {
+		en: "Address copied to the clipboard.",
+		th: "คัดลอกที่อยู่ไปยังคลิปบอร์ดแล้ว",
+	},
+	"launchHome.copyFailed": {
+		en: "Could not copy automatically. Select the address and copy it manually.",
+		th: "คัดลอกอัตโนมัติไม่ได้ กรุณาเลือกที่อยู่แล้วคัดลอกเอง",
+	},
+	"launchHome.mcpNote": {
+		en: "MCP is in final testing. Setup steps for each client will be on the help page.",
+		th: "MCP กำลังทดสอบขั้นสุดท้าย ขั้นตอนสำหรับแต่ละแอปจะอยู่ที่หน้าช่วยเหลือ",
+	},
+	"launchHome.help": { en: "Help page", th: "หน้าช่วยเหลือ" },
+	"launchHome.settings": { en: "Open settings", th: "เปิดการตั้งค่า" },
+	"launchHome.emptyTitle": {
+		en: "Plan and simulation are being redesigned",
+		th: "แผนและการจำลองกำลังออกแบบใหม่",
+	},
+	"launchHome.emptyBody": {
+		en: "They are not part of the 31 October launch. The new plan experience arrives after launch.",
+		th: "ยังไม่รวมอยู่ในการเปิดตัววันที่ 31 ตุลาคม ประสบการณ์วางแผนแบบใหม่จะตามมาหลังเปิดตัว",
+	},
+	"launchHome.emptyNote": {
+		en: "For now, set up your profile. Agent setup will be documented on the help page.",
+		th: "ระหว่างนี้ ตั้งค่าโปรไฟล์ของคุณก่อน ขั้นตอนเชื่อมต่อเอเจนต์จะอยู่ที่หน้าช่วยเหลือ",
+	},
+
 	// Empty states and resilient error loading (Root & Component level)
 	"empty.home.title": { en: "Unable to load plan", th: "ไม่สามารถโหลดข้อมูลแผนได้" },
 	"empty.home.description": {

@@ -38,7 +38,7 @@ const appSchema = {
       </div>
       <ul class="nav-links">
         <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Agents</span><span data-lang-th="">สำหรับเอเจนต์</span></a></li>
-        <li><a href="#cap-card-plan" data-door-target="humans"><span data-lang-en="">Humans</span><span data-lang-th="">สำหรับคุณ</span></a></li>
+        <li><a href="#cap-card-human" data-door-target="humans"><span data-lang-en="">Humans</span><span data-lang-th="">สำหรับคุณ</span></a></li>
         <li><a href="/docs"><span data-lang-en="">Docs</span><span data-lang-th="">เอกสาร</span></a></li>
         <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Setup</span><span data-lang-th="">วิธีติดตั้ง</span></a></li>
       </ul>
@@ -389,10 +389,10 @@ const appSchema = {
               <div class="b-terminal">
                 <div class="b-terminal-bar">
                   <span class="b-dot"></span><span class="b-dot"></span><span class="b-dot"></span>
-                  <span class="b-terminal-path">api.excited.live/mcp · get_treasury_projection</span>
+                  <span class="b-terminal-path">api.excited.live/mcp · get_financial_summary</span>
                 </div>
                 <div class="b-terminal-body">
-                  <div class="b-term-line"><span class="b-term-prompt">&gt;</span><span>excited.get_treasury_projection</span></div>
+                  <div class="b-term-line"><span class="b-term-prompt">&gt;</span><span>excited.get_financial_summary --horizon 24m</span></div>
                   <div class="b-term-meta">running Monte Carlo · 10,000 passes · Thai tax 2026</div>
                   <div class="b-term-row"><span>Mint Living:</span><span class="b-term-value">runway 17m → 12m</span></div>
                   <div class="b-term-row"><span>Bean Coffee:</span><span class="b-term-value">runway 8m → 6m</span></div>
@@ -423,19 +423,18 @@ const appSchema = {
             </div>
           </a>
 
-          <!-- Card 4: Plan (Showcase) -->
-          <!-- NOTE: Showcase Animation Demo. Once product launch demo & IAM flow are complete, update with real animated product screencast GIF / MP4 loop. -->
-          <a class="b-product-card b-product-card--3 b-product-card--media" href="https://auth.excited.live/sign-in" id="cap-card-plan" data-od-id="cap-card-plan" aria-label="Plan: open the human workspace · วางแผน: เปิดพื้นที่สำหรับคุณ">
+          <!-- Card 4: Human account -->
+          <a class="b-product-card b-product-card--3 b-product-card--human" href="https://auth.excited.live/sign-in?mode=signup" id="cap-card-human" data-od-id="cap-card-human" aria-label="Account: create your excited.live account · บัญชี: สร้างบัญชี excited.live">
             <div class="b-card-visual" aria-hidden="true">
-              <div class="b-mosaic">
-                <div class="b-mosaic-cell b-mosaic-cell--hero"><img class="showcase-img showcase-img--mobile" src="/assets/excited/planner-mobile.webp" width="780" height="1636" alt="" loading="lazy" decoding="async"></div>
-                <div class="b-mosaic-cell b-mosaic-cell--phone"><img class="showcase-img showcase-img--phone" src="/assets/excited/brand-phone.png" width="1200" height="630" alt="" loading="lazy" decoding="async"></div>
-                <div class="b-mosaic-cell b-mosaic-cell--chart"><img class="showcase-img showcase-img--chart" src="/assets/excited/planner-overview.webp" width="2560" height="1720" alt="" loading="lazy" decoding="async"></div>
+              <div class="b-human-checks">
+                <div class="b-human-check"><span class="b-human-check-mark">✓</span><span><span data-lang-en="">One account for every agent</span><span data-lang-th="">บัญชีเดียวสำหรับทุกเอเจนต์</span></span></div>
+                <div class="b-human-check"><span class="b-human-check-mark">✓</span><span><span data-lang-en="">Scoped keys you can revoke</span><span data-lang-th="">คีย์แบบจำกัดสิทธิ์ที่เพิกถอนได้</span></span></div>
+                <div class="b-human-check"><span class="b-human-check-mark">✓</span><span><span data-lang-en="">Agent activity in plain language</span><span data-lang-th="">ดูสิ่งที่เอเจนต์ทำได้เข้าใจง่าย</span></span></div>
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Human Control</span><span data-lang-th="">วางแผน</span></span><span class="b-card-sub"><span data-lang-en="">Cross Platform : Web, Android (Desktop, IOS comming soon)</span><span data-lang-th="">เว็บ + Android</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Timeline →</span><span data-lang-th="">ดูไทม์ไลน์ →</span></span>
+              <div><span class="b-card-label"><span data-lang-en="">Human Control</span><span data-lang-th="">คุณควบคุม</span></span><span class="b-card-sub"><span data-lang-en="">Web app now · Android app at launch</span><span data-lang-th="">เว็บแอปใช้ได้แล้ว · แอป Android เปิดตัวพร้อมกัน</span></span></div>
+              <span class="b-card-cta"><span data-lang-en="">Create an account →</span><span data-lang-th="">สร้างบัญชี →</span></span>
             </div>
           </a>
 
@@ -477,7 +476,7 @@ const appSchema = {
             </div>
             <h2 style="margin-top: 12px; margin-bottom: 10px;"><span data-lang-en="">Connect your agent over MCP.</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span></h2>
             <p style="color:var(--charcoal);"><span data-lang-en="">Each client connects a little differently — from one CLI command to a custom connector. Pick yours and copy the exact setup.</span><span data-lang-th="">แต่ละไคลเอนต์เชื่อมต่อไม่เหมือนกัน ตั้งแต่คำสั่ง CLI เดียวไปจนถึงคอนเนกเตอร์กำหนดเอง เลือกของคุณแล้วคัดลอกวิธีตั้งค่าได้เลย</span></p>
-            <p style="color:var(--charcoal); font-size:14px; margin-top:12px;"><span data-lang-en="">Prefer the 50-year planner? </span><span data-lang-th="">อยากใช้แพลนเนอร์ 50 ปี? </span><a href="#cap-card-plan" data-door-target="humans" class="b-cta-human-link"><span data-lang-en="">See the 50-year planner ↑</span><span data-lang-th="">ดูเว็บวางแผน 50 ปี ↑</span></a></p>
+            <p style="color:var(--charcoal); font-size:14px; margin-top:12px;"><span data-lang-en="">The 50-year planner is being rebuilt and returns after launch.</span><span data-lang-th="">แพลนเนอร์ 50 ปีกำลังถูกออกแบบใหม่ และจะกลับมาหลังเปิดตัว</span></p>
           </div>
           <div>
             <fieldset class="b-cta-fieldset" data-od-id="b-cta-agent-chooser">
@@ -628,7 +627,7 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
             </h3>
             <ul class="footer-col-list">
               <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">AI Agent MCP</span><span data-lang-th="">เอเจนต์ MCP</span></a></li>
-              <li><a href="#cap-card-plan" data-door-target="humans"><span data-lang-en="">Life Planner (50-Yr)</span><span data-lang-th="">เว็บวางแผน 50 ปี</span></a></li>
+              <li><a href="#cap-card-human" data-door-target="humans"><span data-lang-en="">Your account</span><span data-lang-th="">บัญชีของคุณ</span></a></li>
               <li><a href="/docs"><span data-lang-en="">Documentation</span><span data-lang-th="">เอกสารประกอบ</span></a></li>
               <li><a href="/docs/pricing"><span data-lang-en="">Pricing</span><span data-lang-th="">ราคา</span></a></li>
               <li><a href="/blog"><span data-lang-en="">Changelog & Blog</span><span data-lang-th="">บันทึกการเปลี่ยนแปลง</span></a></li>
@@ -641,10 +640,9 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
               <span data-lang-th="">ความสามารถ</span>
             </h3>
             <ul class="footer-col-list">
-              <li><a href="#cap-card-ask"><span data-lang-en="">Runway Simulation</span><span data-lang-th="">จำลองรันเวย์</span></a></li>
-              <li><a href="#cap-card-what-if"><span data-lang-en="">What-if Scenarios</span><span data-lang-th="">สมมติสถานการณ์</span></a></li>
-              <li><a href="#cap-card-log"><span data-lang-en="">Expense & Tax 2026</span><span data-lang-th="">จดบิล & ภาษี 2026</span></a></li>
-              <li><a href="#cap-card-plan"><span data-lang-en="">Offline Android App</span><span data-lang-th="">แอป Android ออฟไลน์</span></a></li>
+              <li><a href="#cap-card-ask"><span data-lang-en="">Agent runway answers</span><span data-lang-th="">คำตอบรันเวย์จากเอเจนต์</span></a></li>
+              <li><a href="#cap-card-what-if"><span data-lang-en="">Scenario questions</span><span data-lang-th="">คำถามสมมติสถานการณ์</span></a></li>
+              <li><a href="#cap-card-log"><span data-lang-en="">Log an expense</span><span data-lang-th="">จดรายจ่าย</span></a></li>
             </ul>
           </div>
 
@@ -868,7 +866,7 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
       document.querySelectorAll('[data-door-target]').forEach(function (el) {
         function activateDoor(e) {
           var key = el.getAttribute('data-door-target');
-          var target = key === 'humans' ? document.getElementById('cap-card-plan') : document.getElementById('final-cta');
+          var target = key === 'humans' ? document.getElementById('cap-card-human') : document.getElementById('final-cta');
           if (target) {
             if (e && el.tagName === 'A') e.preventDefault();
             window.scrollTo({ top: target.getBoundingClientRect().top + window.pageYOffset - 90, behavior: 'smooth' });
@@ -1785,12 +1783,7 @@ section { padding: 56px 0 32px; }
             .b-bot .b-bubble--user,
             .b-bot .b-bubble--agent,
             .b-chat .b-bubble,
-            .b-chat .b-bubble--agent,
-            .showcase-img--mobile,
-            .showcase-img--chart,
-            .showcase-img--phone,
-            .b-mosaic::after,
-            .b-showcase-dot {
+            .b-chat .b-bubble--agent {
               animation: none !important;
               transform: none !important;
             }
@@ -1804,7 +1797,7 @@ section { padding: 56px 0 32px; }
           .b-product-card--3 { grid-column: span 3; }
           .b-product-card--dark { background-color: var(--ink); border-color: var(--ink); color: var(--canvas); }
           .b-product-card--warm { background-color: var(--surface-warm); }
-          .b-product-card--media { background-color: var(--ink); border-color: var(--ink); color: var(--canvas); }
+          .b-product-card--human { background-color: var(--white); border: 1.5px solid var(--border); }
           .b-card-visual { position: absolute; inset: 0; z-index: 1; transition: transform 500ms var(--ease-arrive); }
           .b-product-card:hover .b-card-visual { transform: scale(1.02); }
           .b-product-card::after { content: ""; position: absolute; inset: -45%; z-index: 5; pointer-events: none; opacity: 0; transform: translateX(-65%) rotate(8deg); background: linear-gradient(110deg, transparent 42%, color-mix(in oklab, var(--white), transparent 82%) 50%, transparent 58%); transition: transform 700ms var(--ease-arrive), opacity 180ms var(--ease-arrive); }
@@ -1816,11 +1809,11 @@ section { padding: 56px 0 32px; }
           .b-card-sub { display: block; margin-top: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate); }
           .b-card-cta { font-size: 12px; font-weight: 500; white-space: nowrap; }
           .b-product-card:hover .b-card-cta { text-decoration: underline; text-underline-offset: 4px; }
-          .b-product-card--dark .b-card-sub,
-          .b-product-card--media .b-card-sub { color: color-mix(in oklab, var(--canvas), transparent 38%); }
-          .b-product-card--dark .b-card-cta,
-          .b-product-card--media .b-card-cta { color: var(--canvas); }
-          .b-product-card--media .b-card-foot { padding-top: 48px; background-color: var(--ink); background-image: linear-gradient(to top, var(--ink) 24%, color-mix(in oklab, var(--ink), transparent 16%) 65%, transparent 100%); }
+          .b-human-checks { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 12px 26px 76px; }
+          .b-human-check { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 15px; line-height: 1.4; color: var(--charcoal); }
+          .b-human-check-mark { flex-shrink: 0; color: var(--orange); font-size: 18px; font-weight: 700; line-height: 1; }
+          .b-product-card--dark .b-card-sub { color: color-mix(in oklab, var(--canvas), transparent 38%); }
+          .b-product-card--dark .b-card-cta { color: var(--canvas); }
           .b-chat { display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; height: 100%; padding: 18px 18px 64px; }
           .b-bubble { max-width: 86%; padding: 7px 10px; border-radius: 16px; font-size: 12px; line-height: 1.35; }
           .b-bubble--agent { align-self: flex-start; background-color: var(--canvas); border: 1px solid var(--border-soft); border-bottom-left-radius: 5px; color: var(--ink); }
@@ -1842,92 +1835,6 @@ section { padding: 56px 0 32px; }
           .b-bot { display: flex; flex-direction: column; justify-content: flex-end; gap: 9px; height: 100%; padding: 18px 18px 64px; }
           .b-bot-row { display: flex; align-items: flex-end; gap: 8px; }
           .b-bot-avatar { width: 26px; height: 26px; border-radius: 6px; background-color: var(--ink); color: var(--canvas); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 9px; font-weight: 700; }
-          .b-mosaic { position: absolute; inset: 8px; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; overflow: hidden; border-radius: 32px; background-color: var(--ink); isolation: isolate; }
-          .b-mosaic::after {
-            content: "";
-            position: absolute;
-            inset: -60%;
-            background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.20) 50%, transparent 58%);
-            pointer-events: none;
-            z-index: 5;
-            transform: translateX(-120%) rotate(25deg);
-            animation: showcaseSheen 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-          }
-          @keyframes showcaseSheen {
-            0%, 35% { transform: translateX(-120%) rotate(25deg); opacity: 0; }
-            42% { opacity: 1; }
-            58%, 100% { transform: translateX(140%) rotate(25deg); opacity: 0; }
-          }
-          .b-mosaic-cell { position: relative; overflow: hidden; border-radius: 8px; background-color: var(--canvas); }
-          .b-mosaic-cell--hero { grid-row: span 2; }
-          .b-mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-          /* Showcase Animated Screen Motion (Simulating Live App GIF demo) */
-          .showcase-img--mobile {
-            object-position: 50% 6%;
-            animation: showcaseMobileScroll 12s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
-            will-change: object-position;
-          }
-          @keyframes showcaseMobileScroll {
-            0%, 15% { object-position: 50% 6%; }
-            45%, 65% { object-position: 50% 50%; }
-            85%, 100% { object-position: 50% 92%; }
-          }
-          .showcase-img--phone {
-            object-position: 84% 48%;
-            animation: showcasePhoneFloat 8s ease-in-out infinite alternate;
-            will-change: transform;
-          }
-          @keyframes showcasePhoneFloat {
-            0%, 100% { transform: scale(1.01); }
-            50% { transform: scale(1.06) translateY(-2px); }
-          }
-          .showcase-img--chart {
-            object-position: 18% 8%;
-            animation: showcaseChartPan 14s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
-            will-change: object-position, transform;
-          }
-          @keyframes showcaseChartPan {
-            0%, 20% { object-position: 18% 8%; transform: scale(1.02); }
-            50%, 70% { object-position: 68% 28%; transform: scale(1.08); }
-            90%, 100% { object-position: 84% 12%; transform: scale(1.03); }
-          }
-          /* Showcase Live Status Badge */
-          .b-showcase-badge {
-            position: absolute;
-            top: 14px;
-            left: 14px;
-            z-index: 6;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: rgba(20, 20, 19, 0.78);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 500;
-            letter-spacing: 0.02em;
-            pointer-events: none;
-            transition: transform 200ms ease;
-          }
-          .b-product-card:hover .b-showcase-badge {
-            transform: scale(1.04);
-          }
-          .b-showcase-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background-color: #10b981;
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
-            animation: showcaseDotPulse 2s infinite ease-in-out;
-          }
-          @keyframes showcaseDotPulse {
-            0%, 100% { transform: scale(1); opacity: 0.85; }
-            50% { transform: scale(1.35); opacity: 1; box-shadow: 0 0 12px rgba(16, 185, 129, 1); }
-          }
           .b-gauge-wrap { position: absolute; inset: 0 0 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 20px 20px 8px; }
           .b-gauge { position: relative; width: 190px; height: 190px; flex-shrink: 0; }
           .b-gauge svg { display: block; width: 100%; height: 100%; }
@@ -1977,8 +1884,6 @@ section { padding: 56px 0 32px; }
           .b-pick:focus-visible + label { outline: none; box-shadow: var(--focus-ring); }
           .b-cta-meta { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--clay); margin: 10px 0 8px; min-height: 17px; }
           .b-cta-prompt { white-space: pre-wrap; margin-top: 0; margin-bottom: 16px; font-size: 13px; line-height: 1.55; }
-          .b-cta-human-link { color: var(--meta); text-underline-offset: 4px; }
-          .b-cta-human-link:hover { color: var(--ink); }
           html[data-lang="th"] .b-cta-legend { letter-spacing: 0.02em; }
           @media (max-width: 1023px) {
             .b-cta-card { grid-template-columns: 1fr; }

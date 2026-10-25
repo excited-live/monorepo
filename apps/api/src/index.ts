@@ -17,10 +17,18 @@ if (typeof process.loadEnvFile === "function") {
 	}
 }
 
-// Dev fallback: if running dev server and BETTER_AUTH_SECRET is not configured, provide a dev secret
-if (!process.env.BETTER_AUTH_SECRET && process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
-	process.env.BETTER_AUTH_SECRET = "excited-live-dev-secret-better-auth-solopreneur-2026"
-	console.log("[excited-live-api] BETTER_AUTH_SECRET not set; configured default dev secret.")
+// No fallback secret, ever. Until 2026-10-24 this file filled in a hardcoded
+// development secret that is committed to this public repository, so a process
+// that forgot the env var silently signed sessions with a string anyone could
+// read (#140). A missing secret now fails at boot instead.
+//
+// Local development gets it from apps/api/.env (git-ignored; see
+// .env.example, `openssl rand -base64 32`). Tests set it per case.
+if (!process.env.BETTER_AUTH_SECRET && process.env.NODE_ENV !== "test") {
+	console.error(
+		"[excited-live-api] BETTER_AUTH_SECRET is not set. Refusing to start: sessions and OAuth grants must never be signed with a built-in default. Copy apps/api/.env.example to apps/api/.env and set a unique secret.",
+	)
+	process.exit(1)
 }
 
 const app = createApp()

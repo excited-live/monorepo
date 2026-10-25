@@ -354,17 +354,17 @@ const appSchema = {
 
         <div class="hero-editorial-center">
           <div class="eyebrow">
-            <span data-lang-en="">MCP available now</span><span data-lang-th="">MCP พร้อมใช้งานแล้ว</span>
+            <span data-lang-en="">Connect your agent over MCP</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span>
           </div>
           <h1>
             <span data-lang-en="">Financial planning for <span class="xai-swap-container"><span class="xai-swap-roller" aria-label="solopreneurs, first jobber, AI native"><span class="xai-swap-track"><span class="xai-swap-word">solopreneurs.</span><span class="xai-swap-word">first jobber.</span><span class="xai-swap-word">AI native.</span><span class="xai-swap-word" aria-hidden="true">solopreneurs.</span></span></span><span class="xai-swap-underline" aria-hidden="true"></span></span></span>
             <span data-lang-th="">การวางแผนการเงินสำหรับ <span class="xai-swap-container"><span class="xai-swap-roller" aria-label="โซโลพรีเนอร์, First Jobber, AI Native"><span class="xai-swap-track"><span class="xai-swap-word">โซโลพรีเนอร์</span><span class="xai-swap-word">First Jobber</span><span class="xai-swap-word">AI Native</span><span class="xai-swap-word" aria-hidden="true">โซโลพรีเนอร์</span></span></span><span class="xai-swap-underline" aria-hidden="true"></span></span></span>
           </h1>
-          <p class="hero-editorial-sub"><span data-lang-en="">Tax, retirement, asset depreciation, investment tracking, and budgeting — built for your agent and for you.</span><span data-lang-th="">ภาษี การเกษียณ ค่าเสื่อมสินทรัพย์ การติดตามการลงทุน และงบประมาณ — สร้างมาเพื่อเอเจนต์และตัวคุณ</span></p>
+          <p class="hero-editorial-sub"><span data-lang-en="">Connect Claude, ChatGPT, or Claude Code over MCP, then ask your agent to set up your accounts, bills, and runway. Built for your agent and for you.</span><span data-lang-th="">เชื่อมต่อ Claude, ChatGPT หรือ Claude Code ผ่าน MCP แล้วให้เอเจนต์ช่วยตั้งค่าบัญชี บิล และรันเวย์ของคุณ สร้างมาเพื่อเอเจนต์และตัวคุณ</span></p>
           <div class="hero-actions" data-od-id="hero-actions">
             <a href="#final-cta" class="btn btn-primary" data-door-target="agents" data-od-id="hero-btn-getting-started">
-              <span data-lang-en="">Getting Started</span>
-              <span data-lang-th="">เริ่มต้นใช้งาน</span>
+              <span data-lang-en="">Connect your agent</span>
+              <span data-lang-th="">เชื่อมต่อเอเจนต์</span>
             </a>
             <a href="/docs" class="btn btn-secondary" data-od-id="hero-btn-view-docs">
               <span data-lang-en="">View Documentation</span>
@@ -380,7 +380,7 @@ const appSchema = {
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-chat">
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">What’s my runway if March revenue is ฿0?</span><span data-lang-th="">ถ้ารายได้มีนาคมเป็น ฿0 รันเวย์เหลือเท่าไหร่?</span></div>
-                <div class="b-bubble b-bubble--agent"><span data-lang-en="">Runway is 14 months (call: read_runway). ฿2,305,000 cash balance across Mint Living and Bean Coffee.</span><span data-lang-th="">รันเวย์ 14 เดือน (คำสั่ง read_runway) เงินสด ฿2,305,000 รวม Mint Living และ Bean Coffee</span></div>
+                <div class="b-bubble b-bubble--agent"><span data-lang-en="">Runway is 14 months (call: get_treasury_projection). ฿2,305,000 cash balance across Mint Living and Bean Coffee.</span><span data-lang-th="">รันเวย์ 14 เดือน (คำสั่ง get_treasury_projection) เงินสด ฿2,305,000 รวม Mint Living และ Bean Coffee</span></div>
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">Log ฿18,500 server cost to Mint Living.</span><span data-lang-th="">จดค่าเซิร์ฟเวอร์ ฿18,500 เข้า Mint Living</span></div>
               </div>
             </div>
@@ -396,10 +396,10 @@ const appSchema = {
               <div class="b-terminal">
                 <div class="b-terminal-bar">
                   <span class="b-dot"></span><span class="b-dot"></span><span class="b-dot"></span>
-                  <span class="b-terminal-path">excited.live/mcp · simulate_scenario</span>
+                  <span class="b-terminal-path">api.excited.live/mcp · get_treasury_projection</span>
                 </div>
                 <div class="b-terminal-body">
-                  <div class="b-term-line"><span class="b-term-prompt">&gt;</span><span>excited.simulate_scenario --scenario zero_revenue_q2</span></div>
+                  <div class="b-term-line"><span class="b-term-prompt">&gt;</span><span>excited.get_treasury_projection</span></div>
                   <div class="b-term-meta">running Monte Carlo · 10,000 passes · Thai tax 2026</div>
                   <div class="b-term-row"><span>Mint Living:</span><span class="b-term-value">runway 17m → 12m</span></div>
                   <div class="b-term-row"><span>Bean Coffee:</span><span class="b-term-value">runway 8m → 6m</span></div>
@@ -420,7 +420,7 @@ const appSchema = {
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">Log ฿850 for the gear repair.</span><span data-lang-th="">จด ฿850 ค่าซ่อมอุปกรณ์</span></div>
                 <div class="b-bot-row">
                   <span class="b-bot-avatar">ex</span>
-                  <div class="b-bubble b-bubble--agent"><span data-lang-en="">Logged to Mint Studio (call: log_expense). March burn is now ฿42,300.</span><span data-lang-th="">จดเข้า Mint Studio แล้ว (คำสั่ง log_expense) เบิร์นมีนาคมเป็น ฿42,300</span></div>
+                  <div class="b-bubble b-bubble--agent"><span data-lang-en="">Logged to Mint Studio (call: add_expense). March burn is now ฿42,300.</span><span data-lang-th="">จดเข้า Mint Studio แล้ว (คำสั่ง add_expense) เบิร์นมีนาคมเป็น ฿42,300</span></div>
                 </div>
               </div>
             </div>
@@ -482,7 +482,7 @@ const appSchema = {
             <div class="eyebrow">
               <span data-lang-en="">Ready when you are</span><span data-lang-th="">พร้อมเมื่อคุณต้องการ</span>
             </div>
-            <h2 style="margin-top: 12px; margin-bottom: 10px;"><span data-lang-en="">Pick your agent. Get its setup.</span><span data-lang-th="">เลือกเอเจนต์ แล้วรับวิธีตั้งค่า</span></h2>
+            <h2 style="margin-top: 12px; margin-bottom: 10px;"><span data-lang-en="">Connect your agent over MCP.</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span></h2>
             <p style="color:var(--charcoal);"><span data-lang-en="">Each client connects a little differently — from one CLI command to a custom connector. Pick yours and copy the exact setup.</span><span data-lang-th="">แต่ละไคลเอนต์เชื่อมต่อไม่เหมือนกัน ตั้งแต่คำสั่ง CLI เดียวไปจนถึงคอนเนกเตอร์กำหนดเอง เลือกของคุณแล้วคัดลอกวิธีตั้งค่าได้เลย</span></p>
             <p style="color:var(--charcoal); font-size:14px; margin-top:12px;"><span data-lang-en="">Prefer the 50-year planner? </span><span data-lang-th="">อยากใช้แพลนเนอร์ 50 ปี? </span><a href="#cap-card-plan" data-door-target="humans" class="b-cta-human-link"><span data-lang-en="">See the 50-year planner ↑</span><span data-lang-th="">ดูเว็บวางแผน 50 ปี ↑</span></a></p>
           </div>
@@ -514,7 +514,7 @@ const appSchema = {
             </div>
             <div class="mono-prompt-box b-cta-prompt" id="b-footer-prompt">Add excited.live to Claude Code:
 
-claude mcp add --scope user --transport http excited https://mcp.excited.live/mcp
+claude mcp add --scope user --transport http excited https://api.excited.live/mcp
 
 Then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.</div>
             <button type="button" class="btn btn-primary" data-copy-target="b-footer-prompt" data-od-id="b-cta-copy">
@@ -525,7 +525,7 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
             </button>
             <textarea class="copy-fallback-area" readonly="" aria-label="Fallback copy setup">Add excited.live to Claude Code:
 
-claude mcp add --scope user --transport http excited https://mcp.excited.live/mcp
+claude mcp add --scope user --transport http excited https://api.excited.live/mcp
 
 Then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.</textarea>
           </div>
@@ -541,66 +541,69 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
             var copyBtn = section.querySelector('[data-copy-target="b-footer-prompt"]');
             var inputs = section.querySelectorAll('.b-pick');
             var currentAuthState = 'guest';
+            // TODO(#31): every guest prompt ends with "Sign me in", which relies on the agent sign-in link
+            // (OAuth via auth.excited.live). Re-check wording after Rigel's protocol validation of #31.
+            // TODO(#31): setupsUser injects a demo bearer token; replace with the real flow or remove.
             var setupsGuest = {
               'claude-code': {
-                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
                 en: 'Claude Code · CLI (Public)',
                 th: 'Claude Code · CLI (สาธารณะ)'
               },
               codex: {
-                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
                 en: 'Codex · CLI (Public)',
                 th: 'Codex · CLI (สาธารณะ)'
               },
               cursor: {
-                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://mcp.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://api.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
                 en: 'Cursor · mcp.json (Public)',
                 th: 'Cursor · ไฟล์ mcp.json (สาธารณะ)'
               },
               claude: {
-                prompt: 'Add excited.live to Claude:\n\nCustomize → Connectors → Add custom connector → Web:\nhttps://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to Claude:\n\nCustomize → Connectors → Add custom connector → Web:\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
                 en: 'Claude · custom connector (Public)',
                 th: 'Claude · คอนเนกเตอร์กำหนดเอง (สาธารณะ)'
               },
               chatgpt: {
-                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
                 en: 'ChatGPT · developer mode (Public)',
                 th: 'ChatGPT · โหมดนักพัฒนา (สาธารณะ)'
               },
               any: {
-                prompt: 'Add excited.live to your MCP client at https://mcp.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
+                prompt: 'Add excited.live to your MCP client at https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Sign me in and talk to me in English.',
                 en: 'Any MCP client · streamable HTTP',
                 th: 'ไคลเอนต์ MCP อื่น ๆ · streamable HTTP'
               }
             };
             var setupsUser = {
               'claude-code': {
-                prompt: 'Add excited.live to Claude Code (authenticated):\n\nclaude mcp add --scope user --transport http --header "Authorization: Bearer ex_live_79a4e2bc81d" excited https://mcp.excited.live/mcp\n\nThen prompt: "Run read_runway for my projects and report my burn rate."',
+                prompt: 'Add excited.live to Claude Code (authenticated):\n\nclaude mcp add --scope user --transport http --header "Authorization: Bearer ex_live_79a4e2bc81d" excited https://api.excited.live/mcp\n\nThen prompt: "Run get_financial_summary and report my burn rate."',
                 en: 'Claude Code · CLI (Session Injected 🟢)',
                 th: 'Claude Code · CLI (ใส่โทเค็นแล้ว 🟢)'
               },
               codex: {
-                prompt: 'Add excited.live to Codex (authenticated):\n\ncodex mcp add excited --url https://mcp.excited.live/mcp --header "Authorization: Bearer ex_live_79a4e2bc81d"\n\nThen prompt: "Run simulate_scenario for zero revenue in Q2."',
+                prompt: 'Add excited.live to Codex (authenticated):\n\ncodex mcp add excited --url https://api.excited.live/mcp --header "Authorization: Bearer ex_live_79a4e2bc81d"\n\nThen prompt: "Run get_treasury_projection and show my runway if revenue drops to zero."',
                 en: 'Codex · CLI (Session Injected 🟢)',
                 th: 'Codex · CLI (ใส่โทเค็นแล้ว 🟢)'
               },
               cursor: {
-                prompt: 'Add excited.live to Cursor (authenticated):\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": {\n      "url": "https://mcp.excited.live/mcp",\n      "headers": {\n        "Authorization": "Bearer ex_live_79a4e2bc81d"\n      }\n    }\n  }\n}\n\nRestart Cursor and ask: "Check my runway and tax plan for 2026."',
+                prompt: 'Add excited.live to Cursor (authenticated):\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": {\n      "url": "https://api.excited.live/mcp",\n      "headers": {\n        "Authorization": "Bearer ex_live_79a4e2bc81d"\n      }\n    }\n  }\n}\n\nRestart Cursor and ask: "Check my runway and tax plan for 2026."',
                 en: 'Cursor · mcp.json (Session Injected 🟢)',
                 th: 'Cursor · ไฟล์ mcp.json (ใส่โทเค็นแล้ว 🟢)'
               },
               claude: {
-                prompt: 'Add excited.live to Claude (authenticated):\n\nCustomize → Connectors → Add custom connector → Web:\nURL: https://mcp.excited.live/mcp\nHeader: Authorization: Bearer ex_live_79a4e2bc81d\n\nThen ask Claude: "Show my cash balance across Mint Living and Bean Coffee."',
+                prompt: 'Add excited.live to Claude (authenticated):\n\nCustomize → Connectors → Add custom connector → Web:\nURL: https://api.excited.live/mcp\nHeader: Authorization: Bearer ex_live_79a4e2bc81d\n\nThen ask Claude: "Show my cash balance across Mint Living and Bean Coffee."',
                 en: 'Claude · custom connector (Session Injected 🟢)',
                 th: 'Claude · คอนเนกเตอร์กำหนดเอง (ใส่โทเค็นแล้ว 🟢)'
               },
               chatgpt: {
-                prompt: 'Add excited.live to ChatGPT (authenticated):\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nAdd MCP connector at https://mcp.excited.live/mcp with Bearer token ex_live_79a4e2bc81d.\n\nThen ask: "Run read_runway and summarize my burn rate."',
+                prompt: 'Add excited.live to ChatGPT (authenticated):\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nAdd MCP connector at https://api.excited.live/mcp with Bearer token ex_live_79a4e2bc81d.\n\nThen ask: "Run get_financial_summary and summarize my burn rate."',
                 en: 'ChatGPT · developer mode (Session Injected 🟢)',
                 th: 'ChatGPT · โหมดนักพัฒนา (ใส่โทเค็นแล้ว 🟢)'
               },
               any: {
-                prompt: 'Add excited.live to your MCP client:\n\nURL: https://mcp.excited.live/mcp\nHeader: Authorization: Bearer ex_live_79a4e2bc81d\n\nReady for tool calls (read_runway, simulate_scenario, log_expense).',
+                prompt: 'Add excited.live to your MCP client:\n\nURL: https://api.excited.live/mcp\nHeader: Authorization: Bearer ex_live_79a4e2bc81d\n\nReady for tool calls (get_financial_summary, get_treasury_projection, add_expense).',
                 en: 'Any MCP client · Streamable HTTP (Session Injected 🟢)',
                 th: 'ไคลเอนต์ MCP อื่น ๆ · Streamable HTTP (ใส่โทเค็นแล้ว 🟢)'
               }
@@ -690,8 +693,8 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
           </p>
           <div class="footer-status-pill">
             <span class="status-indicator-dot" aria-hidden="true"></span>
-            <span data-lang-en="">MCP Server v1.0 · Systems Normal</span>
-            <span data-lang-th="">MCP Server v1.0 · ระบบทำงานปกติ</span>
+            <span data-lang-en="">MCP endpoint · api.excited.live/mcp</span>
+            <span data-lang-th="">MCP endpoint · api.excited.live/mcp</span>
           </div>
         </div>
 

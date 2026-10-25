@@ -40,8 +40,11 @@ pages_build_output_dir = "dist/client"
 # /.well-known/oauth-protected-resource.
 # This must stay identical to EXCITED_WEBAPP_URL in apps/api/wrangler.toml —
 # scripts/check-web-production-config.mjs fails CI when the two drift.
-# app.excited.live and excited-live-web.pages.dev serve the same deployment as
-# aliases and are listed in BETTER_AUTH_TRUSTED_ORIGINS below.
+# app.excited.live is attached to this project too, but only so it leaves the
+# WorkOS tenant: it answers a 308 to this origin (src/lib/canonical-host.ts) and
+# is deliberately NOT a trusted origin, because a session created there splits
+# from the issuer's cookie jar. excited-live-web.pages.dev stays a working
+# deployment alias.
 BETTER_AUTH_URL = "https://auth.excited.live"
 # API origin: the MCP resource/audience becomes <this>/mcp, which is exactly
 # what the production Worker advertises as its protected resource.
@@ -49,12 +52,15 @@ EXCITED_API_URL = "https://api.excited.live"
 # BFF target for /api/v1/*: without it the fallback is http://localhost:8000
 # and workerd answers every call with 1016 "Origin DNS error".
 BACKEND_API_URL = "https://api.excited.live"
-# Inert on the cookies mount today (apps/webapp/src/lib/auth.ts passes no
-# trustedOrigins — baseURL is the trusted origin), kept for parity with the API
-# mount and as the record of the origins that must keep working: the canonical
-# issuer origin, the app.excited.live alias, the pages.dev origin that stays
-# alive, and the public site/API.
-BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://app.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
+# Live, not inert: better-auth 1.7.7 reads BETTER_AUTH_TRUSTED_ORIGINS itself
+# (dist/context/helpers.mjs:83, env.BETTER_AUTH_TRUSTED_ORIGINS), so this list
+# is enforced on the cookies mount even though apps/webapp/src/lib/auth.ts
+# passes no trustedOrigins option. It records the origins that must keep
+# working: the canonical issuer origin, the pages.dev origin that stays alive,
+# and the public site/API. app.excited.live is absent on purpose: it
+# 308-redirects to the issuer, so trusting it would be a real origin-check
+# change, not a harmless tidy-up.
+BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
 
 # The SAME database as apps/api (top level, production): user/session/account/
 # jwks/oauth* rows are shared between the webapp (cookies mount + authorization

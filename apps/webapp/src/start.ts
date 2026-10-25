@@ -2,16 +2,18 @@
  * Start instance — wires global request middleware.
  *
  * Middleware order matters:
- * 1. `localeMiddleware` — resolves the request locale (existing behavior, unchanged).
- * 2. `csrfMiddleware` — rejects cross-site requests to server-function RPC
+ * 1. `canonicalHostMiddleware` — `app.excited.live` answers 308 to the
+ *    canonical origin before any locale, CSRF or session work (#54 task 1).
+ * 2. `localeMiddleware` — resolves the request locale (existing behavior, unchanged).
+ * 3. `csrfMiddleware` — rejects cross-site requests to server-function RPC
  *    endpoints. Defining our own start instance opts us out of TanStack's
  *    built-in CSRF protection, so we re-add it explicitly. It must run before
  *    the auth middleware so cross-site requests are rejected before any
  *    session work happens.
- * 3. `betterAuthMiddleware` — resolves the Better Auth cookie session
+ * 4. `betterAuthMiddleware` — resolves the Better Auth cookie session
  *    (packages/auth, cookies mount) and exposes `{ user }` to server functions
  *    and route loaders via the middleware context.
- * 4. `authGuardMiddleware` — route gate (#46): redirects signed-out page
+ * 5. `authGuardMiddleware` — route gate (#46): redirects signed-out page
  *    requests to /sign-in when auth is required (AUTH_REQUIRED). Must run
  *    after betterAuthMiddleware so the session is already resolved.
  *
@@ -32,7 +34,23 @@ import {
 } from "@excited-live/i18n"
 import { routeTree } from "./routeTree.gen"
 import { betterAuthConfigured, authRequired } from "./lib/auth-config"
+import { canonicalHostRedirect } from "./lib/canonical-host"
 import { getAuth } from "./lib/auth"
+
+/**
+ * Canonical-origin gate (#54 task 1). `app.excited.live` is attached to the
+ * Pages project, but it must never serve the app: Better Auth keys the session
+ * cookie and the OAuth `state` by host, so a second origin splits the sign-in
+ * from the issuer. Every request on the alias answers 308 — method and body
+ * preserved — to the canonical origin with the path and query intact
+ * (lib/canonical-host.ts). Registered first: no locale, CSRF or session work
+ * runs for a request that is not staying on this host.
+ */
+const canonicalHostMiddleware = createMiddleware({ type: "request" }).server(async ({ next, request }) => {
+	const redirect = canonicalHostRedirect(request)
+	if (redirect) return redirect
+	return next()
+})
 
 const localeMiddleware = createMiddleware({ type: "request" }).server(async ({ next }) => {
 	const request = getRequest()
@@ -149,6 +167,7 @@ export const startInstance = createStart(async () => {
 	const configured = betterAuthConfigured()
 	return {
 		requestMiddleware: [
+			canonicalHostMiddleware,
 			localeMiddleware,
 			csrfMiddleware,
 			...(configured ? [betterAuthMiddleware] : []),

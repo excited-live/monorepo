@@ -1,11 +1,15 @@
 # Cloudflare Pages configuration for the PRODUCTION webapp on its own project
 # (`excited-live-web`), deployed by .github/workflows/webapp-production.yml.
 #
-# Why a separate project and not `excited-live`: that Pages project already
-# serves a WorkOS AuthKit app (307 to api.workos.com, client_01M1SKN5TVKB26A3914HTB44VJ)
+# Why a separate project and not `excited-live`: that Pages project serves a
+# WorkOS AuthKit app (307 to api.workos.com, client_01M1SKN5TVKB26A3914HTB44VJ)
 # which is not ours to overwrite. This project is the Better Auth webapp —
-# sign-in, consent, device — for the MCP authorization server, and it is
-# deliberately deployed with NO custom domain until Prame picks the hostname.
+# sign-in, consent, device — for the MCP authorization server.
+#
+# Custom domain: app.excited.live (attached 2026-10-25). The hostname used to
+# belong to the WorkOS Pages project; only the hostname moved, the WorkOS tenant
+# and its Pages project are untouched and still reachable at
+# excited-live.pages.dev.
 #
 # This is a template, like wrangler.prelive.toml: `wrangler pages deploy` has no
 # `--config` flag and always reads the wrangler.toml of the working directory,
@@ -27,10 +31,10 @@ pages_build_output_dir = "dist/client"
 # AUTH_REQUIRED is deliberately absent: the MCP authorization server must stay
 # reachable for signed-out users, or the OAuth flow can never start.
 [vars]
-# Webapp origin. The OAuth issuer becomes https://excited-live-web.pages.dev/api/auth.
-# ONE LINE changes when the hostname is picked: set this to that origin and
-# re-run the deploy (see the report for the API side of the flip).
-BETTER_AUTH_URL = "https://excited-live-web.pages.dev"
+# Webapp origin. The OAuth issuer becomes https://app.excited.live/api/auth.
+# This must stay identical to EXCITED_WEBAPP_URL in apps/api/wrangler.toml —
+# scripts/check-web-production-config.mjs fails CI when the two drift.
+BETTER_AUTH_URL = "https://app.excited.live"
 # API origin: the MCP resource/audience becomes <this>/mcp, which is exactly
 # what the production Worker advertises as its protected resource.
 EXCITED_API_URL = "https://api.excited.live"
@@ -39,8 +43,9 @@ EXCITED_API_URL = "https://api.excited.live"
 BACKEND_API_URL = "https://api.excited.live"
 # Inert on the cookies mount today (apps/webapp/src/lib/auth.ts passes no
 # trustedOrigins — baseURL is the trusted origin), kept for parity with the API
-# mount and for the hostname flip.
-BETTER_AUTH_TRUSTED_ORIGINS = "https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
+# mount and as the record of the origins allowed during the hostname transition:
+# the canonical origin, the pages.dev origin that stays alive, and auth.excited.live.
+BETTER_AUTH_TRUSTED_ORIGINS = "https://app.excited.live,https://excited-live-web.pages.dev,https://auth.excited.live,https://excited.live,https://api.excited.live"
 
 # The SAME database as apps/api (top level, production): user/session/account/
 # jwks/oauth* rows are shared between the webapp (cookies mount + authorization

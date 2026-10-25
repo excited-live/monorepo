@@ -27,9 +27,8 @@ compatibility_flags = ["nodejs_compat"]
 # It must equal BETTER_AUTH_URL in apps/webapp/wrangler.web.toml —
 # scripts/check-web-production-config.mjs fails CI when the two drift, because a
 # mismatch breaks every connector at the token step, not at discovery.
-# Until the hostname flip it points at the pages.dev origin, which serves the
-# authorization server today.
-vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://excited-live-web.pages.dev", BETTER_AUTH_TRUSTED_ORIGINS = "https://excited.live,https://excited-live-web.pages.dev" }
+# Since 2026-10-25 that origin is the webapp's custom domain, app.excited.live.
+vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://app.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://app.excited.live,https://excited-live-web.pages.dev,https://excited.live" }
 
 routes = [
 	{ pattern = "api.excited.live", custom_domain = true }

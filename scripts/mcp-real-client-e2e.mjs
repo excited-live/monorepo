@@ -1,0 +1,784 @@
+#!/usr/bin/env node
+/* global Headers, URL */
+/**
+ * Real-client gate for the MCP OAuth chain (#31, #55).
+ *
+ * The team rule: a change to MCP, OAuth discovery/DCR or auth routing merges
+ * only after the official `@modelcontextprotocol/sdk` client completes the
+ * flow against the target host. HTTP status checks are not enough — CI was
+ * green while every standard MCP client failed discovery.
+ *
+ * This script is that gate, in one command with one exit code. It uses the
+ * same `auth()` + `StreamableHTTPClientTransport` pair real clients use, and
+ * drives the browser half (sign-in + consent) over HTTP with a cookie jar so
+ * it runs unattended:
+ *
+ *   1. unauthenticated POST /mcp          -> 401 + WWW-Authenticate
+ *   2. RFC 9728 protected-resource        -> resource + authorization server
+ *   3. discovery, path-append             -> 200, issuer exact
+ *      GET <issuer>/.well-known/oauth-authorization-server
+ *   4. discovery, path-insert             -> 200, issuer exact
+ *      GET <origin>/.well-known/oauth-authorization-server<issuer path>
+ *      (this is the URL the SDK tries first, and the one PR #60 fixes)
+ *   5. SDK discovery                      -> discoverAuthorizationServerMetadata()
+ *   6. DCR, explicit native + loopback    -> 201 + client_id
+ *   7. DCR, no application_type (the SDK/Claude Code shape) -> 201 + client_id
+ *   8. SDK auth()                         -> REDIRECT + authorization URL
+ *   9. authorize -> sign-in -> consent    -> code + original state
+ *  10. token exchange                     -> access token
+ *  11. tools/list                         -> exactly --expect-tools (16)
+ *  12. tools/call get_onboarding_status   -> non-error, real onboarding data
+ *
+ * Usage:
+ *   node scripts/mcp-real-client-e2e.mjs --env prelive --email qa@example.com --password '…'
+ *   node scripts/mcp-real-client-e2e.mjs --mcp https://api.excited.live/mcp …
+ *
+ * Credentials come from --email/--password or MCP_QA_EMAIL/MCP_QA_PASSWORD.
+ * Pass --create-user when the account does not exist yet (prelive QA only).
+ *
+ * Flags:
+ *   --env prelive|prod   target preset (default: prod)
+ *   --mcp URL            MCP endpoint, overrides --env
+ *   --email EMAIL        QA account (or MCP_QA_EMAIL)
+ *   --password PW        QA password (or MCP_QA_PASSWORD)
+ *   --create-user        sign up first; a throwaway address is fine on prelive
+ *   --name NAME          display name for --create-user
+ *   --expect-tools N     tools/list count (default 16)
+ *   --redirect-uri URI   loopback redirect (default http://127.0.0.1:33418/callback)
+ *   --timeout MS         per-request timeout (default 20000)
+ *   --bootstrap-discovery
+ *                        DIAGNOSTIC ONLY: when SDK discovery fails, continue
+ *                        with the path-append document so the rest of the
+ *                        chain can be exercised. Discovery still counts as a
+ *                        failure and the process still exits 1.
+ *   --json FILE          write the full transcript as JSON
+ *
+ * Exit codes: 0 every required step passed; 1 anything failed or was skipped
+ * (a skip is not a pass, so a red prelive baseline cannot look green); 2 usage.
+ */
+
+import { randomUUID } from "node:crypto"
+import { createRequire } from "node:module"
+import path from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+// The SDK is a dependency of apps/api; resolve it from there so this script
+// needs no root install and always uses the version the API ships with.
+const apiRequire = createRequire(path.join(repoRoot, "apps/api/package.json"))
+const loadSdk = (specifier) => import(pathToFileURL(apiRequire.resolve(specifier)).href)
+
+const { Client } = await loadSdk("@modelcontextprotocol/sdk/client/index.js")
+const { auth, UnauthorizedError, discoverAuthorizationServerMetadata } = await loadSdk(
+	"@modelcontextprotocol/sdk/client/auth.js",
+)
+const { StreamableHTTPClientTransport } = await loadSdk("@modelcontextprotocol/sdk/client/streamableHttp.js")
+
+// ---------------------------------------------------------------------------
+// args
+// ---------------------------------------------------------------------------
+const argv = process.argv.slice(2)
+const args = new Map()
+for (let i = 0; i < argv.length; i++) {
+	const arg = argv[i]
+	if (!arg.startsWith("--")) continue
+	const key = arg.slice(2)
+	const next = argv[i + 1]
+	if (next && !next.startsWith("--")) {
+		args.set(key, next)
+		i++
+	} else {
+		args.set(key, "true")
+	}
+}
+
+function usage(message) {
+	if (message) console.error(`mcp-real-client-e2e: ${message}`)
+	console.error(
+		"usage: node scripts/mcp-real-client-e2e.mjs --env prelive|prod [--email E --password P] [--create-user] [--mcp URL] [--expect-tools N] [--bootstrap-discovery] [--json FILE]",
+	)
+	process.exit(2)
+}
+
+const PRESETS = {
+	prelive: "https://excited-live-api-prelive.preamza02.workers.dev/mcp",
+	prod: "https://api.excited.live/mcp",
+}
+
+const ENVIRONMENT = args.get("env") ?? "prod"
+if (!(ENVIRONMENT in PRESETS) && !args.has("mcp")) usage(`--env must be prelive or prod, got ${JSON.stringify(ENVIRONMENT)}`)
+
+const MCP_URL = args.get("mcp") ?? PRESETS[ENVIRONMENT]
+const EMAIL = args.get("email") ?? process.env.MCP_QA_EMAIL
+const PASSWORD = args.get("password") ?? process.env.MCP_QA_PASSWORD
+const CREATE_USER = args.has("create-user")
+const NAME = args.get("name") ?? "QA Rigel"
+const BOOTSTRAP = args.has("bootstrap-discovery")
+const JSON_OUT = args.get("json")
+const REDIRECT_URI = args.get("redirect-uri") ?? "http://127.0.0.1:33418/callback"
+
+function positiveInt(name, fallback) {
+	const raw = args.get(name)
+	if (raw === undefined) return fallback
+	const value = Number(raw)
+	if (!Number.isInteger(value) || value < 1) usage(`--${name} must be a positive integer`)
+	return value
+}
+
+const EXPECT_TOOLS = positiveInt("expect-tools", 16)
+const TIMEOUT = positiveInt("timeout", 20000)
+const STATE = `rigel-${randomUUID()}`
+
+if (!MCP_URL) usage("no MCP endpoint")
+if (!EMAIL || !PASSWORD) usage("--email/--password or MCP_QA_EMAIL/MCP_QA_PASSWORD are required")
+
+const mcpUrl = new URL(MCP_URL)
+const startedAt = new Date().toISOString()
+
+// ---------------------------------------------------------------------------
+// reporting
+// ---------------------------------------------------------------------------
+const steps = []
+let current = null
+
+function start(name, detail) {
+	current = { name, detail: detail ?? "", ok: null, notes: [], startedAt: new Date().toISOString() }
+	steps.push(current)
+	process.stdout.write(`\n▶ ${name}${current.detail ? ` — ${current.detail}` : ""}\n`)
+	return current
+}
+function note(text) {
+	if (!current) return
+	current.notes.push(text)
+	process.stdout.write(`   ${text}\n`)
+}
+function pass(extra) {
+	if (!current) return
+	current.ok = true
+	current.notes.push(extra ?? "ok")
+	process.stdout.write(`   PASS${extra ? `: ${extra}` : ""}\n`)
+}
+function fail(extra) {
+	if (!current) return
+	current.ok = false
+	current.notes.push(extra ?? "failed")
+	process.stdout.write(`   FAIL${extra ? `: ${extra}` : ""}\n`)
+}
+function skip(extra) {
+	if (!current) return
+	current.ok = "skip"
+	current.notes.push(extra ?? "skipped")
+	process.stdout.write(`   SKIP${extra ? `: ${extra}` : ""}\n`)
+}
+function done() {
+	if (current) current.ms = Date.now() - new Date(current.startedAt).getTime()
+	current = null
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function describeError(error) {
+	if (error?.name === "TimeoutError") return `timed out after ${TIMEOUT} ms`
+	return error?.cause?.code ?? error?.message ?? String(error)
+}
+
+async function request(url, { method = "GET", headers, body, redirect = "follow" } = {}) {
+	const started = Date.now()
+	try {
+		const response = await fetch(url, {
+			method,
+			headers,
+			body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+			redirect,
+			signal: AbortSignal.timeout(TIMEOUT),
+		})
+		const text = await response.text()
+		return {
+			status: response.status,
+			headers: response.headers,
+			text,
+			json: safeJson(text),
+			ms: Date.now() - started,
+		}
+	} catch (error) {
+		throw new Error(`${method} ${url} failed: ${describeError(error)}`)
+	}
+}
+
+function safeJson(text) {
+	try {
+		return JSON.parse(text)
+	} catch {
+		return null
+	}
+}
+
+function snippet(text, limit = 220) {
+	const flat = String(text ?? "")
+		.replace(/\s+/g, " ")
+		.trim()
+	return flat.length > limit ? `${flat.slice(0, limit)}…` : flat
+}
+
+function describe(response) {
+	const contentType = response.headers.get("content-type") ?? "?"
+	return `HTTP ${response.status} · ${contentType} · ${snippet(response.text, 160) || "(empty body)"}`
+}
+
+function requireMetadata(document, what, expectedIssuer) {
+	const problems = []
+	if (document.issuer !== expectedIssuer) {
+		problems.push(`issuer is ${JSON.stringify(document.issuer)}, want ${JSON.stringify(expectedIssuer)}`)
+	}
+	for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri", "registration_endpoint"]) {
+		if (typeof document[key] !== "string" || document[key].length === 0) problems.push(`${key} is missing`)
+	}
+	if (problems.length > 0) fail(`${what}: ${problems.join("; ")}`)
+	return problems.length === 0
+}
+
+// ---------------------------------------------------------------------------
+// cookie jar + tiny browser (the human half: sign-in and consent)
+// ---------------------------------------------------------------------------
+class CookieJar {
+	constructor() {
+		this.cookies = new Map()
+	}
+	store(headers) {
+		const list = typeof headers.getSetCookie === "function" ? headers.getSetCookie() : []
+		for (const raw of list) {
+			const [pair, ...attrs] = raw.split(";")
+			const eq = pair.indexOf("=")
+			if (eq < 0) continue
+			const name = pair.slice(0, eq).trim()
+			const value = pair.slice(eq + 1).trim()
+			const expired = attrs.some((attr) => /max-age=0\b/i.test(attr.trim()))
+			if (!value || expired) this.cookies.delete(name)
+			else this.cookies.set(name, value)
+		}
+	}
+	header() {
+		return [...this.cookies].map(([key, value]) => `${key}=${value}`).join("; ")
+	}
+}
+
+class Browser {
+	constructor() {
+		this.jar = new CookieJar()
+	}
+	async request(url, init = {}) {
+		const headers = new Headers(init.headers ?? {})
+		const cookie = this.jar.header()
+		if (cookie) headers.set("cookie", cookie)
+		const response = await fetch(url, { ...init, headers, redirect: "manual", signal: AbortSignal.timeout(TIMEOUT) })
+		this.jar.store(response.headers)
+		return response
+	}
+	/**
+	 * Walk the flow the way a browser would: HTTP 3xx Location redirects and
+	 * Better Auth's JSON form (`{redirect: true, url}`).
+	 */
+	async follow(url, init = {}, max = 10) {
+		let currentUrl = new URL(url)
+		const chain = [currentUrl.toString()]
+		for (let hop = 0; hop <= max; hop++) {
+			const response = await this.request(currentUrl, init)
+			init = { method: "GET", headers: init.headers }
+			const location = response.headers.get("location")
+			if (location && response.status >= 300 && response.status < 400) {
+				await response.body?.cancel()
+				currentUrl = new URL(location, currentUrl)
+				chain.push(currentUrl.toString())
+				continue
+			}
+			const contentType = response.headers.get("content-type") ?? ""
+			const text = await response.text()
+			if (contentType.includes("application/json")) {
+				const json = safeJson(text)
+				if (json?.redirect === true && typeof json.url === "string") {
+					currentUrl = new URL(json.url, currentUrl)
+					chain.push(currentUrl.toString())
+					continue
+				}
+				return { status: response.status, url: currentUrl, chain, text, json, headers: response.headers }
+			}
+			return { status: response.status, url: currentUrl, chain, text, headers: response.headers }
+		}
+		throw new Error(`too many redirects from ${url}`)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// in-memory OAuthClientProvider (no browser storage in a CLI)
+// ---------------------------------------------------------------------------
+class MemoryProvider {
+	constructor(store) {
+		this.store = store
+		this.authorizationUrl = null
+	}
+	get redirectUrl() {
+		return REDIRECT_URI
+	}
+	get clientMetadata() {
+		return {
+			client_name: "Rigel real-client gate (#31 #55)",
+			redirect_uris: [REDIRECT_URI],
+			grant_types: ["authorization_code", "refresh_token"],
+			response_types: ["code"],
+			token_endpoint_auth_method: "none",
+			scope: "openid profile email offline_access onboarding accounting:read accounting:write",
+			// Not in the SDK's 1.32.1 zod type, but the client is a native CLI and
+			// sends it verbatim. Step 7 covers the SDK default that omits it.
+			application_type: "native",
+		}
+	}
+	state() {
+		return STATE
+	}
+	clientInformation() {
+		return this.store.clientInformation
+	}
+	saveClientInformation(info) {
+		this.store.clientInformation = info
+	}
+	tokens() {
+		return this.store.tokens
+	}
+	saveTokens(tokens) {
+		this.store.tokens = tokens
+	}
+	async redirectToAuthorization(url) {
+		this.authorizationUrl = new URL(url)
+	}
+	saveCodeVerifier(verifier) {
+		this.store.codeVerifier = verifier
+	}
+	codeVerifier() {
+		return this.store.codeVerifier
+	}
+	saveDiscoveryState(state) {
+		this.store.discovery = state
+	}
+	discoveryState() {
+		return this.store.discovery
+	}
+}
+
+// ---------------------------------------------------------------------------
+// main
+// ---------------------------------------------------------------------------
+const store = {}
+const provider = new MemoryProvider(store)
+const summary = {
+	environment: ENVIRONMENT,
+	mcpUrl: MCP_URL,
+	email: EMAIL,
+	startedAt,
+	steps,
+	ok: false,
+}
+
+let resourceDocument = null
+let pathAppendDocument = null
+let registrationEndpoint = null
+let authorizationCode = null
+
+try {
+	// 1. unauthenticated /mcp ---------------------------------------------------
+	// The SDK's UnauthorizedError carries no response, so capture the challenge
+	// with a raw request and then prove the transport refuses the same call.
+	start("1. unauthenticated POST /mcp")
+	const rawProbe = await request(mcpUrl, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			accept: "application/json, text/event-stream",
+			"MCP-Protocol-Version": "2025-11-25",
+		},
+		body: {
+			jsonrpc: "2.0",
+			id: 1,
+			method: "initialize",
+			params: {
+				protocolVersion: "2025-11-25",
+				capabilities: {},
+				clientInfo: { name: "rigel-real-client-probe", version: "0.0.1" },
+			},
+		},
+	})
+	const wwwAuthenticate = rawProbe.headers.get("www-authenticate") ?? ""
+	note(`POST ${mcpUrl} -> HTTP ${rawProbe.status} · ${snippet(rawProbe.text, 80) || "(empty body)"}`)
+	note(`WWW-Authenticate: ${wwwAuthenticate || "(absent)"}`)
+	let step1Ok = true
+	if (rawProbe.status !== 401) {
+		fail(`want HTTP 401 without a token, got ${rawProbe.status}`)
+		step1Ok = false
+	} else if (!/resource_metadata="?https?:/i.test(wwwAuthenticate)) {
+		fail("401 without a resource_metadata challenge")
+		step1Ok = false
+	}
+	const probeClient = new Client({ name: "rigel-real-client-probe", version: "0.0.1" })
+	const probeTransport = new StreamableHTTPClientTransport(mcpUrl)
+	try {
+		await probeClient.connect(probeTransport)
+		fail("the SDK transport connected without a token")
+		step1Ok = false
+	} catch (error) {
+		if (error instanceof UnauthorizedError || /unauthori[sz]ed|401/i.test(String(error?.message))) {
+			note("SDK transport surfaced UnauthorizedError")
+		} else {
+			fail(`SDK transport raised an unexpected error: ${describeError(error)}`)
+			step1Ok = false
+		}
+	} finally {
+		await probeClient.close().catch(() => {})
+	}
+	if (step1Ok) pass("401 + resource_metadata, and the SDK refuses the anonymous call")
+	done()
+
+	// 2. protected-resource metadata (RFC 9728) ---------------------------------
+	start("2. protected-resource metadata")
+	const resourceUrl = new URL("/.well-known/oauth-protected-resource", mcpUrl)
+	const resourceResponse = await request(resourceUrl, { headers: { accept: "application/json" } })
+	note(`GET ${resourceUrl} -> ${describe(resourceResponse)}`)
+	resourceDocument = resourceResponse.json
+	if (resourceResponse.status !== 200) {
+		fail(`want HTTP 200, got ${resourceResponse.status}`)
+	} else if (!resourceDocument || !Array.isArray(resourceDocument.authorization_servers) || !resourceDocument.authorization_servers[0]) {
+		fail("no authorization_servers[0] in the document")
+	} else if (resourceDocument.resource !== `${mcpUrl.origin}/mcp`) {
+		fail(`resource is ${JSON.stringify(resourceDocument.resource)}, want ${JSON.stringify(`${mcpUrl.origin}/mcp`)}`)
+	} else {
+		pass(`resource ${resourceDocument.resource} · AS ${resourceDocument.authorization_servers[0]}`)
+	}
+	done()
+
+	const issuer = resourceDocument?.authorization_servers?.[0]
+	if (!issuer) throw new Error("cannot continue without an authorization server")
+	const issuerUrl = new URL(issuer)
+	const issuerPath = issuerUrl.pathname.replace(/\/+$/, "")
+	const pathAppendUrl = new URL(`${issuerPath}/.well-known/oauth-authorization-server`, issuerUrl.origin)
+	const pathInsertUrl = new URL(`/.well-known/oauth-authorization-server${issuerPath}`, issuerUrl.origin)
+
+	// 3. discovery: path-append (the control) ----------------------------------
+	start("3. discovery — path-append", pathAppendUrl.toString())
+	const appendResponse = await request(pathAppendUrl, {
+		headers: { accept: "application/json", "MCP-Protocol-Version": "2025-11-25" },
+	})
+	note(`GET ${pathAppendUrl} -> ${describe(appendResponse)}`)
+	pathAppendDocument = appendResponse.json
+	if (appendResponse.status !== 200) {
+		fail(`want HTTP 200, got ${appendResponse.status}`)
+	} else if (!requireMetadata(pathAppendDocument, "path-append metadata", issuer)) {
+		// fail() already recorded the reason
+	} else {
+		registrationEndpoint = pathAppendDocument.registration_endpoint
+		pass(`issuer ${pathAppendDocument.issuer} · DCR ${registrationEndpoint}`)
+	}
+	done()
+
+	// 4. discovery: path-insert (what the SDK tries first) ---------------------
+	start("4. discovery — path-insert", pathInsertUrl.toString())
+	const insertResponse = await request(pathInsertUrl, {
+		headers: { accept: "application/json", "MCP-Protocol-Version": "2025-11-25" },
+	})
+	note(`GET ${pathInsertUrl} -> ${describe(insertResponse)}`)
+	if (insertResponse.status !== 200) {
+		fail(`want HTTP 200, got ${insertResponse.status}`)
+	} else if (!insertResponse.json) {
+		fail(`want JSON, got ${insertResponse.headers.get("content-type") ?? "no content-type"}`)
+	} else if (!requireMetadata(insertResponse.json, "path-insert metadata", issuer)) {
+		// fail() already recorded the reason
+	} else {
+		const keys = ["authorization_endpoint", "token_endpoint", "jwks_uri", "registration_endpoint"]
+		const drifted = keys.filter((key) => insertResponse.json[key] !== pathAppendDocument?.[key])
+		if (drifted.length > 0) fail(`path-insert differs from path-append on ${drifted.join(", ")}`)
+		else pass(`same issuer and endpoints as path-append`)
+	}
+	done()
+
+	// 5. SDK discovery ----------------------------------------------------------
+	start("5. SDK discovery — discoverAuthorizationServerMetadata()")
+	try {
+		const metadata = await discoverAuthorizationServerMetadata(issuerUrl, { protocolVersion: "2025-11-25" })
+		if (!metadata) {
+			fail("returned undefined")
+		} else if (metadata.issuer !== issuer) {
+			fail(`metadata issuer is ${JSON.stringify(metadata.issuer)}, want ${JSON.stringify(issuer)}`)
+		} else {
+			pass(`issuer ${metadata.issuer}`)
+		}
+	} catch (error) {
+		fail(`threw: ${describeError(error)}`)
+	}
+	done()
+
+	// 6. DCR with an explicit native loopback client ---------------------------
+	start("6. DCR — explicit application_type native")
+	async function register(label, { includeApplicationType }) {
+		if (!registrationEndpoint) {
+			skip("no registration_endpoint")
+			return null
+		}
+		const body = {
+			client_name: label,
+			redirect_uris: [REDIRECT_URI],
+			grant_types: ["authorization_code", "refresh_token"],
+			response_types: ["code"],
+			token_endpoint_auth_method: "none",
+			scope: "openid profile email offline_access onboarding accounting:read accounting:write",
+		}
+		if (includeApplicationType) body.application_type = "native"
+		const response = await request(registrationEndpoint, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body,
+		})
+		const safe =
+			response.status < 400
+				? `client_id ${response.json?.client_id ? `${String(response.json.client_id).length} chars` : "missing"}`
+				: snippet(response.text, 160)
+		note(`POST ${registrationEndpoint} -> HTTP ${response.status} · ${safe}`)
+		return response
+	}
+	const nativeRegistration = await register("Rigel real-client gate (native)", { includeApplicationType: true })
+	if (nativeRegistration && (nativeRegistration.status === 200 || nativeRegistration.status === 201) && nativeRegistration.json?.client_id) {
+		pass(`client_id issued (${String(nativeRegistration.json.client_id).length} chars)`)
+	} else if (nativeRegistration) {
+		fail(`want 200/201 + client_id, got ${nativeRegistration.status} ${snippet(nativeRegistration.text, 120)}`)
+	}
+	done()
+
+	// 7. DCR as the SDK sends it: loopback, no application_type ----------------
+	start("7. DCR — no application_type (the SDK / Claude Code shape)")
+	const defaultRegistration = await register("Rigel real-client gate (sdk default)", { includeApplicationType: false })
+	if (defaultRegistration && (defaultRegistration.status === 200 || defaultRegistration.status === 201) && defaultRegistration.json?.client_id) {
+		pass(`loopback accepted without application_type (client_id ${String(defaultRegistration.json.client_id).length} chars)`)
+	} else if (defaultRegistration) {
+		fail(
+			`loopback rejected (${defaultRegistration.status} ${defaultRegistration.json?.error ?? snippet(defaultRegistration.text, 80)}) — this is the DCR blocker PR #60 fixes`,
+		)
+	}
+	done()
+
+	// 8. SDK auth(): discovery -> DCR -> authorization URL ---------------------
+	start("8. SDK auth() — discovery + DCR + authorization URL")
+	if (BOOTSTRAP && !store.discovery) {
+		if (pathAppendDocument && resourceDocument) {
+			store.discovery = {
+				authorizationServerUrl: issuer,
+				resourceMetadata: resourceDocument,
+				authorizationServerMetadata: pathAppendDocument,
+			}
+			note("--bootstrap-discovery: seeded discovery from the path-append document (diagnostic only; step 5 still fails)")
+		} else {
+			note("--bootstrap-discovery: no path-append document to seed")
+		}
+	}
+	try {
+		const result = await auth(provider, { serverUrl: MCP_URL })
+		if (result === "REDIRECT" && provider.authorizationUrl) {
+			pass(`auth() -> REDIRECT · client_id ${store.clientInformation?.client_id ?? "?"}`)
+		} else if (result === "AUTHORIZED") {
+			fail("auth() returned AUTHORIZED before any human sign-in")
+		} else {
+			fail(`auth() returned ${result} without an authorization URL`)
+		}
+	} catch (error) {
+		fail(`auth() threw: ${describeError(error)}`)
+	}
+	done()
+
+	// 9. authorize -> sign-in -> consent ---------------------------------------
+	start("9. authorize -> sign-in -> consent")
+	if (!provider.authorizationUrl) {
+		skip("no authorization URL from step 8")
+	} else {
+		const browser = new Browser()
+		const firstHop = await browser.follow(provider.authorizationUrl)
+		note(`signed-out authorize lands on ${firstHop.url.origin}${firstHop.url.pathname}`)
+		if (!/\/sign-in/.test(firstHop.url.pathname)) {
+			fail(`expected the sign-in page, got ${firstHop.url.origin}${firstHop.url.pathname}`)
+		} else {
+			const authBase = new URL("/api/auth", firstHop.url.origin)
+			if (CREATE_USER) {
+				const signUp = await browser.request(new URL(`${authBase.pathname}/sign-up/email`, authBase.origin), {
+					method: "POST",
+					headers: { "content-type": "application/json", origin: authBase.origin },
+					body: JSON.stringify({ email: EMAIL, password: PASSWORD, name: NAME }),
+				})
+				const signUpText = await signUp.text()
+				// Never print the body: Better Auth returns a session token in it.
+				note(`sign-up: HTTP ${signUp.status} · user ${safeJson(signUpText)?.user?.id ?? "(none)"}`)
+				if (signUp.status >= 400 && !/exist/i.test(signUpText)) {
+					fail(`sign-up failed: HTTP ${signUp.status}`)
+				}
+			}
+			const signIn = await browser.request(new URL(`${authBase.pathname}/sign-in/email`, authBase.origin), {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: authBase.origin },
+				body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+			})
+			const signInText = await signIn.text()
+			// Never print the body: Better Auth returns a session token in it.
+			note(`sign-in: HTTP ${signIn.status} · user ${safeJson(signInText)?.user?.id ?? "(none)"}`)
+			if (signIn.status !== 200) {
+				fail("sign-in did not return 200 (check --email/--password)")
+			} else {
+				const authorized = await browser.follow(provider.authorizationUrl)
+				note(`authorize now lands on ${authorized.url.origin}${authorized.url.pathname}`)
+				let redirectTarget = null
+				if (authorized.url.pathname === new URL(REDIRECT_URI).pathname && authorized.url.origin === new URL(REDIRECT_URI).origin) {
+					redirectTarget = authorized.url
+				} else if (/\/consent/.test(authorized.url.pathname)) {
+					const consentQuery = authorized.url.search.replace(/^\?/, "")
+					const consent = await browser.request(new URL("/api/auth/oauth2/consent", authBase.origin), {
+						method: "POST",
+						headers: { "content-type": "application/json", origin: new URL(provider.authorizationUrl).origin },
+						body: JSON.stringify({ accept: true, oauth_query: consentQuery }),
+					})
+					const consentText = await consent.text()
+					// The consent body carries the authorization code; never print it.
+					note(`consent: HTTP ${consent.status} · redirect=${safeJson(consentText)?.redirect === true}`)
+					try {
+						redirectTarget = new URL(safeJson(consentText)?.url)
+					} catch {
+						fail("consent response carried no redirect url")
+					}
+				} else {
+					fail(`expected the consent page or the loopback redirect, got ${authorized.url.origin}${authorized.url.pathname}`)
+				}
+
+				if (redirectTarget) {
+					const code = redirectTarget.searchParams.get("code")
+					const state = redirectTarget.searchParams.get("state")
+					const error = redirectTarget.searchParams.get("error")
+					note(`redirect: code ${code ? "present" : "MISSING"} · state ${state === STATE ? "matches" : `MISMATCH (${state ?? "absent"})`}`)
+					if (error) fail(`authorization error: ${error} ${redirectTarget.searchParams.get("error_description") ?? ""}`)
+					else if (!code) fail("no code in the redirect")
+					else if (state !== STATE) fail(`state mismatch: ${state ?? "absent"}`)
+					else {
+						authorizationCode = code
+						pass("code + original state returned to the loopback redirect")
+					}
+				}
+			}
+		}
+	}
+	done()
+
+	// 10. token exchange --------------------------------------------------------
+	start("10. token exchange — StreamableHTTPClientTransport.finishAuth()")
+	if (!authorizationCode) {
+		skip("no authorization code from step 9")
+	} else {
+		const transport = new StreamableHTTPClientTransport(mcpUrl, { authProvider: provider })
+		try {
+			await transport.finishAuth(authorizationCode)
+			const tokens = store.tokens
+			if (!tokens?.access_token) fail("no access token after finishAuth()")
+			else {
+				summary.token = {
+					tokenType: tokens.token_type,
+					expiresIn: tokens.expires_in,
+					scope: tokens.scope,
+					length: tokens.access_token.length,
+				}
+				pass(
+					`${tokens.token_type ?? "Bearer"} · expires_in ${tokens.expires_in ?? "?"} · scope ${tokens.scope ?? "(none)"} · ${tokens.access_token.length}-char token`,
+				)
+			}
+		} catch (error) {
+			fail(`token exchange failed: ${describeError(error)}`)
+		}
+	}
+	done()
+
+	// 11. tools/list -----------------------------------------------------------
+	start(`11. tools/list — expect ${EXPECT_TOOLS}`)
+	let client = null
+	if (!store.tokens?.access_token) {
+		skip("no access token from step 10")
+	} else {
+		const transport = new StreamableHTTPClientTransport(mcpUrl, { authProvider: provider })
+		client = new Client({ name: "rigel-real-client-gate", version: "1.0.0" })
+		try {
+			await client.connect(transport)
+			const listed = await client.listTools()
+			const names = listed.tools.map((tool) => tool.name).sort()
+			summary.toolCount = names.length
+			summary.tools = names
+			note(`tools: ${names.join(", ")}`)
+			if (names.length === EXPECT_TOOLS) pass(`${names.length} tools listed`)
+			else fail(`${names.length} tools listed, want ${EXPECT_TOOLS}`)
+		} catch (error) {
+			fail(`connect/listTools failed: ${describeError(error)}`)
+		}
+	}
+	done()
+
+	// 12. tools/call get_onboarding_status -------------------------------------
+	start("12. tools/call get_onboarding_status")
+	if (!client) {
+		skip("no authenticated client from step 11")
+	} else {
+		try {
+			const call = await client.callTool({ name: "get_onboarding_status", arguments: {} })
+			const textPart = Array.isArray(call.content) ? call.content.find((part) => part.type === "text") : null
+			const data = call.structuredContent ?? safeJson(textPart?.text)
+			if (call.isError) {
+				fail(`isError: ${snippet(textPart?.text ?? JSON.stringify(call), 200)}`)
+			} else if (!data || !Array.isArray(data.steps)) {
+				fail(`answered without an onboarding snapshot: ${snippet(JSON.stringify(call), 200)}`)
+			} else {
+				summary.onboarding = {
+					isComplete: data.isComplete,
+					completedCount: data.completedCount,
+					totalSteps: data.totalSteps,
+					nextStep: data.nextStep,
+				}
+				pass(
+					`isComplete=${data.isComplete} · ${data.completedCount}/${data.totalSteps} steps · next=${data.nextStep ?? "none"}`,
+				)
+			}
+		} catch (error) {
+			fail(`tools/call failed: ${describeError(error)}`)
+		}
+	}
+	done()
+
+	if (client) await client.close().catch(() => {})
+} catch (error) {
+	summary.error = String(error?.stack ?? error)
+	if (current) {
+		fail(String(error?.message ?? error))
+		done()
+	}
+}
+
+const notPassed = steps.filter((step) => step.ok !== true)
+summary.ok = notPassed.length === 0
+summary.finishedAt = new Date().toISOString()
+summary.notPassed = notPassed.map((step) => step.name)
+summary.exitCode = summary.ok ? 0 : 1
+
+process.stdout.write(`\n${"=".repeat(78)}\n`)
+for (const step of steps) {
+	const label = step.ok === true ? "PASS" : step.ok === "skip" ? "SKIP" : "FAIL"
+	process.stdout.write(`${label}  ${step.name}${step.ms ? ` (${step.ms} ms)` : ""}\n`)
+}
+process.stdout.write(
+	summary.ok
+		? `RESULT: PASS — ${steps.length}/${steps.length} steps on ${ENVIRONMENT} (${MCP_URL})\n`
+		: `RESULT: FAIL — ${notPassed.length}/${steps.length} steps not passed on ${ENVIRONMENT} (${MCP_URL})\n`,
+)
+
+if (JSON_OUT) {
+	const { writeFileSync } = await import("node:fs")
+	writeFileSync(JSON_OUT, `${JSON.stringify(summary, null, 2)}\n`)
+	process.stdout.write(`json: ${JSON_OUT}\n`)
+}
+
+// Give the runtime a tick to flush the transcript before the exit code lands.
+await sleep(0)
+process.exitCode = summary.exitCode

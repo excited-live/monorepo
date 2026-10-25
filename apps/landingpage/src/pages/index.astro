@@ -345,7 +345,7 @@ const appSchema = {
         
 
         <div class="hero-editorial-center">
-          <!-- TODO(#31): "Connect your agent over MCP" claims MCP is available now; flip after Rigel's #31 protocol results. -->
+          {/* TODO(#31): eyebrow claims MCP is available now; flip after Rigel's #31 protocol results (sign-in currently fails discovery on prod). */}
           <div class="eyebrow">
             <span data-lang-en="">Connect your agent over MCP</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span>
           </div>
@@ -500,7 +500,6 @@ const appSchema = {
               </div>
               <p class="b-cta-meta" aria-live="polite" aria-atomic="true"><span id="b-cta-meta-en" data-lang-en="">Claude Code · CLI</span><span id="b-cta-meta-th" data-lang-th="">Claude Code · CLI</span></p>
             </fieldset>
-            <!-- TODO(#31): prompts say "your client will open a sign-in page"; there is no sign-in tool. Verify OAuth completes in each client (see setupsGuest TODOs). -->
             <div class="mono-prompt-box b-cta-prompt" id="b-footer-prompt">Add excited.live to Claude Code:
 
 claude mcp add --scope user --transport http excited https://api.excited.live/mcp
@@ -519,6 +518,11 @@ claude mcp add --scope user --transport http excited https://api.excited.live/mc
 Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</textarea>
           </div>
         </div>
+        {/* TODO(#31): all setupsGuest prompts say "Your client will ask you to sign in to excited.live" (OAuth via auth.excited.live); no sign-in tool exists. Re-check after Rigel's #31 protocol results.
+            TODO(#31): Codex needs `codex mcp login excited` for OAuth; untested.
+            TODO(#31): Claude "Settings → Connectors → Add custom connector" path unverified; DCR/OAuth is #31.
+            TODO(#31): ChatGPT "Settings → Apps → Advanced settings → Developer mode" path unverified; DCR/OAuth is #31.
+            TODO(#31): content/docs/help.mdx mirrors all of the above (Codex login, Claude/ChatGPT paths, sign-in sentence) and says MCP is "in final testing"; flip to "works today" once prod sign-in discovery works. Kept out of help.mdx because its comments leak into dist/api/search.json. */}
         <script is:inline>
           (function () {
             var section = document.querySelector('[data-od-id="dir-b-final-cta"]');
@@ -529,17 +533,14 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
             var metaTh = section.querySelector('#b-cta-meta-th');
             var copyBtn = section.querySelector('[data-copy-target="b-footer-prompt"]');
             var inputs = section.querySelectorAll('.b-pick');
-            // TODO(#31): every prompt says "your client will open a sign-in page" (OAuth via auth.excited.live); no sign-in tool exists.
-            // Re-check wording after Rigel's protocol validation of #31.
             var setupsGuest = {
               'claude-code': {
                 prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude Code · CLI (Public)',
                 th: 'Claude Code · CLI (สาธารณะ)'
               },
-              // TODO(#31): Codex may need `codex mcp login excited` for the OAuth step; untested.
               codex: {
-                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\ncodex mcp login excited\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Codex · CLI (Public)',
                 th: 'Codex · CLI (สาธารณะ)'
               },
@@ -548,13 +549,11 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
                 en: 'Cursor · mcp.json (Public)',
                 th: 'Cursor · ไฟล์ mcp.json (สาธารณะ)'
               },
-              // TODO(#31): Claude.ai menu path "Customize → Connectors → Add custom connector" unverified; DCR/OAuth is #31.
               claude: {
                 prompt: 'Add excited.live to Claude:\n\nSettings → Connectors → Add custom connector:\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude · custom connector (Public)',
                 th: 'Claude · คอนเนกเตอร์กำหนดเอง (สาธารณะ)'
               },
-              // TODO(#31): ChatGPT "Settings → Apps → Advanced settings → Developer mode" path unverified; DCR/OAuth is #31.
               chatgpt: {
                 prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'ChatGPT · developer mode (Public)',

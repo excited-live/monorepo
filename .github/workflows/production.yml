@@ -1,5 +1,17 @@
 name: Deploy Production
 
+# Manual, PROD-gated redeploy of the production webapp to the Pages project
+# `excited-live-web`.
+#
+# Normal path is a push to `main` (.github/workflows/webapp-production.yml).
+# This workflow exists for a deliberate re-deploy of the current `main` without
+# a new commit, and it shares the same concurrency group so the two can never
+# interleave.
+#
+# It must never target the Pages project `excited-live`: that project serves a
+# WorkOS AuthKit app (307 to api.workos.com) that is not ours to overwrite. It
+# did target it until 2026-10-25.
+
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +22,11 @@ on:
 
 env:
   WRANGLER_VERSION: "4.127.1"
+  WEB_PROJECT: excited-live-web
+
+concurrency:
+  group: webapp-production
+  cancel-in-progress: false
 
 jobs:
   production:
@@ -29,6 +46,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check production webapp configuration
+        run: node scripts/check-web-production-config.mjs
       - name: Build webapp
         working-directory: apps/webapp
         env:
@@ -40,5 +59,21 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages project create excited-live --production-branch main || true
-          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist/client --project-name=excited-live --branch=main --commit-dirty=true
+          set -euo pipefail
+          # Install the production-web config for this job only, exactly as
+          # webapp-production.yml does, so the config hash matches the project.
+          cp wrangler.web.toml wrangler.toml
+          body=$(node ../../scripts/check-web-production-config.mjs --json)
+          response=$(curl -sS -m 30 -X PATCH \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$WEB_PROJECT" \
+            -H "authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'content-type: application/json' \
+            --data "$body" \
+            -w '\n%{http_code}')
+          status=$(printf '%s' "$response" | tail -n1)
+          printf '%s\n' "$response" | sed '$d' | jq -r 'if .success then "Project updated: \(.result.name)" else (.errors[]? | "CF error \(.code): \(.message)") end' || true
+          if [ "$status" != "200" ]; then
+            echo "::error::PATCH on Pages project $WEB_PROJECT returned $status. Nothing was deployed."
+            exit 1
+          fi
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist/client --project-name="$WEB_PROJECT" --branch=main --commit-dirty=true

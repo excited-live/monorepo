@@ -1,0 +1,156 @@
+name: API Deploy Production
+
+# Manual, PROD-gated deploy of apps/api (REST + MCP) to the production Worker
+# `excited-live-api`, plus the repair for api.excited.live.
+#
+# Why this exists (2026-10-25 incident): `wrangler deploy --env prelive` used to
+# inherit the top-level `routes`, so the prelive Worker took over the custom
+# domain api.excited.live. Commit 5c2a0bb stopped the inheritance for future
+# deploys, but the Workers Custom Domain attachment survived — api.excited.live
+# still resolves to `excited-live-api-prelive`, serving PRELIVE vars
+# (EXCITED_WEBAPP_URL=https://prelive.excited.live) and the PRELIVE D1
+# (f7bd3f26-…). Proof: /api/v1/auth/jwks on api.excited.live returns kid
+# 1ZKXCL8rolbC8vj8SnOpJpIH8UsDlODA, identical to the prelive Worker and
+# different from excited-live-api.preamza02.workers.dev (8S7B1tQxSvmTY4CUpg3…).
+#
+# Production deploys stay manual and human-only (Prame, 2026-10-23, issue #146);
+# this workflow is workflow_dispatch only and requires a typed PROD gate. It
+# exists so the repair needs no Cloudflare token outside CI.
+#
+# Migrations are NOT applied here: the Worker owns them at boot
+# (apps/api/src/db/apply.ts, ledger `d1_migrations`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type PROD to confirm production deploy"
+        required: true
+        default: ""
+
+env:
+  WRANGLER_VERSION: "4.127.1"
+  API_SERVICE: excited-live-api
+  API_HOSTNAME: api.excited.live
+  ZONE_NAME: excited.live
+
+concurrency:
+  group: api-production
+  cancel-in-progress: false
+
+jobs:
+  production:
+    if: github.event.inputs.confirm == 'PROD' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Diagnose the api.excited.live attachment
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          curl -sS -m 30 -H "authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api/workers/domains" -o /tmp/domains.json
+          jq -r '.result[] | "\(.hostname) -> \(.service) (zone \(.zone_name), env \(.environment))"' /tmp/domains.json | sort
+          echo "--- currently serving $API_HOSTNAME"
+          curl -sS -m 20 "https://$API_HOSTNAME/.well-known/oauth-protected-resource" || true
+          echo
+
+      - name: Reattach api.excited.live to the production Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          zone_id=$(curl -sS -m 30 -H "$auth" "$api/zones?name=$ZONE_NAME" | jq -r '.result[0].id // empty')
+          if [ -z "$zone_id" ]; then
+            echo "::error::could not resolve zone $ZONE_NAME with this token"
+            exit 1
+          fi
+
+          curl -sS -m 30 -H "$auth" "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains" -o /tmp/domains.json
+          row=$(jq -c --arg h "$API_HOSTNAME" '.result[] | select(.hostname == $h)' /tmp/domains.json | head -n1)
+          if [ -z "$row" ]; then
+            echo "$API_HOSTNAME is not attached to any Worker; attaching it to $API_SERVICE."
+          else
+            service=$(printf '%s' "$row" | jq -r '.service')
+            echo "$API_HOSTNAME is attached to $service"
+            if [ "$service" = "$API_SERVICE" ]; then
+              echo "Already correct — no routing change."
+              exit 0
+            fi
+            id=$(printf '%s' "$row" | jq -r '.id')
+            echo "::warning::$API_HOSTNAME is attached to the wrong Worker ($service); moving it to $API_SERVICE"
+            code=$(curl -sS -m 30 -o /tmp/del.json -w '%{http_code}' -X DELETE -H "$auth" "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains/$id")
+            echo "DELETE workers/domains/$id -> $code"
+            if [ "$code" != "200" ]; then jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/del.json; fi
+          fi
+
+          code=$(curl -sS -m 30 -o /tmp/put.json -w '%{http_code}' -X PUT "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains" \
+            -H "$auth" -H 'content-type: application/json' \
+            --data "$(jq -cn --arg h "$API_HOSTNAME" --arg s "$API_SERVICE" --arg z "$zone_id" --arg zn "$ZONE_NAME" \
+              '{environment:"production", hostname:$h, service:$s, zone_id:$z, zone_name:$zn}')")
+          echo "PUT workers/domains -> $code"
+          if [ "$code" != "200" ]; then
+            jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/put.json
+            echo "::error::could not attach $API_HOSTNAME to $API_SERVICE"
+            exit 1
+          fi
+          jq -r '.result | "attached \(.hostname) -> \(.service)"' /tmp/put.json
+
+      - name: Deploy production API Worker
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@${{ env.WRANGLER_VERSION }} deploy
+
+      # The three assertions that pin the regression: the public origin must
+      # advertise ITSELF as the protected resource and the webapp as the
+      # authorization server, and /mcp must still refuse an anonymous call.
+      - name: Smoke — production origin serves the production Worker
+        run: |
+          set -euo pipefail
+          fail=0
+          for attempt in $(seq 1 12); do
+            body=$(curl -sS -m 20 "https://$API_HOSTNAME/.well-known/oauth-protected-resource" || true)
+            resource=$(printf '%s' "$body" | jq -r '.resource // empty' 2>/dev/null || true)
+            if [ "$resource" = "https://$API_HOSTNAME/mcp" ]; then break; fi
+            echo "attempt $attempt: resource=$resource, waiting for propagation"
+            sleep 10
+          done
+          echo "discovery: $body"
+
+          health=$(curl -sS -m 20 -o /tmp/health.json -w '%{http_code}' "https://$API_HOSTNAME/health" || true)
+          echo "/health -> $health"; [ "$health" = "200" ] || fail=1
+
+          resource=$(printf '%s' "$body" | jq -r '.resource // empty')
+          issuers=$(printf '%s' "$body" | jq -rc '.authorization_servers // []')
+          echo "resource: $resource"
+          echo "authorization_servers: $issuers"
+          [ "$resource" = "https://$API_HOSTNAME/mcp" ] || { echo "::error::production origin advertises $resource — this is the prelive Worker"; fail=1; }
+          if printf '%s' "$issuers" | grep -q 'prelive'; then
+            echo "::error::authorization_servers still points at prelive"
+            fail=1
+          fi
+
+          mcp=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "https://$API_HOSTNAME/mcp" || true)
+          echo "/mcp (anonymous) -> $mcp"; [ "$mcp" = "401" ] || fail=1
+
+          [ "$fail" = "0" ] || { echo "::error::production API origin is not serving the production Worker" >&2; exit 1; }
+          echo "api.excited.live now serves $API_SERVICE."

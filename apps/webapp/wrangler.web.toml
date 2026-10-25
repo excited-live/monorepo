@@ -1,0 +1,53 @@
+# Cloudflare Pages configuration for the PRODUCTION webapp on its own project
+# (`excited-live-web`), deployed by .github/workflows/webapp-production.yml.
+#
+# Why a separate project and not `excited-live`: that Pages project already
+# serves a WorkOS AuthKit app (307 to api.workos.com, client_01M1SKN5TVKB26A3914HTB44VJ)
+# which is not ours to overwrite. This project is the Better Auth webapp —
+# sign-in, consent, device — for the MCP authorization server, and it is
+# deliberately deployed with NO custom domain until Prame picks the hostname.
+#
+# This is a template, like wrangler.prelive.toml: `wrangler pages deploy` has no
+# `--config` flag and always reads the wrangler.toml of the working directory,
+# so the workflow installs it as apps/webapp/wrangler.toml for the deploy only.
+# The checked-in apps/webapp/wrangler.toml stays the production/PR-preview
+# config, so a preview deployment can never bind the production database.
+#
+# Bindings do not travel with `wrangler pages deploy` (it sends only a hash of
+# this file); webapp-production.yml PATCHes deployment_configs.production using
+# the values below. Keep them in sync — scripts/check-web-production-config.mjs
+# fails CI when they drift.
+
+name = "excited-live-web"
+compatibility_date = "2026-08-30"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist/client"
+
+# Runtime vars on Pages, read through process.env by src/lib/auth-config.ts.
+# AUTH_REQUIRED is deliberately absent: the MCP authorization server must stay
+# reachable for signed-out users, or the OAuth flow can never start.
+[vars]
+# Webapp origin. The OAuth issuer becomes https://excited-live-web.pages.dev/api/auth.
+# ONE LINE changes when the hostname is picked: set this to that origin and
+# re-run the deploy (see the report for the API side of the flip).
+BETTER_AUTH_URL = "https://excited-live-web.pages.dev"
+# API origin: the MCP resource/audience becomes <this>/mcp, which is exactly
+# what the production Worker advertises as its protected resource.
+EXCITED_API_URL = "https://api.excited.live"
+# BFF target for /api/v1/*: without it the fallback is http://localhost:8000
+# and workerd answers every call with 1016 "Origin DNS error".
+BACKEND_API_URL = "https://api.excited.live"
+# Inert on the cookies mount today (apps/webapp/src/lib/auth.ts passes no
+# trustedOrigins — baseURL is the trusted origin), kept for parity with the API
+# mount and for the hostname flip.
+BETTER_AUTH_TRUSTED_ORIGINS = "https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
+
+# The SAME database as apps/api (top level, production): user/session/account/
+# jwks/oauth* rows are shared between the webapp (cookies mount + authorization
+# server) and the API (tokens mount + /mcp resource server). The API validates
+# the webapp's access tokens against the issuer's JWKS, so a different database
+# here means every token is rejected.
+[[d1_databases]]
+binding = "DB"
+database_name = "excited-live-api-production"
+database_id = "90bd930e-8bfe-49a4-b58c-b44531c20902"

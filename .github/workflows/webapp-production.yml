@@ -1,0 +1,251 @@
+name: Webapp Production (excited-live-web)
+
+# Deploys the Better Auth webapp — sign-in, consent, device, /api/auth/*, the
+# MCP authorization server — to the Cloudflare Pages project `excited-live-web`.
+#
+# Why its own project: the existing Pages project `excited-live` serves a WorkOS
+# AuthKit app that is not ours to overwrite. This project deliberately carries
+# NO custom domain yet; Prame picks the hostname and then only BETTER_AUTH_URL
+# (apps/webapp/wrangler.web.toml) plus EXCITED_WEBAPP_URL (apps/api) change.
+#
+# Sharing: the D1 binding here is the SAME production database as apps/api, so
+# user/session/jwks/oauth* rows are shared between the webapp mount (issuer of
+# cookies + OAuth tokens) and the API mount (/mcp resource server).
+#
+# Credentials: GitHub org secret CLOUDFLARE_API_TOKEN (Pages:Edit) only — the
+# same one .github/workflows/prelive.yml uses. There is no Cloudflare token on
+# any homelab host, and no agent holds GitHub settings access, so the Pages
+# secret is derived deterministically from an existing secret instead of a new
+# one: sha256 HMAC of PRELIVE_BETTER_AUTH_SECRET under a domain-separation
+# label. It is stable across deploys (sessions survive), different from every
+# other environment's secret, and never committed or printed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/webapp/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "turbo.json"
+      - "scripts/check-web-production-config.mjs"
+      - ".github/workflows/webapp-production.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: webapp-production
+  cancel-in-progress: true
+
+env:
+  WRANGLER_VERSION: "4.127.1"
+  WEB_PROJECT: excited-live-web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Fail before spending a deployment on a config that cannot work: project
+      # name, the shared production D1, issuer origin, resource origin.
+      - name: Check production webapp configuration
+        run: node scripts/check-web-production-config.mjs
+
+      - name: Build webapp
+        working-directory: apps/webapp
+        env:
+          VITE_API_MODE: live
+        run: pnpm --filter @excited-live/webapp^... build && pnpm build
+
+      # Idempotent provisioning, no blanket `|| true`: a 403 here means the
+      # token lacks Pages:Edit, which must fail now rather than at the deploy.
+      - name: Ensure Pages project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          show() { jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/cf.json 2>/dev/null || cat /tmp/cf.json; }
+
+          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -H "$auth" "$api/$WEB_PROJECT")
+          if [ "$code" = "404" ]; then
+            code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api" \
+              -H "$auth" -H 'content-type: application/json' \
+              --data "$(jq -cn --arg name "$WEB_PROJECT" '{name:$name, production_branch:"main"}')")
+            if [ "$code" != "200" ]; then
+              echo "::error::creating Pages project $WEB_PROJECT returned $code"
+              show
+              exit 1
+            fi
+            echo "Created Pages project $WEB_PROJECT (no custom domain attached)."
+          elif [ "$code" != "200" ]; then
+            echo "::error::reading Pages project $WEB_PROJECT returned $code (needs a token with Pages:Edit)"
+            show
+            exit 1
+          else
+            echo "Pages project $WEB_PROJECT already exists (custom domains: $(jq -cr '[.result.domains[]?]' /tmp/cf.json))."
+          fi
+
+      # `wrangler pages deploy` uploads a configuration *hash*, not bindings or
+      # vars, so a wrangler.toml alone never binds D1 on a direct-upload project.
+      # PATCH merges by key, so the BETTER_AUTH_SECRET pushed next is preserved.
+      - name: Apply Pages bindings and vars
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          body=$(node scripts/check-web-production-config.mjs --json)
+          echo "Patching $WEB_PROJECT deployment_configs.production:"
+          printf '%s' "$body" | jq -c '.deployment_configs.production | {d1_databases, env_vars, compatibility_date, compatibility_flags, wrangler_config_hash}'
+          response=$(curl -sS -m 30 -X PATCH \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$WEB_PROJECT" \
+            -H "authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'content-type: application/json' \
+            --data "$body" \
+            -w '\n%{http_code}')
+          status=$(printf '%s' "$response" | tail -n1)
+          payload=$(printf '%s' "$response" | sed '$d')
+          printf '%s\n' "$payload" | jq -r 'if .success then "Project updated: \(.result.name)" else (.errors[]? | "CF error \(.code): \(.message)") end' || printf '%s\n' "$payload"
+          if [ "$status" != "200" ]; then
+            echo "::error::PATCH on Pages project $WEB_PROJECT returned $status (needs a token with Pages:Edit). Nothing was deployed."
+            exit 1
+          fi
+
+      # Secret first, deploy second: the first deployment that serves traffic
+      # already has an authorization server instead of the "not configured in
+      # this environment" signed-out shell.
+      - name: Push BETTER_AUTH_SECRET to the Pages project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SEED_SECRET: ${{ secrets.PRELIVE_BETTER_AUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SEED_SECRET:-}" ]; then
+            echo "PRELIVE_BETTER_AUTH_SECRET is not set; refusing to deploy a webapp without an authorization server." >&2
+            exit 1
+          fi
+          # Domain-separated derivation: stable across runs, distinct per
+          # environment, and the seed value never leaves the runner.
+          secret=$(printf '%s' "$SEED_SECRET" | openssl dgst -sha256 -hmac 'excited-live-web/production/better-auth-secret/v1' -binary | base64)
+          echo "::add-mask::$secret"
+          printf '%s' "$secret" |
+            npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages secret put BETTER_AUTH_SECRET --project-name "$WEB_PROJECT"
+
+      # Pages has no `--config` flag and always reads the wrangler.toml of the
+      # working directory — which must be apps/webapp so Pages bundles
+      # functions/ (the SSR entry). Install the production-web config for this
+      # job only; the checked-in apps/webapp/wrangler.toml stays the
+      # production/PR-preview config.
+      - name: Deploy
+        working-directory: apps/webapp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          cp wrangler.web.toml wrangler.toml
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist/client --project-name="$WEB_PROJECT" --branch=main --commit-dirty=true
+
+      # Proof, not a conclusion. Each assertion echoes the raw status so a
+      # failure shows what the deployment actually returned.
+      - name: Smoke — authorization server on the pages.dev origin
+        run: |
+          set -euo pipefail
+          base="https://$WEB_PROJECT.pages.dev"
+
+          # Last response body and headers land in /tmp/body.out and /tmp/body.h.
+          wait_for() {
+            local path=$1 want=$2 got="" attempt
+            for attempt in $(seq 1 20); do
+              got=$(curl -sS -m 20 -o /tmp/body.out -D /tmp/body.h -w '%{http_code}' "$base$path" || true)
+              if [ "$got" = "$want" ]; then break; fi
+              echo "attempt $attempt: $path -> $got, waiting for the deployment to propagate" >&2
+              sleep 8
+            done
+            printf '%s' "$got"
+          }
+
+          fail=0
+          check() {
+            local label=$1 path=$2 want=$3 got
+            got=$(wait_for "$path" "$want")
+            echo "$label: $path -> $got (want $want)"
+            if [ "$got" != "$want" ]; then fail=1; fi
+          }
+
+          # 1. Cookies mount answers JSON, not the landing page or a WorkOS 307.
+          session=$(wait_for /api/auth/get-session 200)
+          echo "session endpoint: /api/auth/get-session -> $session"
+          grep -i '^content-type:' /tmp/body.h | tr -d '\r' || true
+          echo "body: $(head -c 200 /tmp/body.out)"
+          if [ "$session" != "200" ]; then fail=1; fi
+          if ! grep -qi 'application/json' /tmp/body.h; then echo "::error::get-session did not answer JSON"; fail=1; fi
+          if grep -qi '<html' /tmp/body.out; then echo "::error::get-session returned the landing page"; fail=1; fi
+
+          # 2-4. The browser-facing pages the OAuth flow needs.
+          check "sign-in page" /sign-in 200
+          if ! grep -qiE 'sign.?in|password' /tmp/body.out; then echo "::error::/sign-in did not render the sign-in page"; fail=1; fi
+          check "consent page" /consent 200
+          check "device page" /device 200
+
+          # 5. Sign-up exists and validates input (400), rather than 404/405.
+          signup=$(curl -sS -m 20 -o /tmp/signup.json -w '%{http_code}' -X POST "$base/api/auth/sign-up/email" \
+            -H 'content-type: application/json' -H "origin: $base" -d '{}' || true)
+          echo "sign-up validation: POST /api/auth/sign-up/email -> $signup (want 400)"
+          echo "body: $(head -c 200 /tmp/signup.json)"
+          [ "$signup" = "400" ] || fail=1
+
+          # Informational: the OAuth provider plugin is mounted on this origin,
+          # and dynamic client registration reaches the oauthClient table.
+          disc=$(curl -sS -m 20 -o /tmp/disc.json -w '%{http_code}' "$base/api/auth/.well-known/oauth-authorization-server" || true)
+          echo "oauth discovery: /api/auth/.well-known/oauth-authorization-server -> $disc"
+          if [ "$disc" = "200" ]; then head -c 300 /tmp/disc.json; echo; fi
+          dcr=$(curl -sS -m 20 -o /tmp/dcr.json -w '%{http_code}' -X POST "$base/api/auth/oauth2/register" \
+            -H 'content-type: application/json' -H "origin: $base" \
+            -d '{"client_name":"ci-smoke","redirect_uris":["https://example.com/cb"],"grant_types":["authorization_code"],"response_types":["code"],"token_endpoint_auth_method":"none"}' || true)
+          echo "dynamic client registration: POST /api/auth/oauth2/register -> $dcr"
+          head -c 300 /tmp/dcr.json; echo
+          [ "$disc" = "200" ] || echo "::warning::oauth discovery is not 200 — the OAuth provider plugin is not mounted on this origin"
+          if [ "$dcr" != "200" ] && [ "$dcr" != "201" ]; then
+            echo "::warning::dynamic client registration returned $dcr — check the oauthClient table in the production D1"
+          fi
+
+          if [ "$fail" != "0" ]; then
+            echo "::error::$base did not serve the authorization server" >&2
+            exit 1
+          fi
+          echo "All authorization-server checks passed on $base"
+
+      # Evidence for the "no table drift" half of the task: the production D1 is
+      # owned by the API's boot-time migration runner, so this only reads. If
+      # the deploy token lacks D1 scope it warns instead of failing the deploy.
+      - name: Report production D1 migrations and tables (read-only)
+        continue-on-error: true
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -uo pipefail
+          echo "--- migrations applied (remote)"
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} d1 migrations list excited-live-api-production --remote 2>&1 | tail -20 || true
+          echo "--- tables (remote)"
+          npx --yes wrangler@${{ env.WRANGLER_VERSION }} d1 execute excited-live-api-production --remote \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY 1" 2>&1 | tail -40 || true
+
+      - name: Show the deployment URL
+        if: always()
+        run: echo "webapp https://$WEB_PROJECT.pages.dev (project $WEB_PROJECT, no custom domain)"

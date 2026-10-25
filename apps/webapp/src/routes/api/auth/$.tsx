@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { getAuth } from "../../../lib/auth"
 import { authEnv, betterAuthConfigured } from "../../../lib/auth-config"
+import { withNativeLoopbackDefault } from "../../../lib/well-known"
 import { authCorsPreflight, parseAuthCorsOrigins, withAuthCors } from "../../../lib/auth-cors"
 
 /**
@@ -45,5 +46,5 @@ async function handle(request: Request): Promise<Response> {
 			allowed,
 		)
 	}
-	return withAuthCors(await (await getAuth()).handler(request), request, allowed)
+	return withAuthCors(await (await getAuth()).handler(await withNativeLoopbackDefault(request)), request, allowed)
 }

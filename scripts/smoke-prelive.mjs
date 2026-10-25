@@ -8,6 +8,7 @@
  * discovery assertions that make the OAuth chain close:
  *
  *   1. GET  <issuer>/.well-known/oauth-authorization-server  200, issuer matches
+ *      (and the path-insert URLs under /.well-known/…/api/auth, 200 JSON)
  *   2. GET  <issuer>/ok                                      200 (the 503 regression)
  *   3. POST <issuer>/oauth2/register                         200/201 + client_id
  *   4. POST <api>/mcp without a token                        401 + WWW-Authenticate
@@ -150,7 +151,17 @@ async function checkMetadata() {
 	for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri", "registration_endpoint"]) {
 		if (typeof document[key] !== "string" || document[key].length === 0) throw new Error(`metadata is missing ${key}`)
 	}
-	return `issuer ${document.issuer}`
+	// RFC 8414 path-insert form: the MCP SDK tries these first and aborts on a 5xx.
+	const { origin, pathname } = new URL(ISSUER)
+	for (const name of ["oauth-authorization-server", "openid-configuration"]) {
+		const insert = `${origin}/.well-known/${name}${pathname.replace(/\/+$/, "")}`
+		const inserted = await request(insert)
+		report("GET", insert, inserted)
+		expectStatus(inserted, 200, `path-insert ${name}`)
+		const body = parseJson(inserted, `path-insert ${name}`)
+		if (body.issuer !== ISSUER) throw new Error(`path-insert ${name} issuer is ${JSON.stringify(body.issuer)}, want ${JSON.stringify(ISSUER)}`)
+	}
+	return `issuer ${document.issuer} (+ both path-insert URLs)`
 }
 
 async function checkHealthEndpoint() {

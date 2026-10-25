@@ -40,7 +40,7 @@ const appSchema = {
         <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Agents</span><span data-lang-th="">สำหรับเอเจนต์</span></a></li>
         <li><a href="#cap-card-human" data-door-target="humans"><span data-lang-en="">Humans</span><span data-lang-th="">สำหรับคุณ</span></a></li>
         <li><a href="/docs"><span data-lang-en="">Docs</span><span data-lang-th="">เอกสาร</span></a></li>
-        <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Setup</span><span data-lang-th="">วิธีติดตั้ง</span></a></li>
+        <li><a href="/docs/help#connect-your-agent-over-mcp"><span data-lang-en="">Setup</span><span data-lang-th="">วิธีติดตั้ง</span></a></li>
       </ul>
       <div class="nav-right">
         <div class="lang-switch country-dropdown-wrap" id="country-dropdown-wrap" role="group" aria-label="Country and language selector">
@@ -369,7 +369,7 @@ const appSchema = {
         <!-- Capabilities · five-move product grid (x.ai-style card anatomy, adapted to the Mastercard tokens) -->
         <div class="b-product-grid" data-od-id="dir-b-capability-grid">
           <!-- Card 1: Ask -->
-          <a class="b-product-card b-product-card--2" href="#final-cta" data-door-target="agents" data-od-id="cap-card-ask" aria-label="Ask: open the agent workspace · ถาม: เปิดพื้นที่เอเจนต์">
+          <a class="b-product-card b-product-card--2" href="#final-cta" data-door-target="agents" data-od-id="cap-card-ask" aria-labelledby="cap-card-ask-label cap-card-ask-cta">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-chat">
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">What’s my runway if March revenue is ฿0?</span><span data-lang-th="">ถ้ารายได้มีนาคมเป็น ฿0 รันเวย์เหลือเท่าไหร่?</span></div>
@@ -378,13 +378,13 @@ const appSchema = {
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Ask your agent</span><span data-lang-th="">ถามเอเจนต์ของคุณ</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Ask in your agent →</span><span data-lang-th="">ถามผ่านเอเจนต์ →</span></span>
+              <div><span class="b-card-label" id="cap-card-ask-label"><span data-lang-en="">Ask your agent</span><span data-lang-th="">ถามเอเจนต์ของคุณ</span></span><span class="b-card-sub"><span data-lang-en="">Ask live, runway check, log expenses</span><span data-lang-th="">ถามสด · เช็กรันเวย์ · จดรายจ่าย</span></span></div>
+              <span class="b-card-cta" id="cap-card-ask-cta"><span data-lang-en="">Ask in your agent →</span><span data-lang-th="">ถามผ่านเอเจนต์ →</span></span>
             </div>
           </a>
 
           <!-- Card 2: What-if -->
-          <a class="b-product-card b-product-card--2 b-product-card--dark" href="#final-cta" data-door-target="agents" data-od-id="cap-card-what-if" aria-label="What-if: preview a scenario · ลองสมมติ: ดูตัวอย่างสถานการณ์">
+          <a class="b-product-card b-product-card--2 b-product-card--dark" href="#final-cta" data-door-target="agents" data-od-id="cap-card-what-if" aria-labelledby="cap-card-what-if-label cap-card-what-if-cta">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-terminal">
                 <div class="b-terminal-bar">
@@ -401,13 +401,13 @@ const appSchema = {
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Planning for Future</span><span data-lang-th="">ลองสมมติ</span></span><span class="b-card-sub"><span data-lang-en="">What-if Simulation, Retirement Planning</span><span data-lang-th="">ตัวอย่าง #143</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Use it now→</span><span data-lang-th="">ลองสถานการณ์ →</span></span>
+              <div><span class="b-card-label" id="cap-card-what-if-label"><span data-lang-en="">Planning for Future</span><span data-lang-th="">วางแผนอนาคต</span></span><span class="b-card-sub"><span data-lang-en="">What-if simulation, retirement planning</span><span data-lang-th="">จำลองสถานการณ์ · วางแผนเกษียณ</span></span></div>
+              <span class="b-card-cta" id="cap-card-what-if-cta"><span data-lang-en="">Use it now →</span><span data-lang-th="">ใช้งานเลย →</span></span>
             </div>
           </a>
 
           <!-- Card 3: Log -->
-          <a class="b-product-card b-product-card--2 b-product-card--warm" href="#final-cta" data-door-target="agents" data-od-id="cap-card-log" aria-label="Log: preview adding a bill · จดบิล: ดูตัวอย่างการเพิ่มบิล">
+          <a class="b-product-card b-product-card--2 b-product-card--warm" href="#final-cta" data-door-target="agents" data-od-id="cap-card-log" aria-labelledby="cap-card-log-label cap-card-log-cta">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-bot">
                 <div class="b-bubble b-bubble--user"><span data-lang-en="">Log ฿850 for the gear repair.</span><span data-lang-th="">จด ฿850 ค่าซ่อมอุปกรณ์</span></div>
@@ -418,13 +418,13 @@ const appSchema = {
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Manage the Current </span><span data-lang-th="">จดบิล</span></span><span class="b-card-sub"><span data-lang-en="">Budgeting, Asset Depreciation, Tax</span><span data-lang-th="">ตัวอย่าง #143</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Use it now→</span><span data-lang-th="">เพิ่มบิล →</span></span>
+              <div><span class="b-card-label" id="cap-card-log-label"><span data-lang-en="">Manage the Current</span><span data-lang-th="">จัดการปัจจุบัน</span></span><span class="b-card-sub"><span data-lang-en="">Budgeting, asset depreciation, tax</span><span data-lang-th="">งบประมาณ · ค่าเสื่อมราคา · ภาษี</span></span></div>
+              <span class="b-card-cta" id="cap-card-log-cta"><span data-lang-en="">Use it now →</span><span data-lang-th="">ใช้งานเลย →</span></span>
             </div>
           </a>
 
           <!-- Card 4: Human account -->
-          <a class="b-product-card b-product-card--3 b-product-card--human" href="https://auth.excited.live/sign-in?mode=signup" id="cap-card-human" data-od-id="cap-card-human" aria-label="Account: create your excited.live account · บัญชี: สร้างบัญชี excited.live">
+          <a class="b-product-card b-product-card--3 b-product-card--human" href="https://auth.excited.live/sign-in?mode=signup" id="cap-card-human" data-od-id="cap-card-human" aria-labelledby="cap-card-human-label cap-card-human-cta">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-human-checks">
                 <div class="b-human-check"><span class="b-human-check-mark">✓</span><span><span data-lang-en="">One account for every agent</span><span data-lang-th="">บัญชีเดียวสำหรับทุกเอเจนต์</span></span></div>
@@ -433,13 +433,13 @@ const appSchema = {
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Human Control</span><span data-lang-th="">คุณควบคุม</span></span><span class="b-card-sub"><span data-lang-en="">Web app now · Android app at launch</span><span data-lang-th="">เว็บแอปใช้ได้แล้ว · แอป Android เปิดตัวพร้อมกัน</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Create an account →</span><span data-lang-th="">สร้างบัญชี →</span></span>
+              <div><span class="b-card-label" id="cap-card-human-label"><span data-lang-en="">Human Control</span><span data-lang-th="">คุณควบคุม</span></span><span class="b-card-sub"><span data-lang-en="">Web app now · Android app at launch</span><span data-lang-th="">เว็บแอปใช้ได้แล้ว · แอป Android เปิดตัวพร้อมกัน</span></span></div>
+              <span class="b-card-cta" id="cap-card-human-cta"><span data-lang-en="">Create an account →</span><span data-lang-th="">สร้างบัญชี →</span></span>
             </div>
           </a>
 
           <!-- Card 5: Runway -->
-          <a class="b-product-card b-product-card--3 b-product-card--dark" href="https://github.com/fromsukong/excited.live" target="_blank" rel="noopener" data-od-id="cap-card-runway" aria-label="Runway: open source repository · รันเวย์: ดูซอร์สโค้ด">
+          <a class="b-product-card b-product-card--3 b-product-card--dark" href="https://github.com/fromsukong/excited.live" target="_blank" rel="noopener" data-od-id="cap-card-runway" aria-labelledby="cap-card-runway-label cap-card-runway-cta">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-gauge-wrap">
                 <div class="b-gauge">
@@ -457,12 +457,12 @@ const appSchema = {
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label"><span data-lang-en="">Build on Trust</span><span data-lang-th="">รันเวย์</span></span><span class="b-card-sub"><span data-lang-en="">Fully Opensource (Apache-2.0 license), No investor, No selling data</span><span data-lang-th="">หลายโปรเจกต์</span></span></div>
-              <span class="b-card-cta"><span data-lang-en="">Source →</span><span data-lang-th="">ดูรันเวย์ →</span></span>
+              <div><span class="b-card-label" id="cap-card-runway-label"><span data-lang-en="">Build on Trust</span><span data-lang-th="">สร้างบนความไว้วางใจ</span></span><span class="b-card-sub"><span data-lang-en="">Fully open source (Apache-2.0), no investors, no selling data</span><span data-lang-th="">โอเพนซอร์สเต็มรูปแบบ (Apache-2.0) · ไม่มีนักลงทุน · ไม่ขายข้อมูล</span></span></div>
+              <span class="b-card-cta" id="cap-card-runway-cta"><span data-lang-en="">Source →</span><span data-lang-th="">ดูซอร์ส →</span></span>
             </div>
           </a>
         </div>
-        <p class="b-cap-foot"><span data-lang-th="">มีเพิ่มในกล่อง: ภาษีไทย 2026 · ส่งออก JSON · แอป Android ออฟไลน์</span></p>
+        <p class="b-cap-foot"><span data-lang-en="">More in the box: Thai tax 2026 · JSON export · Offline Android app</span><span data-lang-th="">มีเพิ่มในกล่อง: ภาษีไทย 2026 · ส่งออก JSON · แอป Android ออฟไลน์</span></p>
       </div>
     </section>
     <!-- Final CTA -->

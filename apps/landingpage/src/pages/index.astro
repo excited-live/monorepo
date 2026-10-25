@@ -1,5 +1,6 @@
 ---
 import Layout from '@/components/layout.astro';
+import { SIGN_IN_URL, SIGN_UP_URL, MCP_URL } from '@/lib/hosts';
 
 const title = 'excited.live — Financial planning for solopreneurs, first jobber, AI native';
 const description =
@@ -328,7 +329,7 @@ const appSchema = {
         <div class="nav-split-cta" id="nav-auth-cta">
           <!-- State: Guest / Unauthenticated (Default) -->
           <div class="nav-auth-state nav-auth-state--guest" id="nav-state-guest">
-            <a href="https://auth.excited.live/sign-in" class="btn btn-primary nav-auth-btn" data-od-id="nav-btn-signin" aria-label="Sign in to Excited Live">
+            <a href={SIGN_IN_URL} class="btn btn-primary nav-auth-btn" data-od-id="nav-btn-signin" aria-label="Sign in to Excited Live">
               <span data-lang-en="">Sign In</span>
               <span data-lang-th="">เข้าสู่ระบบ</span>
             </a>
@@ -424,7 +425,7 @@ const appSchema = {
           </a>
 
           <!-- Card 4: Human account -->
-          <a class="b-product-card b-product-card--3 b-product-card--human" href="https://auth.excited.live/sign-in?mode=signup" id="cap-card-human" data-od-id="cap-card-human" aria-labelledby="cap-card-human-label cap-card-human-cta">
+          <a class="b-product-card b-product-card--3 b-product-card--human" href={SIGN_UP_URL} id="cap-card-human" data-od-id="cap-card-human" aria-labelledby="cap-card-human-label cap-card-human-cta">
             <div class="b-card-visual" aria-hidden="true">
               <div class="b-human-checks">
                 <div class="b-human-check"><span class="b-human-check-mark">✓</span><span><span data-lang-en="">One account for every agent</span><span data-lang-th="">บัญชีเดียวสำหรับทุกเอเจนต์</span></span></div>
@@ -501,7 +502,7 @@ const appSchema = {
             </fieldset>
             <div class="mono-prompt-box b-cta-prompt" id="b-footer-prompt">Add excited.live to Claude Code:
 
-claude mcp add --scope user --transport http excited https://api.excited.live/mcp
+claude mcp add --scope user --transport http excited {MCP_URL}
 
 Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</div>
             <button type="button" class="btn btn-primary" data-copy-target="b-footer-prompt" data-od-id="b-cta-copy">
@@ -512,7 +513,7 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
             </button>
             <textarea class="copy-fallback-area" readonly="" aria-label="Fallback copy setup">Add excited.live to Claude Code:
 
-claude mcp add --scope user --transport http excited https://api.excited.live/mcp
+claude mcp add --scope user --transport http excited {MCP_URL}
 
 Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</textarea>
           </div>
@@ -522,7 +523,7 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
             TODO(#31): Claude "Settings → Connectors → Add custom connector" path unverified; DCR/OAuth is #31.
             TODO(#31): ChatGPT "Settings → Apps → Advanced settings → Developer mode" path unverified; DCR/OAuth is #31.
             TODO(#31): content/docs/help.mdx mirrors all of the above (Codex login, Claude/ChatGPT paths, sign-in sentence) and says MCP is "in final testing"; flip to "works today" once prod sign-in discovery works. Kept out of help.mdx because its comments leak into dist/api/search.json. */}
-        <script is:inline>
+        <script is:inline define:vars={{ MCP_URL }}>
           (function () {
             var section = document.querySelector('[data-od-id="dir-b-final-cta"]');
             if (!section) return;
@@ -534,32 +535,32 @@ Then use the onboard_me prompt and follow its guide. Your client will ask you to
             var inputs = section.querySelectorAll('.b-pick');
             var setupsGuest = {
               'claude-code': {
-                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited ' + MCP_URL + '\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude Code · CLI (Public)',
                 th: 'Claude Code · CLI (สาธารณะ)'
               },
               codex: {
-                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\ncodex mcp login excited\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url ' + MCP_URL + '\ncodex mcp login excited\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Codex · CLI (Public)',
                 th: 'Codex · CLI (สาธารณะ)'
               },
               cursor: {
-                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://api.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "' + MCP_URL + '" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Cursor · mcp.json (Public)',
                 th: 'Cursor · ไฟล์ mcp.json (สาธารณะ)'
               },
               claude: {
-                prompt: 'Add excited.live to Claude:\n\nSettings → Connectors → Add custom connector:\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to Claude:\n\nSettings → Connectors → Add custom connector:\n' + MCP_URL + '\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude · custom connector (Public)',
                 th: 'Claude · คอนเนกเตอร์กำหนดเอง (สาธารณะ)'
               },
               chatgpt: {
-                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\n' + MCP_URL + '\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'ChatGPT · developer mode (Public)',
                 th: 'ChatGPT · โหมดนักพัฒนา (สาธารณะ)'
               },
               any: {
-                prompt: 'Add excited.live to your MCP client at https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
+                prompt: 'Add excited.live to your MCP client at ' + MCP_URL + '\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Any MCP client · streamable HTTP',
                 th: 'ไคลเอนต์ MCP อื่น ๆ · streamable HTTP'
               }

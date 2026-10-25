@@ -4,9 +4,9 @@ name: Webapp Production (excited-live-web)
 # MCP authorization server — to the Cloudflare Pages project `excited-live-web`.
 #
 # Why its own project: the existing Pages project `excited-live` serves a WorkOS
-# AuthKit app that is not ours to overwrite. This project deliberately carries
-# NO custom domain yet; Prame picks the hostname and then only BETTER_AUTH_URL
-# (apps/webapp/wrangler.web.toml) plus EXCITED_WEBAPP_URL (apps/api) change.
+# AuthKit app that is not ours to overwrite. This project serves the webapp at
+# `app.excited.live` (hostname moved there on 2026-10-25) and stays reachable at
+# excited-live-web.pages.dev.
 #
 # Sharing: the D1 binding here is the SAME production database as apps/api, so
 # user/session/jwks/oauth* rows are shared between the webapp mount (issuer of
@@ -105,11 +105,33 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           set -euo pipefail
           body=$(node scripts/check-web-production-config.mjs --json)
+
+          # Google sign-in is opt-in and needs no code change: the webapp mounts
+          # the provider only when BOTH vars exist (apps/webapp/src/lib/auth-config.ts
+          # googleProviderConfig) and the sign-in page hides the button otherwise.
+          # Adding the two repository secrets GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+          # is the whole switch; the redirect URI is
+          # https://app.excited.live/api/auth/callback/google.
+          if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
+            echo "::add-mask::$GOOGLE_CLIENT_SECRET"
+            body=$(printf '%s' "$body" | jq -c \
+              --arg id "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" \
+              '.deployment_configs.production.env_vars += {
+                 BETTER_AUTH_GOOGLE_CLIENT_ID: {type: "secret_text", value: $id},
+                 BETTER_AUTH_GOOGLE_CLIENT_SECRET: {type: "secret_text", value: $secret}
+               }')
+            echo "Google OAuth: credentials present — enabling the provider on this deployment."
+          else
+            echo "Google OAuth: credentials absent — the Google button stays hidden, nothing else changes."
+          fi
+
           echo "Patching $WEB_PROJECT deployment_configs.production:"
-          printf '%s' "$body" | jq -c '.deployment_configs.production | {d1_databases, env_vars, compatibility_date, compatibility_flags, wrangler_config_hash}'
+          printf '%s' "$body" | jq -c '.deployment_configs.production | {d1_databases, env_vars: (.env_vars | with_entries(.value.value = (if .value.type == "secret_text" then "<set>" else .value.value end))), compatibility_date, compatibility_flags, wrangler_config_hash}'
           response=$(curl -sS -m 30 -X PATCH \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$WEB_PROJECT" \
             -H "authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -225,6 +247,30 @@ jobs:
             echo "::warning::dynamic client registration returned $dcr — check the oauthClient table in the production D1"
           fi
 
+          # 6. The custom domain. This origin is what the API advertises as the
+          #    authorization server, so a 522 or the WorkOS AuthKit page here
+          #    breaks every connector even though pages.dev is fine.
+          domain_base="https://app.excited.live"
+          dsession=""
+          for attempt in $(seq 1 24); do
+            dsession=$(curl -sS -m 20 -o /tmp/d.out -D /tmp/d.h -w '%{http_code}' "$domain_base/api/auth/get-session" || true)
+            if [ "$dsession" = "200" ] && grep -qi 'application/json' /tmp/d.h; then break; fi
+            echo "custom domain attempt $attempt: $domain_base/api/auth/get-session -> $dsession, waiting" >&2
+            sleep 10
+          done
+          echo "custom domain session: $domain_base/api/auth/get-session -> $dsession"
+          [ "$dsession" = "200" ] || fail=1
+          grep -qi 'application/json' /tmp/d.h || { echo "::error::$domain_base/api/auth/get-session did not answer JSON (not our webapp?)"; fail=1; }
+          if grep -qi 'hosted-authkit\|<html' /tmp/d.out; then echo "::error::$domain_base is still serving another app"; fail=1; fi
+
+          # Bogus credentials must be a JSON 401 from Better Auth, not HTML.
+          dbad=$(curl -sS -m 20 -o /tmp/dbad.json -w '%{http_code}' -X POST "$domain_base/api/auth/sign-in/email" \
+            -H 'content-type: application/json' -H "origin: $domain_base" \
+            -d '{"email":"nobody@example.com","password":"definitely-not-the-password"}' || true)
+          echo "custom domain bogus sign-in: POST /api/auth/sign-in/email -> $dbad (want 401)"
+          echo "body: $(head -c 200 /tmp/dbad.json)"
+          [ "$dbad" = "401" ] || fail=1
+
           if [ "$fail" != "0" ]; then
             echo "::error::$base did not serve the authorization server" >&2
             exit 1
@@ -250,4 +296,4 @@ jobs:
 
       - name: Show the deployment URL
         if: always()
-        run: echo "webapp https://$WEB_PROJECT.pages.dev (project $WEB_PROJECT, no custom domain)"
+        run: echo "webapp https://app.excited.live (project $WEB_PROJECT, also https://$WEB_PROJECT.pages.dev)"

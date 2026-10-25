@@ -37,7 +37,10 @@ const PROJECT_NAME = "excited-live-web"
 /** Projects this config must never deploy into. */
 const FORBIDDEN_PROJECTS = ["excited-live", "excited-live-prelive"]
 const API_ORIGIN = "https://api.excited.live"
-const WEBAPP_ORIGIN = "https://excited-live-web.pages.dev"
+/** The webapp's custom domain (flipped from the pages.dev origin 2026-10-25). */
+const WEBAPP_ORIGIN = "https://app.excited.live"
+/** Origins that must stay allowed while the pages.dev origin and auth.excited.live transition. */
+const TRANSITION_ORIGINS = ["https://excited-live-web.pages.dev", "https://auth.excited.live"]
 const DATABASE_ID = "90bd930e-8bfe-49a4-b58c-b44531c20902"
 const DATABASE_NAME = "excited-live-api-production"
 
@@ -121,7 +124,7 @@ const apiWebappOrigin = apiProdVars.EXCITED_WEBAPP_URL
 expect("apps/api production EXCITED_WEBAPP_URL must equal this project's BETTER_AUTH_URL", apiWebappOrigin, pagesOrigin)
 
 if (pagesTrusted) {
-	for (const origin of [pagesOrigin, API_ORIGIN]) {
+	for (const origin of [pagesOrigin, API_ORIGIN, ...TRANSITION_ORIGINS]) {
 		if (!pagesTrusted.split(",").map((value) => value.trim()).includes(origin)) {
 			problems.push(`${PAGES_CONFIG} BETTER_AUTH_TRUSTED_ORIGINS is missing ${origin}`)
 		}
@@ -131,8 +134,9 @@ if (pagesTrusted) {
 if (/AUTH_REQUIRED/.test(pagesVars)) {
 	problems.push(`${PAGES_CONFIG} must not set AUTH_REQUIRED: the authorization server has to stay reachable signed out`)
 }
-if (!/^https:\/\/[a-z0-9-]+\.pages\.dev$/.test(pagesOrigin ?? "")) {
-	problems.push(`${PAGES_CONFIG} BETTER_AUTH_URL must stay a bare pages.dev origin until Prame picks the hostname`)
+// The issuer is a bare https origin: no trailing slash, no path, no port.
+if (!/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}$/.test(pagesOrigin ?? "")) {
+	problems.push(`${PAGES_CONFIG} BETTER_AUTH_URL must be a bare https origin such as ${WEBAPP_ORIGIN}`)
 }
 if (!compatibilityDate) problems.push(`${PAGES_CONFIG} compatibility_date is missing`)
 if (!compatibilityFlags?.includes("nodejs_compat")) problems.push(`${PAGES_CONFIG} compatibility_flags must include nodejs_compat`)

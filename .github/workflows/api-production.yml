@@ -196,7 +196,7 @@ jobs:
             fail=1
           fi
           issuer=$(printf '%s' "$issuers" | jq -r '.[0] // empty')
-          if [ "$issuer" != "https://excited-live-web.pages.dev/api/auth" ]; then
+          if [ "$issuer" != "https://app.excited.live/api/auth" ]; then
             echo "::error::authorization server is $issuer, expected the production webapp origin"
             fail=1
           fi

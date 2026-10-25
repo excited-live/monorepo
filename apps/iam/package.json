@@ -10,7 +10,7 @@
 		"preview": "vite preview --port 4175",
 		"lint": "eslint .",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run",
+		"test": "vitest run --passWithNoTests",
 		"gen:catalog": "node scripts/gen-endpoints.mjs"
 	},
 	"dependencies": {

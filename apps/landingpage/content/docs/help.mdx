@@ -16,16 +16,19 @@ https://api.excited.live/mcp
 ```
 
 - **Claude Code:** `claude mcp add --scope user --transport http excited https://api.excited.live/mcp`
+- **Codex:** `codex mcp add excited --url https://api.excited.live/mcp`
+  {/* TODO(#31): Codex may need `codex mcp login excited` for the OAuth step; untested. */}
+- **Cursor:** in `~/.cursor/mcp.json` add `{"mcpServers":{"excited":{"url":"https://api.excited.live/mcp"}}}`, then restart Cursor.
 - **Claude:** Customize, Connectors, Add custom connector, then paste the URL.
+  {/* TODO(#31): Claude.ai menu path unverified; DCR/OAuth is #31. */}
 - **ChatGPT:** turn on Developer mode in Settings, Apps, Advanced settings, then add a
   custom MCP connector with the URL.
+  {/* TODO(#31): ChatGPT menu path unverified; DCR/OAuth is #31. */}
 
+Your client opens an excited.live sign-in page the first time you connect.
+{/* TODO(#31): confirm the sign-in flow completes in each client after Rigel's protocol results. */}
 Then run the `onboard_me` prompt and your agent will interview you and fill in your
 accounts, income, expenses, assets and liabilities.
-
-{/* TODO(#31): sign-in step. Describe the sign-in link flow (agent opens a link on
-    auth.excited.live, you approve, the agent is connected) only after Rigel's
-    protocol-level validation of #31 passes. Needs Ung Ing's sign-off before prod. */}
 
 ## Getting started with the app
 
@@ -61,9 +64,10 @@ your freedom buffer.
 
 ## Coming next
 
-These are in development and not in the app yet: reading Thai bank slips and a guided
-first-run setup. Join the [waitlist](/) to vote on
-what ships first.
+These are in development and not in the app yet: reading Thai bank slips, a guided
+first-run setup, and an in-app mobile agent. Connecting your own AI agent works today
+over MCP at `https://api.excited.live/mcp`. Join the [waitlist](/) to vote on what
+ships first.
 
 ## The web planner
 

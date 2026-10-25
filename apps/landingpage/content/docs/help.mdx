@@ -19,13 +19,13 @@ https://api.excited.live/mcp
 - **Codex:** `codex mcp add excited --url https://api.excited.live/mcp`
   {/* TODO(#31): Codex may need `codex mcp login excited` for the OAuth step; untested. */}
 - **Cursor:** in `~/.cursor/mcp.json` add `{"mcpServers":{"excited":{"url":"https://api.excited.live/mcp"}}}`, then restart Cursor.
-- **Claude:** Customize, Connectors, Add custom connector, then paste the URL.
+- **Claude:** Settings, Connectors, Add custom connector, then paste the URL.
   {/* TODO(#31): Claude.ai menu path unverified; DCR/OAuth is #31. */}
 - **ChatGPT:** turn on Developer mode in Settings, Apps, Advanced settings, then add a
   custom MCP connector with the URL.
   {/* TODO(#31): ChatGPT menu path unverified; DCR/OAuth is #31. */}
 
-Your client opens an excited.live sign-in page the first time you connect.
+Your client will ask you to sign in to excited.live when you first connect.
 {/* TODO(#31): confirm the sign-in flow completes in each client after Rigel's protocol results. */}
 Then run the `onboard_me` prompt and your agent will interview you and fill in your
 accounts, income, expenses, assets and liabilities.

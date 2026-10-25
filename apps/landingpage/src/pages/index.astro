@@ -505,7 +505,7 @@ const appSchema = {
 
 claude mcp add --scope user --transport http excited https://api.excited.live/mcp
 
-Then use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.</div>
+Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</div>
             <button type="button" class="btn btn-primary" data-copy-target="b-footer-prompt" data-od-id="b-cta-copy">
               <span class="copy-label-default" data-lang-en="">Copy setup</span>
               <span class="copy-label-default" data-lang-th="">คัดลอกวิธีตั้งค่า</span>
@@ -516,7 +516,7 @@ Then use the onboard_me prompt and follow its guide. Your client will open a sig
 
 claude mcp add --scope user --transport http excited https://api.excited.live/mcp
 
-Then use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.</textarea>
+Then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.</textarea>
           </div>
         </div>
         <script is:inline>
@@ -533,35 +533,35 @@ Then use the onboard_me prompt and follow its guide. Your client will open a sig
             // Re-check wording after Rigel's protocol validation of #31.
             var setupsGuest = {
               'claude-code': {
-                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.',
+                prompt: 'Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude Code · CLI (Public)',
                 th: 'Claude Code · CLI (สาธารณะ)'
               },
               // TODO(#31): Codex may need `codex mcp login excited` for the OAuth step; untested.
               codex: {
-                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.',
+                prompt: 'Add excited.live to Codex:\n\ncodex mcp add excited --url https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Codex · CLI (Public)',
                 th: 'Codex · CLI (สาธารณะ)'
               },
               cursor: {
-                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://api.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.',
+                prompt: 'Add excited.live to Cursor:\n\nIn ~/.cursor/mcp.json, add:\n{\n  "mcpServers": {\n    "excited": { "url": "https://api.excited.live/mcp" }\n  }\n}\n\nRestart Cursor, then use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Cursor · mcp.json (Public)',
                 th: 'Cursor · ไฟล์ mcp.json (สาธารณะ)'
               },
               // TODO(#31): Claude.ai menu path "Customize → Connectors → Add custom connector" unverified; DCR/OAuth is #31.
               claude: {
-                prompt: 'Add excited.live to Claude:\n\nCustomize → Connectors → Add custom connector → Web:\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.',
+                prompt: 'Add excited.live to Claude:\n\nSettings → Connectors → Add custom connector:\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Claude · custom connector (Public)',
                 th: 'Claude · คอนเนกเตอร์กำหนดเอง (สาธารณะ)'
               },
               // TODO(#31): ChatGPT "Settings → Apps → Advanced settings → Developer mode" path unverified; DCR/OAuth is #31.
               chatgpt: {
-                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.',
+                prompt: 'Add excited.live to ChatGPT:\n\nTurn on Developer mode in Settings → Apps → Advanced settings.\nThen add a custom MCP connector at\nhttps://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'ChatGPT · developer mode (Public)',
                 th: 'ChatGPT · โหมดนักพัฒนา (สาธารณะ)'
               },
               any: {
-                prompt: 'Add excited.live to your MCP client at https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will open a sign-in page the first time. Talk to me in English.',
+                prompt: 'Add excited.live to your MCP client at https://api.excited.live/mcp\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.',
                 en: 'Any MCP client · streamable HTTP',
                 th: 'ไคลเอนต์ MCP อื่น ๆ · streamable HTTP'
               }

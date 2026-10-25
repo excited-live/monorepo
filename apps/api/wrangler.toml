@@ -58,6 +58,12 @@ migrations_dir = "migrations"
 # ---------------------------------------------------------------------------
 [env.prelive]
 name = "excited-live-api-prelive"
+# No routes on purpose: Wrangler environments INHERIT the top-level `routes`,
+# so without this line `wrangler deploy --env prelive` reassigns the production
+# custom domain api.excited.live from `excited-live-api` to this Worker (it did
+# exactly that on 2026-10-25 and production started serving prelive vars and
+# the prelive D1 database). An explicit empty list stops the inheritance.
+routes = []
 vars = { BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.dev", EXCITED_WEBAPP_URL = "https://prelive.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://prelive.excited.live" }
 
 # Workers Logs: console output and request traces land in the dashboard and the

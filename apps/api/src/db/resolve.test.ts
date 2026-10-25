@@ -33,6 +33,7 @@ describe("database resolution", () => {
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
 			"0003_device_authorization.sql",
+			"0004_clear_stale_jwks.sql",
 		])
 
 		// The migrator goes through prepare/bind/run, not a local file handle.

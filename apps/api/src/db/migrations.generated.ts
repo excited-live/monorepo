@@ -398,4 +398,25 @@ create unique index if not exists "deviceCode_deviceCode_uidx" on "deviceCode" (
 create unique index if not exists "deviceCode_userCode_uidx" on "deviceCode" ("userCode");
 `,
 	},
+	{
+		name: "0004_clear_stale_jwks.sql",
+		sql: `-- 0004_clear_stale_jwks.sql — drop keypair rows no mount can decrypt any more.
+--
+-- packages/auth keeps ONE Ed25519 keypair per database in \`jwks\`, with the
+-- private half encrypted under BETTER_AUTH_SECRET. The two production mounts
+-- must share that secret ("one schema, one secret, two mounts"): apps/api
+-- created the keypair under its own secret, and the webapp mount could publish
+-- the public half but could not decrypt the private half, so every signed-in
+-- GET /api/auth/oauth2/authorize answered 500 (Cloudflare 1101, "Failed to
+-- decrypt private key").
+--
+-- Both mounts now use one secret, which makes the row written under the old one
+-- unusable. Deleting it lets the next mount that signs create a keypair with
+-- the current secret. Safe to run anywhere: a database whose mounts already
+-- share a secret just regenerates one keypair, and OAuth access tokens signed
+-- with the deleted key were already invalid (the verification path reads the
+-- current JWKS).
+DELETE FROM "jwks";
+`,
+	},
 ]

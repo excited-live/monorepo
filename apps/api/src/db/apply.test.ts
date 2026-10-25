@@ -30,6 +30,7 @@ describe("migrations", () => {
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
 			"0003_device_authorization.sql",
+			"0004_clear_stale_jwks.sql",
 		])
 
 		const tables = await db.driver.all<{ name: string }>(
@@ -52,6 +53,7 @@ describe("migrations", () => {
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
 			"0003_device_authorization.sql",
+			"0004_clear_stale_jwks.sql",
 		])
 
 		expect(ledger[0]?.applied_at).toBeTruthy()
@@ -65,6 +67,7 @@ describe("migrations", () => {
 			"0001_init.sql",
 			"0002_onboarding_method.sql",
 			"0003_device_authorization.sql",
+			"0004_clear_stale_jwks.sql",
 		])
 
 		second.driver.close()
@@ -85,7 +88,11 @@ describe("migrations", () => {
 		old.close()
 
 		const upgraded = await resolveDb(undefined, { [DB_FILE_ENV]: file })
-		expect(upgraded.migrations).toEqual(["0002_onboarding_method.sql", "0003_device_authorization.sql"])
+		expect(upgraded.migrations).toEqual([
+			"0002_onboarding_method.sql",
+			"0003_device_authorization.sql",
+			"0004_clear_stale_jwks.sql",
+		])
 
 		const columns = await upgraded.driver.all<{ name: string }>("PRAGMA table_info(user_onboarding)")
 		expect(columns.map((column) => column.name)).toContain("method")

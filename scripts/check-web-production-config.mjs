@@ -38,9 +38,9 @@ const PROJECT_NAME = "excited-live-web"
 const FORBIDDEN_PROJECTS = ["excited-live", "excited-live-prelive"]
 const API_ORIGIN = "https://api.excited.live"
 /** The webapp's custom domain (flipped from the pages.dev origin 2026-10-25). */
-const WEBAPP_ORIGIN = "https://app.excited.live"
-/** Origins that must stay allowed while the pages.dev origin and auth.excited.live transition. */
-const TRANSITION_ORIGINS = ["https://excited-live-web.pages.dev", "https://auth.excited.live"]
+const WEBAPP_ORIGIN = "https://auth.excited.live"
+/** Origins that must stay allowed while the pages.dev origin transitions. */
+const TRANSITION_ORIGINS = ["https://excited-live-web.pages.dev"]
 const DATABASE_ID = "90bd930e-8bfe-49a4-b58c-b44531c20902"
 const DATABASE_NAME = "excited-live-api-production"
 

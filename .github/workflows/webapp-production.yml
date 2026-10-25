@@ -5,7 +5,7 @@ name: Webapp Production (excited-live-web)
 #
 # Why its own project: the existing Pages project `excited-live` serves a WorkOS
 # AuthKit app that is not ours to overwrite. This project serves the webapp at
-# `app.excited.live` (hostname moved there on 2026-10-25) and stays reachable at
+# `auth.excited.live` (hostname attached 2026-10-25) and stays reachable at
 # excited-live-web.pages.dev.
 #
 # Sharing: the D1 binding here is the SAME production database as apps/api, so
@@ -116,7 +116,7 @@ jobs:
           # googleProviderConfig) and the sign-in page hides the button otherwise.
           # Adding the two repository secrets GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
           # is the whole switch; the redirect URI is
-          # https://app.excited.live/api/auth/callback/google.
+          # https://auth.excited.live/api/auth/callback/google.
           if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
             echo "::add-mask::$GOOGLE_CLIENT_SECRET"
             body=$(printf '%s' "$body" | jq -c \
@@ -250,7 +250,7 @@ jobs:
           # 6. The custom domain. This origin is what the API advertises as the
           #    authorization server, so a 522 or the WorkOS AuthKit page here
           #    breaks every connector even though pages.dev is fine.
-          domain_base="https://app.excited.live"
+          domain_base="https://auth.excited.live"
           dsession=""
           for attempt in $(seq 1 24); do
             dsession=$(curl -sS -m 20 -o /tmp/d.out -D /tmp/d.h -w '%{http_code}' "$domain_base/api/auth/get-session" || true)
@@ -296,4 +296,4 @@ jobs:
 
       - name: Show the deployment URL
         if: always()
-        run: echo "webapp https://app.excited.live (project $WEB_PROJECT, also https://$WEB_PROJECT.pages.dev)"
+        run: echo "webapp https://auth.excited.live (project $WEB_PROJECT, also https://$WEB_PROJECT.pages.dev)"

@@ -6,10 +6,9 @@
 # which is not ours to overwrite. This project is the Better Auth webapp —
 # sign-in, consent, device — for the MCP authorization server.
 #
-# Custom domain: app.excited.live (attached 2026-10-25). The hostname used to
-# belong to the WorkOS Pages project; only the hostname moved, the WorkOS tenant
-# and its Pages project are untouched and still reachable at
-# excited-live.pages.dev.
+# Custom domain: auth.excited.live (attached 2026-10-25). app.excited.live stays
+# with the WorkOS AuthKit Pages project `excited-live` — that tenant was not
+# retired, so the two hosts must not be confused.
 #
 # This is a template, like wrangler.prelive.toml: `wrangler pages deploy` has no
 # `--config` flag and always reads the wrangler.toml of the working directory,
@@ -31,10 +30,10 @@ pages_build_output_dir = "dist/client"
 # AUTH_REQUIRED is deliberately absent: the MCP authorization server must stay
 # reachable for signed-out users, or the OAuth flow can never start.
 [vars]
-# Webapp origin. The OAuth issuer becomes https://app.excited.live/api/auth.
+# Webapp origin. The OAuth issuer becomes https://auth.excited.live/api/auth.
 # This must stay identical to EXCITED_WEBAPP_URL in apps/api/wrangler.toml —
 # scripts/check-web-production-config.mjs fails CI when the two drift.
-BETTER_AUTH_URL = "https://app.excited.live"
+BETTER_AUTH_URL = "https://auth.excited.live"
 # API origin: the MCP resource/audience becomes <this>/mcp, which is exactly
 # what the production Worker advertises as its protected resource.
 EXCITED_API_URL = "https://api.excited.live"
@@ -44,8 +43,8 @@ BACKEND_API_URL = "https://api.excited.live"
 # Inert on the cookies mount today (apps/webapp/src/lib/auth.ts passes no
 # trustedOrigins — baseURL is the trusted origin), kept for parity with the API
 # mount and as the record of the origins allowed during the hostname transition:
-# the canonical origin, the pages.dev origin that stays alive, and auth.excited.live.
-BETTER_AUTH_TRUSTED_ORIGINS = "https://app.excited.live,https://excited-live-web.pages.dev,https://auth.excited.live,https://excited.live,https://api.excited.live"
+# the canonical origin, the pages.dev origin that stays alive, and the API.
+BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
 
 # The SAME database as apps/api (top level, production): user/session/account/
 # jwks/oauth* rows are shared between the webapp (cookies mount + authorization

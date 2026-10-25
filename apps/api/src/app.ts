@@ -13,10 +13,8 @@ import { createAgentKeysRouter } from "./routes/agent-keys"
 import { createAuthRouter, createIdentityMiddleware } from "./routes/auth"
 import { createMcpRouter } from "./modules/mcp/mcp.route"
 import { createCatalogRouter } from "./routes/catalog"
-import { createPlanRouter } from "./routes/plan"
 import { createOnboardingRouter } from "./routes/onboarding"
 import { createSettingsRouter } from "./routes/settings"
-import { simRouter } from "./routes/sim"
 import { z } from "zod"
 
 export interface AppOptions {
@@ -33,9 +31,8 @@ export interface AppOptions {
 /**
  * Build the API app.
  *
- * Response shapes are unchanged from the pre-persistence version: plan and
- * settings are read through the `db` request variable, everything else
- * (routing, CORS, /health, /) is identical.
+ * Settings are read through the `db` request variable, everything else
+ * (routing, CORS, /health, /) is standard Hono routing.
  */
 export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	const app = new Hono<ApiEnv>()
@@ -110,7 +107,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 
 	// Resolve identity from a Bearer session (Better Auth tokens mount); 401s
 	// unauthenticated calls while auth is configured, x-user-id passthrough
-	// otherwise. Runs before the routers so plan/settings see the pinned id.
+	// otherwise. Runs before the routers so settings see the pinned id.
 	app.use("/api/v1/*", createIdentityMiddleware())
 
 	const routes = app
@@ -118,10 +115,8 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		.route("/api/v1/agent-keys", createAgentKeysRouter())
 		.route("/api/v1/auth", createAuthRouter())
 		.route("/api/v1/catalog", createCatalogRouter())
-		.route("/api/v1/plan", createPlanRouter())
 		.route("/api/v1/onboarding", createOnboardingRouter())
 		.route("/api/v1/settings", createSettingsRouter())
-		.route("/api/v1/sim", simRouter)
 
 	// The OpenAPI document, generated from the route annotations above. Mounted
 	// outside /api/v1 so it stays public like /health.
@@ -135,5 +130,3 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 }
 
 export type AppType = ReturnType<typeof createApp>
-
-

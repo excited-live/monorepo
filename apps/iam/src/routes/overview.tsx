@@ -79,11 +79,11 @@ export function OverviewPage() {
 						body="The computed month: income, spend, debt service, runway — the same numbers the agent reads."
 					/>
 					<Capability
-						endpoint="post-api-v1-sim-simulate"
-						title="Deterministic projection"
-						method="POST"
-						path="/api/v1/sim/simulate"
-						body="Run @excited-live/sim on a plan input and get the yearly projection back."
+						endpoint="get-api-v1-accounting-projection"
+						title="Treasury projection"
+						method="GET"
+						path="/api/v1/accounting/projection"
+						body="120-month treasury balance projection around a centre month."
 					/>
 					<Capability
 						endpoint="get-api-v1-onboarding"

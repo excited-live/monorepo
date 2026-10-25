@@ -32,16 +32,6 @@ export const SDK_HINTS: Record<string, SdkHint> = {
 		fn: "resolveCatalogAmount",
 		note: "Normalises a catalog hit into an amount + cycle.",
 	},
-	"post-api-v1-sim-simulate": {
-		pkg: "@excited-live/sim",
-		fn: "runSimulation",
-		note: "Deterministic projection; the API returns its SimulationResult.",
-	},
-	"post-api-v1-sim-monte-carlo": {
-		pkg: "@excited-live/sim",
-		fn: "runSimulation",
-		note: "Monte Carlo repeats runSimulation with sampled returns.",
-	},
 }
 
 /** REST body → MCP tool arguments. Tools take the same field names as the body. */
@@ -58,6 +48,11 @@ export const MCP_HINTS: Record<string, McpHint> = {
 	"post-api-v1-accounting-expenses": { tool: "add_expense", map: passthrough },
 	"get-api-v1-accounting-summary": { tool: "get_financial_summary", map: () => ({}) },
 	"get-api-v1-catalog-suggest": { tool: "lookup_catalog", map: passthrough },
+	"get-api-v1-accounting-cash-flows": { tool: "get_cash_flows", map: passthrough },
+	"get-api-v1-accounting-transfers": { tool: "list_transfers", map: () => ({}) },
+	"post-api-v1-accounting-transfers": { tool: "create_transfer", map: passthrough },
+	"get-api-v1-accounting-ledger-yearMonth": { tool: "get_monthly_ledger", map: passthrough },
+	"get-api-v1-accounting-projection": { tool: "get_treasury_projection", map: passthrough },
 }
 
 /** Scopes a key needs, matching AGENT_KEY_PERMISSIONS in apps/api. */
@@ -65,8 +60,6 @@ export const ENDPOINT_SCOPES: Record<string, string> = {
 	onboarding: "onboarding:read",
 	accounting: "accounting:read",
 	catalog: "accounting:read",
-	sim: "accounting:read",
-	plan: "plan:read",
 	settings: "settings:read",
 	auth: "keys:manage",
 	system: "public",

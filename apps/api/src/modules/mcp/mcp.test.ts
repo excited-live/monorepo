@@ -144,6 +144,7 @@ describe("/mcp", () => {
 		const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" }, key);
 		expect(list.status).toBe(200);
 		const tools = (list.json?.result as { tools: Array<{ name: string }> }).tools.map((tool) => tool.name);
+		expect(tools).toHaveLength(16);
 		expect(tools).toEqual(
 			expect.arrayContaining([
 				"get_onboarding_status",
@@ -157,6 +158,11 @@ describe("/mcp", () => {
 				"complete_onboarding_step",
 				"skip_onboarding_step",
 				"get_financial_summary",
+				"get_cash_flows",
+				"create_transfer",
+				"list_transfers",
+				"get_monthly_ledger",
+				"get_treasury_projection",
 			]),
 		);
 
@@ -571,5 +577,114 @@ describe("/mcp", () => {
 		});
 		const clearData = (await clear.json()) as { data: { method: string | null } };
 		expect(clearData.data.method).toBeNull();
+	});
+	it("exercises accounting tools: cash flows, transfers, ledger and projection", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// Add an income
+		await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 40,
+				method: "tools/call",
+				params: {
+					name: "add_income",
+					arguments: { kind: "employment", name: "Agoda Salary", category: "salary", amount: 150000 },
+				},
+			},
+			key,
+		);
+
+		// Add a liability to pay down
+		const liab = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 41,
+				method: "tools/call",
+				params: {
+					name: "add_liability",
+					arguments: {
+						kind: "loan",
+						name: "Car Loan",
+						category: "car_loan",
+						loan: { principal: 400000, termMonths: 48, originatedOn: "2026-01-01" },
+					},
+				},
+			},
+			key,
+		);
+		const liabResult = liab.json?.result as ToolResult;
+		const liabilityId = (liabResult.structuredContent?.liability as { id: string }).id;
+
+		// 1. get_cash_flows
+		const cf = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "get_cash_flows", arguments: {} } },
+			key,
+		);
+		expect(cf.status).toBe(200);
+		const cfRes = cf.json?.result as ToolResult;
+		expect(cfRes.isError).toBeUndefined();
+		expect(cfRes.structuredContent?.cashFlows).toBeDefined();
+
+		// 2. create_transfer (debt paydown)
+		const tr = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 43,
+				method: "tools/call",
+				params: {
+					name: "create_transfer",
+					arguments: {
+						amount: 12000,
+						toLiabilityId: liabilityId,
+						note: "October installment",
+					},
+				},
+			},
+			key,
+		);
+		expect(tr.status).toBe(200);
+		const trRes = tr.json?.result as ToolResult;
+		expect(trRes.isError).toBeUndefined();
+		expect((trRes.structuredContent?.transfer as { amount: number }).amount).toBe(12000);
+
+		// 3. list_transfers
+		const lt = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 44, method: "tools/call", params: { name: "list_transfers", arguments: {} } },
+			key,
+		);
+		expect(lt.status).toBe(200);
+		const ltRes = lt.json?.result as ToolResult;
+		expect(ltRes.isError).toBeUndefined();
+		expect((ltRes.structuredContent?.transfers as Array<unknown>).length).toBe(1);
+
+		// 4. get_monthly_ledger
+		const ledger = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 45, method: "tools/call", params: { name: "get_monthly_ledger", arguments: {} } },
+			key,
+		);
+		expect(ledger.status).toBe(200);
+		const ledgerRes = ledger.json?.result as ToolResult;
+		expect(ledgerRes.isError).toBeUndefined();
+		expect(ledgerRes.structuredContent?.ledger).toBeDefined();
+
+		// 5. get_treasury_projection
+		const proj = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 46, method: "tools/call", params: { name: "get_treasury_projection", arguments: {} } },
+			key,
+		);
+		expect(proj.status).toBe(200);
+		const projRes = proj.json?.result as ToolResult;
+		expect(projRes.isError).toBeUndefined();
+		expect(projRes.structuredContent?.projection).toBeDefined();
 	});
 });

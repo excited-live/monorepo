@@ -42,6 +42,10 @@ export const strings: Dictionary = {
 		en: "Create your excited.live account",
 		th: "สร้างบัญชี excited.live ของคุณ",
 	},
+	"auth.legalPrefix": { en: "By creating an account you agree to the ", th: "การสร้างบัญชีถือว่าคุณยอมรับ" },
+	"auth.legalTerms": { en: "Terms of Use", th: "ข้อกำหนดการใช้งาน" },
+	"auth.legalAnd": { en: " and ", th: " และ " },
+	"auth.legalPrivacy": { en: "Privacy Notice", th: "ประกาศความเป็นส่วนตัว" },
 	"auth.signUpSubtitle": {
 		en: "Start your plan and connect your agent.",
 		th: "เริ่มวางแผนของคุณและเชื่อมต่อเอเจนต์",
@@ -361,7 +365,10 @@ export const strings: Dictionary = {
 	"picker.thisYear": { en: "This year", th: "ปีนี้" },
 
 	// Settings page (mock)
-	"settings.note": { en: "Mock — nothing is saved yet.", th: "ตัวอย่าง — ยังไม่บันทึกจริง" },
+	"settings.note": {
+		en: "Preview mode — changes are saved in this browser only.",
+		th: "โหมดตัวอย่าง — การเปลี่ยนแปลงบันทึกในเบราว์เซอร์นี้เท่านั้น",
+	},
 	"settings.name": { en: "Display name", th: "ชื่อที่แสดง" },
 	"settings.birthday": { en: "Birthday", th: "วันเกิด" },
 	"settings.gender": { en: "Gender", th: "เพศ" },

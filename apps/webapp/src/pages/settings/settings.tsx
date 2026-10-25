@@ -5,6 +5,7 @@ import { Stack } from "@astryxdesign/core/Stack"
 import { Text } from "@astryxdesign/core/Text"
 import { TextInput } from "@astryxdesign/core/TextInput"
 import { GenderField } from "./components/GenderField"
+import { isLiveApi } from "../../lib/api-client"
 import { useSettings } from "./useSettings"
 import { PageEmptyState } from "../../components/PageEmptyState"
 
@@ -44,7 +45,7 @@ export function Settings() {
 		<Stack gap={3} className="chart-panel__inner settings-panel">
 			<Stack gap={1}>
 				<Heading level={2}>{t("nav.settings")}</Heading>
-				<Text color="secondary">{t("settings.note")}</Text>
+				{isLiveApi() ? null : <Text color="secondary">{t("settings.note")}</Text>}
 			</Stack>
 			<Grid columns={{ minWidth: 220, max: 2 }} gap={2}>
 				<TextInput

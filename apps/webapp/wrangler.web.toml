@@ -52,12 +52,14 @@ EXCITED_API_URL = "https://api.excited.live"
 # BFF target for /api/v1/*: without it the fallback is http://localhost:8000
 # and workerd answers every call with 1016 "Origin DNS error".
 BACKEND_API_URL = "https://api.excited.live"
-# Inert on the cookies mount today (apps/webapp/src/lib/auth.ts passes no
-# trustedOrigins — baseURL is the trusted origin), kept for parity with the API
-# mount and as the record of the origins that must keep working: the canonical
-# issuer origin, the pages.dev origin that stays alive, and the public
-# site/API. app.excited.live is absent on purpose: it 308-redirects to the
-# issuer, so it must not be trusted as an origin of its own.
+# Live, not inert: better-auth 1.7.7 reads BETTER_AUTH_TRUSTED_ORIGINS itself
+# (dist/context/helpers.mjs:83, env.BETTER_AUTH_TRUSTED_ORIGINS), so this list
+# is enforced on the cookies mount even though apps/webapp/src/lib/auth.ts
+# passes no trustedOrigins option. It records the origins that must keep
+# working: the canonical issuer origin, the pages.dev origin that stays alive,
+# and the public site/API. app.excited.live is absent on purpose: it
+# 308-redirects to the issuer, so trusting it would be a real origin-check
+# change, not a harmless tidy-up.
 BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
 
 # The SAME database as apps/api (top level, production): user/session/account/

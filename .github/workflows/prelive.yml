@@ -67,6 +67,10 @@ jobs:
 
       # Idempotent provisioning, and no blanket `|| true`: a 403 here means the
       # token lacks Pages:Edit, which must fail now rather than at the deploy.
+      # The custom domain is read before it is added: a repeated POST returns
+      # 400 / 8000018 ("You have already added this custom domain"), not the 409
+      # this step used to expect, so every run after the first failed here while
+      # the attachment itself was fine.
       - name: Ensure iam Pages project and custom domain
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -97,18 +101,53 @@ jobs:
             echo "Pages project $IAM_PROJECT already exists."
           fi
 
-          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api/$IAM_PROJECT/domains" \
-            -H "$auth" -H 'content-type: application/json' \
-            --data "$(jq -cn --arg name "$IAM_DOMAIN" '{name:$name}')")
+          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT/domains/$IAM_DOMAIN")
           case "$code" in
-            200|201) echo "Attached $IAM_DOMAIN to $IAM_PROJECT (proxied CNAME and certificate managed by Cloudflare)." ;;
-            409) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
+            200) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
+            404)
+              code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api/$IAM_PROJECT/domains" \
+                -H "$auth" -H 'content-type: application/json' \
+                --data "$(jq -cn --arg name "$IAM_DOMAIN" '{name:$name}')")
+              case "$code" in
+                200|201) echo "Attached $IAM_DOMAIN to $IAM_PROJECT." ;;
+                409) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
+                *)
+                  echo "::error::attaching $IAM_DOMAIN returned $code"
+                  show
+                  exit 1
+                  ;;
+              esac
+              ;;
             *)
-              echo "::error::attaching $IAM_DOMAIN returned $code"
+              echo "::error::reading custom domain $IAM_DOMAIN returned $code (needs a token with Pages:Edit)"
               show
               exit 1
               ;;
           esac
+
+          # Attaching a custom domain through the API does NOT create its DNS
+          # record — only the dashboard does that. With no proxied CNAME the
+          # domain stays "pending / CNAME record not set" forever and the smoke
+          # test below times out on 000, so say so here in plain words. Not fatal:
+          # the smoke test is the gate, and a DNS token may not be available.
+          code=$(curl -sS -m 30 -o /tmp/dom.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT/domains/$IAM_DOMAIN")
+          if [ "$code" = "200" ]; then
+            echo "Custom domain status: $(jq -r '.result.status' /tmp/dom.json)"
+            zone=$(jq -r '.result.zone_tag // empty' /tmp/dom.json)
+            cname_error=$(jq -r '.result.verification_data.error_message // empty' /tmp/dom.json)
+            if [ -n "$cname_error" ]; then
+              echo "::warning::Cloudflare says: $cname_error — add a proxied CNAME $IAM_DOMAIN -> $IAM_PROJECT.pages.dev."
+            fi
+            if [ -n "$zone" ]; then
+              dns_code=$(curl -sS -m 30 -o /tmp/dns.json -w '%{http_code}' -H "$auth" \
+                "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?name=$IAM_DOMAIN")
+              if [ "$dns_code" = "200" ] && [ "$(jq -r '.result | length' /tmp/dns.json)" = "0" ]; then
+                echo "::warning::$IAM_DOMAIN has no DNS record. Cloudflare does not create it for a Pages custom domain: add a proxied CNAME $IAM_DOMAIN -> $IAM_PROJECT.pages.dev."
+              fi
+            fi
+          else
+            echo "::warning::could not read custom domain $IAM_DOMAIN back ($code)"
+          fi
 
       - name: Deploy iam
         working-directory: apps/iam

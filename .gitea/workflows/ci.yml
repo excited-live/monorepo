@@ -5,6 +5,15 @@ on:
   push:
     branches: [main]
 
+# One run per pull request (or per pushed ref) at a time. The self-hosted runner
+# has a single slot, so a superseded push would otherwise sit in the queue and
+# delay every other PR; cancelling it immediately frees that slot. Keyed on the
+# PR number so two different PRs never cancel each other, and on github.ref for
+# pushes to main, where the newer commit is the one worth testing.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: self-hosted

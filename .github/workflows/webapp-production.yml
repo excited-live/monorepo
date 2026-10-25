@@ -160,6 +160,7 @@ jobs:
 
             # 2. The hostname must be a domain of this project.
             domains="$api/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$WEB_PROJECT/domains"
+            attached_this_run=0
             code=$(curl -sS -m 30 -o /tmp/dom.json -w '%{http_code}' -H "$auth" "$domains/$host")
             if [ "$code" != "200" ]; then
               olds=$(curl -sS -m 30 -H "$auth" "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/excited-live/domains" \
@@ -188,10 +189,18 @@ jobs:
                 echo "::error::could not attach $host to $WEB_PROJECT"
                 exit 1
               fi
+              # 8000018 "already added" means an earlier run attached it; only a
+              # 200/201 here makes it this run's to detach (step 3).
+              case "$code" in
+                200|201) attached_this_run=1 ;;
+              esac
             fi
 
             # 3. Wait for Cloudflare to validate it. A domain that stays pending
-            #    is re-added once so validation runs again (the iam fix).
+            #    is re-added once so validation runs again (the iam fix) — but
+            #    ONLY when this run attached it. A pre-existing domain may be the
+            #    canonical issuer, and a routine deploy must never detach that
+            #    over a transient status (#54, Ada's blocker on PR #50).
             status=""
             for attempt in $(seq 1 18); do
               status=$(curl -sS -m 30 -H "$auth" "$domains/$host" | jq -r '.result.status // empty')
@@ -200,6 +209,12 @@ jobs:
               sleep 10
             done
             if [ "$status" != "active" ]; then
+              action=$(node scripts/pages-domain-recovery.mjs --attached-this-run="$attached_this_run" --status="${status:-unknown}")
+              echo "$host: recovery decision -> $action"
+              if [ "$action" != "readd" ]; then
+                echo "::error::$host is attached to $WEB_PROJECT (status ${status:-unknown}) but was already there before this run — leaving it in place. Fix the domain in Cloudflare; a routine deploy must not detach a pre-existing (possibly canonical) hostname."
+                exit 1
+              fi
               echo "$host is still ${status:-unknown}; re-adding the domain so validation runs again"
               curl -sS -m 30 -o /dev/null -X DELETE -H "$auth" "$domains/$host" || true
               curl -sS -m 30 -o /dev/null -X POST "$domains" -H "$auth" \

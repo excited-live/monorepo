@@ -214,5 +214,11 @@ jobs:
           mcp=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "https://$API_HOSTNAME/mcp" || true)
           echo "/mcp (anonymous) -> $mcp"; [ "$mcp" = "401" ] || fail=1
 
+          # #30: an x-user-id header alone must never authenticate. A 200 here
+          # means the Worker is back in dev passthrough; a 503 means it lost
+          # BETTER_AUTH_SECRET and is failing closed — both fail the deploy.
+          settings=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -H 'x-user-id: smoke' "https://$API_HOSTNAME/api/v1/settings" || true)
+          echo "/api/v1/settings (x-user-id only) -> $settings"; [ "$settings" = "401" ] || fail=1
+
           [ "$fail" = "0" ] || { echo "::error::production API origin is not serving the production Worker" >&2; exit 1; }
           echo "api.excited.live now serves $API_SERVICE."

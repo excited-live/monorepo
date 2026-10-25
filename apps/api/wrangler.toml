@@ -21,7 +21,15 @@ compatibility_date = "2026-08-30"
 # public URL (#140).
 compatibility_flags = ["nodejs_compat"]
 
-vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://excited.live" }
+# EXCITED_WEBAPP_URL is the OAuth authorization server this API advertises in
+# /.well-known/oauth-protected-resource: issuer = <this>/api/auth, and the only
+# mount that can complete a browser MCP OAuth flow (sign-in, consent, device).
+# It must equal BETTER_AUTH_URL in apps/webapp/wrangler.web.toml —
+# scripts/check-web-production-config.mjs fails CI when the two drift, because a
+# mismatch breaks every connector at the token step, not at discovery.
+# Until the hostname flip it points at the pages.dev origin, which serves the
+# authorization server today.
+vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://excited-live-web.pages.dev", BETTER_AUTH_TRUSTED_ORIGINS = "https://excited.live,https://excited-live-web.pages.dev" }
 
 routes = [
 	{ pattern = "api.excited.live", custom_domain = true }

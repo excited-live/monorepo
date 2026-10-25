@@ -114,17 +114,11 @@ expect(`apps/api production D1 database_name`, stringValue(apiProdDb, "database_
 // API in step with it.
 expect("apps/api production BETTER_AUTH_URL", apiProdVars.BETTER_AUTH_URL, API_ORIGIN)
 
-// The hostname flip is a two-file change. Until it happens EXCITED_WEBAPP_URL
-// still points at the landing page, which is why the pages.dev origin cannot
-// complete an end-to-end MCP OAuth flow yet — a note, not a failure.
+// The hostname flip is a two-file change and CI enforces it: the API's
+// advertised authorization server must be the origin this project serves, or
+// connectors discover an issuer that cannot mint the token the API expects.
 const apiWebappOrigin = apiProdVars.EXCITED_WEBAPP_URL
-if (apiWebappOrigin !== pagesOrigin) {
-	// stderr: `--json` must keep stdout parseable for the workflow's PATCH body.
-	console.error(
-		`note: apps/api EXCITED_WEBAPP_URL is ${apiWebappOrigin}, this project is ${pagesOrigin} — ` +
-			"the API will not accept OAuth tokens from this origin until the hostname flip."
-	)
-}
+expect("apps/api production EXCITED_WEBAPP_URL must equal this project's BETTER_AUTH_URL", apiWebappOrigin, pagesOrigin)
 
 if (pagesTrusted) {
 	for (const origin of [pagesOrigin, API_ORIGIN]) {

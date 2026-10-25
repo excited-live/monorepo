@@ -27,6 +27,17 @@ on:
         description: "Type PROD to confirm production deploy"
         required: true
         default: ""
+  # Release valve for when nobody can press a button: a squash commit whose
+  # message contains the marker deploys production once. It exists because
+  # neither the agents nor any host here hold a GitHub token (workflow_dispatch
+  # needs one) or a local Cloudflare token — CI is the only write path. Merging
+  # is already admin-only, so this grants no new authority; delete this trigger
+  # when a human deploy path with a Cloudflare token exists again.
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/wrangler.toml"
+      - ".github/workflows/api-production.yml"
 
 env:
   WRANGLER_VERSION: "4.127.1"
@@ -40,7 +51,11 @@ concurrency:
 
 jobs:
   production:
-    if: github.event.inputs.confirm == 'PROD' && github.ref == 'refs/heads/main'
+    # Manual: typed PROD on a main ref. Push: only a commit that carries the
+    # [prod-api] marker, so an ordinary API config edit never deploys prod.
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'PROD' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[prod-api]'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -54,6 +69,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # `main = dist/worker.js` in wrangler.toml: wrangler uploads a prebuilt
+      # file, it does not compile sources.
+      - name: Build api
+        run: pnpm exec turbo run build --filter=@excited-live/api
 
       - name: Diagnose the api.excited.live attachment
         env:
@@ -146,6 +165,21 @@ jobs:
           [ "$resource" = "https://$API_HOSTNAME/mcp" ] || { echo "::error::production origin advertises $resource — this is the prelive Worker"; fail=1; }
           if printf '%s' "$issuers" | grep -q 'prelive'; then
             echo "::error::authorization_servers still points at prelive"
+            fail=1
+          fi
+          issuer=$(printf '%s' "$issuers" | jq -r '.[0] // empty')
+          if [ "$issuer" != "https://excited-live-web.pages.dev/api/auth" ]; then
+            echo "::error::authorization server is $issuer, expected the production webapp origin"
+            fail=1
+          fi
+
+          # The advertised issuer must itself serve discovery, or a connector
+          # discovers a server that cannot mint a token for this API.
+          as=$(curl -sS -m 20 -o /tmp/as.json -w '%{http_code}' "$issuer/.well-known/oauth-authorization-server" || true)
+          echo "authorization server discovery: $issuer/.well-known/oauth-authorization-server -> $as"
+          if [ "$as" = "200" ]; then jq -c '{issuer, token_endpoint}' /tmp/as.json; else fail=1; fi
+          if [ "$(jq -r '.issuer // empty' /tmp/as.json 2>/dev/null)" != "$issuer" ]; then
+            echo "::error::authorization server discovery advertises a different issuer"
             fail=1
           fi
 

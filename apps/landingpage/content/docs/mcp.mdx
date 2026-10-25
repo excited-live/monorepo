@@ -1,0 +1,126 @@
+---
+title: "Connect your agent over MCP"
+description: "Connect Claude.ai, ChatGPT or Claude Code to excited.live, approve access, and set up your books with the onboard_me prompt."
+---
+
+MCP (Model Context Protocol) lets your own AI agent read and update your excited.live books. You only need one server URL:
+
+```text
+https://api.excited.live/mcp
+```
+
+> **In final testing.** The endpoint, the sign-in page and the consent page are live, but each client below is still being verified end to end. If your client does not connect, contact support from [Help](/docs/help#contact-support) with the client name and the time you tried. Do not enter the same data twice; the first connection may not have completed.
+
+## Before you start
+
+- An excited.live account. You can create one during sign-in; the connection keeps your place and returns you to the same request.
+- The browser on the same device as your AI client. Sign-in opens in the browser.
+- A few minutes for `onboard_me` after the connection is approved.
+
+## What happens on first connect
+
+The order is the same in every client:
+
+1. Your client opens the excited.live sign-in page at `https://auth.excited.live/sign-in`.
+2. Sign in with your email and password, or choose **Continue with Google**. New here? Choose **Create an account**.
+3. The consent screen opens with **Allow access to your account**. It names your client and says it wants to connect to your excited.live books.
+4. Check the permissions under **This lets the agent:**
+   - Help set up your books and track onboarding progress
+   - Read your businesses, assets, income, expenses and liabilities
+   - Add and edit your businesses, assets, income, expenses and liabilities
+5. Choose **Allow**. Your client receives the connection and returns you to the chat.
+6. Start the setup with the `onboard_me` prompt. Each client section below shows how.
+
+The sign-in and consent pages are live. The hand-off back to your client is part of the final testing above.
+
+## Claude.ai
+
+**Status: in final testing.**
+
+1. Open Claude.ai and go to **Settings → Connectors**.
+2. Choose **Add custom connector**.
+3. Name it `excited.live` and paste the server URL:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. Add the connector. Your browser opens the excited.live sign-in and consent pages described above.
+5. After you choose **Allow**, return to Claude.ai and start a new chat.
+6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If Claude lists server prompts, you can pick `onboard_me` directly instead.
+
+If the connector does not appear in a new chat, remove it and add it again. The exact menu labels can change between Claude.ai releases; the URL is the part that must match.
+
+## ChatGPT
+
+**Status: in final testing.**
+
+1. Open ChatGPT and go to **Settings → Apps → Advanced settings**.
+2. Turn on **Developer mode**.
+3. Add a custom MCP connector with the server URL:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. Complete the connection. Your browser opens the excited.live sign-in and consent pages described above.
+5. After you choose **Allow**, return to ChatGPT and start a new chat with the connector enabled.
+6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If ChatGPT lists server prompts, you can pick `onboard_me` directly instead.
+
+## Claude Code
+
+**Status: in final testing.**
+
+Add the server from your terminal:
+
+```bash
+claude mcp add --scope user --transport http excited https://api.excited.live/mcp
+```
+
+Then:
+
+1. Open Claude Code and run `/mcp`.
+2. Select `excited` and authenticate. Claude Code may ask on the first tool call instead.
+3. Your browser opens the excited.live sign-in and consent pages described above. Choose **Allow**.
+4. Return to Claude Code. If it lists MCP prompts as slash commands, `onboard_me` appears as `/mcp__excited__onboard_me`. Otherwise ask: **Use the `onboard_me` prompt and set up my excited.live account.**
+
+`--scope user` makes the server available in every project. Use `--scope project` if you only want it in the current repository.
+
+## Set up your books with onboard_me
+
+`onboard_me` is a prompt published by the excited.live server. It turns the connection into a short interview:
+
+- Your agent asks one step at a time: business, wallets and assets, liabilities, income, then expenses.
+- It replies in Thai or English, matching how you write.
+- For known products, subscriptions and gear, it looks up the catalog and offers the preset instead of guessing.
+- It confirms each entry with you before saving.
+- It finishes with a summary of your net worth, monthly income, monthly expenses and debts.
+- You can review and edit everything in the excited.live app afterwards.
+
+If you stop halfway, the connection stays. Start the prompt again later and the agent checks your onboarding status first, so you do not repeat completed steps.
+
+## Troubleshooting
+
+**The consent page says the request is invalid or has expired.**
+The connection request expired before you finished signing in. Go back to your client and start the connection again.
+
+**The browser opens, but the client never connects.**
+This is the part still in final testing. Contact support from [Help](/docs/help#contact-support) with the client name, the time, and what you saw. One retry is enough to rule out a stale request; do not loop.
+
+**The client is connected but the agent has no excited.live tools.**
+Remove the connector and add it again with the same URL, then reload the client. In Claude Code, `/mcp` should list `excited` as connected.
+
+**I signed in with the wrong account.**
+Sign out at `https://auth.excited.live/sign-in`, then start the connection again from your client.
+
+**How do I disconnect?**
+Remove the connector in your client. Your books stay in your excited.live account and are not deleted.
+
+## Other MCP clients
+
+Any client that supports remote MCP servers over Streamable HTTP with OAuth can use `https://api.excited.live/mcp`. The setup differs by client; use its "add remote MCP server" flow and the same URL. The three clients above are the ones being verified for launch.
+
+## Related
+
+- [Help](/docs/help) — using the app, runway, burn and the numbers.
+- [API reference](/docs/api) — the REST API for scripts and server-side integrations.

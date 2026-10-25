@@ -46,6 +46,9 @@ const getSignInConfig = createServerFn({ method: "GET" }).handler(async () => {
 	}
 })
 
+/** Public landing site that hosts the Terms and Privacy pages. */
+const LEGAL_ORIGIN = "https://excited.live"
+
 interface SignInSearch {
 	returnPathname?: string
 	mode?: AuthMode
@@ -293,6 +296,19 @@ function SignInPage() {
 							isRequired
 							isDisabled={busy}
 						/>
+						{isSignUp ? (
+							<Text size="sm" color="secondary" className="signin-legal">
+								{t("auth.legalPrefix")}
+								<a href={`${LEGAL_ORIGIN}/docs/terms`} target="_blank" rel="noopener noreferrer">
+									{t("auth.legalTerms")}
+								</a>
+								{t("auth.legalAnd")}
+								<a href={`${LEGAL_ORIGIN}/docs/privacy`} target="_blank" rel="noopener noreferrer">
+									{t("auth.legalPrivacy")}
+								</a>
+								.
+							</Text>
+						) : null}
 						{error ? (
 							<Text size="sm" className="signin-error" role="alert">
 								{error}

@@ -8,6 +8,7 @@ import { DomainError } from "../accounting/domain/errors";
 import type { McpPrincipal } from "./mcp.auth";
 import { ONBOARDING_INSTRUCTIONS, ONBOARDING_PROMPT } from "./instructions";
 import { onboardingTools } from "./tools/onboarding.tools";
+import { accountingTools } from "./tools/accounting.tools";
 
 /**
  * The MCP tool registry.
@@ -35,7 +36,7 @@ export interface McpToolDefinition {
 	handler(ctx: McpToolContext, input: Record<string, unknown>): Promise<unknown>;
 }
 
-export const ALL_TOOLS: readonly McpToolDefinition[] = [...onboardingTools];
+export const ALL_TOOLS: readonly McpToolDefinition[] = [...onboardingTools, ...accountingTools];
 
 function toolError(message: string): CallToolResult {
 	return { content: [{ type: "text", text: message }], isError: true };

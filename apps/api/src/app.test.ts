@@ -1,4 +1,3 @@
-import { defaultPlanInput } from "@excited-live/sim"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -39,68 +38,6 @@ function jsonRequest(method: string, userId: string | null, body?: unknown): Req
 		...(body === undefined ? {} : { body: JSON.stringify(body) }),
 	}
 }
-
-describe("api/v1/plan", () => {
-	it("returns the default plan for an unknown user", async () => {
-		const { app, db } = await openApi(tempDbFile())
-
-		const response = await app.request("/api/v1/plan", { headers: { "x-user-id": "user-a" } })
-
-		expect(response.status).toBe(200)
-		expect(await response.text()).toBe(JSON.stringify(defaultPlanInput()))
-		db.driver.close()
-	})
-
-	it("round-trips a PUT plan byte for byte", async () => {
-		const { app, db } = await openApi(tempDbFile())
-		// Distinctive marker: the default fixture would round-trip through the
-		// GET fallback too, so a default-vs-default compare passes even with
-		// persistence disabled (FRO-72 nit 1).
-		const plan = { ...defaultPlanInput(), personalAllowances: 123456 } as ReturnType<
-			typeof defaultPlanInput
-		>
-		expect(JSON.stringify(plan)).not.toBe(JSON.stringify(defaultPlanInput()))
-
-		const put = await app.request("/api/v1/plan", jsonRequest("PUT", "user-a", plan))
-		expect(put.status).toBe(200)
-		expect(await put.json()).toEqual({ ok: true, data: plan })
-
-		const get = await app.request("/api/v1/plan", { headers: { "x-user-id": "user-a" } })
-		expect(await get.text()).toBe(JSON.stringify(plan))
-		db.driver.close()
-	})
-
-	it("keys plans by x-user-id and keeps a fresh user clean", async () => {
-		const { app, db } = await openApi(tempDbFile())
-		const plan = { ...defaultPlanInput(), personalAllowances: 987654 } as ReturnType<
-			typeof defaultPlanInput
-		>
-
-		await app.request("/api/v1/plan", jsonRequest("PUT", "user-a", plan))
-
-		// user-a reads back its own plan (fails outright without persistence)…
-		const own = await app.request("/api/v1/plan", { headers: { "x-user-id": "user-a" } })
-		expect(await own.text()).toBe(JSON.stringify(plan))
-
-		// …and user-b, who never wrote, is clean.
-		const other = await app.request("/api/v1/plan", { headers: { "x-user-id": "user-b" } })
-		expect(await other.text()).toBe(JSON.stringify(defaultPlanInput()))
-		db.driver.close()
-	})
-
-	it("falls back to the default bucket without an x-user-id header", async () => {
-		const { app, db } = await openApi(tempDbFile())
-		const plan = { ...defaultPlanInput(), personalAllowances: 424242 } as ReturnType<
-			typeof defaultPlanInput
-		>
-
-		await app.request("/api/v1/plan", jsonRequest("PUT", null, plan))
-
-		const withoutHeader = await app.request("/api/v1/plan")
-		expect(await withoutHeader.text()).toBe(JSON.stringify(plan))
-		db.driver.close()
-	})
-})
 
 describe("api/v1/settings", () => {
 	it("returns defaults for an unknown user, with no birthday key", async () => {
@@ -224,35 +161,24 @@ describe("api/v1/onboarding", () => {
 });
 
 describe("persistence across an API restart", () => {
-	it("serves plan and settings saved by a previous process, and a fresh user starts clean", async () => {
+	it("serves settings saved by a previous process, and a fresh user starts clean", async () => {
 		const file = tempDbFile()
-		const plan = { ...defaultPlanInput(), personalAllowances: 777777 } as ReturnType<
-			typeof defaultPlanInput
-		>
 		const settings = { profileName: "Prame", birthday: "1994-03-17", gender: "male" }
 
 		// Process #1: write through the HTTP surface, then close the database.
 		const first = await openApi(file)
-		await first.app.request("/api/v1/plan", jsonRequest("PUT", "user-a", plan))
 		await first.app.request("/api/v1/settings", jsonRequest("PUT", "user-a", settings))
-		await first.app.request("/api/v1/plan", jsonRequest("PUT", "user-z", plan))
+		await first.app.request("/api/v1/settings", jsonRequest("PUT", "user-z", { profileName: "Zoe", gender: "female" }))
 		first.db.driver.close()
 
 		// Process #2: brand new handle + app on the same file.
 		const second = await openApi(file)
-
-		const persistedPlan = await second.app.request("/api/v1/plan", {
-			headers: { "x-user-id": "user-a" },
-		})
-		expect(await persistedPlan.text()).toBe(JSON.stringify(plan))
 
 		const persistedSettings = await second.app.request("/api/v1/settings", {
 			headers: { "x-user-id": "user-a" },
 		})
 		expect(await persistedSettings.text()).toBe(JSON.stringify(settings))
 
-		const freshUser = await second.app.request("/api/v1/plan", { headers: { "x-user-id": "brand-new" } })
-		expect(await freshUser.text()).toBe(JSON.stringify(defaultPlanInput()))
 		const freshSettings = await second.app.request("/api/v1/settings", {
 			headers: { "x-user-id": "brand-new" },
 		})
@@ -264,7 +190,7 @@ describe("persistence across an API restart", () => {
 
 		// The data really is in the file, not in the process.
 		const reopened = await resolveDb(undefined, { [DB_FILE_ENV]: file })
-		const rows = await reopened.driver.all<{ user_id: string }>("SELECT user_id FROM plans ORDER BY user_id")
+		const rows = await reopened.driver.all<{ user_id: string }>("SELECT user_id FROM user_settings ORDER BY user_id")
 		expect(rows.map((row) => row.user_id)).toEqual(["user-a", "user-z"])
 		reopened.driver.close()
 	})
@@ -284,25 +210,10 @@ describe("unchanged endpoints", () => {
 		db.driver.close()
 	})
 
-	it("keeps sim routes working and their 400 guard", async () => {
-		const { app, db } = await openApi(tempDbFile())
-
-		const bad = await app.request("/api/v1/sim/monte-carlo", jsonRequest("POST", "user-a", {}))
-		expect(bad.status).toBe(400)
-		expect(await bad.json()).toEqual({ error: "Body must be { plan, config? }" })
-
-		const ok = await app.request(
-			"/api/v1/sim/simulate",
-			jsonRequest("POST", "user-a", { plan: defaultPlanInput() }),
-		)
-		expect(ok.status).toBe(200)
-		db.driver.close()
-	})
-
 	it("gives every request the resolved driver", async () => {
 		const { app, db } = await openApi(tempDbFile())
 		const drivers = new Set<SqlDriver>()
-		await app.request("/api/v1/plan", { headers: { "x-user-id": "user-a" } })
+		await app.request("/api/v1/settings", { headers: { "x-user-id": "user-a" } })
 		drivers.add(db.driver)
 		expect(drivers.size).toBe(1)
 		expect(db.mode).toBe("node-sqlite")

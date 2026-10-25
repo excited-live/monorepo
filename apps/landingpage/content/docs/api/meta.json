@@ -6,9 +6,7 @@
 		"accounting",
 		"auth",
 		"catalog",
-		"plan",
 		"onboarding",
-		"settings",
-		"simulation"
+		"settings"
 	]
 }

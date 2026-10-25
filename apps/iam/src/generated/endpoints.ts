@@ -1,7 +1,7 @@
 /**
  * GENERATED — do not edit.
  *
- * Source: apps/api/openapi.json (29 paths).
+ * Source: apps/api/openapi.json (26 paths).
  * Regenerate: pnpm --filter @excited-live/iam gen:catalog
  * (apps/api's `gen:openapi` runs this automatically.)
  */
@@ -2243,33 +2243,6 @@ export const ENDPOINTS: readonly Endpoint[] = [
 		"status": "200"
 	},
 	{
-		"id": "get-api-v1-plan",
-		"method": "GET",
-		"path": "/api/v1/plan",
-		"summary": "Get the plan",
-		"description": "The saved plan, or the default plan for a user who never saved.",
-		"tag": "Plan",
-		"params": [],
-		"body": null,
-		"response": "PlanInput",
-		"status": "200"
-	},
-	{
-		"id": "put-api-v1-plan",
-		"method": "PUT",
-		"path": "/api/v1/plan",
-		"summary": "Save the plan",
-		"description": "Stores the document as-is; a later GET returns it byte for byte.",
-		"tag": "Plan",
-		"params": [],
-		"body": {
-			"fields": [],
-			"draft": null
-		},
-		"response": "object",
-		"status": "200"
-	},
-	{
 		"id": "get-api-v1-onboarding",
 		"method": "GET",
 		"path": "/api/v1/onboarding",
@@ -2381,60 +2354,6 @@ export const ENDPOINTS: readonly Endpoint[] = [
 			"draft": {
 				"profileName": "",
 				"gender": ""
-			}
-		},
-		"response": "object",
-		"status": "200"
-	},
-	{
-		"id": "post-api-v1-sim-monte-carlo",
-		"method": "POST",
-		"path": "/api/v1/sim/monte-carlo",
-		"summary": "Run a Monte Carlo simulation",
-		"description": "Stateless; nothing is stored. `config` defaults to the engine's default configuration.",
-		"tag": "Simulation",
-		"params": [],
-		"body": {
-			"fields": [
-				{
-					"name": "plan",
-					"type": "PlanInput",
-					"required": true,
-					"description": ""
-				},
-				{
-					"name": "config",
-					"type": "object",
-					"required": false,
-					"description": ""
-				}
-			],
-			"draft": {
-				"plan": ""
-			}
-		},
-		"response": "object",
-		"status": "200"
-	},
-	{
-		"id": "post-api-v1-sim-simulate",
-		"method": "POST",
-		"path": "/api/v1/sim/simulate",
-		"summary": "Run a deterministic simulation",
-		"description": "Stateless; nothing is stored.",
-		"tag": "Simulation",
-		"params": [],
-		"body": {
-			"fields": [
-				{
-					"name": "plan",
-					"type": "PlanInput",
-					"required": true,
-					"description": ""
-				}
-			],
-			"draft": {
-				"plan": ""
 			}
 		},
 		"response": "object",

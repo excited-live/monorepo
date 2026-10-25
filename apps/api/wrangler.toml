@@ -1,8 +1,7 @@
 # Cloudflare Workers config for the excited.live API.
 #
 # Two environments:
-#   * top level     -> production (`excited-live-api`). NOT provisioned and NOT
-#     deployed by CI: production deploys stay manual and human-only.
+#   * top level     -> production (`excited-live-api`).
 #   * [env.prelive] -> `excited-live-api-prelive`, deployed by
 #     `.github/workflows/api-prelive.yml` on every push to `main` that touches
 #     the API (issue #146).
@@ -22,14 +21,19 @@ compatibility_date = "2026-08-30"
 # public URL (#140).
 compatibility_flags = ["nodejs_compat"]
 
-# Production — deliberately unprovisioned. Keep it that way until a human
-# launches: `npx wrangler d1 create excited-live-api`, paste the id, then
-# `npx wrangler d1 migrations apply excited-live-api --remote` only if that
-# environment turns the boot-time runner off.
+vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://excited.live" }
+
+routes = [
+	{ pattern = "api.excited.live", custom_domain = true }
+]
+
+[observability]
+enabled = true
+
 [[d1_databases]]
 binding = "DB"
-database_name = "excited-live-api"
-database_id = "REPLACE_WITH_DATABASE_ID"
+database_name = "excited-live-api-production"
+database_id = "90bd930e-8bfe-49a4-b58c-b44531c20902"
 migrations_dir = "migrations"
 
 # ---------------------------------------------------------------------------

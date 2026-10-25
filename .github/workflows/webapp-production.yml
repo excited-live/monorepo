@@ -5,8 +5,9 @@ name: Webapp Production (excited-live-web)
 #
 # Why its own project: the existing Pages project `excited-live` serves a WorkOS
 # AuthKit app that is not ours to overwrite. This project serves the webapp at
-# `auth.excited.live` (hostname attached 2026-10-25) and stays reachable at
-# excited-live-web.pages.dev.
+# `auth.excited.live` — the canonical origin and OAuth issuer since 2026-10-25 —
+# with `app.excited.live` as a working alias of the same deployment and
+# excited-live-web.pages.dev alive as well.
 #
 # Sharing: the D1 binding here is the SAME production database as apps/api, so
 # user/session/jwks/oauth* rows are shared between the webapp mount (issuer of
@@ -98,6 +99,118 @@ jobs:
             echo "Pages project $WEB_PROJECT already exists (custom domains: $(jq -cr '[.result.domains[]?]' /tmp/cf.json))."
           fi
 
+      # The deploy owns its hostnames. auth.excited.live is the canonical issuer
+      # the API advertises, app.excited.live is the alias clients already know,
+      # and both must land on THIS project or discovery names an origin that
+      # answers 307 (WorkOS) or 522. Order matters: DNS first, then the Pages
+      # domain — an attach with no CNAME sits "pending / CNAME record not set"
+      # forever (iam.excited.live, 2026-10-24), and a repeat POST answers
+      # 8000018 "already added" rather than 409, so every call is GET-then-act.
+      # This never edits the WorkOS Pages project: it only moves the hostname
+      # attachment off it, which is what the 2026-10-25 flip already did once.
+      - name: Ensure webapp custom domains and DNS
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          target="$WEB_PROJECT.pages.dev"
+
+          zone_id=$(curl -sS -m 30 -H "$auth" "$api/zones?name=excited.live" | jq -r '.result[0].id // empty')
+          if [ -z "$zone_id" ]; then
+            echo "::error::could not resolve zone excited.live with this token"
+            exit 1
+          fi
+
+          show() { jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/cf.json 2>/dev/null || cat /tmp/cf.json; }
+
+          for host in auth.excited.live app.excited.live; do
+            echo "--- $host"
+
+            # 1. DNS: proxied CNAME to this project, created or corrected (PUT,
+            #    because PATCH cannot change a record's type).
+            curl -sS -m 30 -H "$auth" "$api/zones/$zone_id/dns_records?name=$host" -o /tmp/dns.json
+            id=$(jq -r '.result[0].id // empty' /tmp/dns.json)
+            type=$(jq -r '.result[0].type // empty' /tmp/dns.json)
+            content=$(jq -r '.result[0].content // empty' /tmp/dns.json)
+            if [ -z "$id" ]; then
+              code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api/zones/$zone_id/dns_records" \
+                -H "$auth" -H 'content-type: application/json' \
+                --data "$(jq -cn --arg n "$host" --arg c "$target" '{type:"CNAME",name:$n,content:$c,proxied:true,ttl:1}')")
+              echo "DNS create $host -> CNAME $target ($code)"
+              [ "$code" = "200" ] || { show; exit 1; }
+            elif [ "$type" = "CNAME" ] && [ "$content" = "$target" ]; then
+              echo "DNS already correct: $host CNAME $content"
+            else
+              code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X PUT "$api/zones/$zone_id/dns_records/$id" \
+                -H "$auth" -H 'content-type: application/json' \
+                --data "$(jq -cn --arg n "$host" --arg c "$target" '{type:"CNAME",name:$n,content:$c,proxied:true,ttl:1}')")
+              echo "DNS repoint $host ($type $content) -> CNAME $target ($code)"
+              [ "$code" = "200" ] || { show; exit 1; }
+            fi
+
+            # 2. The hostname must be a domain of this project.
+            domains="$api/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$WEB_PROJECT/domains"
+            code=$(curl -sS -m 30 -o /tmp/dom.json -w '%{http_code}' -H "$auth" "$domains/$host")
+            if [ "$code" != "200" ]; then
+              olds=$(curl -sS -m 30 -H "$auth" "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/excited-live/domains" \
+                | jq -r --arg h "$host" '[.result[]? | select(.name == $h)] | length')
+              if [ "$olds" != "0" ]; then
+                echo "moving $host off the WorkOS project excited-live (hostname attachment only)"
+                curl -sS -m 30 -o /dev/null -X DELETE -H "$auth" \
+                  "$api/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/excited-live/domains/$host" || true
+              fi
+              code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$domains" \
+                -H "$auth" -H 'content-type: application/json' --data "$(jq -cn --arg n "$host" '{name:$n}')")
+              echo "attach $host to $WEB_PROJECT ($code)"
+              # A hostname just released by another project can still be held for
+              # a few seconds, so retry before failing the deploy.
+              for attempt in 1 2 3; do
+                case "$code" in 200|201) break ;; esac
+                grep -q '8000018' /tmp/cf.json && break
+                echo "attach attempt $attempt returned $code; retrying"
+                sleep 10
+                code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$domains" \
+                  -H "$auth" -H 'content-type: application/json' --data "$(jq -cn --arg n "$host" '{name:$n}')")
+                echo "attach attempt $attempt: $host -> $code"
+              done
+              if [ "$code" != "200" ] && [ "$code" != "201" ] && ! grep -q '8000018' /tmp/cf.json; then
+                show
+                echo "::error::could not attach $host to $WEB_PROJECT"
+                exit 1
+              fi
+            fi
+
+            # 3. Wait for Cloudflare to validate it. A domain that stays pending
+            #    is re-added once so validation runs again (the iam fix).
+            status=""
+            for attempt in $(seq 1 18); do
+              status=$(curl -sS -m 30 -H "$auth" "$domains/$host" | jq -r '.result.status // empty')
+              [ "$status" = "active" ] && break
+              echo "attempt $attempt: $host domain status=${status:-unknown}, waiting"
+              sleep 10
+            done
+            if [ "$status" != "active" ]; then
+              echo "$host is still ${status:-unknown}; re-adding the domain so validation runs again"
+              curl -sS -m 30 -o /dev/null -X DELETE -H "$auth" "$domains/$host" || true
+              curl -sS -m 30 -o /dev/null -X POST "$domains" -H "$auth" \
+                -H 'content-type: application/json' --data "$(jq -cn --arg n "$host" '{name:$n}')" || true
+              for attempt in $(seq 1 18); do
+                status=$(curl -sS -m 30 -H "$auth" "$domains/$host" | jq -r '.result.status // empty')
+                [ "$status" = "active" ] && break
+                echo "re-add attempt $attempt: $host domain status=${status:-unknown}, waiting"
+                sleep 10
+              done
+            fi
+            echo "$host domain status: ${status:-unknown}"
+            if [ "$status" != "active" ]; then
+              echo "::error::$host is attached but not active — DNS is $host CNAME $target; check the CNAME"
+              exit 1
+            fi
+          done
+
       # `wrangler pages deploy` uploads a configuration *hash*, not bindings or
       # vars, so a wrangler.toml alone never binds D1 on a direct-upload project.
       # PATCH merges by key, so the BETTER_AUTH_SECRET pushed next is preserved.
@@ -116,7 +229,9 @@ jobs:
           # googleProviderConfig) and the sign-in page hides the button otherwise.
           # Adding the two repository secrets GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
           # is the whole switch; the redirect URI is
-          # https://auth.excited.live/api/auth/callback/google.
+          # https://auth.excited.live/api/auth/callback/google (add
+          # https://app.excited.live/api/auth/callback/google too while the
+          # alias stays reachable).
           if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
             echo "::add-mask::$GOOGLE_CLIENT_SECRET"
             body=$(printf '%s' "$body" | jq -c \
@@ -247,35 +362,54 @@ jobs:
             echo "::warning::dynamic client registration returned $dcr — check the oauthClient table in the production D1"
           fi
 
-          # 6. The custom domain. This origin is what the API advertises as the
-          #    authorization server, so a 522 or the WorkOS AuthKit page here
-          #    breaks every connector even though pages.dev is fine.
-          domain_base="https://auth.excited.live"
-          dsession=""
-          for attempt in $(seq 1 24); do
-            dsession=$(curl -sS -m 20 -o /tmp/d.out -D /tmp/d.h -w '%{http_code}' "$domain_base/api/auth/get-session" || true)
-            if [ "$dsession" = "200" ] && grep -qi 'application/json' /tmp/d.h; then break; fi
-            echo "custom domain attempt $attempt: $domain_base/api/auth/get-session -> $dsession, waiting" >&2
-            sleep 10
+          # 6. All three hostnames. auth.excited.live is the canonical issuer the
+          #    API advertises; app.excited.live is the alias every existing
+          #    client already knows; pages.dev must stay alive. Any of them
+          #    answering a 307 (WorkOS) or 522 breaks discovery, and a 200 that
+          #    is HTML means the hostname landed on another project.
+          issuer_base="https://auth.excited.live"
+          for host_base in https://auth.excited.live https://app.excited.live "https://$WEB_PROJECT.pages.dev"; do
+            dsession=""
+            for attempt in $(seq 1 24); do
+              dsession=$(curl -sS -m 20 -o /tmp/d.out -D /tmp/d.h -w '%{http_code}' "$host_base/api/auth/get-session" || true)
+              if [ "$dsession" = "200" ] && grep -qi 'application/json' /tmp/d.h; then break; fi
+              echo "$host_base attempt $attempt: /api/auth/get-session -> $dsession, waiting" >&2
+              sleep 10
+            done
+            echo "$host_base/api/auth/get-session -> $dsession"
+            [ "$dsession" = "200" ] || fail=1
+            grep -qi 'application/json' /tmp/d.h || { echo "::error::$host_base/api/auth/get-session did not answer JSON (not our webapp?)"; fail=1; }
+            if grep -qi 'hosted-authkit\|<html' /tmp/d.out; then echo "::error::$host_base is still serving another app"; fail=1; fi
           done
-          echo "custom domain session: $domain_base/api/auth/get-session -> $dsession"
-          [ "$dsession" = "200" ] || fail=1
-          grep -qi 'application/json' /tmp/d.h || { echo "::error::$domain_base/api/auth/get-session did not answer JSON (not our webapp?)"; fail=1; }
-          if grep -qi 'hosted-authkit\|<html' /tmp/d.out; then echo "::error::$domain_base is still serving another app"; fail=1; fi
+
+          # 7. One issuer only: the canonical origin must name itself in every
+          #    discovery field, or clients that discover through an alias mint
+          #    tokens the API will not accept.
+          disc=$(curl -sS -m 20 -o /tmp/iss.json -w '%{http_code}' "$issuer_base/api/auth/.well-known/oauth-authorization-server" || true)
+          echo "issuer discovery: $issuer_base/api/auth/.well-known/oauth-authorization-server -> $disc"
+          jq -c '{issuer, authorization_endpoint, token_endpoint, registration_endpoint}' /tmp/iss.json || true
+          [ "$disc" = "200" ] || fail=1
+          for field in issuer authorization_endpoint token_endpoint registration_endpoint; do
+            value=$(jq -r --arg f "$field" '.[$f] // empty' /tmp/iss.json 2>/dev/null)
+            case "$value" in
+              "$issuer_base"*) echo "$field: $value" ;;
+              *) echo "::error::$field is '${value:-missing}' — expected it to start with $issuer_base"; fail=1 ;;
+            esac
+          done
 
           # Bogus credentials must be a JSON 401 from Better Auth, not HTML.
-          dbad=$(curl -sS -m 20 -o /tmp/dbad.json -w '%{http_code}' -X POST "$domain_base/api/auth/sign-in/email" \
-            -H 'content-type: application/json' -H "origin: $domain_base" \
+          dbad=$(curl -sS -m 20 -o /tmp/dbad.json -w '%{http_code}' -X POST "$issuer_base/api/auth/sign-in/email" \
+            -H 'content-type: application/json' -H "origin: $issuer_base" \
             -d '{"email":"nobody@example.com","password":"definitely-not-the-password"}' || true)
-          echo "custom domain bogus sign-in: POST /api/auth/sign-in/email -> $dbad (want 401)"
+          echo "canonical issuer bogus sign-in: POST /api/auth/sign-in/email -> $dbad (want 401)"
           echo "body: $(head -c 200 /tmp/dbad.json)"
           [ "$dbad" = "401" ] || fail=1
 
           if [ "$fail" != "0" ]; then
-            echo "::error::$base did not serve the authorization server" >&2
+            echo "::error::the deployment did not serve the authorization server on all three hostnames" >&2
             exit 1
           fi
-          echo "All authorization-server checks passed on $base"
+          echo "All authorization-server checks passed: $issuer_base (issuer), https://app.excited.live and $base (aliases)"
 
       # Evidence for the "no table drift" half of the task: the production D1 is
       # owned by the API's boot-time migration runner, so this only reads. If
@@ -296,4 +430,4 @@ jobs:
 
       - name: Show the deployment URL
         if: always()
-        run: echo "webapp https://auth.excited.live (project $WEB_PROJECT, also https://$WEB_PROJECT.pages.dev)"
+        run: echo "webapp https://auth.excited.live (issuer; project $WEB_PROJECT, aliases https://app.excited.live and https://$WEB_PROJECT.pages.dev)"

@@ -43,9 +43,287 @@ const appSchema = {
         <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Setup</span><span data-lang-th="">วิธีติดตั้ง</span></a></li>
       </ul>
       <div class="nav-right">
-        <div class="lang-switch" role="group" aria-label="Language selector">
-          <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="true">EN</button>
-          <button type="button" class="lang-btn" data-set-lang="th" aria-pressed="false">ไทย</button>
+        <div class="lang-switch country-dropdown-wrap" id="country-dropdown-wrap" role="group" aria-label="Country and language selector">
+          <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;display:none;">
+            <symbol id="flag-us" viewBox="0 0 640 480"><path fill="#bd3d44" d="M0 0h640v480H0z"></path><path stroke="#fff" stroke-width="37" d="M0 55.5h640M0 129.5h640M0 203.5h640M0 277.5h640M0 351.5h640M0 425.5h640"></path><path fill="#192f5d" d="M0 0h296v259H0z"></path><g fill="#fff"><circle cx="28" cy="24" r="6"></circle><circle cx="76" cy="24" r="6"></circle><circle cx="124" cy="24" r="6"></circle><circle cx="172" cy="24" r="6"></circle><circle cx="220" cy="24" r="6"></circle><circle cx="268" cy="24" r="6"></circle><circle cx="52" cy="50" r="6"></circle><circle cx="100" cy="50" r="6"></circle><circle cx="148" cy="50" r="6"></circle><circle cx="196" cy="50" r="6"></circle><circle cx="244" cy="50" r="6"></circle><circle cx="28" cy="76" r="6"></circle><circle cx="76" cy="76" r="6"></circle><circle cx="124" cy="76" r="6"></circle><circle cx="172" cy="76" r="6"></circle><circle cx="220" cy="76" r="6"></circle><circle cx="268" cy="76" r="6"></circle><circle cx="52" cy="102" r="6"></circle><circle cx="100" cy="102" r="6"></circle><circle cx="148" cy="102" r="6"></circle><circle cx="196" cy="102" r="6"></circle><circle cx="244" cy="102" r="6"></circle><circle cx="28" cy="128" r="6"></circle><circle cx="76" cy="128" r="6"></circle><circle cx="124" cy="128" r="6"></circle><circle cx="172" cy="128" r="6"></circle><circle cx="220" cy="128" r="6"></circle><circle cx="268" cy="128" r="6"></circle><circle cx="52" cy="154" r="6"></circle><circle cx="100" cy="154" r="6"></circle><circle cx="148" cy="154" r="6"></circle><circle cx="196" cy="154" r="6"></circle><circle cx="244" cy="154" r="6"></circle><circle cx="28" cy="180" r="6"></circle><circle cx="76" cy="180" r="6"></circle><circle cx="124" cy="180" r="6"></circle><circle cx="172" cy="180" r="6"></circle><circle cx="220" cy="180" r="6"></circle><circle cx="268" cy="180" r="6"></circle><circle cx="52" cy="206" r="6"></circle><circle cx="100" cy="206" r="6"></circle><circle cx="148" cy="206" r="6"></circle><circle cx="196" cy="206" r="6"></circle><circle cx="244" cy="206" r="6"></circle><circle cx="28" cy="232" r="6"></circle><circle cx="76" cy="232" r="6"></circle><circle cx="124" cy="232" r="6"></circle><circle cx="172" cy="232" r="6"></circle><circle cx="220" cy="232" r="6"></circle><circle cx="268" cy="232" r="6"></circle></g></symbol>
+            <symbol id="flag-th" viewBox="0 0 640 480"><path fill="#a51931" d="M0 0h640v480H0z"></path><path fill="#f4f5f8" d="M0 80h640v320H0z"></path><path fill="#2d2a4a" d="M0 160h640v160H0z"></path></symbol>
+            <symbol id="flag-gb" viewBox="0 0 640 480"><path fill="#012169" d="M0 0h640v480H0z"></path><path fill="#fff" d="m75 0 245 180L565 0h75v60L435 240l205 180v60h-75L320 300 75 480H0v-60l205-180L0 60V0z"></path><path stroke="#c8102e" stroke-width="26" d="m0 0 640 480M640 0 0 480"></path><path fill="#fff" d="M260 0h120v480H260zM0 180h640v120H0z"></path><path fill="#c8102e" d="M280 0h80v480H280zM0 200h640v80H0z"></path></symbol>
+            <symbol id="flag-sg" viewBox="0 0 640 480"><path fill="#ed2939" d="M0 0h640v240H0z"></path><path fill="#fff" d="M0 240h640v240H0z"></path><circle cx="140" cy="120" r="72" fill="#fff"></circle><circle cx="162" cy="120" r="62" fill="#ed2939"></circle><g fill="#fff"><circle cx="190" cy="78" r="10"></circle><circle cx="218" cy="98" r="10"></circle><circle cx="218" cy="142" r="10"></circle><circle cx="190" cy="162" r="10"></circle><circle cx="174" cy="120" r="10"></circle></g></symbol>
+            <symbol id="flag-jp" viewBox="0 0 640 480"><path fill="#fff" d="M0 0h640v480H0z"></path><circle cx="320" cy="240" r="144" fill="#bc002d"></circle></symbol>
+            <symbol id="flag-de" viewBox="0 0 640 480"><path fill="#ffce00" d="M0 320h640v160H0z"></path><path fill="#000" d="M0 0h640v160H0z"></path><path fill="#dd0000" d="M0 160h640v160H0z"></path></symbol>
+            <symbol id="flag-fr" viewBox="0 0 640 480"><path fill="#fff" d="M0 0h640v480H0z"></path><path fill="#002654" d="M0 0h213.3v480H0z"></path><path fill="#ce1126" d="M426.7 0H640v480H426.7z"></path></symbol>
+            <symbol id="flag-au" viewBox="0 0 640 480"><path fill="#00008b" d="M0 0h640v480H0z"></path><path fill="#fff" d="m37 0 123 90L283 0h37v30L217 120l103 90v30h-37L160 150 37 240H0v-30l103-90L0 30V0z"></path><path stroke="#c8102e" stroke-width="13" d="m0 0 320 240M320 0 0 240"></path><path fill="#fff" d="M130 0h60v240h-60zM0 90h320v60H0z"></path><path fill="#c8102e" d="M140 0h40v240h-40zM0 100h320v40H0z"></path><g fill="#fff"><circle cx="480" cy="100" r="12"></circle><circle cx="540" cy="180" r="12"></circle><circle cx="480" cy="260" r="12"></circle><circle cx="420" cy="180" r="12"></circle><circle cx="500" cy="220" r="7"></circle><circle cx="160" cy="360" r="28"></circle></g></symbol>
+            <symbol id="flag-ca" viewBox="0 0 640 480"><path fill="#ff0000" d="M0 0h160v480H0zM480 0h160v480H480z"></path><path fill="#fff" d="M160 0h320v480H160z"></path><path fill="#ff0000" d="m320 85 18 48 36-12-14 38 46 6-28 32 18 36-40-10-8 64-16 4-8-68-40 10 18-36-28-32 46-6-14-38 36 12z"></path></symbol>
+            <symbol id="flag-ch" viewBox="0 0 640 480"><path fill="#d52b1e" d="M0 0h640v480H0z"></path><path fill="#fff" d="M260 110h120v260H260z"></path><path fill="#fff" d="M140 210h360v60H140z"></path></symbol>
+            <symbol id="flag-nl" viewBox="0 0 640 480"><path fill="#21468b" d="M0 320h640v160H0z"></path><path fill="#fff" d="M0 160h640v160H0z"></path><path fill="#ae1c28" d="M0 0h640v160H0z"></path></symbol>
+            <symbol id="flag-kr" viewBox="0 0 640 480"><path fill="#fff" d="M0 0h640v480H0z"></path><circle cx="320" cy="240" r="100" fill="#c60c30"></circle><path fill="#003478" d="M320 140a100 100 0 0 1 0 200 50 50 0 0 1 0-100 50 50 0 0 0 0-100z"></path></symbol>
+            <symbol id="flag-hk" viewBox="0 0 640 480"><path fill="#ec1b2e" d="M0 0h640v480H0z"></path><g fill="#fff"><circle cx="320" cy="240" r="66"></circle><circle cx="320" cy="240" r="50" fill="#ec1b2e"></circle><circle cx="320" cy="180" r="18"></circle><circle cx="377" cy="221" r="18"></circle><circle cx="355" cy="289" r="18"></circle><circle cx="285" cy="289" r="18"></circle><circle cx="263" cy="221" r="18"></circle></g></symbol>
+            <symbol id="flag-tw" viewBox="0 0 640 480"><path fill="#fe0000" d="M0 0h640v480H0z"></path><path fill="#000095" d="M0 0h320v240H0z"></path><circle cx="160" cy="120" r="54" fill="#fff"></circle><circle cx="160" cy="120" r="38" fill="#000095"></circle><circle cx="160" cy="120" r="30" fill="#fff"></circle></symbol>
+            <symbol id="flag-ae" viewBox="0 0 640 480"><path fill="#00732f" d="M0 0h640v160H0z"></path><path fill="#fff" d="M0 160h640v160H0z"></path><path fill="#000" d="M0 320h640v160H0z"></path><path fill="#f00" d="M0 0h160v480H0z"></path></symbol>
+            <symbol id="flag-se" viewBox="0 0 640 480"><path fill="#006aa7" d="M0 0h640v480H0z"></path><path fill="#fecc00" d="M0 190h640v100H0zM190 0h100v480H190z"></path></symbol>
+            <symbol id="flag-es" viewBox="0 0 640 480"><path fill="#c60b1e" d="M0 0h640v120H0zM0 360h640v120H0z"></path><path fill="#ffc400" d="M0 120h640v240H0z"></path></symbol>
+            <symbol id="flag-it" viewBox="0 0 640 480"><path fill="#009246" d="M0 0h213.3v480H0z"></path><path fill="#fff" d="M213.3 0h213.4v480H213.3z"></path><path fill="#ce2b37" d="M426.7 0H640v480H426.7z"></path></symbol>
+            <symbol id="flag-in" viewBox="0 0 640 480"><path fill="#ff9933" d="M0 0h640v160H0z"></path><path fill="#fff" d="M0 160h640v160H0z"></path><path fill="#128807" d="M0 320h640v160H0z"></path><circle cx="320" cy="240" r="50" fill="none" stroke="#000080" stroke-width="8"></circle></symbol>
+            <symbol id="flag-br" viewBox="0 0 640 480"><path fill="#009b3a" d="M0 0h640v480H0z"></path><path fill="#fedf00" d="m320 50 260 190-260 190L60 240z"></path><circle cx="320" cy="240" r="100" fill="#002776"></circle></symbol>
+            <symbol id="flag-vn" viewBox="0 0 640 480"><path fill="#da251d" d="M0 0h640v480H0z"></path><polygon fill="#ff0" points="320,130 357,243 476,243 380,313 417,426 320,356 223,426 260,313 164,243 283,243"></polygon></symbol>
+            <symbol id="flag-id" viewBox="0 0 640 480"><path fill="#ff0000" d="M0 0h640v240H0z"></path><path fill="#fff" d="M0 240h640v240H0z"></path></symbol>
+            <symbol id="flag-my" viewBox="0 0 640 480"><path fill="#cc0000" d="M0 0h640v480H0z"></path><path stroke="#fff" stroke-width="34" d="M0 51h640M0 119h640M0 187h640M0 255h640M0 323h640M0 391h640M0 459h640"></path><path fill="#000066" d="M0 0h320v272H0z"></path><circle cx="170" cy="136" r="80" fill="#ffcc00"></circle><circle cx="190" cy="136" r="68" fill="#000066"></circle><polygon fill="#ffcc00" points="230,136 210,120 220,95 195,105 180,85 180,110 155,120 175,136 155,152 180,162 180,187 195,167 220,177 210,152"></polygon></symbol>
+            <symbol id="flag-ph" viewBox="0 0 640 480"><path fill="#0038a8" d="M0 0h640v240H0z"></path><path fill="#ce1126" d="M0 240h640v240H0z"></path><polygon fill="#fff" points="0,0 360,240 0,480"></polygon><circle cx="120" cy="240" r="40" fill="#fcd116"></circle></symbol>
+          </svg>
+          <button type="button" class="country-dropdown-btn" id="country-dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select country or language">
+            <span class="country-flag-badge" id="country-current-flag"><svg class="flag-svg"><use href="#flag-us"></use></svg></span>
+            <span class="country-code-label" id="country-current-label">US</span>
+            <svg class="country-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <div class="country-menu" id="country-dropdown-menu" role="dialog" aria-modal="false" aria-label="Select country or region">
+            <div class="country-search-box">
+              <svg class="country-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <input type="text" class="country-search-input" id="country-search-input" placeholder="Search country or language..." aria-label="Search countries">
+            </div>
+            <ul class="country-list" id="country-list" role="listbox">
+              <li class="country-item" role="option" data-country-code="US" data-country-lang="en" data-country-name="united states" aria-selected="true" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-us"></use></svg></span>
+                  <span class="country-item-name">United States</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>English</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="TH" data-country-lang="th" data-country-name="thailand" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-th"></use></svg></span>
+                  <span class="country-item-name">Thailand</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>ไทย</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="GB" data-country-lang="en" data-country-name="united kingdom" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-gb"></use></svg></span>
+                  <span class="country-item-name">United Kingdom</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>English</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="SG" data-country-lang="en" data-country-name="singapore" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-sg"></use></svg></span>
+                  <span class="country-item-name">Singapore</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>English</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="JP" data-country-lang="en" data-country-name="japan" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-jp"></use></svg></span>
+                  <span class="country-item-name">Japan</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>日本語</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="DE" data-country-lang="en" data-country-name="germany" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-de"></use></svg></span>
+                  <span class="country-item-name">Germany</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Deutsch</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="FR" data-country-lang="en" data-country-name="france" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-fr"></use></svg></span>
+                  <span class="country-item-name">France</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Français</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="AU" data-country-lang="en" data-country-name="australia" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-au"></use></svg></span>
+                  <span class="country-item-name">Australia</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>English</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="CA" data-country-lang="en" data-country-name="canada" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-ca"></use></svg></span>
+                  <span class="country-item-name">Canada</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>English / FR</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="CH" data-country-lang="en" data-country-name="switzerland" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-ch"></use></svg></span>
+                  <span class="country-item-name">Switzerland</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Schweiz</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="NL" data-country-lang="en" data-country-name="netherlands" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-nl"></use></svg></span>
+                  <span class="country-item-name">Netherlands</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Nederlands</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="KR" data-country-lang="en" data-country-name="south korea" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-kr"></use></svg></span>
+                  <span class="country-item-name">South Korea</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>한국어</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="HK" data-country-lang="en" data-country-name="hong kong" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-hk"></use></svg></span>
+                  <span class="country-item-name">Hong Kong</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>繁體中文</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="TW" data-country-lang="en" data-country-name="taiwan" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-tw"></use></svg></span>
+                  <span class="country-item-name">Taiwan</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>繁體中文</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="AE" data-country-lang="en" data-country-name="united arab emirates" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-ae"></use></svg></span>
+                  <span class="country-item-name">United Arab Emirates</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>العربية</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="SE" data-country-lang="en" data-country-name="sweden" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-se"></use></svg></span>
+                  <span class="country-item-name">Sweden</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Svenska</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="ES" data-country-lang="en" data-country-name="spain" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-es"></use></svg></span>
+                  <span class="country-item-name">Spain</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Español</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="IT" data-country-lang="en" data-country-name="italy" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-it"></use></svg></span>
+                  <span class="country-item-name">Italy</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Italiano</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="IN" data-country-lang="en" data-country-name="india" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-in"></use></svg></span>
+                  <span class="country-item-name">India</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>हिन्दी / EN</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="BR" data-country-lang="en" data-country-name="brazil" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-br"></use></svg></span>
+                  <span class="country-item-name">Brazil</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Português</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="VN" data-country-lang="en" data-country-name="vietnam" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-vn"></use></svg></span>
+                  <span class="country-item-name">Vietnam</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Tiếng Việt</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="ID" data-country-lang="en" data-country-name="indonesia" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-id"></use></svg></span>
+                  <span class="country-item-name">Indonesia</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Bahasa</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="MY" data-country-lang="en" data-country-name="malaysia" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-my"></use></svg></span>
+                  <span class="country-item-name">Malaysia</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Melayu</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+              <li class="country-item" role="option" data-country-code="PH" data-country-lang="en" data-country-name="philippines" aria-selected="false" tabindex="0">
+                <span class="country-item-left">
+                  <span class="country-flag-badge"><svg class="flag-svg"><use href="#flag-ph"></use></svg></span>
+                  <span class="country-item-name">Philippines</span>
+                </span>
+                <span class="country-item-meta">
+                  <span>Filipino</span>
+                  <svg class="country-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+                </span>
+              </li>
+            </ul>
+            <div class="country-empty-state" id="country-empty-state">No country found</div>
+          </div>
         </div>
         <div class="nav-split-cta" id="nav-auth-cta" data-auth-state="guest">
           <!-- State: Guest / Unauthenticated (Default) -->
@@ -397,100 +675,237 @@ Then use the onboard_me prompt and follow its guide. Sign me in and talk to me i
   </main>
   <!-- Dark Ink Footer -->
   <footer class="site-footer" data-od-id="dir-b-footer">
-    <div class="footer-inner">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <a href="/" class="footer-brand-link">
-            <img src="/logo-mark.png" alt="excited.live" class="brand-mark" width="22" height="22" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';">
+    <div class="site-footer-inner">
+      <!-- Main Tier: Brand Column + 4-Column Directory Grid -->
+      <div class="site-footer-main">
+        <div class="footer-brand-pane">
+          <a href="/" class="footer-brand-logo" aria-label="excited.live home">
+            <img src="/logo-mark.png" alt="excited.live" class="brand-mark" width="26" height="26" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex';" />
             <span class="brand-fallback" aria-hidden="true">ex</span>
-            <span class="brand-name">excited.live</span>
+            <span class="brand-text">excited.live</span>
           </a>
-          <p class="footer-tagline">
-            <span data-lang-en="">Every project. Every baht. One runway.</span>
-            <span data-lang-th="">ทุกโปรเจกต์ ทุกบาท ในรันเวย์เดียว</span>
+          <p class="footer-brand-desc">
+            <span data-lang-en="">Financial planning for solopreneurs, first jobbers, and AI-native builders. Built for your agent and for you.</span>
+            <span data-lang-th="">ระบบวางแผนการเงินสำหรับโซโลพรีเนอร์ First Jobber และชาว AI-native — สร้างมาเพื่อเอเจนต์และตัวคุณ</span>
           </p>
+          <div class="footer-status-pill">
+            <span class="status-indicator-dot" aria-hidden="true"></span>
+            <span data-lang-en="">MCP Server v1.0 · Systems Normal</span>
+            <span data-lang-th="">MCP Server v1.0 · ระบบทำงานปกติ</span>
+          </div>
         </div>
-        <div class="footer-links-grid">
-          <div class="footer-col">
-            <div class="footer-col-title"><span data-lang-en="">Product</span><span data-lang-th="">ผลิตภัณฑ์</span></div>
-            <ul>
-              <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Agents</span><span data-lang-th="">เอเจนต์</span></a></li>
-              <li><a href="#cap-card-plan" data-door-target="humans"><span data-lang-en="">Humans</span><span data-lang-th="">สำหรับคุณ</span></a></li>
-              <li><a href="/docs"><span data-lang-en="">Docs</span><span data-lang-th="">เอกสาร</span></a></li>
-              <li><a href="/blog"><span data-lang-en="">Blog</span><span data-lang-th="">บล็อก</span></a></li>
+
+        <div class="footer-nav-grid">
+          <div class="site-footer-col">
+            <h3 class="footer-col-heading">
+              <span data-lang-en="">Product</span>
+              <span data-lang-th="">ผลิตภัณฑ์</span>
+            </h3>
+            <ul class="footer-col-list">
+              <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">AI Agent MCP</span><span data-lang-th="">เอเจนต์ MCP</span></a></li>
+              <li><a href="#cap-card-plan" data-door-target="humans"><span data-lang-en="">Life Planner (50-Yr)</span><span data-lang-th="">เว็บวางแผน 50 ปี</span></a></li>
+              <li><a href="/docs"><span data-lang-en="">Documentation</span><span data-lang-th="">เอกสารประกอบ</span></a></li>
+              <li><a href="/blog"><span data-lang-en="">Changelog & Blog</span><span data-lang-th="">บันทึกการเปลี่ยนแปลง</span></a></li>
             </ul>
           </div>
-          <div class="footer-col">
-            <div class="footer-col-title"><span data-lang-en="">Creator</span><span data-lang-th="">ผู้สร้าง</span></div>
-            <ul>
-              <li><a href="https://fromsukong.com" target="_blank" rel="noopener">FromSukong ↗</a></li>
-              <li><a href="https://github.com/fromsukong/excited.live" target="_blank" rel="noopener">GitHub ↗</a></li>
-              <li><a href="https://www.instagram.com/excited.live/" target="_blank" rel="noopener">Instagram ↗</a></li>
+
+          <div class="site-footer-col">
+            <h3 class="footer-col-heading">
+              <span data-lang-en="">Capabilities</span>
+              <span data-lang-th="">ความสามารถ</span>
+            </h3>
+            <ul class="footer-col-list">
+              <li><a href="#cap-card-ask"><span data-lang-en="">Runway Simulation</span><span data-lang-th="">จำลองรันเวย์</span></a></li>
+              <li><a href="#cap-card-what-if"><span data-lang-en="">What-if Scenarios</span><span data-lang-th="">สมมติสถานการณ์</span></a></li>
+              <li><a href="#cap-card-log"><span data-lang-en="">Expense & Tax 2026</span><span data-lang-th="">จดบิล & ภาษี 2026</span></a></li>
+              <li><a href="#cap-card-plan"><span data-lang-en="">Offline Android App</span><span data-lang-th="">แอป Android ออฟไลน์</span></a></li>
             </ul>
           </div>
-          <div class="footer-col">
-            <div class="footer-col-title"><span data-lang-en="">Legal</span><span data-lang-th="">กฎหมาย</span></div>
-            <ul>
-              <li><a href="/docs/privacy"><span data-lang-en="">Privacy</span><span data-lang-th="">ความเป็นส่วนตัว</span></a></li>
-              <li><a href="/docs/terms"><span data-lang-en="">Terms</span><span data-lang-th="">เงื่อนไข</span></a></li>
-              <li><a href="/docs/privacy#cookies"><span data-lang-en="">Cookies</span><span data-lang-th="">คุกกี้</span></a></li>
+
+          <div class="site-footer-col">
+            <h3 class="footer-col-heading">
+              <span data-lang-en="">Ecosystem</span>
+              <span data-lang-th="">ระบบนิเวศ</span>
+            </h3>
+            <ul class="footer-col-list">
+              <li><a href="https://fromsukong.com" target="_blank" rel="noopener"><span data-lang-en="">FromSukong Studio ↗</span><span data-lang-th="">FromSukong Studio ↗</span></a></li>
+              <li><a href="https://github.com/fromsukong/excited.live" target="_blank" rel="noopener"><span data-lang-en="">GitHub (Apache-2.0) ↗</span><span data-lang-th="">GitHub (Apache-2.0) ↗</span></a></li>
+              <li><a href="https://www.instagram.com/excited.live/" target="_blank" rel="noopener"><span data-lang-en="">Instagram Community ↗</span><span data-lang-th="">Instagram Community ↗</span></a></li>
+              <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener"><span data-lang-en="">Model Context Protocol ↗</span><span data-lang-th="">Model Context Protocol ↗</span></a></li>
+            </ul>
+          </div>
+
+          <div class="site-footer-col">
+            <h3 class="footer-col-heading">
+              <span data-lang-en="">Governance</span>
+              <span data-lang-th="">การกำกับดูแล</span>
+            </h3>
+            <ul class="footer-col-list">
+              <li><a href="/docs/privacy"><span data-lang-en="">Privacy Policy</span><span data-lang-th="">นโยบายความเป็นส่วนตัว</span></a></li>
+              <li><a href="/docs/terms"><span data-lang-en="">Terms of Service</span><span data-lang-th="">เงื่อนไขการใช้บริการ</span></a></li>
+              <li><a href="/docs/privacy#cookies"><span data-lang-en="">Cookie Preferences</span><span data-lang-th="">การตั้งค่าคุกกี้</span></a></li>
+              <li><a href="https://github.com/fromsukong/excited.live/blob/main/LICENSE" target="_blank" rel="noopener"><span data-lang-en="">Open Source License</span><span data-lang-th="">สัญญาอนุญาตโอเพนซอร์ส</span></a></li>
             </ul>
           </div>
         </div>
       </div>
-      <div class="footer-bottom">
-        <div><span data-lang-en="">© 2026 FromSukong · Made in Bangkok</span><span data-lang-th="">© 2026 FromSukong · ทำในกรุงเทพฯ</span></div>
-        <div class="lang-switch lang-switch--footer" role="group" aria-label="Footer language selector">
-          <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="true">EN</button>
-          <button type="button" class="lang-btn" data-set-lang="th" aria-pressed="false">ไทย</button>
+
+      <!-- Bottom Bar: Metadata, Zero-Tracking Callout, Synced Language Switch -->
+      <div class="footer-bottom-bar">
+        <div class="footer-bottom-left">
+          <p class="footer-copy-text">
+            <span data-lang-en="">© 2026 FromSukong · Built for solopreneurs & AI agents · Made with care in Bangkok</span>
+            <span data-lang-th="">© 2026 FromSukong · สร้างเพื่อโซโลพรีเนอร์และเอเจนต์ AI · พัฒนาด้วยความใส่ใจในกรุงเทพฯ</span>
+          </p>
+          <p class="footer-trust-subtext">
+            <span data-lang-en="">Zero outside investors. No tracking ads. Your money math stays in your control.</span>
+            <span data-lang-th="">ไม่มีนายทุนภายนอก ไม่มีโฆษณาสะกดรอย ตัวเลขทางการเงินอยู่ภายใต้การควบคุมของคุณ</span>
+          </p>
+        </div>
+
+        <div class="footer-bottom-right">
+          <div class="lang-switch lang-switch--footer" role="group" aria-label="Footer language selector">
+            <button type="button" class="lang-btn" data-set-lang="en" aria-pressed="true">EN</button>
+            <button type="button" class="lang-btn" data-set-lang="th" aria-pressed="false">ไทย</button>
+          </div>
         </div>
       </div>
     </div>
   </footer>
   <script is:inline>
     (function () {
-            /* 1. Language Switcher (EN / TH) */
+            /* 1. Country & Language Selector (nav dropdown + footer pill, kept in sync) */
+      var STORAGE_KEY_LANG = 'excited_lang';
+      var STORAGE_KEY_COUNTRY = 'excited_country';
       var htmlEl = document.documentElement;
-      var langButtons = document.querySelectorAll("[data-set-lang]");
+      var dropdownWrap = document.getElementById('country-dropdown-wrap');
+      var dropdownBtn = document.getElementById('country-dropdown-btn');
+      var searchInput = document.getElementById('country-search-input');
+      var countryItems = Array.prototype.slice.call(document.querySelectorAll('.country-item'));
+      var emptyState = document.getElementById('country-empty-state');
+      var currentFlagUse = document.querySelector('#country-current-flag use');
+      var currentLabel = document.getElementById('country-current-label');
+      var langButtons = document.querySelectorAll('.lang-switch--footer [data-set-lang]');
 
-      function setLanguage(lang, persist) {
-        var validLang = lang === "th" ? "th" : "en";
-        htmlEl.setAttribute("data-lang", validLang);
-        htmlEl.setAttribute("lang", validLang);
-
-        langButtons.forEach(function (btn) {
-          var btnLang = btn.getAttribute("data-set-lang");
-          var isActive = btnLang === validLang;
-          btn.setAttribute("aria-pressed", isActive ? "true" : "false");
-          if (isActive) {
-            btn.classList.add("is-active");
-          } else {
-            btn.classList.remove("is-active");
-          }
+      function setCountryAndLang(code, lang, persist) {
+        var validLang = lang === 'th' ? 'th' : 'en';
+        htmlEl.setAttribute('data-lang', validLang);
+        htmlEl.setAttribute('lang', validLang);
+        if (currentFlagUse) currentFlagUse.setAttribute('href', '#flag-' + code.toLowerCase());
+        if (currentLabel) currentLabel.textContent = code;
+        countryItems.forEach(function (item) {
+          item.setAttribute('aria-selected', item.getAttribute('data-country-code') === code ? 'true' : 'false');
         });
-
+        langButtons.forEach(function (btn) {
+          var active = btn.getAttribute('data-set-lang') === validLang;
+          btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+          btn.classList.toggle('is-active', active);
+        });
         if (persist) {
           try {
-            localStorage.setItem("exl-lang", validLang);
-            localStorage.setItem("excited_lang", validLang);
+            localStorage.setItem('exl-lang', validLang);
+            localStorage.setItem(STORAGE_KEY_LANG, validLang);
+            localStorage.setItem(STORAGE_KEY_COUNTRY, code);
           } catch (e) {}
         }
       }
 
+      function visibleItems() {
+        return countryItems.filter(function (item) { return item.style.display !== 'none'; });
+      }
+
+      function filterCountries(query) {
+        var q = (query || '').trim().toLowerCase();
+        var matchCount = 0;
+        countryItems.forEach(function (item) {
+          var name = item.getAttribute('data-country-name') || '';
+          var code = (item.getAttribute('data-country-code') || '').toLowerCase();
+          var native = ((item.querySelector('.country-item-meta span') || {}).textContent || '').toLowerCase();
+          var matches = !q || name.indexOf(q) !== -1 || code.indexOf(q) !== -1 || native.indexOf(q) !== -1;
+          item.style.display = matches ? 'flex' : 'none';
+          if (matches) matchCount++;
+        });
+        if (emptyState) emptyState.style.display = matchCount === 0 ? 'block' : 'none';
+      }
+
+      function toggleDropdown(open, returnFocus) {
+        var willOpen = typeof open === 'boolean' ? open : !dropdownWrap.classList.contains('is-open');
+        dropdownWrap.classList.toggle('is-open', willOpen);
+        dropdownBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        if (willOpen) {
+          searchInput.value = '';
+          filterCountries('');
+          setTimeout(function () { searchInput.focus(); }, 60);
+        } else if (returnFocus !== false) {
+          dropdownBtn.focus();
+        }
+      }
+
+      if (dropdownWrap && dropdownBtn && searchInput) {
+        dropdownBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          toggleDropdown();
+        });
+        searchInput.addEventListener('input', function () { filterCountries(searchInput.value); });
+        searchInput.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            var first = visibleItems()[0];
+            if (first) first.focus();
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            var only = visibleItems()[0];
+            if (only) only.click();
+          }
+        });
+        countryItems.forEach(function (item) {
+          function pickItem() {
+            setCountryAndLang(item.getAttribute('data-country-code'), item.getAttribute('data-country-lang'), true);
+            toggleDropdown(false);
+          }
+          item.addEventListener('click', function (e) { e.stopPropagation(); pickItem(); });
+          item.addEventListener('keydown', function (e) {
+            var list = visibleItems();
+            var idx = list.indexOf(item);
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              pickItem();
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (list[idx + 1]) list[idx + 1].focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (idx > 0) list[idx - 1].focus();
+              else searchInput.focus();
+            }
+          });
+        });
+        document.addEventListener('click', function (e) {
+          if (!dropdownWrap.contains(e.target)) toggleDropdown(false, false);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && dropdownWrap.classList.contains('is-open')) toggleDropdown(false);
+        });
+      }
+
+      // Footer EN / TH pill drives the same state as the dropdown (TH -> Thailand, EN -> United States)
       langButtons.forEach(function (btn) {
-        btn.addEventListener("click", function (e) {
+        btn.addEventListener('click', function (e) {
           e.preventDefault();
-          var lang = btn.getAttribute("data-set-lang");
-          setLanguage(lang, true);
+          var lang = btn.getAttribute('data-set-lang');
+          setCountryAndLang(lang === 'th' ? 'TH' : 'US', lang, true);
         });
       });
 
-      // Restore saved language preference on load
+      // Restore saved country / language
       try {
-        var savedLang = htmlEl.getAttribute("data-lang") || localStorage.getItem("exl-lang") || localStorage.getItem("excited_lang") || "en";
-        setLanguage(savedLang, false);
+        var savedCountry = localStorage.getItem(STORAGE_KEY_COUNTRY);
+        var savedLang = localStorage.getItem(STORAGE_KEY_LANG) || localStorage.getItem('exl-lang') || htmlEl.getAttribute('data-lang') || 'en';
+        var savedItem = savedCountry ? document.querySelector('.country-item[data-country-code="' + savedCountry + '"]') : null;
+        if (savedItem) setCountryAndLang(savedCountry, savedItem.getAttribute('data-country-lang'), false);
+        else setCountryAndLang(savedLang === 'th' ? 'TH' : 'US', savedLang, false);
       } catch (e) {
-        setLanguage("en", false);
+        setCountryAndLang('US', 'en', false);
       }
       /* 2. Audience Tabs + Door Card Controllers */
       var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
@@ -737,10 +1152,6 @@ html[data-lang="th"] .nav-links a { letter-spacing: 0; }
 .lang-btn { border: none; background: transparent; color: var(--slate); font-family: inherit; font-size: 13px; font-weight: 600; padding: 4px 11px; border-radius: var(--pill-radius); cursor: pointer; transition: background-color 140ms var(--ease-arrive), color 140ms var(--ease-arrive); line-height: 1.25; }
 .lang-btn:hover { color: var(--ink); }
 .lang-btn[aria-pressed="true"], .lang-btn.is-active { background-color: var(--ink); color: var(--canvas); }
-.lang-switch--footer { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.22); }
-.lang-switch--footer .lang-btn { color: rgba(255, 255, 255, 0.72); }
-.lang-switch--footer .lang-btn:hover { color: var(--canvas); }
-.lang-switch--footer .lang-btn[aria-pressed="true"], .lang-switch--footer .lang-btn.is-active { background-color: rgba(255, 255, 255, 0.22); color: var(--canvas); }
 
 
 /* IAM Auth Navigation & Token Hydration Tokens */
@@ -759,7 +1170,40 @@ html[data-lang="th"] .nav-links a { letter-spacing: 0; }
 .auth-hydrated-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #065f46; background-color: #d1fae5; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: var(--pill-radius); margin-bottom: 12px; }
 .auth-hydrated-pill code { font-family: "JetBrains Mono", var(--font-mono); font-size: 11.5px; background: rgba(255,255,255,0.7); padding: 1px 5px; border-radius: 4px; }
 
-/* Buttons */
+/* Country & Language Dropdown */
+.country-dropdown-wrap { position: relative; }
+.country-dropdown-btn { display: inline-flex; align-items: center; gap: 8px; background-color: var(--canvas); border: 1px solid var(--border); border-radius: var(--pill-radius); padding: 6px 12px 6px 9px; min-height: 38px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer; transition: background-color 160ms var(--ease-arrive), border-color 160ms var(--ease-arrive); }
+.country-dropdown-btn:hover { background-color: var(--lifted); border-color: var(--ink); }
+.country-dropdown-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.country-flag-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 14px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(20, 20, 19, 0.14); flex-shrink: 0; }
+.flag-svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+.country-code-label { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink); }
+.country-chevron { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; color: var(--slate); transition: transform 200ms var(--ease-arrive); flex-shrink: 0; }
+.country-dropdown-wrap.is-open .country-chevron { transform: rotate(180deg); }
+.country-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; max-height: 420px; background-color: var(--white); border: 1.5px solid var(--ink); border-radius: 24px; box-shadow: var(--shadow-halo); padding: 8px; display: none; flex-direction: column; z-index: 1000; transform-origin: top right; }
+.country-dropdown-wrap.is-open .country-menu { display: flex; animation: countryMenuIn 180ms var(--ease-arrive) forwards; }
+@keyframes countryMenuIn { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.country-search-box { position: relative; padding: 4px 4px 8px; border-bottom: 1px solid var(--border-soft); margin-bottom: 4px; }
+.country-search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-60%); width: 14px; height: 14px; stroke: var(--slate); stroke-width: 2; fill: none; pointer-events: none; }
+.country-search-input { width: 100%; padding: 7px 12px 7px 32px; background-color: var(--canvas); border: 1px solid var(--border); border-radius: var(--pill-radius); font-family: inherit; font-size: 13px; color: var(--ink); outline: none; transition: border-color 160ms var(--ease-arrive), background-color 160ms var(--ease-arrive); }
+.country-search-input:focus { border-color: var(--ink); background-color: var(--white); }
+.country-search-input::placeholder { color: var(--slate); }
+.country-list { list-style: none; overflow-y: auto; max-height: 300px; padding: 2px 0; margin: 0; overscroll-behavior: contain; }
+.country-list::-webkit-scrollbar { width: 5px; }
+.country-list::-webkit-scrollbar-track { background: transparent; }
+.country-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.country-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 14px; cursor: pointer; transition: background-color 140ms var(--ease-arrive); font-size: 13px; color: var(--ink); user-select: none; }
+.country-item:hover, .country-item.is-highlighted { background-color: var(--canvas); }
+.country-item[aria-selected="true"] { background-color: var(--surface-warm); font-weight: 600; }
+.country-item-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.country-item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.country-item-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--slate); font-family: var(--font-mono); flex-shrink: 0; }
+.country-check { width: 14px; height: 14px; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; display: none; }
+.country-item[aria-selected="true"] .country-check { display: block; }
+.country-empty-state { padding: 18px 12px; text-align: center; color: var(--slate); font-size: 13px; display: none; }
+@media (max-width: 480px) {
+  .country-menu { position: fixed; top: 72px; left: 16px; right: 16px; width: auto; max-height: calc(100vh - 96px); }
+}/* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; font-size: 16px; font-weight: 500; letter-spacing: -0.02em; border-radius: var(--btn-radius); padding: 10px 24px; min-height: 44px; text-decoration: none; cursor: pointer; transition: transform 160ms var(--ease-arrive), background-color 160ms var(--ease-arrive), color 160ms var(--ease-arrive); }
 html[data-lang="th"] .btn { letter-spacing: 0; }
 .btn:focus-visible,
@@ -867,27 +1311,200 @@ to { stroke-dashoffset: 0; }
 .price-card { background-color: var(--lifted); border: 1px solid var(--border); border-radius: var(--panel-radius); padding: 40px 36px; display: flex; flex-direction: column; justify-content: space-between; }
 .price-card--primary { background-color: var(--white); border: 1.5px solid var(--ink); box-shadow: var(--shadow-halo); }
 .final-cta-card { background-color: var(--lifted); border: 1.5px solid var(--ink); border-radius: var(--panel-radius); padding: 52px 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: center; }
-/* Footer */
-.site-footer { background-color: var(--ink); color: var(--canvas); padding: 28px 24px 24px; margin-top: 36px; }
-.footer-inner { max-width: 1200px; margin: 0 auto; }
-.footer-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; padding-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); flex-wrap: wrap; }
-.footer-brand { max-width: 340px; }
-.footer-brand-link { display: inline-flex; align-items: center; gap: 8px; color: var(--canvas); text-decoration: none; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-.footer-brand-link:hover { color: var(--canvas); opacity: 0.9; }
-.footer-brand-link .brand-fallback { background: var(--canvas); color: var(--ink); }
-.footer-brand-link .brand-name { color: var(--canvas); }
-.footer-tagline { font-size: 13px; line-height: 1.45; color: rgba(255, 255, 255, 0.65); margin: 0; }
-.footer-links-grid { display: flex; gap: 40px; flex-wrap: wrap; }
-.footer-col-title { font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); margin-bottom: 8px; }
-.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; }
-.footer-col a { color: var(--canvas); text-decoration: none; font-size: 13.5px; opacity: 0.8; transition: opacity 120ms; }
-.footer-col a:hover { opacity: 1; text-decoration: underline; }
-.footer-bottom { padding-top: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; color: rgba(255, 255, 255, 0.6); }
+/* Redesigned Elevated Dark Ink Footer */
+.site-footer {
+  background-color: var(--ink);
+  color: var(--canvas);
+  margin-top: 40px;
+  padding: 44px 24px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.site-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.site-footer-main {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.footer-brand-pane {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.footer-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--canvas);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.footer-brand-logo:hover {
+  opacity: 0.92;
+}
+.footer-brand-logo .brand-mark {
+  width: 26px;
+  height: 26px;
+}
+.footer-brand-desc {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(243, 240, 238, 0.72);
+  margin: 0;
+  max-width: 290px;
+}
+html[data-lang="th"] .footer-brand-desc {
+  line-height: 1.65;
+}
+.footer-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: var(--pill-radius);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(243, 240, 238, 0.85);
+  letter-spacing: 0.01em;
+}
+.status-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22C55E;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+.footer-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 28px;
+}
+.site-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.footer-col-heading {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(243, 240, 238, 0.5);
+  margin: 0;
+}
+.footer-col-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footer-col-list a {
+  color: rgba(243, 240, 238, 0.8);
+  text-decoration: none;
+  font-size: 13.5px;
+  line-height: 1.45;
+  transition: color 140ms var(--ease-arrive), transform 140ms var(--ease-arrive);
+  display: inline-block;
+}
+.footer-col-list a:hover {
+  color: var(--canvas);
+  transform: translateX(2px);
+}
+.footer-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 20px;
+  gap: 16px 24px;
+  flex-wrap: wrap;
+}
+.footer-bottom-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.footer-copy-text {
+  font-size: 13px;
+  color: rgba(243, 240, 238, 0.85);
+  margin: 0;
+}
+.footer-trust-subtext {
+  font-size: 12px;
+  color: rgba(243, 240, 238, 0.5);
+  margin: 0;
+}
+.footer-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lang-switch--footer {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--pill-radius);
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+}
+.lang-switch--footer .lang-btn {
+  border: none;
+  background: transparent;
+  color: rgba(243, 240, 238, 0.7);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--pill-radius);
+  cursor: pointer;
+  transition: all 140ms var(--ease-arrive);
+}
+.lang-switch--footer .lang-btn:hover {
+  color: var(--canvas);
+}
+.lang-switch--footer .lang-btn[aria-pressed="true"],
+.lang-switch--footer .lang-btn.is-active {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--canvas);
+}
 
-@media (max-width: 768px) {
-  .site-footer { padding: 24px 16px 20px; margin-top: 24px; }
-  .footer-top { flex-direction: column; gap: 20px; }
-  .footer-links-grid { width: 100%; justify-content: space-between; gap: 20px; }
+@media (max-width: 960px) {
+  .site-footer-main {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .footer-brand-pane {
+    max-width: 100%;
+  }
+  .footer-nav-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px 20px;
+  }
+}
+@media (max-width: 600px) {
+  .site-footer {
+    padding: 36px 16px 24px;
+    margin-top: 32px;
+  }
+  .footer-nav-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .footer-bottom-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
 }
 .states-strip { background-color: var(--lifted); border-top: 2px dashed var(--border); padding: 48px 24px 64px; }
 .states-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 24px 0; }

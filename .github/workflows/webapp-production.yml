@@ -397,6 +397,16 @@ jobs:
             esac
           done
 
+          # RFC 8414 path-insert discovery URLs (MCP SDK tries these first and
+          # aborts on a 5xx): both must be 200 JSON naming the canonical issuer.
+          for doc in oauth-authorization-server openid-configuration; do
+            pi="$issuer_base/.well-known/$doc/api/auth"
+            pcode=$(curl -sS -m 20 -H 'Accept: application/json' -o /tmp/pi.json -w '%{http_code}' "$pi" || true)
+            echo "path-insert discovery: $pi -> $pcode"
+            [ "$pcode" = "200" ] || fail=1
+            [ "$(jq -r '.issuer // empty' /tmp/pi.json 2>/dev/null)" = "$(jq -r '.issuer // empty' /tmp/iss.json 2>/dev/null)" ] || { echo "::error::$pi issuer differs from the in-mount document"; fail=1; }
+          done
+
           # Bogus credentials must be a JSON 401 from Better Auth, not HTML.
           dbad=$(curl -sS -m 20 -o /tmp/dbad.json -w '%{http_code}' -X POST "$issuer_base/api/auth/sign-in/email" \
             -H 'content-type: application/json' -H "origin: $issuer_base" \

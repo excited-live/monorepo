@@ -2,6 +2,7 @@
 // 1) Serve static assets (images/css/js) via the ASSETS binding
 // 2) Everything else goes through the SSR handler
 import server from "../dist/server/server.js"
+import { isWellKnownPath, jsonWellKnownError, rewritePathInsert } from "../src/lib/well-known"
 
 // Paths that are always static. /assets is the Vite hashed-bundle dir;
 // the rest are files published from apps/webapp/public/.
@@ -38,6 +39,12 @@ export const onRequest = async (context: {
 		const staticResp = await context.env.ASSETS.fetch(context.request)
 		if (staticResp.status !== 404) return staticResp
 	}
+
+	// OAuth discovery: path-insert URLs map onto the auth mount, and any other
+	// /.well-known/* error is a JSON 404 (an HTML 500 aborts MCP SDK discovery).
+	const rewritten = rewritePathInsert(context.request)
+	if (rewritten) return server.fetch(rewritten)
+	if (isWellKnownPath(url.pathname)) return jsonWellKnownError(await server.fetch(context.request))
 
 	return server.fetch(context.request)
 }

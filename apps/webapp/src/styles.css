@@ -956,7 +956,8 @@ button {
 }
 
 .launch-home__endpoint-row {
-  align-items: stretch;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .launch-home__endpoint {

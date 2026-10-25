@@ -8,8 +8,11 @@ import { createApp } from "./app"
  * binding `DB` lives (see wrangler.toml). The persistence layer picks D1 up
  * automatically; no code change is needed between `node dist/index.js` and
  * `wrangler deploy`.
+ *
+ * Unlike the Node entry, the Worker fails closed: with BETTER_AUTH_SECRET unset
+ * it answers 503 on /api/v1/* and /mcp rather than trusting `x-user-id`.
  */
-const app = createApp()
+const app = createApp({ requireAuthConfig: true })
 
 export default {
 	fetch: app.fetch,

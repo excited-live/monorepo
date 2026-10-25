@@ -1,4 +1,4 @@
-import { Hono } from "hono"
+import { Hono, type MiddlewareHandler } from "hono"
 import { describeRoute, openAPIRouteHandler } from "hono-openapi"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
@@ -7,6 +7,7 @@ import { DomainError } from "./modules/accounting/domain/errors"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
+import { tokensAuthConfigured } from "./lib/auth"
 import { documentation, jsonResponse } from "./openapi/docs"
 import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
 import { createAgentKeysRouter } from "./routes/agent-keys"
@@ -26,6 +27,12 @@ export interface AppOptions {
 	 * point the same app at a throwaway database.
 	 */
 	db?: SqlDriver
+	/**
+	 * Fail closed when BETTER_AUTH_SECRET is unset: /api/v1/* and /mcp answer 503
+	 * instead of falling back to the unauthenticated `x-user-id` dev mode. The
+	 * deployed Worker sets this; Node dev and tests leave it off.
+	 */
+	requireAuthConfig?: boolean
 }
 
 /**
@@ -88,6 +95,17 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 			docs: "/openapi.json",
 		})
 	})
+
+	if (options.requireAuthConfig) {
+		const refuseWithoutSecret: MiddlewareHandler<ApiEnv> = async (c, next) => {
+			if (!tokensAuthConfigured()) {
+				return c.json({ error: "Service unavailable: authentication is not configured" }, 503)
+			}
+			await next()
+		}
+		app.use("/api/v1/*", refuseWithoutSecret)
+		app.use("/mcp", refuseWithoutSecret)
+	}
 
 	// Resolve the persistence backend per request (on Workers the D1 binding is
 	// only visible through the request env). Never cache the in-flight promise

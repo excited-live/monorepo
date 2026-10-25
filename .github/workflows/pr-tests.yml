@@ -150,13 +150,27 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec turbo run typecheck build test --filter=@excited-live/api
 
+  # Helper scripts the workflows execute have no package and no dependencies, so
+  # turbo never sees them. They are unit-tested with node:test here, which makes
+  # a workflow-only change provable without a deploy.
+  scripts:
+    name: workflow helper scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node --test scripts/pages-domain-recovery.test.mjs
+
   # Single required status check for branch protection. The job name must
   # match the required context on `main` ("PR gate"). Fails if any dependency
   # failed; a skipped `test` job (no affected packages with tests) counts as
   # a pass. Skipped when the run itself is cancelled (concurrency supersedes).
   gate:
     name: PR gate
-    needs: [detect, lint, test, api-gate]
+    needs: [detect, lint, test, api-gate, scripts]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -167,7 +181,8 @@ jobs:
             "${{ needs.detect.result }}" \
             "${{ needs.lint.result }}" \
             "${{ needs.test.result }}" \
-            "${{ needs.api-gate.result }}"; do
+            "${{ needs.api-gate.result }}" \
+            "${{ needs.scripts.result }}"; do
             case "$r" in
               success|skipped) ;;
               *) echo "::error::dependency result: $r"; exit 1 ;;

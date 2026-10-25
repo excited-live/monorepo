@@ -17,6 +17,8 @@ name: API Deploy Production
 # this workflow is workflow_dispatch only and requires a typed PROD gate. It
 # exists so the repair needs no Cloudflare token outside CI.
 #
+# (Redeploy 2026-10-25: ships #84 CORS allowlist, #81.)
+#
 # Migrations are NOT applied here: the Worker owns them at boot
 # (apps/api/src/db/apply.ts, ledger `d1_migrations`).
 

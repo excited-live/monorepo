@@ -142,13 +142,11 @@ button {
   margin: 0 auto;
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  align-items: start;
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
-  gap: 31px;
 }
 
 .chart-panel,
@@ -538,11 +536,6 @@ button {
 }
 
 @media (max-width: 1400px) {
-  .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.17fr);
-    gap: 22px;
-  }
-
   .chart-panel__inner,
   .plan-summary-card__inner,
   .actions-card__inner {
@@ -581,12 +574,6 @@ button {
     padding-top: 20px;
     padding-bottom: 36px;
     overflow: visible;
-  }
-
-  .dashboard-grid {
-    display: flex !important;
-    flex-direction: column !important;
-    height: auto;
   }
 
   .chart-panel,
@@ -938,6 +925,92 @@ button {
 /* Settings page (mock) */
 .settings-panel {
   max-width: 620px;
+}
+
+/* Launch home (#65): connect-your-agent + deliberate plan/sim empty state. */
+.launch-home {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.launch-home__eyebrow {
+  color: var(--copy-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.launch-home__lede {
+  max-width: 62ch;
+}
+
+.launch-home__connect {
+  padding: 24px;
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--copy) 3%, transparent);
+}
+
+.launch-home__endpoint-row {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.launch-home__endpoint {
+  flex: 1 1 280px;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  color: var(--copy);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.launch-home__status {
+  min-height: 1.4em;
+}
+
+.launch-home__links {
+  flex-wrap: wrap;
+}
+
+.launch-home__link {
+  color: var(--copy);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.launch-home__link:focus-visible {
+  outline: 2px solid var(--copy);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.launch-home__empty {
+  max-width: 640px;
+  padding-top: 28px;
+  border-top: 1px solid var(--panel-border);
+}
+
+@media (max-width: 640px) {
+  .launch-home__connect {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .launch-home__empty {
+    padding-top: 22px;
+  }
 }
 
 /* ≤1020px stacks the columns: the chat gets a phone-height block under the

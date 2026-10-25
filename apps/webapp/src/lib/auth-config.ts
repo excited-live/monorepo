@@ -63,6 +63,18 @@ export function oauthProviderConfig(): {
 }
 
 /**
+ * Absolute MCP endpoint shown on the signed-in launch home (#65).
+ *
+ * Uses the environment's API origin so prelive previews point at the prelive
+ * API; falls back to the production API so a build without EXCITED_API_URL
+ * still renders a usable address.
+ */
+export function mcpResourceUrl(): string {
+	const api = envVar("EXCITED_API_URL")?.replace(/\/+$/, "") || "https://api.excited.live"
+	return `${api}/mcp`
+}
+
+/**
  * Route gate (#46): the gate is production-only; prelive/previews/local leave
  * the flag unset so the app stays browsable.
  * True iff betterAuthConfigured() AND AUTH_REQUIRED is "true" or "1".

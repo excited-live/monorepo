@@ -12,6 +12,8 @@ import type { SqlDriver } from "../db/types"
 export interface ApiEnv {
 	Bindings: {
 		DB?: unknown
+		BETTER_AUTH_TRUSTED_ORIGINS?: string
+		API_CORS_ORIGINS?: string
 	}
 	Variables: {
 		db: SqlDriver

@@ -1,12 +1,12 @@
 import { Hono, type MiddlewareHandler } from "hono"
 import { describeRoute, openAPIRouteHandler } from "hono-openapi"
-import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
 import { DomainError } from "./modules/accounting/domain/errors"
 import { getDb } from "./db"
 import type { SqlDriver } from "./db/types"
 import type { ApiEnv } from "./lib/env"
+import { corsAllowlist } from "./lib/cors"
 import { tokensAuthConfigured } from "./lib/auth"
 import { documentation, jsonResponse } from "./openapi/docs"
 import { createAccountingRouter } from "./modules/accounting/route/accounting.routes"
@@ -45,16 +45,7 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	const app = new Hono<ApiEnv>()
 
 	app.use("*", logger())
-	app.use(
-		"*",
-		cors({
-			origin: (origin) => origin || "*",
-			allowHeaders: ["Content-Type", "Authorization", "x-user-id", "x-api-key", "Mcp-Protocol-Version", "Mcp-Session-Id"],
-			exposeHeaders: ["set-auth-token"],
-			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-			credentials: true,
-		}),
-	)
+	app.use("*", corsAllowlist({ allowLocalhost: !options.requireAuthConfig }))
 
 	// Domain errors carry their own HTTP status (404/409/400), so they are
 	// mapped here rather than in router middleware: Hono's composer catches a

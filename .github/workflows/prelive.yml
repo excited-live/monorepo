@@ -256,53 +256,14 @@ jobs:
           cp wrangler.prelive.toml wrangler.toml
           npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist/client --project-name="$PRELIVE_PROJECT" --branch=main --commit-dirty=true
 
-      # Proof, not a conclusion: the four assertions in #154, with the raw
-      # responses echoed so a failure shows what the deployment returned.
-      # Retried because a fresh Pages deployment takes a few seconds to
-      # propagate.
+      # Proof, not a conclusion: the five assertions in #154 plus the two
+      # discovery links that close the OAuth chain, with the raw status and
+      # body of every response echoed so a failure shows what the deployment
+      # returned. Retried because a fresh Pages deployment takes a few seconds
+      # to propagate, and because the API Worker may still be rolling out from
+      # the same push.
       - name: Smoke — prelive MCP authorization server
-        run: |
-          set -euo pipefail
-          issuer=https://prelive.excited.live/api/auth
-          api=https://excited-live-api-prelive.preamza02.workers.dev
-          reg_body='{"client_name":"prelive-ci-smoke","redirect_uris":["https://example.com/callback"],"grant_types":["authorization_code","refresh_token"],"response_types":["code"],"token_endpoint_auth_method":"none","scope":"openid profile email offline_access"}'
-
-          meta_code=000
-          ok_code=000
-          for attempt in $(seq 1 10); do
-            meta_code=$(curl -sS -m 20 -o /tmp/meta.json -w '%{http_code}' "$issuer/.well-known/oauth-authorization-server" || echo 000)
-            ok_code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$issuer/ok" || echo 000)
-            echo "attempt $attempt: metadata -> $meta_code, /ok -> $ok_code"
-            if [ "$meta_code" = "200" ] && [ "$ok_code" = "200" ]; then break; fi
-            sleep 5
-          done
-
-          echo "--- GET $issuer/.well-known/oauth-authorization-server ($meta_code)"
-          cat /tmp/meta.json; echo
-          echo "--- GET $issuer/ok ($ok_code)"
-          ok_body=$(curl -sS -m 20 "$issuer/ok" || true); echo "$ok_body"
-
-          reg=$(curl -sS -m 20 -w '\n%{http_code}' -X POST "$issuer/oauth2/register" -H 'content-type: application/json' -d "$reg_body" || printf '\n000')
-          reg_code=$(printf '%s' "$reg" | tail -n1)
-          reg_json=$(printf '%s' "$reg" | sed '$d')
-          echo "--- POST $issuer/oauth2/register ($reg_code)"
-          echo "$reg_json"
-
-          mcp_code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -X POST "$api/mcp" || echo 000)
-          echo "--- POST $api/mcp without a token ($mcp_code)"
-
-          fail=0
-          [ "$meta_code" = "200" ] || { echo "::error::authorization-server metadata is $meta_code, want 200"; fail=1; }
-          [ "$ok_code" = "200" ] || { echo "::error::/api/auth/ok is $ok_code, want 200"; fail=1; }
-          [ "$reg_code" = "200" ] || [ "$reg_code" = "201" ] || { echo "::error::dynamic client registration is $reg_code, want 200/201"; fail=1; }
-          [ "$mcp_code" = "401" ] || { echo "::error::POST /mcp without a token is $mcp_code, want 401"; fail=1; }
-
-          chosen_issuer=$(jq -r '.issuer // empty' /tmp/meta.json)
-          client_id=$(printf '%s' "$reg_json" | jq -r '.client_id // empty')
-          echo "issuer=$chosen_issuer client_id=$client_id"
-          [ "$chosen_issuer" = "$issuer" ] || { echo "::error::metadata issuer is '$chosen_issuer', want '$issuer'"; fail=1; }
-          [ -n "$client_id" ] || { echo "::error::registration returned no client_id"; fail=1; }
-          exit "$fail"
+        run: node scripts/smoke-prelive.mjs --retries 10 --wait 5
 
       # A 1101 page hides the cause, and the smoke test only says which
       # assertion failed. Tail the live deployment while requesting the same

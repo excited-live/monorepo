@@ -19,6 +19,7 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - "turbo.json"
+      - "scripts/smoke-prelive.mjs"
       - ".github/workflows/api-prelive.yml"
   workflow_dispatch:
 
@@ -73,22 +74,10 @@ jobs:
 
       # Same two assertions issue #146 calls "done": auth is enforced, no dev
       # passthrough. A deploy that boots unconfigured fails here instead of
-      # shipping an open /mcp.
+      # shipping an open /mcp. Checks 4 and 5 of the shared smoke script: the
+      # 401 plus its WWW-Authenticate/resource-metadata chain, and /health.
       - name: Smoke — auth is enforced on the deployed Worker
-        run: |
-          set -euo pipefail
-          api=https://excited-live-api-prelive.preamza02.workers.dev
-          for attempt in $(seq 1 10); do
-            mcp=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$api/mcp" || true)
-            settings=$(curl -sS -o /dev/null -w '%{http_code}' "$api/api/v1/settings" || true)
-            echo "attempt $attempt: POST /mcp -> $mcp, GET /api/v1/settings -> $settings"
-            if [ "$mcp" = "401" ] && [ "$settings" = "401" ]; then
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "API is not enforcing auth after deploy (want 401/401)" >&2
-          exit 1
+        run: node scripts/smoke-prelive.mjs --only 4,5 --retries 10 --wait 3
 
       # A route that never reaches the database proves nothing about auth. Run a
       # real sign-up, then read the new session back with its bearer token (an

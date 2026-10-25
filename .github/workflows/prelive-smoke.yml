@@ -1,0 +1,45 @@
+name: Prelive Smoke
+
+# Continuous, read-only proof that the deployed prelive stack still works:
+# the webapp (Pages) is the MCP authorization server, the API Worker is the
+# protected resource, and the two discovery documents agree. All endpoints are
+# public, so this needs no secrets.
+#
+# It runs on a schedule because prelive changes underneath us (Secrets, bindings
+# and Pages config can drift without a commit), and after each deploy completes
+# so a broken rollout is caught even when the deploy job's own smoke passed
+# before propagation. It is not wired into PR workflows on purpose: prelive
+# serves main, so a PR run would assert on a build the PR never touched. PR-time
+# coverage stays check-prelive-auth-config.mjs and pr-tests.yml.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Prelive", "API Deploy Prelive"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prelive-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    # workflow_run fires for failed deploys too; a failed deploy already reports
+    # itself, so only the deploy that succeeded is re-checked. Scheduled and
+    # manual runs always run.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # No pnpm install: the script only uses node: built-ins and global fetch.
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Smoke — prelive authorization server and protected resource
+        run: node scripts/smoke-prelive.mjs --retries 3 --wait 10

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
-import { mastercardTheme } from "@excited-live/design-system"
+import { Link, mastercardTheme } from "@excited-live/design-system"
 import { Button } from "@astryxdesign/core/Button"
 import { Card } from "@astryxdesign/core/Card"
 import { Heading } from "@astryxdesign/core/Heading"
@@ -299,13 +299,13 @@ function SignInPage() {
 						{isSignUp ? (
 							<Text size="sm" color="secondary" className="signin-legal">
 								{t("auth.legalPrefix")}
-								<a href={`${LEGAL_ORIGIN}/docs/terms`} target="_blank" rel="noopener noreferrer">
+								<Link href={`${LEGAL_ORIGIN}/docs/terms`} target="_blank" rel="noopener noreferrer">
 									{t("auth.legalTerms")}
-								</a>
+								</Link>
 								{t("auth.legalAnd")}
-								<a href={`${LEGAL_ORIGIN}/docs/privacy`} target="_blank" rel="noopener noreferrer">
+								<Link href={`${LEGAL_ORIGIN}/docs/privacy`} target="_blank" rel="noopener noreferrer">
 									{t("auth.legalPrivacy")}
-								</a>
+								</Link>
 								.
 							</Text>
 						) : null}

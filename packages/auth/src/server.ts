@@ -80,6 +80,19 @@ export const MCP_OAUTH_SCOPES = ["onboarding", "accounting:read", "accounting:wr
 /** The one public (no client secret) client the RFC 8628 device flow accepts. */
 export const DEVICE_CLIENT_ID = "excited-live-agent"
 
+/**
+ * Lifetime, in seconds, of an OAuth authorization code — and of the signed
+ * authorization query (`client_id` + `sig`) the provider sends users through
+ * when it bounces them to /sign-in, /sign-up or /consent.
+ *
+ * The signed-query `exp` is computed from this value, so it is the real
+ * budget for the create-account resume flow: a new user must be able to open
+ * the sign-up page, create an account and resume the original authorization
+ * request without the `sig` expiring first. Keep it >= 10 minutes (600s);
+ * Better Auth's default is also 600s, but stating it here pins the contract.
+ */
+export const OAUTH_CODE_TTL_SECONDS = 600
+
 export interface AuthOAuthInput {
 	/** Protected resource the AS issues audience-bound JWTs for: the MCP endpoint URL. */
 	resource: string
@@ -196,6 +209,9 @@ export function createAuth(input: AuthInput): Auth {
 				loginPage,
 				consentPage,
 				scopes: [...OAUTH_DEFAULT_SCOPES, ...(as.scopes ?? MCP_OAUTH_SCOPES)],
+				// Also the signed-query (`sig`) lifetime for the sign-in and
+				// create-account resume flow. Must stay >= 10 minutes (#58).
+				codeExpiresIn: OAUTH_CODE_TTL_SECONDS,
 				// RFC 8707: a requested `resource` binds the access token's
 				// audience. The MCP endpoint is the only resource this AS serves,
 				// and every dynamically registered client is linked to it, so
@@ -220,7 +236,14 @@ export function createAuth(input: AuthInput): Auth {
 	} else if (tokenMount) {
 		// Default scopes: openid, profile, email, offline_access —
 		// offline_access is what gives mobile apps refresh tokens.
-		plugins.push(oauthProvider({ loginPage, consentPage }))
+		plugins.push(
+			oauthProvider({
+				loginPage,
+				consentPage,
+				// Same signed-query (`sig`) budget as the MCP mount (#58).
+				codeExpiresIn: OAUTH_CODE_TTL_SECONDS,
+			}),
+		)
 	}
 	// Cookie integration LAST (see the ordering note below). Injected by the
 	// caller: only the webapp has the TanStack Start runtime it plugs into.

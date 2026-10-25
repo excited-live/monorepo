@@ -38,6 +38,10 @@
  * actually returned.
  */
 
+// Explicit import: scripts/**.mjs only declares the Node globals it uses in
+// eslint.config.mjs, and `URL` is not one of them.
+import { URL } from "node:url"
+
 const DEFAULTS = {
 	issuer: "https://prelive.excited.live/api/auth",
 	api: "https://excited-live-api-prelive.preamza02.workers.dev",

@@ -24,6 +24,11 @@ jobs:
         run: bash scripts/check-skills.sh
       - name: Workflow helper tests
         run: node --test scripts/pages-domain-recovery.test.mjs
+      # Production and prelive deploy config drift used to be caught only inside
+      # the deploy workflows, i.e. after merge. A PR that drops a trusted origin
+      # is a launch bug (#89), so assert it on every PR too.
+      - name: Deploy config guards
+        run: node scripts/check-web-production-config.mjs && node scripts/check-prelive-auth-config.mjs
       - uses: pnpm/action-setup@v6
         with:
           version: 10.12.0

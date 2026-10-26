@@ -43,6 +43,9 @@ const WEBAPP_ORIGIN = "https://auth.excited.live"
  *  app.excited.live is NOT here: it 308-redirects to the issuer (one cookie jar), so it must
  *  not be trusted as an origin of its own — only the pages.dev deployment origin is. */
 const TRANSITION_ORIGINS = ["https://excited-live-web.pages.dev"]
+/** The no-BFF SPA (apps/iam). A production iam build calls the API and the auth
+ *  server cross-origin with credentials, so both allowlists must name it (#89). */
+const IAM_ORIGIN = "https://iam.excited.live"
 const DATABASE_ID = "90bd930e-8bfe-49a4-b58c-b44531c20902"
 const DATABASE_NAME = "excited-live-api-production"
 
@@ -126,9 +129,26 @@ const apiWebappOrigin = apiProdVars.EXCITED_WEBAPP_URL
 expect("apps/api production EXCITED_WEBAPP_URL must equal this project's BETTER_AUTH_URL", apiWebappOrigin, pagesOrigin)
 
 if (pagesTrusted) {
-	for (const origin of [pagesOrigin, API_ORIGIN, ...TRANSITION_ORIGINS]) {
+	for (const origin of [pagesOrigin, API_ORIGIN, IAM_ORIGIN, ...TRANSITION_ORIGINS]) {
 		if (!pagesTrusted.split(",").map((value) => value.trim()).includes(origin)) {
 			problems.push(`${PAGES_CONFIG} BETTER_AUTH_TRUSTED_ORIGINS is missing ${origin}`)
+		}
+	}
+}
+
+// The API derives BOTH its browser CORS allowlist (apps/api/src/lib/cors.ts)
+// and the tokens-mount trusted origins (apps/api/src/lib/auth.ts) from this
+// one production value. A missing origin is invisible until a browser calls
+// the API from it: iam.excited.live was absent here while iam was live on
+// prod, so every iam API call was CORS-blocked (#89).
+const apiTrusted = apiProdVars.BETTER_AUTH_TRUSTED_ORIGINS
+if (!apiTrusted) {
+	problems.push(`${API_CONFIG} production BETTER_AUTH_TRUSTED_ORIGINS is missing`)
+} else {
+	const apiTrustedOrigins = apiTrusted.split(",").map((value) => value.trim())
+	for (const origin of [pagesOrigin, IAM_ORIGIN]) {
+		if (!apiTrustedOrigins.includes(origin)) {
+			problems.push(`${API_CONFIG} production BETTER_AUTH_TRUSTED_ORIGINS is missing ${origin}`)
 		}
 	}
 }

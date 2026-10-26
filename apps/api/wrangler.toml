@@ -30,7 +30,13 @@ compatibility_flags = ["nodejs_compat"]
 # Since 2026-10-25 that origin is the webapp's canonical custom domain,
 # auth.excited.live (app.excited.live 308-redirects to it and the pages.dev
 # origin keeps answering, but discovery must name one issuer).
-vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://auth.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live" }
+# BETTER_AUTH_TRUSTED_ORIGINS is the single origin list for both jobs here:
+# apps/api/src/lib/cors.ts builds the browser CORS allowlist from it, and
+# apps/api/src/lib/auth.ts passes it to Better Auth's tokens mount as
+# trustedOrigins. iam.excited.live (the no-BFF SPA, apps/iam) calls
+# api.excited.live directly with credentials, so it must be on this list or
+# every iam API call is CORS-blocked and sign-in fails with INVALID_ORIGIN (#89).
+vars = { BETTER_AUTH_URL = "https://api.excited.live", EXCITED_WEBAPP_URL = "https://auth.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://iam.excited.live" }
 
 routes = [
 	{ pattern = "api.excited.live", custom_domain = true }
@@ -73,7 +79,7 @@ name = "excited-live-api-prelive"
 # exactly that on 2026-10-25 and production started serving prelive vars and
 # the prelive D1 database). An explicit empty list stops the inheritance.
 routes = []
-vars = { BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.dev", EXCITED_WEBAPP_URL = "https://prelive.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://prelive.excited.live" }
+vars = { BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.dev", EXCITED_WEBAPP_URL = "https://prelive.excited.live", BETTER_AUTH_TRUSTED_ORIGINS = "https://prelive.excited.live,https://excited-live-iam-prelive.pages.dev" }
 
 # Workers Logs: console output and request traces land in the dashboard and the
 # telemetry API. Added for #158, when a hang left no events to read.

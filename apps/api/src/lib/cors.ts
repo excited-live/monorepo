@@ -48,16 +48,20 @@ export function resolveCorsOrigins(
 export function corsAllowlist(options: { allowLocalhost: boolean }): MiddlewareHandler<ApiEnv> {
 	return async (c, next) => {
 		const allowed = resolveCorsOrigins(c.env, options)
+		const requested = c.req.header("origin") ?? ""
+		const permitted = requested !== "" && allowed.includes(normalize(requested))
 		const handler = cors({
-			origin: (origin) => (origin && allowed.includes(normalize(origin)) ? origin : null),
+			origin: () => (permitted ? requested : null),
 			allowHeaders: ["Content-Type", "Authorization", "x-user-id", "x-api-key", "Mcp-Protocol-Version", "Mcp-Session-Id"],
 			exposeHeaders: ["set-auth-token"],
 			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-			credentials: true,
+			// Decide credentials per request: Hono adds allow-credentials
+			// unconditionally and merges its own headers back onto the final
+			// Response, so a refused origin cannot be cleaned up afterwards —
+			// it must never be set in the first place. A refused origin, including
+			// on OPTIONS preflight, now gets no CORS headers at all.
+			credentials: permitted,
 		})
-		const res = await handler(c, next)
-		// Hono adds allow-credentials unconditionally; drop it when the origin was refused.
-		if (!c.res.headers.get("access-control-allow-origin")) c.res.headers.delete("access-control-allow-credentials")
-		return res
+		return handler(c, next)
 	}
 }

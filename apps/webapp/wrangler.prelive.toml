@@ -36,6 +36,17 @@ EXCITED_API_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
 # resolve — Cloudflare answers every /api/v1/* call with 1016 "Origin DNS
 # error" before the API sees it.
 BACKEND_API_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
+# Origins this auth server trusts. Since #88 prelive iam lives on
+# excited-live-iam-prelive.pages.dev, not iam.excited.live, and it calls this
+# auth server cross-origin with credentials (#89). The prelive deployment alias
+# stays a working origin too, exactly like excited-live-web.pages.dev on prod.
+# Keep in step with BETTER_AUTH_TRUSTED_ORIGINS in apps/api/wrangler.toml
+# [env.prelive].
+BETTER_AUTH_TRUSTED_ORIGINS = "https://prelive.excited.live,https://excited-live-prelive.pages.dev,https://excited-live-iam-prelive.pages.dev"
+# Browser CORS allowlist for the cookies mount (src/lib/auth-cors.ts). Setting
+# it replaces the production defaults, so prelive iam and the local iam dev
+# server are listed explicitly.
+AUTH_CORS_ORIGINS = "https://excited-live-iam-prelive.pages.dev,http://localhost:5175,http://127.0.0.1:5175"
 
 # The SAME D1 database as apps/api [env.prelive]: user/session/account/jwks/
 # oauthClient/oauthResource/oauthConsent/deviceCode rows are shared between the

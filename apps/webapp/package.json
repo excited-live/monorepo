@@ -18,6 +18,7 @@
 		"@astryxdesign/theme-neutral": "catalog:",
 		"@excited-live/auth": "workspace:*",
 		"@excited-live/design-system": "workspace:*",
+		"@excited-live/http": "workspace:*",
 		"@excited-live/i18n": "workspace:*",
 		"@excited-live/sim": "workspace:*",
 		"@excited-live/tax": "workspace:*",

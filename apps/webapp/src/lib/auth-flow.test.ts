@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
+import { RequestTimeoutError } from "@excited-live/http"
 import {
 	MIN_PASSWORD_LENGTH,
+	authFailureMessageKey,
 	oauthResumeUrl,
 	parseAuthMode,
 	postAuthDestination,
@@ -113,5 +115,23 @@ describe("signUpErrorKind", () => {
 
 	it("keeps the minimum password length in sync with Better Auth's default", () => {
 		expect(MIN_PASSWORD_LENGTH).toBe(8)
+	})
+})
+
+describe("auth failure copy", () => {
+	it("gives a deadline expiry its own retry copy", () => {
+		expect(authFailureMessageKey(new RequestTimeoutError(6_000))).toBe("auth.error.timeout")
+	})
+
+	it("recognises a timeout that crossed a package boundary by name", () => {
+		const crossed = new Error("Request timed out after 6000 ms")
+		crossed.name = "TimeoutError"
+		expect(authFailureMessageKey(crossed)).toBe("auth.error.timeout")
+	})
+
+	it("keeps the generic copy for anything else", () => {
+		expect(authFailureMessageKey(new Error("boom"))).toBe("auth.error.generic")
+		expect(authFailureMessageKey(null)).toBe("auth.error.generic")
+		expect(authFailureMessageKey(undefined)).toBe("auth.error.generic")
 	})
 })

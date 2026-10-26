@@ -81,6 +81,14 @@ export const strings: Dictionary = {
 		th: "เข้าสู่ระบบไม่สำเร็จ ตรวจสอบอีเมลและรหัสผ่านอีกครั้ง",
 	},
 	"auth.error.generic": { en: "Something went wrong. Please try again.", th: "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง" },
+	"auth.error.timeout": {
+		en: "The server did not respond in time. Check your connection and try again.",
+		th: "เซิร์ฟเวอร์ไม่ตอบกลับภายในเวลา ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+	},
+	"auth.sessionError.title": {
+		en: "We couldn't load your account",
+		th: "เราโหลดบัญชีของคุณไม่ได้",
+	},
 	"auth.notConfigured": {
 		en: "Sign-in is not available in this environment.",
 		th: "การเข้าสู่ระบบไม่พร้อมใช้งานในสภาพแวดล้อมนี้",

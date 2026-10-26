@@ -11,6 +11,7 @@ export {
 	type AuthClientError,
 	type AuthMode,
 	type SignUpErrorKind,
+	authFailureMessageKey,
 	oauthResumePath as oauthResumeUrl,
 	parseAuthMode,
 	postAuthDestination,

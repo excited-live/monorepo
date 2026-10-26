@@ -9,8 +9,10 @@
  *
  * Framework-free on purpose: no DOM, no router, no fetch. Callers decide how
  * to navigate (router push vs full-page assign) and, for a separate origin,
- * pass `origin` to get an absolute URL.
+ * pass `origin` to get an absolute URL. The one import below is a pure
+ * timeout classifier; nothing in this module performs I/O.
  */
+import { isTimeoutError } from "@excited-live/http"
 
 /** The two modes of the sign-in page. */
 export type AuthMode = "signin" | "signup"
@@ -137,4 +139,15 @@ export function signUpErrorKind(error: AuthClientError | null | undefined): Sign
 	if (code === "INVALID_EMAIL" || message.includes("invalid email")) return "invalidEmail"
 	if (code === "PASSWORD_TOO_SHORT" || message.includes("password too short")) return "weakPassword"
 	return "generic"
+}
+
+/**
+ * Copy key for a thrown auth-client failure (as opposed to an endpoint error
+ * returned in `{ error }`). A deadline expiry is worth its own sentence: the
+ * server did not answer in time, so the user should check the connection and
+ * retry — not re-check a password the server never saw. The form is enabled
+ * again for that retry as soon as the error is shown.
+ */
+export function authFailureMessageKey(error: unknown): string {
+	return isTimeoutError(error) ? "auth.error.timeout" : "auth.error.generic"
 }

@@ -344,6 +344,60 @@ describe("/mcp", () => {
 		expect((result.structuredContent?.steps as Array<unknown>).length).toBe(6);
 	});
 
+	it("answers the cost question from initialize and onboard_me alone (#192)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const init = await rpc(app, initialize(), key);
+		const instructions = (init.json?.result as { instructions?: string }).instructions ?? "";
+
+		// #192: an agent that only speaks MCP must be able to answer "what does
+		// this cost" without inventing a number. The canonical sentence lives in
+		// apps/landingpage/public/pricing.md, verbatim; if the two diverge that is
+		// a blocker, not a copy nit, so the whole line is pinned here.
+		const costLine = instructions.split("\n").find((line) => line.startsWith("- Cost: "));
+		expect(costLine).toBe(
+			"- Cost: excited.live is free during launch. No card is required, and nothing is charged today. " +
+				"There is no trial to expire: no trial end date, no automatic charge, and no plan, seat or usage fee applies today.",
+		);
+
+		for (const sentence of [
+			"free during launch",
+			"No card is required",
+			"nothing is charged today",
+			"There is no trial to expire",
+		]) {
+			expect(instructions).toContain(sentence);
+		}
+
+		// The #192 failure mode was a repo spec that said "$109/year" while the
+		// product said free. No price, currency or placeholder may creep into the
+		// cost answer. THB appears elsewhere in the guide as the default currency,
+		// so this guard is scoped to the cost line and to price-shaped numbers.
+		const costOnly = costLine ?? "";
+		for (const banned of ["$", "฿", "THB", "USD", "/mo", "per month", "per year", "coming soon", "being finalised"]) {
+			expect(costOnly).not.toContain(banned);
+		}
+		expect(costOnly).not.toMatch(/\d/);
+		expect(instructions).not.toMatch(/\d+\s*(?:THB|USD|\$|฿)/);
+
+		// Paid for on every session by every client: keep it inside the budget.
+		expect(Buffer.byteLength(instructions, "utf8")).toBeLessThan(2600);
+
+		// The same constant feeds the onboard_me prompt, so one edit covers both.
+		const prompt = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 4, method: "prompts/get", params: { name: "onboard_me" } },
+			key,
+		);
+		expect(prompt.status).toBe(200);
+		const promptText = (prompt.json?.result as { messages: Array<{ content: { text: string } }> }).messages[0]
+			?.content.text;
+		expect(promptText).toContain("free during launch");
+		expect(promptText).toContain("There is no trial to expire");
+	});
+
 	it("writes entries through the tools and completes a step", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);

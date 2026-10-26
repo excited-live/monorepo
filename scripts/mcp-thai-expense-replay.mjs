@@ -17,9 +17,15 @@
  *   AC3 category "อาหาร" writes and reads back as a known slug; every expense
  *                item in get_cash_flows carries `category`; `spendingByCategory`
  *                equals the month's expense total
- *   AC4 treasury the same first write on a zero-balance wallet -> 200 with
- *                warnings[0].code === "cash_negative" and a treasuryAfter that
- *                matches get_financial_summary's ending treasury
+ *   AC4 treasury the same first write on a zero-balance wallet -> 200, not a
+ *                refusal, with both codes from one `warnings` envelope:
+ *                `cash_negative` (the month ends below ฿0) and
+ *                `funding_wallet_zero_balance` (the wallet was never funded).
+ *                Both fire on a fresh account, and neither substitutes for the
+ *                other (#174, Ada 15:43). Every entry carries `month` and a
+ *                numeric `treasuryAfter`; `assetId` appears only on the
+ *                zero-balance code. The reported treasuryAfter equals
+ *                get_financial_summary's ending treasury for that month.
  *   AC5 monthly  a monthly expense still charges on its dayOfMonth
  *
  * Plus one supplement from #173's own AC:
@@ -444,7 +450,7 @@ if (key) {
 		)
 	}
 
-	// --- AC4: zero-balance write is 200 + cash_negative ---------------------
+	// --- AC4: zero-balance write is 200 + both warnings ---------------------
 	{
 		const payload = write.payload ?? {}
 		const warnings = Array.isArray(payload.warnings)
@@ -452,7 +458,10 @@ if (key) {
 			: Array.isArray(payload.expense?.warnings)
 				? payload.expense.warnings
 				: []
-		const warning = warnings.find((entry) => entry?.code === "cash_negative") ?? null
+		// A codes[] list, not warnings[0]: a payload whose warnings is a list of
+		// bare strings reported [undefined], which nobody can diagnose.
+		const codes = warnings.map((entry) => entry?.code)
+		const hasWarning = (code) => warnings.some((entry) => entry?.code === code)
 		const treasuryAfter =
 			typeof payload.treasuryAfter === "number"
 				? payload.treasuryAfter
@@ -471,14 +480,44 @@ if (key) {
 		let ok = true
 		if (!write.ok) {
 			ok = false
-			parts.push("write refused")
+			parts.push(`write refused: ${snippet(errorText(write.error), 240)}`)
 		}
-		if (warning?.code !== "cash_negative") {
+		// Both codes fire here: the wallet held ฿0 before the write AND the month
+		// ends at -฿250. They are different scopes, never deduped, so each is
+		// required on its own (#174, Ada 15:43).
+		for (const code of ["cash_negative", "funding_wallet_zero_balance"]) {
+			if (hasWarning(code)) continue
 			ok = false
-			parts.push(warnings.length ? `warnings codes [${warnings.map((entry) => entry?.code).join(", ")}]` : "no warnings[]")
-		} else {
-			parts.push("warnings[].code cash_negative")
+			parts.push(`warnings[].code has no ${code} -> [${codes.join(", ")}]`)
 		}
+		if (warnings.length) parts.push(`warnings codes [${codes.join(", ")}]`)
+		// Shape: every entry names its month and a numeric treasuryAfter, and only
+		// the zero-balance entry names the wallet it is about.
+		const shapeProblems = []
+		warnings.forEach((entry, index) => {
+			const problems = []
+			if (typeof entry?.month !== "string" || !/^\d{4}-\d{2}$/.test(entry.month)) {
+				problems.push(`month ${JSON.stringify(entry?.month ?? null)}`)
+			}
+			if (typeof entry?.treasuryAfter !== "number") {
+				problems.push(`treasuryAfter ${JSON.stringify(entry?.treasuryAfter ?? null)}`)
+			}
+			if (entry?.code === "funding_wallet_zero_balance") {
+				if (typeof entry?.assetId !== "string" || !entry.assetId) problems.push("assetId missing")
+			} else if (entry?.assetId !== undefined && entry?.assetId !== null) {
+				problems.push(`assetId unexpected on ${entry?.code}`)
+			}
+			if (problems.length) shapeProblems.push(`warnings[${index}] ${entry?.code ?? "no-code"}: ${problems.join(", ")}`)
+		})
+		if (shapeProblems.length) {
+			ok = false
+			parts.push(...shapeProblems)
+		} else if (warnings.length) {
+			parts.push("every entry: month, numeric treasuryAfter, assetId only on the zero-balance code")
+		}
+		// The number must be the month's ending treasury, not an estimate: the
+		// response-level treasuryAfter and every warning's copy are compared with
+		// get_financial_summary for that month.
 		if (treasuryAfter === null) {
 			ok = false
 			parts.push("no treasuryAfter in the response")
@@ -491,11 +530,22 @@ if (key) {
 		} else {
 			parts.push(`treasuryAfter ${treasuryAfter} == ${summaryTreasury.field}`)
 		}
+		const warningMismatch = warnings
+			.map((entry, index) =>
+				typeof entry?.treasuryAfter === "number" && summaryTreasury.value !== null && entry.treasuryAfter !== summaryTreasury.value
+					? `warnings[${index}].treasuryAfter ${entry.treasuryAfter}`
+					: null,
+			)
+			.filter(Boolean)
+		if (warningMismatch.length) {
+			ok = false
+			parts.push(`${warningMismatch.join(", ")} != ${summaryTreasury.field} ${summaryTreasury.value}`)
+		}
 		if (beforeTreasury.value !== null && beforeTreasury.value !== 0) {
 			ok = false
 			parts.push(`NOT a zero-balance wallet: started at ${beforeTreasury.value} (${beforeTreasury.field})`)
 		}
-		record("AC4", "zero-balance write -> cash_negative + treasuryAfter", ok, parts.join(" · "))
+		record("AC4", "zero-balance write -> cash_negative + funding_wallet_zero_balance + treasuryAfter", ok, parts.join(" · "))
 	}
 
 	// --- AC2: Buddhist-era year is refused and writes nothing ---------------

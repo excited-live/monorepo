@@ -35,6 +35,22 @@ describe("expense category vocabulary (#173)", () => {
 		expect(normalizeCategory("Other Personal Outflow")).toBe("other");
 	});
 
+	it("keeps the ratified entertainment label and the pre-fix spelling as an alias", () => {
+		const entertainment = EXPENSE_CATEGORIES.find((entry) => entry.slug === "entertainment");
+		expect(entertainment?.th).toBe("ค่าสมาชิกและค่าใช้จ่ายในชีวิต");
+		// Writes accept the label, and a legacy PATCH still sending the label
+		// from before the fix must land in `entertainment`, not `other`.
+		expect(normalizeCategory("ค่าสมาชิกและค่าใช้จ่ายในชีวิต")).toBe("entertainment");
+		expect(normalizeCategory("สมาชิกและค่าใช้จ่ายในชีวิต")).toBe("entertainment");
+		expect(canonicalCategory("ค่าสมาชิกและค่าใช้จ่ายในชีวิต")).toBe("entertainment");
+		expect(canonicalCategory("สมาชิกและค่าใช้จ่ายในชีวิต")).toBe("entertainment");
+		// The short ค่า- alias that predates both spellings is untouched.
+		expect(canonicalCategory("ค่าสมาชิก")).toBe("entertainment");
+		// An unrecognised label is still passed through unchanged so the strict
+		// enum refuses it, rather than being swallowed into `other`.
+		expect(canonicalCategory("ค่าสมาชิกพรีเมียม")).toBe("ค่าสมาชิกพรีเมียม");
+	});
+
 	it("canonicalises the app's own catalog slugs and common ค่า- labels", () => {
 		// packages/accounting/src/catalog.ts and the client autofill write these.
 		expect(normalizeCategory("infra")).toBe("infrastructure");

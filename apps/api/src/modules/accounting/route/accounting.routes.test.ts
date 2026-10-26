@@ -495,6 +495,41 @@ describe("expense categories (#173)", () => {
 		expect(await created.json()).toMatchObject({ category: "food" });
 	});
 
+	it("keeps the ratified entertainment label and the pre-fix spelling working as inputs", async () => {
+		const me = await personalId();
+		// The #173-ratified label, sent as a write value on create.
+		const created = await client.expenses.$post({
+			json: {
+				entityId: me,
+				name: "สตรีมมิ่ง",
+				category: "ค่าสมาชิกและค่าใช้จ่ายในชีวิต",
+				amount: 300,
+				cycle: "monthly",
+				startMonth: "2026-10",
+			} as never,
+		});
+		expect(created.status).toBe(201);
+		const row = await created.json();
+		expect(row).toMatchObject({ category: "entertainment" });
+
+		// A legacy PATCH still carrying the label from before the fix must land in
+		// `entertainment`, not fall through to `other`.
+		const patched = await client.expenses[":id"].$patch({
+			param: { id: row.id },
+			json: { category: "สมาชิกและค่าใช้จ่ายในชีวิต", version: row.version } as never,
+		});
+		expect(patched.status).toBe(200);
+		const patchedRow = await patched.json();
+		expect(patchedRow).toMatchObject({ category: "entertainment" });
+
+		// A near-miss label still gets the typed refusal instead of being stored.
+		const refused = await client.expenses[":id"].$patch({
+			param: { id: row.id },
+			json: { category: "ค่าสมาชิกพรีเมียม", version: patchedRow.version } as never,
+		});
+		expect(refused.status).toBe(400);
+	});
+
 	it("rejects an unknown category with the allowed values, and writes nothing", async () => {
 		const me = await personalId();
 		const refused = await client.expenses.$post({

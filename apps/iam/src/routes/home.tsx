@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 import { StatusBand } from "../components/StatusBand"
+import { DOCS_URL, GITHUB_URL, MCP_GUIDE_URL } from "../lib/hosts"
 import { useTranslator } from "../lib/i18n"
 import { useSession } from "../lib/session"
 
@@ -11,16 +12,17 @@ import { useSession } from "../lib/session"
  * the product line. Signed in the status band opens above it, and the console
  * work stays on /mcp. Nothing here mints or reads a key.
  *
+ * Sign-up stays in the hub (#127): the CTA is a `Link` to `/sign-in?mode=signup`,
+ * the route that mints iam's own bearer session. Linking the webapp auth host
+ * would sign the visitor into a different app and return them still signed out.
+ * External hosts (docs, the repo) live in `lib/hosts.ts`.
+ *
  * Play Store gate: the Android listing returned 404 at build time, so the CTA
  * is a disabled badge and the store URL is deliberately absent from this file.
  * When the listing is live, change `PLAY_STORE_LIVE` and add the href (and the
  * QR) in the same commit.
  */
 const PLAY_STORE_LIVE = false
-const SIGN_UP_URL = "https://auth.excited.live/sign-in?mode=signup"
-const GITHUB_URL = "https://github.com/fromsukong/excited.live"
-const DOCS_URL = "https://excited.live/docs"
-const MCP_GUIDE_URL = "https://excited.live/docs/mcp"
 
 export function HomePage() {
 	const session = useSession()
@@ -48,9 +50,9 @@ export function HomePage() {
 									{t("home.cta.mcp")}
 								</Link>
 							) : (
-								<a className="btn secondary" href={SIGN_UP_URL}>
+								<Link to="/sign-in" search={{ mode: "signup" }} className="btn secondary">
 									{t("home.cta.create")}
-								</a>
+								</Link>
 							)}
 						</div>
 					</div>

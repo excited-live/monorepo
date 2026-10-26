@@ -23,6 +23,11 @@ export const Route = createFileRoute("/api/auth/$")({
 	server: {
 		handlers: {
 			GET: async ({ request }: { request: Request }) => handle(request),
+			// Monitors, link checkers and `curl -I` probe with HEAD. Better Auth's
+			// router has no HEAD route and answers 404, so dispatch HEAD as the GET
+			// it mirrors and return the same status and headers with no body —
+			// 200 when configured, 503 when not, never 404.
+			HEAD: async ({ request }: { request: Request }) => withoutBody(await handle(asGet(request))),
 			POST: async ({ request }: { request: Request }) => handle(request),
 			OPTIONS: async ({ request }: { request: Request }) =>
 				authCorsPreflight(request.headers.get("origin"), allowedOrigins()),
@@ -32,6 +37,28 @@ export const Route = createFileRoute("/api/auth/$")({
 
 function allowedOrigins(): string[] {
 	return parseAuthCorsOrigins(authEnv("AUTH_CORS_ORIGINS"))
+}
+
+/**
+ * Show the auth mount a GET so HEAD gets the same answer the GET would.
+ * Rebuild rather than `new Request(request, …)`: the SSR request may come from
+ * another realm (vite dev / workerd) whose Request instances undici rejects.
+ */
+function asGet(request: Request): Request {
+	const headers = new Headers()
+	request.headers.forEach((value, key) => headers.set(key, value))
+	return new Request(request.url, { method: "GET", headers })
+}
+
+/** Keep status, statusText and headers (including content-length, per RFC 9110) but send no body. */
+function withoutBody(response: Response): Response {
+	const headers = new Headers()
+	response.headers.forEach((value, key) => headers.set(key, value))
+	return new Response(null, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	})
 }
 
 async function handle(request: Request): Promise<Response> {

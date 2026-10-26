@@ -245,6 +245,41 @@ describe("expenses", () => {
 		expect(after.details).toEqual({ checkin: "planned", renewalDate: "2026-10-12" });
 		expect(after.amount).toBe(750);
 	});
+
+	it("keeps a check-in when a raw patch writes one details key (#102)", async () => {
+		const me = await personalId();
+
+		const created = await client.expenses.$post({
+			json: {
+				entityId: me,
+				name: "Food and travel - check-in",
+				category: "food",
+				amount: 600,
+				cycle: "one_time",
+				startMonth: "2026-10",
+				dayOfMonth: 24,
+				details: { checkin: "off", checkinAmount: 600, amountSource: "checkin" },
+			},
+		});
+		expect(created.status).toBe(201);
+		const stored = await created.json();
+
+		// No adapter in this path: a client that sends a single `details` key must
+		// not lose the rest of the object at the service layer.
+		const patched = await client.expenses[":id"].$patch({
+			param: { id: stored.id },
+			json: { details: { renewalDate: "2026-10-12" }, version: stored.version },
+		});
+		expect(patched.status).toBe(200);
+
+		const after = await (await client.expenses[":id"].$get({ param: { id: stored.id } })).json();
+		expect(after.details).toEqual({
+			checkin: "off",
+			checkinAmount: 600,
+			amountSource: "checkin",
+			renewalDate: "2026-10-12",
+		});
+	});
 });
 
 describe("liabilities", () => {

@@ -296,6 +296,8 @@ export function createAccountingRouter(options: AccountingRouterOptions = {}) {
 					tags: ["Accounting"],
 					operationId: "updateExpense",
 					summary: "Update an expense",
+					description:
+						"Partial update. `details` merges shallowly onto the stored details, so a patch for one key keeps the rest.",
 					responses: { 200: jsonResponse("Expense updated.", ExpenseSchema), ...errors },
 				}),
 				validator("json", UpdateExpenseBody),

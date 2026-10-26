@@ -4332,6 +4332,7 @@
 					"Accounting"
 				],
 				"summary": "Update an expense",
+				"description": "Partial update. `details` merges shallowly onto the stored details, so a patch for one key keeps the rest.",
 				"responses": {
 					"200": {
 						"description": "Expense updated.",

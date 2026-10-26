@@ -564,6 +564,8 @@ curl "$API_URL/api/v1/accounting/expenses/:id" \
 
 `PATCH` `/api/v1/accounting/expenses/{id}`
 
+Partial update. `details` merges shallowly onto the stored details, so a patch for one key keeps the rest.
+
 **Parameters**
 
 | Name | In | Type | Required | Description |

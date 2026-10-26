@@ -172,9 +172,9 @@ function expectStatus(response, wanted, what) {
  * mode: the client parses HTML and reports an unrelated error.
  */
 function expectJson(response, what) {
-	const type = response.headers.get("content-type") ?? "(no content-type)"
+	const type = (response.headers.get("content-type") ?? "").toLowerCase()
 	if (!type.includes("application/json")) {
-		throw new Error(`${what} returned ${type}, want application/json — a 200 HTML page breaks discovery harder than a 404`)
+		throw new Error(`${what} returned ${type || "(no content-type)"}, want application/json — a 200 HTML page breaks discovery harder than a 404`)
 	}
 }
 
@@ -250,8 +250,9 @@ async function checkRegistration() {
 	}
 	const resources = Array.isArray(client.resources) ? client.resources : []
 	// The AS binds the token audience here (#123 B). An absent list is not
-	// "fine": packages/auth falls back to the production API, which a prelive
-	// token must never be minted for.
+	// "fine": without EXCITED_API_URL the OAuth plugin is not mounted at all
+	// (DCR 404s), and a list naming another origin is the #123 B split itself.
+	// Fail instead of passing vacuously.
 	if (!resources.includes(`${API}/mcp`)) {
 		throw new Error(
 			`client resources are ${JSON.stringify(resources)}, want ${API}/mcp — the AS must bind the public API host it advertises as the resource`,
@@ -309,7 +310,8 @@ async function checkMcpProtected() {
 		expectStatus(as, 200, `authorization-server metadata at ${server}`)
 		expectJson(as, `authorization-server metadata at ${server}`)
 		const asDocument = parseJson(as, `authorization-server metadata at ${server}`)
-		if (asDocument.issuer !== server.replace(/\/+$/, "")) {
+		const normalize = (value) => String(value ?? "").replace(/\/+$/, "")
+		if (normalize(asDocument.issuer) !== normalize(server)) {
 			throw new Error(`${asUrl} issuer is ${JSON.stringify(asDocument.issuer)}, want ${JSON.stringify(server)}`)
 		}
 		for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri"]) {
@@ -320,6 +322,9 @@ async function checkMcpProtected() {
 	}
 
 	// #123 A.1: the 401 body must name the API-key alternative, not only OAuth.
+	// prelive.yml and api-prelive.yml run in parallel for one push, so the
+	// Worker may still be rolling out when this runs; the 10 retries in both
+	// workflows absorb that, and prelive-smoke.yml re-checks after both deploys.
 	const body = parseJson(response, "POST /mcp 401 body")
 	const hint = typeof body.hint === "string" ? body.hint : ""
 	if (!hint.includes("elk_") || !/x-api-key/i.test(hint)) {

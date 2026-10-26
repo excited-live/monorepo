@@ -94,6 +94,7 @@ import { randomUUID } from "node:crypto"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { PRELIVE_API_ORIGIN, PRELIVE_WEBAPP_ORIGIN, PRELIVE_WORKER_ORIGIN } from "./prelive-hosts.mjs"
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 // The SDK is a dependency of apps/api; resolve it from there so this script
@@ -135,9 +136,15 @@ function usage(message) {
 
 const PRESETS = {
 	prelive: {
-		mcp: "https://excited-live-api-prelive.preamza02.workers.dev/mcp",
-		api: "https://excited-live-api-prelive.preamza02.workers.dev",
-		as: "https://prelive.excited.live",
+		// /mcp is on the public host: the API advertises the request host in PRM
+		// (#116), and the AS binds its audience to the same origin (EXCITED_API_URL
+		// in wrangler.prelive.toml). workers.dev /mcp still answers API keys, but its
+		// PRM names a resource the AS refuses, so the OAuth gate must use this host.
+		mcp: `${PRELIVE_API_ORIGIN}/mcp`,
+		// REST/auth traffic stays on the Worker's own origin: it is the Better Auth
+		// pin, and the deployed iam bundle is built against it.
+		api: PRELIVE_WORKER_ORIGIN,
+		as: PRELIVE_WEBAPP_ORIGIN,
 		otherApi: "https://api.excited.live",
 		otherAs: "https://auth.excited.live",
 	},

@@ -34,13 +34,15 @@ import type { AuthDatabase, AuthMount } from "./types"
 /**
  * Request budget for one agent API key.
  *
- * These were the @better-auth/api-key 1.7.7 defaults until #140; they are
- * pinned here so the number the API publishes (`Retry-After`,
- * `X-RateLimit-*`) can never drift from the number the plugin enforces.
- * Per key, not per user or IP — a key is one agent.
+ * 200 calls / 24 h is the launch budget (Product ruling on #140, 26 Oct 2026:
+ * a documented onboarding run spends 3 overhead calls per session before any
+ * work, so the old cap could not finish the first run). 10 was only the
+ * @better-auth/api-key 1.7.7 default; #140 pinned the number here so what the
+ * API publishes (`Retry-After`, `X-RateLimit-*`) can never drift from what the
+ * plugin enforces. Per key, not per user or IP — a key is one agent.
  */
 export const AGENT_KEY_RATE_LIMIT = {
-	maxRequests: 10,
+	maxRequests: 200,
 	timeWindowMs: 24 * 60 * 60 * 1000,
 } as const
 

@@ -215,13 +215,13 @@ describe("/mcp", () => {
 
 		const first = await rpc(app, initialize(), key);
 		expect(first.status).toBe(200);
-		expect(first.headers.get("x-ratelimit-limit")).toBe("10");
-		expect(first.headers.get("x-ratelimit-remaining")).toBe("9");
+		expect(first.headers.get("x-ratelimit-limit")).toBe("200");
+		expect(first.headers.get("x-ratelimit-remaining")).toBe("199");
 		expect(Number(first.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
 		const second = await rpc(app, initialize(2), key);
 		expect(second.status).toBe(200);
-		expect(second.headers.get("x-ratelimit-remaining")).toBe("8");
+		expect(second.headers.get("x-ratelimit-remaining")).toBe("198");
 	});
 
 	it("answers 429 with Retry-After when the key's budget is spent, never 401 (#140)", async () => {
@@ -229,19 +229,19 @@ describe("/mcp", () => {
 		const { token } = await signIn(app);
 		const key = await mintKey(app, token);
 
-		// AGENT_KEY_RATE_LIMIT: 10 requests per key per window.
-		for (let i = 0; i < 10; i++) {
+		// AGENT_KEY_RATE_LIMIT: 200 requests per key per window.
+		for (let i = 0; i < 200; i++) {
 			const ok = await rpc(app, initialize(i + 1), key);
 			expect(ok.status).toBe(200);
 		}
 
-		const limited = await rpc(app, initialize(99), key);
+		const limited = await rpc(app, initialize(999), key);
 		expect(limited.status).toBe(429);
 		expect(limited.headers.get("www-authenticate")).toBeNull();
 		const retryAfter = Number(limited.headers.get("retry-after"));
 		expect(retryAfter).toBeGreaterThan(0);
 		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
-		expect(limited.headers.get("x-ratelimit-limit")).toBe("10");
+		expect(limited.headers.get("x-ratelimit-limit")).toBe("200");
 		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
 		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
@@ -259,7 +259,7 @@ describe("/mcp", () => {
 		// distinction an unattended agent needs.
 		expect(body.hint).toContain("do not rotate");
 		expect(body.rateLimit).toEqual({
-			limit: 10,
+			limit: 200,
 			remaining: 0,
 			reset: Number(limited.headers.get("x-ratelimit-reset")),
 		});

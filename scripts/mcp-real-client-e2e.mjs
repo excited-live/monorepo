@@ -46,6 +46,15 @@
  *   I6. DB isolation  the same throwaway account must not sign in on the other
  *                     environment's API (prod vs prelive D1 are separate)
  *
+ * With `--real-clients` it appends three rows (#31) after everything above:
+ * one minted `elk_` agent key per client (Claude.ai, ChatGPT, Claude Code),
+ * used through the auth header that client actually sends — bearer, bearer +
+ * x-api-key, and x-api-key — so each row proves initialize -> tools/list with
+ * a key a human just minted. The mint is a D1 write, so the flag refuses any
+ * target but prelive until the prod mint on #93 is authorised. These rows are
+ * the programmatic half of #31; the per-client screenshot still needs a human
+ * account.
+ *
  * Usage:
  *   node scripts/mcp-real-client-e2e.mjs --env prelive --email qa@example.com --password '…'
  *   node scripts/mcp-real-client-e2e.mjs --mcp https://api.excited.live/mcp …
@@ -58,6 +67,9 @@
  *   --env prelive|prod   target preset (default: prod)
  *   --mcp URL            MCP endpoint, overrides --env
  *   --iam URL            run the iam stage against this origin (off by default)
+ *   --real-clients       append the three real-client rows (#31): mint one
+ *                        `elk_` key per client and prove initialize ->
+ *                        tools/list. Prelive only — the mint writes to D1.
  *   --api URL            API origin for the iam stage (default: from --env)
  *   --as URL             auth-server origin for the iam stage (default: from --env)
  *   --email EMAIL        QA account (or MCP_QA_EMAIL)
@@ -116,7 +128,7 @@ for (let i = 0; i < argv.length; i++) {
 function usage(message) {
 	if (message) console.error(`mcp-real-client-e2e: ${message}`)
 	console.error(
-		"usage: node scripts/mcp-real-client-e2e.mjs --env prelive|prod [--email E --password P] [--create-user] [--mcp URL] [--iam URL] [--api URL] [--as URL] [--expect-tools N] [--bootstrap-discovery] [--json FILE]",
+		"usage: node scripts/mcp-real-client-e2e.mjs --env prelive|prod [--email E --password P] [--create-user] [--mcp URL] [--iam URL] [--real-clients] [--api URL] [--as URL] [--expect-tools N] [--bootstrap-discovery] [--json FILE]",
 	)
 	process.exit(2)
 }
@@ -171,6 +183,18 @@ const NAME = args.get("name") ?? "QA Rigel"
 const BOOTSTRAP = args.has("bootstrap-discovery")
 const JSON_OUT = args.get("json")
 const REDIRECT_URI = args.get("redirect-uri") ?? "http://127.0.0.1:33418/callback"
+
+/**
+ * `--real-clients` adds the three #31 rows. Each row mints an `elk_` agent key,
+ * which writes a row to that environment's D1 — the same write #93 holds for
+ * production — so the flag is prelive-only until Prame authorises the prod mint.
+ */
+const REAL_CLIENTS = args.has("real-clients")
+if (REAL_CLIENTS && ENVIRONMENT !== "prelive") {
+	usage(
+		"--real-clients mints an elk_ agent key, which is a D1 write: prelive only until the prod mint on #93 is authorised",
+	)
+}
 
 function positiveInt(name, fallback) {
 	const raw = args.get(name)
@@ -1009,6 +1033,109 @@ try {
 		})
 	}
 
+	// -----------------------------------------------------------------------
+	// real-client rows (#31) — only with --real-clients.
+	//
+	// #31 asks that Claude.ai, ChatGPT and Claude Code each connect once and
+	// read the books. The OAuth half of that is steps 1-12 above; these rows
+	// prove the other half a real client exercises: an `elk_` key a human just
+	// minted, presented through the header that client sends. One key per
+	// client, revoked in the same run, so a leak is bounded to one row.
+	// -----------------------------------------------------------------------
+	if (REAL_CLIENTS) {
+		const CLIENT_ORIGIN = IAM_ORIGIN ?? AS_URL
+		// A hub token mints keys. I3 already has one when --iam ran; without it,
+		// sign in on the same tokens mount I3 uses.
+		let hub = hubToken
+		const clients = [
+			{
+				row: "R1",
+				client: "Claude.ai",
+				agentId: "qa-rigel-claude-ai",
+				carrier: "Authorization: Bearer",
+				headers: (key) => ({ authorization: `Bearer ${key}` }),
+			},
+			{
+				row: "R2",
+				client: "ChatGPT",
+				agentId: "qa-rigel-chatgpt",
+				carrier: "Bearer + x-api-key",
+				headers: (key) => ({ authorization: `Bearer ${key}`, "x-api-key": key }),
+			},
+			{
+				row: "R3",
+				client: "Claude Code",
+				agentId: "qa-rigel-claude-code",
+				carrier: "x-api-key",
+				headers: (key) => ({ "x-api-key": key }),
+			},
+		]
+
+		await iamStep("R0. real clients — obtain a hub token to mint elk_ keys", `${API_URL}/api/v1/auth`, async () => {
+			if (hub) return pass("reused the token from I3")
+			const signIn = await request(`${API_URL}/api/v1/auth/sign-in/email`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: CLIENT_ORIGIN },
+				body: { email: EMAIL, password: PASSWORD },
+			})
+			note(`POST /api/v1/auth/sign-in/email -> HTTP ${signIn.status} · ${signIn.json?.code ?? "(no code)"}`)
+			const token = signIn.headers.get("set-auth-token")
+			if (signIn.status !== 200 || !token) return fail(`sign-in from ${CLIENT_ORIGIN} returned ${signIn.status} with no set-auth-token`)
+			hub = token
+			pass(`hub token ${token.length} chars`)
+		})
+
+		for (const spec of clients) {
+			await iamStep(`${spec.row}. ${spec.client} — mint elk_ key, initialize, tools/list`, spec.carrier, async () => {
+				if (!hub) return skip("no hub token from R0")
+				const minted = await request(`${API_URL}/api/v1/agent-keys`, {
+					method: "POST",
+					headers: { authorization: `Bearer ${hub}`, origin: CLIENT_ORIGIN, "content-type": "application/json" },
+					body: { agentId: spec.agentId, name: `#31 ${spec.client}` },
+				})
+				const key = minted.json?.key
+				const keyId = minted.json?.id
+				note(`POST /api/v1/agent-keys -> HTTP ${minted.status} · id ${keyId ?? "(none)"} · key ${key ? "returned" : "MISSING"}`)
+				if (minted.status !== 201 || !key || !keyId) return fail(`want 201 + id + key from the mint, got ${minted.status} ${snippet(minted.text, 200)}`)
+				if (!String(key).startsWith("elk_")) return fail(`the minted key does not start with elk_ (${String(key).slice(0, 4)}…)`)
+				const revokedLate = () =>
+					request(`${API_URL}/api/v1/agent-keys/${encodeURIComponent(keyId)}`, {
+						method: "DELETE",
+						headers: { authorization: `Bearer ${hub}`, origin: CLIENT_ORIGIN },
+					})
+				let listed = 0
+				try {
+					const transport = new StreamableHTTPClientTransport(mcpUrl, { requestInit: { headers: spec.headers(key) } })
+					const realClient = new Client({ name: spec.agentId, version: "1.0.0" })
+					try {
+						await realClient.connect(transport)
+						const server = realClient.getServerVersion?.()
+						const tools = (await realClient.listTools()).tools.map((tool) => tool.name)
+						listed = tools.length
+						const serverLabel = server ? `${server.name} ${server.version ?? ""}`.trim() : "(serverInfo absent)"
+						// The transcript line #31 asks for: connect() is initialize +
+						// notifications/initialized, then tools/list.
+						note(
+							`${spec.client} · ${spec.carrier} · elk_ ${String(key).length} chars -> initialize ok (${serverLabel}) -> tools/list ${tools.length} tools`,
+						)
+						summary.realClients = summary.realClients ?? []
+						summary.realClients.push({ client: spec.client, carrier: spec.carrier, tools: tools.length })
+						if (tools.length !== EXPECT_TOOLS) return fail(`${tools.length} tools listed for ${spec.client}, want ${EXPECT_TOOLS}`)
+					} finally {
+						await realClient.close().catch(() => {})
+					}
+				} catch (error) {
+					return fail(`${spec.client} could not connect with its elk_ key: ${describeError(error)}`)
+				} finally {
+					const revoked = await revokedLate().catch(() => null)
+					note(`DELETE /api/v1/agent-keys/${keyId} -> HTTP ${revoked?.status ?? "(failed)"}`)
+				}
+				if (!listed) return fail("no tools/list result")
+				pass(`${spec.client}: initialize -> tools/list ${listed} with a minted elk_ key, key revoked`)
+			})
+		}
+	}
+
 	if (client) await client.close().catch(() => {})
 } catch (error) {
 	summary.error = String(error?.stack ?? error)
@@ -1026,10 +1153,15 @@ summary.exitCode = summary.ok ? 0 : 1
 summary.iamOrigin = IAM_ORIGIN
 const mcpSteps = steps.filter((step) => /^\d+\./.test(step.name))
 const iamSteps = steps.filter((step) => /^I\d/.test(step.name))
-const scope =
-	iamSteps.length > 0
-		? `${mcpSteps.filter((step) => step.ok === true).length}/${mcpSteps.length} MCP + ${iamSteps.filter((step) => step.ok === true).length}/${iamSteps.length} iam steps`
-		: `${steps.length}/${steps.length} steps`
+const realClientSteps = steps.filter((step) => /^R\d/.test(step.name))
+const passed = (group) => `${group.filter((step) => step.ok === true).length}/${group.length}`
+const scope = [
+	mcpSteps.length > 0 ? `${passed(mcpSteps)} MCP` : null,
+	iamSteps.length > 0 ? `${passed(iamSteps)} iam` : null,
+	realClientSteps.length > 0 ? `${passed(realClientSteps)} real-client` : null,
+]
+	.filter(Boolean)
+	.join(" + ")
 
 process.stdout.write(`\n${"=".repeat(78)}\n`)
 for (const step of steps) {

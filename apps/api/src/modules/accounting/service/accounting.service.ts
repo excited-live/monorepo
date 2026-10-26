@@ -631,8 +631,11 @@ export function createAccountingService(repo: AccountingRepository) {
 		// A one-time expense with no `asOf` happened today, so its day is today's:
 		// left undefined it falls back to the 1st (bookExpenseToExpense), which
 		// books the receipt in the wrong week. A month-only `asOf` keeps the
-		// documented 1st.
-		const receiptDay = body.asOf ?? productDate();
+		// documented 1st, and so does a `startMonth` that is not this month: a
+		// receipt dated "March" did not happen on today's day, and the 31st of an
+		// earlier month can fall outside a 30-day one (#218).
+		const receiptDay =
+			body.asOf ?? (body.startMonth && body.startMonth !== productMonth() ? undefined : productDate());
 		await ensureBootstrap(userId, monthOf(receiptDay));
 		const expense: BookExpense = {
 			id: body.id ?? crypto.randomUUID(),

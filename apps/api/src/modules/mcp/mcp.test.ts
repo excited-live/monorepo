@@ -1133,6 +1133,33 @@ describe("/mcp", () => {
 		}
 	});
 
+	it("still rejects a wrong field type after the union is flattened (#201)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const wrong = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 44,
+				method: "tools/call",
+				params: {
+					name: "add_asset",
+					arguments: { kind: "cash", name: "Wrong type wallet", category: "cash", balance: "not-a-number" },
+				},
+			},
+			key,
+		);
+		expect((wrong.json?.result as ToolResult).isError).toBe(true);
+
+		// The published object is wider than the union; the handler's parseBody is
+		// what still enforces the real branch, so a rejected call writes nothing.
+		const stored = await app.request("/api/v1/accounting/assets", { headers: { Authorization: `Bearer ${token}` } });
+		const assets = (await stored.json()) as Array<{ name: string }>;
+		expect(assets.some((item) => item.name === "Wrong type wallet")).toBe(false);
+	});
+
 	it("hides imageUrl from the create tool inputs", async () => {		const app = configuredApp();
 		const { token } = await signIn(app);
 		const key = await mintKey(app, token);

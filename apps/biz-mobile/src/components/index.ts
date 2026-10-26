@@ -13,3 +13,5 @@ export * from "./ChipButton";
 export * from "./AutofillHints";
 export * from "./ItemRow";
 export * from "./SectionHeader";
+export * from "./ConfidenceMeter";
+export * from "./DecisionCard";

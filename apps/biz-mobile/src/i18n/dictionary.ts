@@ -233,6 +233,153 @@ export const strings: Dictionary = {
 		th: "เพิ่ม URL ของคอนเนกเตอร์ด้านล่าง แล้วเข้าสู่ระบบ",
 	},
 
+	// Week-one loop (#102) — S1 week strip. Copy is the design deck of record:
+	// OpenDesign `week-one-loop/copy/week-one-loop-strings-en-th.md`.
+	"week.strip.title": { en: "This week", th: "สัปดาห์นี้" },
+	"week.strip.seeWeek": { en: "See the week", th: "ดูทั้งสัปดาห์" },
+	"week.strip.fresh_one": {
+		en: "You've checked in 1 day this week.",
+		th: "คุณเช็คอินแล้ว 1 วันในสัปดาห์นี้",
+	},
+	"week.strip.fresh_other": {
+		en: "You've checked in {n} days this week.",
+		th: "คุณเช็คอินแล้ว {n} วันในสัปดาห์นี้",
+	},
+	"week.strip.stale": { en: "Your week went quiet {n} days ago.", th: "สัปดาห์ของคุณเงียบไป {n} วันที่แล้ว" },
+	"week.strip.empty": { en: "Your week starts today.", th: "สัปดาห์ของคุณเริ่มวันนี้" },
+	"week.strip.emptyBody": {
+		en: "Nothing here yet. Today counts as day one.",
+		th: "ยังไม่มีข้อมูลตรงนี้ วันนี้นับเป็นวันแรก",
+	},
+	"week.strip.cta.fresh": { en: "Add today's spending", th: "บันทึกรายจ่ายวันนี้" },
+	"week.strip.cta.stale": {
+		en: "Pick up where you left off",
+		th: "กลับมาเริ่มต่อจากที่ค้างไว้",
+	},
+	"week.strip.cta.empty": { en: "Add one expense", th: "บันทึกรายจ่ายหนึ่งรายการ" },
+	"week.strip.a11y.label": { en: "Your week", th: "สัปดาห์ของคุณ" },
+	"week.strip.a11y.days": { en: "Days with a check-in", th: "วันที่เช็คอินแล้ว" },
+	"week.strip.a11y.day": { en: "{day}: {state}", th: "{day}: {state}" },
+	// Mon → Sun. Thai uses single-letter day initials, Arabic numerals elsewhere.
+	"week.strip.days": { en: "M T W T F S S", th: "จ อ พ พ ศ ส อ" },
+	"week.strip.dayState.done": { en: "checked in", th: "เช็คอินแล้ว" },
+	"week.strip.dayState.quiet": { en: "quiet", th: "เงียบ" },
+	"week.strip.dayState.today": { en: "today", th: "วันนี้" },
+	"week.strip.dayState.future": { en: "not yet", th: "ยังไม่ถึง" },
+
+	// Confidence bands. These words live here and nowhere else: no surface spells
+	// a band, and confidence is never a digit (patterns/decision-suggestion.md).
+	"confidence.high": { en: "High", th: "สูง" },
+	"confidence.medium": { en: "Medium", th: "ปานกลาง" },
+	"confidence.low": { en: "Low", th: "ต่ำ" },
+	"confidence.a11y": { en: "Confidence: {band}", th: "ความมั่นใจ: {band}" },
+	"confidence.hedge.high": { en: "We think this holds.", th: "เราคิดว่าแบบนี้ใช้ได้" },
+	"confidence.hedge.medium": {
+		en: "We think this is likely — the size is less certain.",
+		th: "เราคิดว่าเป็นไปได้ — แต่ขนาดยังไม่แน่",
+	},
+	"confidence.hedge.low": {
+		en: "We're not sure yet — which is closer?",
+		th: "เรายังไม่แน่ใจ — อันไหนใกล้กว่ากัน?",
+	},
+
+	// S2 morning projection
+	"projection.title": { en: "We think {period}", th: "เราคิดว่า{period}" },
+	"projection.period.week": { en: "this week", th: "สัปดาห์นี้" },
+	"projection.empty.title": { en: "Your week", th: "สัปดาห์ของคุณ" },
+	"projection.empty.body": {
+		en: "One income figure and we can show you your week.",
+		th: "ใส่รายได้หนึ่งตัวเลข แล้วเราจะแสดงสัปดาห์ของคุณให้ดู",
+	},
+	"projection.empty.note": {
+		en: "Until then this stays empty on purpose — we'd rather show you nothing than a number we made up.",
+		th: "จนกว่าจะใส่ เราตั้งใจให้ว่างไว้ — เรายอมให้คุณเห็นความว่าง ดีกว่าให้เห็นตัวเลขที่เราปั้นขึ้นมาเอง",
+	},
+	"projection.empty.cta": { en: "Add your income", th: "เพิ่มรายได้ของคุณ" },
+	"projection.why": { en: "Why: {why}.", th: "เหตุผล: {why}" },
+	"projection.depth": {
+		en: "based on {n} days of your spending",
+		th: "จากข้อมูลการใช้จ่าย {n} วันของคุณ",
+	},
+	"projection.stale": {
+		en: "This is from {n} days ago. Add one recent expense and we'll refresh it.",
+		th: "ข้อมูลนี้มาจาก {n} วันที่แล้ว บันทึกรายจ่ายล่าสุดหนึ่งรายการ แล้วเราจะอัปเดตให้",
+	},
+	"projection.action.math": { en: "Show the math", th: "ดูวิธีคำนวณ" },
+	"projection.action.changes": { en: "What would change it", th: "อะไรจะทำให้เปลี่ยน" },
+	"projection.a11y.label": { en: "Weekly projection", th: "ประมาณการรายสัปดาห์" },
+
+	// S3 decision card — one advisory card a day at most.
+	"decision.a11y.label": { en: "Suggestion", th: "ข้อเสนอ" },
+	"decision.eyebrow.suggestion": { en: "Suggestion", th: "ข้อเสนอ" },
+	"decision.eyebrow.accepted": { en: "Accepted", th: "ยอมรับแล้ว" },
+	"decision.eyebrow.dismissed": { en: "Dismissed", th: "ปิดไว้" },
+	"decision.eyebrow.updated": { en: "Updated", th: "อัปเดตแล้ว" },
+	"decision.why": { en: "Why: {why}.", th: "เหตุผล: {why}" },
+	"decision.updatedBecause": {
+		en: "Updated because you changed: {reason}.",
+		th: "อัปเดตเพราะคุณแก้: {reason}",
+	},
+	"decision.accept": { en: "Accept", th: "ยอมรับ" },
+	"decision.adjust": { en: "Not quite", th: "ยังไม่ตรง" },
+	"decision.dismiss": { en: "Dismiss", th: "ปิดไว้" },
+	"decision.undo": { en: "Undo", th: "เลิกทำ" },
+	"decision.showMath": { en: "Show the math", th: "ดูวิธีคำนวณ" },
+	"decision.whatChanges": { en: "What would change it", th: "อะไรจะทำให้เปลี่ยน" },
+	"decision.receipt.accepted": { en: "You accepted this.", th: "คุณยอมรับข้อนี้แล้ว" },
+	"decision.receipt.acceptedOn": {
+		en: "You accepted this on {date}.",
+		th: "คุณยอมรับข้อนี้เมื่อ {date}",
+	},
+	"decision.receipt.dismissed": {
+		en: "Dismissed — we won't bring this up again for a while.",
+		th: "ปิดไว้ — เราจะไม่ชวนเรื่องนี้อีกสักพัก",
+	},
+
+	// S4 evening check-in
+	"checkIn.title": {
+		en: "Today we think you spent about ฿{amount} on {label}.",
+		th: "วันนี้เราคิดว่าคุณใช้ไปประมาณ ฿{amount} กับ{label}",
+	},
+	"checkIn.meta": { en: "Tonight · 30 seconds", th: "คืนนี้ · 30 วินาที" },
+	"checkIn.step": { en: "1 of 1", th: "1 จาก 1" },
+	"checkIn.chip.same": { en: "About the same", th: "ประมาณเดิม" },
+	"checkIn.chip.less": { en: "Less", th: "น้อยกว่า" },
+	"checkIn.chip.more": { en: "More", th: "มากกว่า" },
+	"checkIn.edit": { en: "Enter the exact amount", th: "กรอกจำนวนที่แน่นอน" },
+	"checkIn.confirm": { en: "That's right", th: "ถูกต้อง" },
+	"checkIn.saving": { en: "Saving…", th: "กำลังบันทึก…" },
+	"checkIn.skip": { en: "Not tonight", th: "คืนนี้ไม่สะดวก" },
+	"checkIn.saved": { en: "Saved", th: "บันทึกแล้ว" },
+	"checkIn.savedBody": {
+		en: "That's your day logged. See you tomorrow morning.",
+		th: "บันทึกวันนี้เรียบร้อย เจอกันพรุ่งนี้เช้า",
+	},
+	"checkIn.undo": { en: "Undo", th: "เลิกทำ" },
+	"checkIn.a11y.label": { en: "Daily check-in", th: "เช็คอินประจำวัน" },
+	"checkIn.a11y.saved": { en: "Check-in saved", th: "บันทึกเช็คอินแล้ว" },
+
+	// S5 day-7 recap
+	"recap.title": { en: "Your first week", th: "สัปดาห์แรกของคุณ" },
+	"recap.verdict.onTarget": { en: "We were close this week.", th: "สัปดาห์นี้เราใกล้เคียง" },
+	"recap.verdict.over": {
+		en: "We were off — you spent about ฿{gap} more than we thought.",
+		th: "เราคลาดไป — คุณใช้มากกว่าที่เราคิดไว้ประมาณ ฿{gap}",
+	},
+	"recap.verdict.under": {
+		en: "We were off — you spent about ฿{gap} less than we thought.",
+		th: "เราคลาดไป — คุณใช้น้อยกว่าที่เราคิดไว้ประมาณ ฿{gap}",
+	},
+	"recap.col.predicted": { en: "We thought", th: "เราคิดว่า" },
+	"recap.col.actual": { en: "It was", th: "จริงคือ" },
+	"recap.whyMissed": { en: "Why we missed: {why}.", th: "ทำไมเราถึงคลาด: {why}" },
+	"recap.checkIns": { en: "{n} of {total} days checked in", th: "เช็คอิน {n} จาก {total} วัน" },
+	"recap.noStreaks": { en: "no streaks, no scores", th: "ไม่มีสตรีค ไม่มีคะแนน" },
+	"recap.nextLabel": { en: "One thing for next week", th: "หนึ่งอย่างสำหรับสัปดาห์หน้า" },
+	"recap.notNow": { en: "Not now", th: "ไว้ก่อน" },
+	"recap.share": { en: "Save this week as a PDF", th: "บันทึกสัปดาห์นี้เป็น PDF" },
+	"recap.a11y.label": { en: "Your week in review", th: "สรุปสัปดาห์ของคุณ" },
+
 	// Common
 	"common.edit": { en: "Edit", th: "แก้ไข" },
 	"common.delete": { en: "Delete", th: "ลบ" },

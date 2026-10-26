@@ -1,5 +1,12 @@
-import { AGENT_KEY_RATE_LIMIT, apiKeyApi, type ApiKeyRecord, type ApiKeyVerifyError } from "@excited-live/auth";
+import {
+	AGENT_KEY_RATE_LIMIT,
+	apiKeyApi,
+	defaultKeyHasher,
+	type ApiKeyRecord,
+	type ApiKeyVerifyError,
+} from "@excited-live/auth";
 import type { Context } from "hono";
+import type { SqlDriver } from "../db/types";
 import type { ApiEnv } from "./env";
 import { getTokensAuth, tokensAuthConfigured } from "./auth";
 import { looksLikeJwt, oauthConfigured, verifyOAuthAccessToken } from "./oauth";
@@ -102,11 +109,15 @@ function snapshotFromKey(key: ApiKeyRecord, now = Date.now()): RateLimitSnapshot
 
 /**
  * Budget on a refusal. `verifyApiKey` returns no key row on a 429, so the
- * limit comes from the pinned configuration and the reset from the
- * `tryAgainIn` the plugin computed. A lifetime quota (`USAGE_EXCEEDED`) has no
- * retry and no reset.
+ * reset comes from the `tryAgainIn` the plugin computed and the limit from
+ * `refusalLimit` below. A lifetime quota (`USAGE_EXCEEDED`) has no retry and
+ * no reset.
  */
-function snapshotFromError(error: ApiKeyVerifyError | null | undefined, now = Date.now()): {
+function snapshotFromError(
+	error: ApiKeyVerifyError | null | undefined,
+	limit: number = AGENT_KEY_RATE_LIMIT.maxRequests,
+	now = Date.now(),
+): {
 	snapshot: RateLimitSnapshot;
 	retryAfterSeconds?: number;
 } {
@@ -115,12 +126,45 @@ function snapshotFromError(error: ApiKeyVerifyError | null | undefined, now = Da
 	const windowEnd = hasRetry ? now + tryAgainInMs : now;
 	return {
 		snapshot: {
-			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
+			limit,
 			remaining: 0,
 			reset: Math.ceil(windowEnd / 1000),
 		},
 		retryAfterSeconds: hasRetry ? retryAfterSeconds(tryAgainInMs) : undefined,
 	};
+}
+
+/**
+ * The limit a 429 advertises: the key's own stored budget (#178).
+ *
+ * The plugin's refusal error carries only `tryAgainIn`, not the row, so the
+ * row is read back by the hash `createApiKey` wrote into `apikey.key` — using
+ * the plugin's own hasher, not a copy of its algorithm. One indexed read per
+ * refusal (`apikey_key_idx`), and only on `RATE_LIMITED`: a `USAGE_EXCEEDED`
+ * lifetime quota is a different refusal and keeps the pinned default for now.
+ *
+ * The header is never omitted. A row that is gone (revoked between verify and
+ * this read) or an unreadable database degrades to the pinned default, which
+ * is what every refusal published before this fix.
+ *
+ * `rateLimitTimeWindow` needs no read: the reset already comes from the
+ * `tryAgainIn` the plugin derived from that same row.
+ */
+export async function refusalLimit(
+	db: SqlDriver | undefined,
+	apiKey: string,
+	error: ApiKeyVerifyError | null | undefined,
+): Promise<number> {
+	if (error?.code !== "RATE_LIMITED" || !db) return AGENT_KEY_RATE_LIMIT.maxRequests;
+	try {
+		const row = await db.first<{ rateLimitMax?: number | null }>(
+			'SELECT "rateLimitMax" FROM apikey WHERE "key" = ?',
+			[await defaultKeyHasher(apiKey)],
+		);
+		return row?.rateLimitMax ?? AGENT_KEY_RATE_LIMIT.maxRequests;
+	} catch {
+		return AGENT_KEY_RATE_LIMIT.maxRequests;
+	}
 }
 
 function isRateLimited(error: ApiKeyVerifyError | null | undefined): boolean {
@@ -148,7 +192,8 @@ export async function resolvePrincipal(c: Context<ApiEnv>): Promise<PrincipalRes
 		const result = await apiKeyApi(auth).verifyApiKey({ body: { key: apiKey } });
 		if (!result.valid || !result.key) {
 			if (isRateLimited(result.error)) {
-				const { snapshot, retryAfterSeconds } = snapshotFromError(result.error);
+				const limit = await refusalLimit(c.get("db"), apiKey, result.error);
+				const { snapshot, retryAfterSeconds } = snapshotFromError(result.error, limit);
 				return { status: "rate_limited", rateLimit: snapshot, retryAfterSeconds };
 			}
 			return { status: "unauthenticated" };

@@ -262,11 +262,10 @@ describe("/mcp", () => {
 		const retryAfter = Number(limited.headers.get("retry-after"));
 		expect(retryAfter).toBeGreaterThan(0);
 		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
-		// #177: a refusal publishes the product default, not this key's own
-		// budget of 2, because verifyApiKey returns no key row on a 429. That is
-		// known wrong and tracked, so only the limit is pinned loosely; a fix
-		// should turn these two assertions into 2 and then drop this comment.
-		expect(limited.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
+		// #178: the refusal path reads this key's own row by the plugin's hash,
+		// so the 429 advertises the same budget of 2 the 200s above did — not
+		// the product default.
+		expect(limited.headers.get("x-ratelimit-limit")).toBe("2");
 		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
 		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
@@ -284,9 +283,8 @@ describe("/mcp", () => {
 		// distinction an unattended agent needs.
 		expect(body.hint).toContain("do not rotate");
 		expect(body.rateLimit).toEqual({
-			// #177: should be 2 (this key's own budget); the refusal path cannot
-			// see the row yet, so it reports the product default.
-			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
+			// #178: this key's own budget, read back from its `apikey` row.
+			limit: 2,
 			remaining: 0,
 			reset: Number(limited.headers.get("x-ratelimit-reset")),
 		});

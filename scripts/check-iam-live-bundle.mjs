@@ -103,11 +103,12 @@ async function check() {
 	console.log(`  title: ${JSON.stringify(title)}`)
 	if (!/iam/i.test(title)) problems.push(`the title is ${JSON.stringify(title)}, not the iam shell — a soft 404 answers 200 too`)
 
-	const sources = [...root.text.matchAll(/<script[^>]+src="([^"]+\.js[^"]*)"/gi)].map((match) =>
-		new URL(match[1], `${ORIGIN}/`).toString(),
-	)
+	// Same-origin only: Cloudflare injects its beacon into the served HTML.
+	const sources = [...root.text.matchAll(/<script[^>]+src="([^"]+\.js[^"]*)"/gi)]
+		.map((match) => new URL(match[1], `${ORIGIN}/`).toString())
+		.filter((url) => new URL(url).origin === ORIGIN)
 	if (sources.length === 0) {
-		problems.push("the shell has no <script src=…js> entry")
+		problems.push("the shell has no same-origin <script src=…js> entry")
 		return problems
 	}
 

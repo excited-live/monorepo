@@ -827,10 +827,12 @@ try {
 			note(`title: ${JSON.stringify(title)}`)
 			// The site soft-404s with 200, so the title is the real signal.
 			if (!/iam/i.test(title)) return fail(`the page title is ${JSON.stringify(title)}, not the iam shell — a soft 404 passes a status check`)
-			const sources = [...root.text.matchAll(/<script[^>]+src="([^"]+\.js[^"]*)"/gi)].map((match) =>
-				new URL(match[1], `${IAM_ORIGIN}/`).toString(),
-			)
-			if (sources.length === 0) return fail("the shell has no <script src=…js> entry")
+			// Same-origin only: Cloudflare injects a beacon into the served HTML, and a
+			// third-party asset failing must not fail an iam gate.
+			const sources = [...root.text.matchAll(/<script[^>]+src="([^"]+\.js[^"]*)"/gi)]
+				.map((match) => new URL(match[1], `${IAM_ORIGIN}/`).toString())
+				.filter((url) => new URL(url).origin === IAM_ORIGIN)
+			if (sources.length === 0) return fail("the shell has no same-origin <script src=…js> entry")
 			let js = ""
 			for (const src of sources.slice(0, 3)) {
 				const asset = await request(src)

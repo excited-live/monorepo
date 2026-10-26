@@ -2,18 +2,29 @@
 /**
  * Live smoke test for prelive: the webapp is the MCP authorization server
  * (Pages, https://prelive.excited.live/api/auth) and the API Worker is the
- * protected resource (https://excited-live-api-prelive.preamza02.workers.dev).
+ * protected resource, reached at the public host clients call
+ * (https://prelive.api.excited.live).
  *
- * It is the executable form of the five checks #154 asked for, plus the two
+ * It is the executable form of the five checks #154 asked for, plus the
  * discovery assertions that make the OAuth chain close:
  *
  *   1. GET  <issuer>/.well-known/oauth-authorization-server  200, issuer matches
  *      (and the path-insert URLs under /.well-known/…/api/auth, 200 JSON)
  *   2. GET  <issuer>/ok                                      200 (the 503 regression)
- *   3. POST <issuer>/oauth2/register                         200/201 + client_id
+ *   3. POST <issuer>/oauth2/register                         200/201 + client_id,
+ *      whose `resources` bind <api>/mcp (the AS audience, #123 B)
  *   4. POST <api>/mcp without a token                        401 + WWW-Authenticate
- *                                                            carrying resource_metadata,
- *                                                            whose document names <issuer>
+ *                                                            carrying resource_metadata
+ *                                                            on the same host, whose
+ *                                                            document's `resource` IS
+ *                                                            <api>/mcp (the host the
+ *                                                            client connected to, #116)
+ *                                                            and whose every
+ *                                                            authorization_servers entry
+ *                                                            answers JSON AS metadata, not
+ *                                                            HTML/404 (#123 B). The 401
+ *                                                            body must name the API-key
+ *                                                            alternative (#123 A.1).
  *      GET  <api>/api/v1/settings without a token            401 (the REST mount)
  *   5. GET  <api>/health                                     200 + status "ok"
  *   6. GET  <landing>/ and <landing>/llms.txt                every advertised
@@ -37,7 +48,7 @@
  *   --wait S       seconds between attempts (default: 5)
  *   --timeout MS   per-request timeout (default: 20000)
  *   --issuer URL   authorization server origin (default: the prelive webapp)
- *   --api URL      API Worker origin (default: the prelive Worker)
+ *   --api URL      API origin (default: the public prelive API host)
  *   --landing URL  landing origin for check 6 (default: https://excited.live)
  *
  * Exits 0 only when every selected check passed; any failure exits 1. Raw
@@ -48,10 +59,11 @@
 // Explicit import: scripts/**.mjs only declares the Node globals it uses in
 // eslint.config.mjs, and `URL` is not one of them.
 import { URL } from "node:url"
+import { PRELIVE_API_ORIGIN, PRELIVE_ISSUER } from "./prelive-hosts.mjs"
 
 const DEFAULTS = {
-	issuer: "https://prelive.excited.live/api/auth",
-	api: "https://excited-live-api-prelive.preamza02.workers.dev",
+	issuer: PRELIVE_ISSUER,
+	api: PRELIVE_API_ORIGIN,
 	landing: "https://excited.live",
 }
 
@@ -155,6 +167,30 @@ function expectStatus(response, wanted, what) {
 	throw new Error(`${what} returned ${response.status}, want ${wanted}`)
 }
 
+/**
+ * A discovery document must be JSON. A 200 HTML page is the #123 B failure
+ * mode: the client parses HTML and reports an unrelated error.
+ */
+function expectJson(response, what) {
+	const type = response.headers.get("content-type") ?? "(no content-type)"
+	if (!type.includes("application/json")) {
+		throw new Error(`${what} returned ${type}, want application/json — a 200 HTML page breaks discovery harder than a 404`)
+	}
+}
+
+/** The URL must be on `origin`, i.e. the host the client actually called. */
+function assertSameOrigin(url, origin, what) {
+	let parsed
+	try {
+		parsed = new URL(url)
+	} catch {
+		throw new Error(`${what} is not a URL: ${JSON.stringify(url)}`)
+	}
+	if (parsed.origin !== origin) {
+		throw new Error(`${what} points at ${parsed.origin}, want ${origin} (the host the client connected to)`)
+	}
+}
+
 async function checkMetadata() {
 	const url = `${ISSUER}/.well-known/oauth-authorization-server`
 	const response = await request(url)
@@ -213,8 +249,13 @@ async function checkRegistration() {
 		throw new Error(`registration returned no usable client_id: ${JSON.stringify(client.client_id)}`)
 	}
 	const resources = Array.isArray(client.resources) ? client.resources : []
-	if (resources.length > 0 && !resources.includes(`${API}/mcp`)) {
-		throw new Error(`client resources are ${JSON.stringify(resources)}, want ${API}/mcp`)
+	// The AS binds the token audience here (#123 B). An absent list is not
+	// "fine": packages/auth falls back to the production API, which a prelive
+	// token must never be minted for.
+	if (!resources.includes(`${API}/mcp`)) {
+		throw new Error(
+			`client resources are ${JSON.stringify(resources)}, want ${API}/mcp — the AS must bind the public API host it advertises as the resource`,
+		)
 	}
 	return `client_id issued (${client.client_id.length} chars)`
 }
@@ -230,14 +271,59 @@ async function checkMcpProtected() {
 	const match = header.match(/resource_metadata="([^"]+)"/) ?? header.match(/resource_metadata=([^,\s]+)/)
 	if (!match) throw new Error(`WWW-Authenticate must point at resource_metadata; got ${JSON.stringify(header)}`)
 
+	// The challenge URL must live on the host the client called. Advertising the
+	// Worker's internal address here is the #116 regression.
 	const metadataUrl = match[1]
+	assertSameOrigin(metadataUrl, API, "WWW-Authenticate resource_metadata")
+
 	const metadata = await request(metadataUrl)
 	report("GET", metadataUrl, metadata)
 	expectStatus(metadata, 200, "protected-resource metadata")
+	expectJson(metadata, "protected-resource metadata")
 	const document = parseJson(metadata, "protected-resource metadata")
+
+	// RFC 9728 / RFC 8707: the resource identifier must be the host the client
+	// connected to. #123 B: PRM said prelive.api.excited.live was not the
+	// resource, so strict clients refused and lenient ones minted the wrong aud.
+	const wantedResource = `${API}/mcp`
+	if (document.resource !== wantedResource) {
+		throw new Error(
+			`PRM resource is ${JSON.stringify(document.resource)}, want ${JSON.stringify(wantedResource)} (the host the client connected to)`,
+		)
+	}
+
 	const servers = Array.isArray(document.authorization_servers) ? document.authorization_servers : []
 	if (!servers.includes(ISSUER)) {
 		throw new Error(`protected-resource metadata advertises ${JSON.stringify(servers)}, want ${ISSUER}`)
+	}
+
+	// Every advertised AS must actually be one. A 200 HTML page is worse than a
+	// 404 (the client parses it and dies opaquely), which is what #123 B hit.
+	for (const server of servers) {
+		if (typeof server !== "string" || !server.startsWith("https://")) {
+			throw new Error(`authorization_servers entry is not an https origin: ${JSON.stringify(server)}`)
+		}
+		const asUrl = `${server.replace(/\/+$/, "")}/.well-known/oauth-authorization-server`
+		const as = await request(asUrl)
+		report("GET", asUrl, as)
+		expectStatus(as, 200, `authorization-server metadata at ${server}`)
+		expectJson(as, `authorization-server metadata at ${server}`)
+		const asDocument = parseJson(as, `authorization-server metadata at ${server}`)
+		if (asDocument.issuer !== server.replace(/\/+$/, "")) {
+			throw new Error(`${asUrl} issuer is ${JSON.stringify(asDocument.issuer)}, want ${JSON.stringify(server)}`)
+		}
+		for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri"]) {
+			if (typeof asDocument[key] !== "string" || asDocument[key].length === 0) {
+				throw new Error(`${asUrl} is missing ${key}; discovery cannot complete`)
+			}
+		}
+	}
+
+	// #123 A.1: the 401 body must name the API-key alternative, not only OAuth.
+	const body = parseJson(response, "POST /mcp 401 body")
+	const hint = typeof body.hint === "string" ? body.hint : ""
+	if (!hint.includes("elk_") || !/x-api-key/i.test(hint)) {
+		throw new Error(`the 401 body must name the API-key alternative (Bearer elk_… or x-api-key); got ${JSON.stringify(body)}`)
 	}
 
 	// The REST mount is the other half of #140: a route that answers without a
@@ -247,7 +333,7 @@ async function checkMcpProtected() {
 	report("GET", restUrl, rest)
 	expectStatus(rest, 401, "GET /api/v1/settings without a token")
 
-	return `401 on /mcp and /api/v1/settings + resource_metadata -> ${servers.join(", ")}`
+	return `401 on /mcp and /api/v1/settings, resource ${document.resource}, AS JSON at ${servers.join(", ")}`
 }
 
 async function checkApiHealth() {

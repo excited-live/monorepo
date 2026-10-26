@@ -45,7 +45,12 @@ export function tokensAuthConfigured(): boolean {
 	return Boolean(process.env.BETTER_AUTH_SECRET)
 }
 
-/** Public origin for the request: BETTER_AUTH_URL override, else the request's own origin. */
+/**
+ * Public origin for the Better Auth mount: BETTER_AUTH_URL override, else the
+ * request's own origin. This is the issuer identity, not the MCP discovery
+ * identity — `mcpAdvertisedOrigin()` in lib/oauth.ts follows the request host
+ * so a custom domain is not advertised as the pinned `workers.dev` URL (#116).
+ */
 export function requestOrigin(url: string): string {
 	const override = process.env.BETTER_AUTH_URL
 	if (override) return override.replace(/\/$/, "")

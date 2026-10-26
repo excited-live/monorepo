@@ -234,7 +234,7 @@ describe("OAuth protected-resource metadata", () => {
 			"/.well-known/oauth-protected-resource",
 			"/.well-known/oauth-protected-resource/mcp",
 		]) {
-			const res = await app.request(path)
+			const res = await app.request(`https://api.excited.live${path}`)
 			expect(res.status).toBe(200)
 			expect(await res.json()).toEqual({
 				resource: "https://api.excited.live/mcp",
@@ -251,7 +251,7 @@ describe("OAuth protected-resource metadata", () => {
 		expect(res.status).toBe(404)
 	})
 
-	it("points the 401 challenge at BETTER_AUTH_URL, not the raw request origin", async () => {
+	it("keeps api.excited.live's challenge unchanged when its pin matches its host", async () => {
 		process.env.BETTER_AUTH_SECRET = SECRET
 		process.env.BETTER_AUTH_URL = "https://api.excited.live"
 		process.env.EXCITED_WEBAPP_URL = "https://app.excited.live"
@@ -259,7 +259,7 @@ describe("OAuth protected-resource metadata", () => {
 		resetDbCache()
 		const app = createApp()
 
-		const res = await app.request("http://internal:8787/mcp", {
+		const res = await app.request("https://api.excited.live/mcp", {
 			method: "POST",
 			headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
 			body: JSON.stringify(toolsList()),
@@ -267,6 +267,35 @@ describe("OAuth protected-resource metadata", () => {
 		expect(res.status).toBe(401)
 		expect(res.headers.get("www-authenticate")).toBe(
 			'Bearer resource_metadata="https://api.excited.live/.well-known/oauth-protected-resource"',
+		)
+	})
+
+	it("advertises the request host, not the BETTER_AUTH_URL pin (#116)", async () => {
+		process.env.BETTER_AUTH_SECRET = SECRET
+		// The prelive Worker is reached through a custom domain but still pins
+		// its workers.dev URL for the auth mount; discovery must not echo the pin.
+		process.env.BETTER_AUTH_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
+		process.env.EXCITED_WEBAPP_URL = "https://prelive.excited.live"
+		process.env[DB_FILE_ENV] = tempDbFile()
+		resetDbCache()
+		const app = createApp()
+
+		const metadata = await app.request(
+			"https://prelive.api.excited.live/.well-known/oauth-protected-resource",
+		)
+		expect(metadata.status).toBe(200)
+		expect(await metadata.json()).toMatchObject({
+			resource: "https://prelive.api.excited.live/mcp",
+		})
+
+		const challenge = await app.request("https://prelive.api.excited.live/mcp", {
+			method: "POST",
+			headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+			body: JSON.stringify(toolsList()),
+		})
+		expect(challenge.status).toBe(401)
+		expect(challenge.headers.get("www-authenticate")).toBe(
+			'Bearer resource_metadata="https://prelive.api.excited.live/.well-known/oauth-protected-resource"',
 		)
 	})
 })

@@ -1,9 +1,10 @@
 import { apiKeyApi } from "@excited-live/auth";
 import type { Context } from "hono";
 import type { ApiEnv } from "../../lib/env";
-import { getTokensAuth, requestOrigin, tokensAuthConfigured } from "../../lib/auth";
+import { getTokensAuth, tokensAuthConfigured } from "../../lib/auth";
 import {
 	looksLikeJwt,
+	mcpAdvertisedOrigin,
 	oauthConfigured,
 	verifyOAuthAccessToken,
 } from "../../lib/oauth";
@@ -102,7 +103,7 @@ export async function resolvePrincipal(c: Context<ApiEnv>): Promise<McpPrincipal
 
 /** 401 in the shape the MCP Streamable HTTP spec expects, pointing at the resource metadata. */
 export function unauthorizedResponse(requestUrl: string): Response {
-	const origin = requestOrigin(requestUrl);
+	const origin = mcpAdvertisedOrigin(requestUrl);
 	return new Response(JSON.stringify({ error: "unauthorized" }), {
 		status: 401,
 		headers: {

@@ -112,7 +112,7 @@ Env vars:
 | `EXCITED_API_AUTO_MIGRATE` | on | `0` skips boot migrations (e.g. when wrangler owns them) |
 | `PORT` | `8000` | HTTP port |
 | `EXCITED_WEBAPP_URL` | unset | Webapp origin that hosts the MCP authorization server (`<origin>/api/auth`). When set, `/mcp` also accepts OAuth JWT access tokens and serves the protected-resource metadata; unset keeps the A1 behaviour (API keys, sessions, dev passthrough). |
-| `BETTER_AUTH_URL` | request origin | Canonical public origin of THIS API. Used in the `WWW-Authenticate` challenge and to compute the OAuth audience (`<origin>/mcp`); set it behind a proxy so both match the webapp's `EXCITED_API_URL`. |
+| `BETTER_AUTH_URL` | request origin | Canonical origin of the `/api/v1/auth` mount (Better Auth issuer). Set it behind a proxy so tokens carry a stable issuer; it does **not** pin MCP discovery. The `/.well-known/oauth-protected-resource` `resource` and the 401 `resource_metadata` URL follow the request host, so a custom-domain Worker advertises that domain (#116). |
 
 Local runs need Node >= 22.13 (`node:sqlite` without a flag).
 

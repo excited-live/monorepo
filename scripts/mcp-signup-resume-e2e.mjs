@@ -27,9 +27,12 @@
  *   node scripts/mcp-signup-resume-e2e.mjs                     # prelive, fresh account
  *   node scripts/mcp-signup-resume-e2e.mjs --headed            # watch it
  *   node scripts/mcp-signup-resume-e2e.mjs --json /tmp/out.json
+ *   node scripts/mcp-signup-resume-e2e.mjs --cleanup           # print the prelive D1 cleanup
+ *   node scripts/mcp-signup-resume-e2e.mjs --cleanup --env prod # report the production blocker
  *
  * Flags:
  *   --env prelive|prod    target preset (default: prelive)
+ *   --confirm-prod        required before a run that creates accounts on production
  *   --mcp URL             MCP endpoint, overrides --env
  *   --issuer URL          authorization server, overrides discovery
  *   --email EMAIL         reuse a fixed address (it must not exist; the run creates it)
@@ -38,6 +41,15 @@
  *   --headed              show the browser
  *   --timeout MS          per-step timeout (default 30000)
  *   --json FILE           write the transcript as JSON
+ *   --cleanup             print — never run — the D1 statements that remove what
+ *                         previous runs left behind; no browser, no network.
+ *                         The target DB and --env follow the run target.
+ *
+ * Teardown: the AS has no delete-user endpoint and rejects deleting an
+ * anonymously registered client, so each run leaves one account, one DCR client
+ * and one offline_access grant in the target database. `--cleanup` prints the
+ * exact removal command and the namespace it matches. Production has no
+ * documented teardown, so there it reports a blocker instead of a command.
  *
  * Exit codes: 0 the new account was created and the flow resumed; 1 anything
  * failed; 2 usage. Requires `@playwright/test` (workspace dep of apps/webapp) and
@@ -51,18 +63,67 @@ import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { URL, URLSearchParams } from "node:url"
+import { PRELIVE_API_ORIGIN } from "./prelive-hosts.mjs"
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const webappRequire = createRequire(path.join(repoRoot, "apps/webapp/package.json"))
 
+/**
+ * The target is the origin the deployment advertises in its RFC 9728 metadata
+ * (`<request host>/mcp`), not the Worker's `workers.dev` host: #85 measured the
+ * custom-domain front door stalling while the same build on *.pages.dev was
+ * 0/40, and RFC 8707 ties the token audience and the DCR client's resources to
+ * whichever URL the gate uses. A gate pinned to workers.dev can be green while
+ * the advertised origin fails.
+ *
+ * Assumption this preset makes explicit: the authorization server must allow
+ * the resource it advertises. That broke on 26 Oct (the AS only allowed the
+ * workers.dev resource named by apps/webapp/wrangler.prelive.toml
+ * EXCITED_API_URL) and was fixed by #123 (585a1c2c), which points that var at
+ * PRELIVE_API_ORIGIN. packages/auth/src/server.ts then registers it as the
+ * issued, default and allowed DCR resource. Verified end to end on 26 Oct
+ * 12:27 ICT against the deployed prelive: all seven steps passed on
+ * https://prelive.api.excited.live/mcp, so this is no longer a known-RED run.
+ * If it rejects again, look at that resource registry (oauthResource rows in
+ * the shared D1) before wrangler.prelive.toml. The hostname comes from
+ * scripts/prelive-hosts.mjs so a rename cannot leave this gate on a stale
+ * origin — the gate names the break instead of reporting a sign-up failure.
+ */
 const PRESETS = {
 	prelive: {
-		mcp: "https://excited-live-api-prelive.preamza02.workers.dev/mcp",
+		mcp: `${PRELIVE_API_ORIGIN}/mcp`,
+		// apps/api/wrangler.toml [env.prelive]. One command per statement.
+		cleanup: {
+			label: "prelive",
+			database: "excited-live-api-prelive",
+			envArgs: " --env prelive",
+			documented: true,
+		},
 	},
 	prod: {
 		mcp: "https://api.excited.live/mcp",
+		// Production is the TOP LEVEL of apps/api/wrangler.toml — there is no
+		// [env.production], and `--env production` fails with "No environment
+		// found", so the production command takes no --env.
+		cleanup: {
+			label: "production",
+			database: "excited-live-api-production",
+			envArgs: "",
+			documented: false,
+		},
 	},
 }
+
+// Every run creates an account with this prefix on the target's database. There
+// is no delete endpoint for it (see --cleanup), so the namespace is the only way
+// to find the rows again.
+const CLEANUP_EMAIL_LIKE = "qa+resume-%@excited.live"
+const CLIENT_NAME = "Pixel sign-up resume gate (#58)"
+
+// wrangler is not a dependency of this repo (CI runs it through npx with
+// WRANGLER_VERSION pinned in .github/workflows/api-*.yml), so the old
+// `pnpm exec wrangler` failed with "Command wrangler not found".
+const WRANGLER = "npx --yes wrangler@4.127.1"
 
 const SCOPES = "openid profile email offline_access onboarding accounting:read accounting:write"
 const DEFAULT_REDIRECT = "http://127.0.0.1:33418/callback"
@@ -89,8 +150,8 @@ function bool(name) {
 function usage(message) {
 	console.error(`signup-resume-e2e: ${message}`)
 	console.error(
-		"usage: node scripts/mcp-signup-resume-e2e.mjs [--env prelive|prod] [--mcp URL] [--issuer URL] " +
-			"[--email EMAIL] [--redirect-uri URI] [--expect-tools N] [--headed] [--timeout MS] [--json FILE]",
+		"usage: node scripts/mcp-signup-resume-e2e.mjs [--env prelive|prod] [--confirm-prod] [--mcp URL] [--issuer URL] " +
+			"[--email EMAIL] [--redirect-uri URI] [--expect-tools N] [--headed] [--timeout MS] [--json FILE] | --cleanup",
 	)
 	process.exit(2)
 }
@@ -104,6 +165,57 @@ const EXPECT_TOOLS = Number(flag("expect-tools", "1"))
 const TIMEOUT = Number(flag("timeout", "30000"))
 const JSON_FILE = flag("json", null)
 const HEADED = bool("headed")
+const CLEANUP = bool("cleanup")
+
+let mcpTarget
+try {
+	mcpTarget = new URL(MCP_URL)
+} catch {
+	usage(`--mcp is not an absolute URL: ${MCP_URL}`)
+}
+if (!/^https?:$/.test(mcpTarget.protocol)) usage("--mcp must be an http(s) URL")
+
+/**
+ * Which database --cleanup points at.
+ *
+ * The host decides before --env, because the host is where the rows actually
+ * go: `--env prelive --mcp https://api.excited.live/mcp` writes production,
+ * and `--env prod --mcp <prelive host>` writes prelive. Only an unrecognised
+ * host falls back to the preset named by --env. Either way the header prints
+ * the target the run used, so a mismatch is visible instead of silent.
+ */
+const PROD_MCP_HOST = new URL(PRESETS.prod.mcp).host
+const PRELIVE_MCP_HOST = new URL(PRESETS.prelive.mcp).host
+const ON_PROD = ENVIRONMENT === "prod" || mcpTarget.host === PROD_MCP_HOST
+const CLEANUP_ENV =
+	mcpTarget.host === PROD_MCP_HOST ? "prod" : mcpTarget.host === PRELIVE_MCP_HOST ? "prelive" : ENVIRONMENT
+const CLEANUP_TARGET = PRESETS[CLEANUP_ENV].cleanup
+
+// --cleanup never touches the network, the browser or the D1 database: it
+// prints the rows this gate accumulates and the exact command an operator with
+// Cloudflare access runs to remove them. Checked before the --confirm-prod
+// guard on purpose: printing a teardown creates nothing, and the command a prod
+// run prints must be readable without the confirmation that guards account
+// creation.
+if (CLEANUP) {
+	reportCleanup()
+	process.exit(0)
+}
+
+/**
+ * The prod preset creates REAL accounts on api.excited.live with @excited.live
+ * addresses nobody deletes. One typo (`--env prod` instead of `prelive`) must
+ * not be enough to do that in launch week, so prod is opt-in the same way
+ * iam-production.yml gates its dispatch behind `confirm=PROD`. A `--mcp`
+ * override that lands on the production host is the same hazard, so it needs
+ * the same confirmation.
+ */
+if (ON_PROD && !bool("confirm-prod")) {
+	usage(
+		`${ENVIRONMENT === "prod" ? "--env prod" : `--mcp ${MCP_URL}`} creates real accounts on production; ` +
+			"re-run with --confirm-prod if that is what you mean",
+	)
+}
 
 const redirect = new URL(REDIRECT_URI)
 if (!["127.0.0.1", "localhost", "[::1]"].includes(redirect.hostname)) {
@@ -160,6 +272,9 @@ function done() {
 function base64url(buffer) {
 	return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 }
+
+/** A run that cannot continue meaningfully; its failing step already recorded why. */
+class GateAbort extends Error {}
 
 function snippet(text, limit = 120) {
 	const flat = String(text ?? "").replace(/\s+/g, " ").trim()
@@ -224,7 +339,7 @@ async function beginAuthorization(issuer) {
 		method: "POST",
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({
-			client_name: "Pixel sign-up resume gate (#58)",
+			client_name: CLIENT_NAME,
 			redirect_uris: [REDIRECT_URI],
 			grant_types: ["authorization_code", "refresh_token"],
 			response_types: ["code"],
@@ -255,7 +370,7 @@ async function beginAuthorization(issuer) {
 	return {
 		authorizeUrl: authorize,
 		clientId: registration.json.client_id,
-		clientName: "Pixel sign-up resume gate (#58)",
+		clientName: CLIENT_NAME,
 		tokenEndpoint,
 	}
 }
@@ -308,6 +423,18 @@ try {
 
 	const landing = new URL(page.url())
 	note(`landed on ${landing.origin}${landing.pathname}`)
+	// A rejected authorization request comes back to the loopback redirect as an
+	// error instead of the sign-in page. Say which error — "expected /sign-in, got
+	// the callback" sends whoever reads the run hunting for a sign-up bug when the
+	// real cause is discovery/config drift (invalid_target is what a resource the
+	// AS does not allow looks like), and every later step would assert the wrong
+	// page, so the run stops here.
+	if (landing.toString().startsWith(REDIRECT_URI) && landing.searchParams.get("error")) {
+		const code = landing.searchParams.get("error")
+		const description = landing.searchParams.get("error_description") ?? "(no description)"
+		fail(`the authorization server rejected the request before sign-in: ${code} — ${description}`)
+		throw new GateAbort()
+	}
 	if (!/\/sign-in$/.test(landing.pathname)) {
 		fail(`expected /sign-in for a signed-out agent, got ${landing.origin}${landing.pathname}`)
 	} else {
@@ -520,7 +647,11 @@ try {
 } catch (error) {
 	// A thrown error (network, browser, discovery) is a failure of the run, not
 	// a silent pass: the gate never reports green without reaching the callback.
-	if (current) {
+	if (error instanceof GateAbort) {
+		// The failing step recorded its own reason; the steps after it would only
+		// assert pages the run never reached.
+		if (current) done()
+	} else if (current) {
 		fail(`threw: ${snippet(error?.message ?? String(error), 200)}`)
 		done()
 	} else {
@@ -545,14 +676,82 @@ try {
 			? `\n\u001b[32mPASS\u001b[0m sign-up resumed the agent flow on ${ENVIRONMENT} · account ${EMAIL}`
 			: `\n\u001b[31mFAIL\u001b[0m ${failures.length} problem(s) on ${ENVIRONMENT}:\n  - ${failures.join("\n  - ")}`,
 	)
+	const cleanupArgs = CLEANUP_ENV === "prod" ? " --env prod" : ""
+	console.log(
+		`\ncleanup: node scripts/mcp-signup-resume-e2e.mjs --cleanup${cleanupArgs}  # removes ${EMAIL}, its DCR client and grant`,
+	)
+	if (CLEANUP_ENV === "prod") {
+		console.log("  production has no documented teardown — --cleanup reports the blocker; do not reuse the prelive statements")
+	}
 	process.exit(exitCode)
 }
 
 /**
- * The protected resource names its own authorization server (RFC 9728), so the
- * script follows the deployment instead of hard-coding an issuer that a topology
- * change would silently invalidate.
+ * The teardown this gate cannot perform itself. Every run leaves three things
+ * behind: a `user` (+ session/account rows) under the qa+resume namespace, a
+ * dynamically registered oauthClient, and an offline_access grant in
+ * oauthConsent/oauthRefreshToken. None of them can be removed over HTTP: the AS
+ * exposes no delete-user endpoint, and /oauth2/delete-client requires a session
+ * that OWNS the client while DCR registered this one anonymously (client.userId
+ * is NULL), so it answers 401/403 for the very account the run just created.
+ *
+ * So the namespace is documented and the removal is one copy-pasteable
+ * `wrangler d1 execute` per statement, run by whoever has Cloudflare access to
+ * the target D1 database. Statements go child-rows first so they are correct
+ * even where D1 does not enforce the FK cascades.
+ *
+ * Production has no documented teardown: --cleanup names the rows but prints a
+ * blocker instead of a command, because deleting real @excited.live accounts is
+ * a reviewed procedure this script must not invent.
  */
+function cleanupStatements() {
+	const qaUsers = `SELECT id FROM "user" WHERE email LIKE '${CLEANUP_EMAIL_LIKE}'`
+	const qaClients = `SELECT "clientId" FROM "oauthClient" WHERE name = '${CLIENT_NAME}'`
+	return [
+		`DELETE FROM "oauthAccessToken" WHERE "userId" IN (${qaUsers}) OR "clientId" IN (${qaClients});`,
+		`DELETE FROM "oauthRefreshToken" WHERE "userId" IN (${qaUsers}) OR "clientId" IN (${qaClients});`,
+		`DELETE FROM "oauthConsent" WHERE "userId" IN (${qaUsers}) OR "clientId" IN (${qaClients});`,
+		`DELETE FROM "session" WHERE "userId" IN (${qaUsers});`,
+		`DELETE FROM "account" WHERE "userId" IN (${qaUsers});`,
+		`DELETE FROM "oauthClient" WHERE name = '${CLIENT_NAME}';`,
+		`DELETE FROM "user" WHERE email LIKE '${CLEANUP_EMAIL_LIKE}';`,
+	]
+}
+
+function cleanupCommand(statement) {
+	const target = CLEANUP_TARGET
+	return (
+		`${WRANGLER} d1 execute ${target.database} --remote --config apps/api/wrangler.toml` +
+		`${target.envArgs} --command "${statement.replace(/"/g, '\\"')}"`
+	)
+}
+
+function reportCleanup() {
+	const target = CLEANUP_TARGET
+	const envNote = target.envArgs ? target.envArgs.trim() : "top-level production config, no --env"
+	console.log(`signup-resume-e2e: rows the gate accumulates (${target.label} target ${MCP_URL})`)
+	console.log(`  database    ${target.database} (${envNote})`)
+	console.log(`  accounts    email LIKE '${CLEANUP_EMAIL_LIKE}'`)
+	console.log(`  DCR client  name = '${CLIENT_NAME}' (one per run, userId NULL)`)
+	console.log(`  grants      oauthConsent / oauthRefreshToken / oauthAccessToken for both of the above\n`)
+
+	if (!target.documented) {
+		console.log(`BLOCKED: ${target.label} has no documented teardown.\n`)
+		console.log(`  Do not run the prelive DELETE statements against ${target.database}.`)
+		console.log("  A production run creates real @excited.live accounts, and removing them")
+		console.log("  needs a reviewed procedure that does not exist yet. Until one is")
+		console.log("  documented, treat every production run as leaving one account, one DCR")
+		console.log("  client and one grant behind.\n")
+		return
+	}
+
+	console.log(`Run these against ${target.database} (needs \`wrangler login\`):\n`)
+	for (const statement of cleanupStatements()) {
+		console.log(`  ${cleanupCommand(statement)}\n`)
+	}
+	console.log(`Until that runs, ${target.label} accumulates one account, one DCR client and one grant per gate run.`)
+}
+
 async function discoverIssuer() {
 	const response = await fetch(MCP_URL, {
 		method: "POST",

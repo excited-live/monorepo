@@ -880,6 +880,24 @@ describe("asOf day for one-time expenses (#172)", () => {
 		);
 	});
 
+	it("defaults a startMonth that is not this month to the 1st, not to today's day (#218)", async () => {
+		const me = await personalEntity();
+		// No asOf: the caller named a month only, so the receipt has no day.
+		const expense = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Lunch",
+			category: "food",
+			amount: 250,
+			startMonth: "2026-03",
+		});
+		expect(expense.cycle).toBe("one_time");
+		expect(expense.startMonth).toBe("2026-03");
+		expect(expense.dayOfMonth).toBeUndefined();
+		expect((await service.getCashFlows(USER, { month: "2026-03" })).items.find((i) => i.sourceId === expense.id)?.date).toBe(
+			"2026-03-01",
+		);
+	});
+
 	it("honours a backdated receipt: month from startMonth, day from asOf", async () => {
 		const me = await personalEntity();
 		const expense = await service.createExpense(USER, {

@@ -63,7 +63,14 @@ jobs:
   # API token and cannot be bypassed by the merge path forgetting to look at
   # labels. Refusing is the default: unreadable payload, invalid JSON or no
   # pull_request all fail the job.
+  #
+  # Only pull_request events publish this context. The workflow also runs on
+  # push to main (for the `ci` job), and a push payload carries no
+  # pull_request, so without this guard the fail-closed branch fired on every
+  # merge commit and painted main red (run 261, 2026-10-26 13:55 ICT). There is
+  # nothing to gate on a push: the labels lived on the PR that already merged.
   merge-gate:
+    if: github.event_name == 'pull_request'
     runs-on: self-hosted
     timeout-minutes: 5
     steps:

@@ -46,6 +46,7 @@ jobs:
         with:
           node-version: 22
       - name: Smoke — prelive authorization server and protected resource
+        id: prelive_smoke
         run: node scripts/smoke-prelive.mjs --retries 3 --wait 10
       # The prelive workflow used to deploy to `excited-live-iam` (the project that
       # owns iam.excited.live) and did it three times on 2026-10-25, so production
@@ -53,11 +54,44 @@ jobs:
       # valid, it was deployed to the wrong project. This reads the host itself,
       # on a schedule and after every Deploy Prelive, and fails on any #88 marker.
       - name: Guard — production iam host serves a production bundle (#88 #93)
+        id: iam_guard
         run: node scripts/check-iam-live-bundle.mjs --retries 3 --wait 10
       # #99 and #100 shipped on the prod landing while checks 1-5 were green: the
       # dead MCP host is in the landing's copy-paste snippet and /llms.txt served
       # the landing HTML. Neither surface is touched by the prelive checks, so run
       # the landing check explicitly here (it is off in the default --only list so
       # a prelive deploy is not failed by a prod landing regression).
+      # always(): run 40313075446 failed the iam guard and skipped this step, so a
+      # landing regression stayed invisible. This assertion is independent of the
+      # others and must report on every run.
       - name: Smoke — landing entry points, advertised MCP host and /llms.txt (#99 #100)
+        id: landing_smoke
+        if: always()
         run: node scripts/smoke-prelive.mjs --only 6 --retries 3 --wait 10
+      # A skipped assertion is not a pass. The job already fails on its own step,
+      # but this makes the rule explicit and red even if a step is skipped for any
+      # future reason (a changed `if:`, a cancelled dependency, a new step added
+      # above). Every outcome must be exactly "success".
+      - name: Aggregate — every prelive assertion ran and passed
+        if: always()
+        env:
+          PRELIVE_SMOKE: ${{ steps.prelive_smoke.outcome }}
+          IAM_GUARD: ${{ steps.iam_guard.outcome }}
+          LANDING_SMOKE: ${{ steps.landing_smoke.outcome }}
+        run: |
+          failed=0
+          for entry in \
+            "authorization-server=$PRELIVE_SMOKE" \
+            "iam-guard=$IAM_GUARD" \
+            "landing=$LANDING_SMOKE"; do
+            name="${entry%%=*}"
+            outcome="${entry#*=}"
+            if [ "$outcome" != "success" ]; then
+              echo "::error::$name did not pass (outcome: ${outcome:-missing})"
+              failed=1
+            else
+              echo "ok: $name passed"
+            fi
+          done
+          exit "$failed"
+

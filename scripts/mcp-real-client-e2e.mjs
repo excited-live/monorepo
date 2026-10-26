@@ -1112,6 +1112,10 @@ try {
 						headers: { authorization: `Bearer ${hub}`, origin: CLIENT_ORIGIN },
 					})
 				let listed = 0
+				// The revoke is not best-effort: a 90-day elk_ key that is still
+				// live after a green row is a security hole. I5 fails the same way
+				// when DELETE /api/v1/agent-keys/<id> is not HTTP 200.
+				let revoked = null
 				try {
 					const transport = new StreamableHTTPClientTransport(mcpUrl, { requestInit: { headers: spec.headers(key) } })
 					const realClient = new Client({ name: spec.agentId, version: "1.0.0" })
@@ -1135,8 +1139,13 @@ try {
 				} catch (error) {
 					return fail(`${spec.client} could not connect with its elk_ key: ${describeError(error)}`)
 				} finally {
-					const revoked = await revokedLate().catch(() => null)
+					revoked = await revokedLate().catch((error) => ({ status: null, error }))
 					note(`DELETE /api/v1/agent-keys/${keyId} -> HTTP ${revoked?.status ?? "(failed)"}`)
+				}
+				if (revoked?.status !== 200) {
+					return fail(
+						`revoke of ${keyId} returned ${revoked?.status ?? "(failed)"}; the 90-day elk_ key may still be live`,
+					)
 				}
 				if (!listed) return fail("no tools/list result")
 				pass(`${spec.client}: initialize -> tools/list ${listed} with a minted elk_ key, key revoked`)

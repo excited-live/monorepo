@@ -26,7 +26,7 @@
  *   8. SDK auth()                         -> REDIRECT + authorization URL
  *   9. authorize -> sign-in -> consent    -> code + original state
  *  10. token exchange                     -> access token
- *  11. tools/list                         -> exactly --expect-tools (16)
+ *  11. tools/list                         -> exactly --expect-tools (17)
  *  12. tools/call get_onboarding_status   -> non-error, real onboarding data
  *
  * With `--iam <origin>` it also runs the iam stage (#93) after step 12. The
@@ -76,7 +76,8 @@
  *   --password PW        QA password (or MCP_QA_PASSWORD)
  *   --create-user        sign up first; a throwaway address is fine on prelive
  *   --name NAME          display name for --create-user
- *   --expect-tools N     tools/list count (default 16)
+ *   --expect-tools N     tools/list count (default: the registry's 17; bump with
+ *                        mcp.test.ts when a tool lands -- see #93)
  *   --redirect-uri URI   loopback redirect (default http://127.0.0.1:33418/callback)
  *   --timeout MS         per-request timeout (default 20000)
  *   --bootstrap-discovery
@@ -211,7 +212,7 @@ function positiveInt(name, fallback) {
 	return value
 }
 
-const EXPECT_TOOLS = positiveInt("expect-tools", 16)
+const EXPECT_TOOLS = positiveInt("expect-tools", 17)
 const TIMEOUT = positiveInt("timeout", 20000)
 const STATE = `rigel-${randomUUID()}`
 

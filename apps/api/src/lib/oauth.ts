@@ -1,5 +1,4 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
-import { requestOrigin } from "./auth"
 
 /**
  * OAuth 2.1 resource-server support for `/mcp` (workstream A2.3).
@@ -46,9 +45,26 @@ export function oauthIssuer(webappOrigin: string): string {
 	return `${trimOrigin(webappOrigin)}/api/auth`
 }
 
+/**
+ * Origin to advertise in MCP OAuth documents: the host the client actually
+ * called.
+ *
+ * `BETTER_AUTH_URL` pins the Better Auth issuer for `/api/v1/auth` and is not
+ * the public identity of `/mcp` (#116): a Worker reached through a custom
+ * domain but configured with its `workers.dev` URL used to tell clients the
+ * resource lived on `workers.dev`, which is a different host than the one they
+ * resolved. Discovery must name a host the client can resolve, so derive it
+ * from the request. Production is unchanged because its pinned origin and its
+ * request host are the same.
+ */
+export function mcpAdvertisedOrigin(requestUrl: string): string {
+	const parsed = new URL(requestUrl)
+	return `${parsed.protocol}//${parsed.host}`
+}
+
 /** The audience/resource identifier of this API's MCP endpoint. */
 export function mcpResource(requestUrl: string): string {
-	return `${requestOrigin(requestUrl)}${MCP_RESOURCE_PATH}`
+	return `${mcpAdvertisedOrigin(requestUrl)}${MCP_RESOURCE_PATH}`
 }
 
 /**

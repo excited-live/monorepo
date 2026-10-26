@@ -398,6 +398,50 @@ describe("/mcp", () => {
 		expect(promptText).toContain("There is no trial to expire");
 	});
 
+	it("tells the agent budgets do not exist, in Design's words, right after the cost line (#203)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const init = await rpc(app, initialize(), key);
+		const instructions = (init.json?.result as { instructions?: string }).instructions ?? "";
+
+		// #203: Design's sentence (comments 3086/3128), verbatim. "do not derive"
+		// is the half that stops an agent inventing a limit from income, last
+		// month's spend or runway — the failure the scenario measures.
+		const budget =
+			'- Budgets are not a supported input yet: there is no budget field, and no tool reads or writes one. If asked "what\'s left in my X budget", say the spend is recorded and that no budget is set, and do not derive a limit from income, last month\'s spend or runway.';
+		expect(instructions).toContain(budget);
+		expect(instructions.toLowerCase()).toContain("budgets");
+		expect(instructions).toContain("do not derive");
+
+		// Directly after the #192 cost line: the two "what this does not do"
+		// launch facts read together, and neither duplicates the other.
+		const lines = instructions.split("\n");
+		const costAt = lines.findIndex((line) => line.startsWith("- Cost: "));
+		expect(costAt).toBeGreaterThan(-1);
+		expect(lines[costAt + 1]).toBe(budget);
+
+		// The read tool a choosing model sees carries the same fact.
+		const list = await rpc(app, { jsonrpc: "2.0", id: 5, method: "tools/list" }, key);
+		const tools = (list.json?.result as { tools: Array<{ name: string; description: string }> }).tools;
+		const cashFlows = tools.find((tool) => tool.name === "get_cash_flows")?.description ?? "";
+		expect(cashFlows).toContain("`spendingByCategory` is recorded spend, not a limit");
+		expect(cashFlows).toContain('answer "what\'s left"');
+
+		// The same constant feeds onboard_me, so one edit covers both.
+		const prompt = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 6, method: "prompts/get", params: { name: "onboard_me" } },
+			key,
+		);
+		const promptText = (prompt.json?.result as { messages: Array<{ content: { text: string } }> }).messages[0]?.content.text;
+		expect(promptText).toContain("do not derive");
+
+		// Paid for on every session by every client.
+		expect(Buffer.byteLength(instructions, "utf8")).toBeLessThan(2600);
+	});
+
 	it("writes entries through the tools and completes a step", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);

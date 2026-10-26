@@ -54,6 +54,17 @@ export const SAMPLES: Record<string, unknown> = {
 			},
 		],
 	},
+	"get-api-v1-accounting-cash-flows": {
+		yearMonth: "2026-10",
+		entityId: "fromsukong",
+		items: [
+			{ id: "cf1", sourceType: "income", sourceId: "inc-salary", flowType: "income", direction: "in", date: "2026-10-25", name: "Agoda salary", amount: 152000, isCash: true, spendingAmount: 0 },
+			{ id: "cf2", sourceType: "liability", sourceId: "lia-mortgage", flowType: "debt_payment", direction: "out", date: "2026-10-05", name: "Condo mortgage", amount: 21400, isCash: true, spendingAmount: 6800, interest: 6800, principal: 14600 },
+			{ id: "cf3", sourceType: "expense", sourceId: "exp-ai", flowType: "expense", direction: "out", date: "2026-10-08", name: "AI subscriptions", amount: 3100, isCash: true, spendingAmount: 3100 },
+			{ id: "cf4", sourceType: "asset", sourceId: "ast-camera", flowType: "depreciation", direction: "out", date: "2026-10-31", name: "Camera depreciation", amount: 4200, isCash: false, spendingAmount: 0 },
+		],
+		totals: { moneyIn: 152000, moneyOut: 31300, spending: 9900 },
+	},
 	"get-api-v1-accounting-ledger-yearMonth": {
 		yearMonth: "2026-10",
 		summary: {

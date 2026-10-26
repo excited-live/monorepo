@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { CodeDeck } from "../components/CodeDeck"
 import { API_URL, ENV_LABEL, MCP_URL } from "../lib/env"
 import { formatRelative } from "../lib/format"
+import { useTranslator } from "../lib/i18n"
 import { MCP_CLIENTS, mcpConfig, type McpClientId } from "../lib/snippets"
 import {
 	forgetMintedKey,
@@ -10,43 +11,40 @@ import {
 	recallMintedKey,
 	rememberMintedKey,
 	useAgentKeys,
+	useMcpTools,
 	type MintedAgentKey,
 } from "../lib/queries"
 import { useSession } from "../lib/session"
 
 /**
- * Overview — the agent command center.
+ * MCP Agents — the agent console (#91).
  *
- * Two honest sources of truth:
+ * This is the old Overview, moved to its own tab so Home can be marketing.
+ * Three honest sources of truth:
  *  - the MCP config card renders a real endpoint and a real key (minted by
  *    `POST /api/v1/agent-keys`, scoped server-side to onboarding + accounting);
  *  - the fleet is the user's own key list, so "last used" is a fact, not a
- *    mock telemetry feed.
+ *    mock telemetry feed;
+ *  - the tool registry is read live through `tools/list`, never a fixture.
  */
-export function OverviewPage() {
+export function McpAgentsPage() {
 	const session = useSession()
+	const { t } = useTranslator()
 
 	return (
 		<div className="page">
 			<div className="page-head">
 				<div>
-					<span className="eyebrow">Agent command center · {ENV_LABEL}</span>
-					<h1>
-						Wire an agent,
-						<br />
-						then watch what it does.
-					</h1>
-					<p className="lede">
-						excited.live is built for agents first. This hub mints their keys, shows the exact
-						MCP configuration each client needs, and lets you replay any call the API serves.
-					</p>
+					<span className="eyebrow">{t("mcp.eyebrow", { env: ENV_LABEL })}</span>
+					<h1>{t("mcp.title")}</h1>
+					<p className="lede">{t("mcp.lede")}</p>
 				</div>
 				<div className="row">
 					<Link to="/data" className="btn signal">
-						Open the data playground →
+						{t("mcp.openPlayground")}
 					</Link>
 					<Link to="/tokens" className="btn secondary">
-						Manage keys
+						{t("mcp.manageKeys")}
 					</Link>
 				</div>
 			</div>
@@ -57,6 +55,8 @@ export function OverviewPage() {
 				</section>
 				<FleetCard signedIn={Boolean(session)} />
 			</div>
+
+			<ToolRegistry signedIn={Boolean(session)} />
 
 			<section aria-labelledby="capabilities-heading" className="stack" style={{ gap: 14 }}>
 				<div className="row spread">
@@ -147,6 +147,61 @@ export function OverviewPage() {
 	)
 }
 
+/**
+ * The live registry. Signed out it shows no names at all — a hard-coded list is
+ * exactly the drift #90 exists to remove.
+ */
+function ToolRegistry({ signedIn }: { signedIn: boolean }) {
+	const { t } = useTranslator()
+	const { tools, loading, error, reload } = useMcpTools(signedIn)
+
+	return (
+		<section className="card" aria-labelledby="tools-heading">
+			<div className="card-head">
+				<div>
+					<h2 id="tools-heading">{t("mcp.registry.title")}</h2>
+					<p>{t("mcp.registry.body")}</p>
+				</div>
+				{signedIn && !loading && !error ? (
+					<span className="badge ok">{t("mcp.registry.count", { n: String(tools.length) })}</span>
+				) : null}
+			</div>
+
+			{!signedIn ? (
+				<div className="empty" style={{ minHeight: 120 }}>
+					<p className="small" style={{ margin: 0 }}>{t("mcp.registry.signin")}</p>
+					<Link to="/sign-in" search={{ returnPathname: "/mcp" }} className="btn small">
+						{t("auth.signIn")}
+					</Link>
+				</div>
+			) : loading ? (
+				<p className="small muted">{t("mcp.registry.loading")}</p>
+			) : error ? (
+				<div className="row spread">
+					<p className="small" style={{ color: "var(--iam-red)", margin: 0 }}>
+						{t("mcp.registry.error", { message: error })}
+					</p>
+					<button type="button" className="btn small secondary" onClick={() => void reload()}>
+						{t("mcp.registry.retry")}
+					</button>
+				</div>
+			) : (
+				<ul className="tool-list">
+					{tools.map((tool) => (
+						<li key={tool.name} className="tool-item">
+							<div className="row" style={{ gap: 8 }}>
+								<strong className="small">{tool.title ?? tool.name}</strong>
+								<span className="mono muted">{tool.name}</span>
+							</div>
+							{tool.description ? <p className="tiny muted">{tool.description}</p> : null}
+						</li>
+					))}
+				</ul>
+			)}
+		</section>
+	)
+}
+
 function Capability({ endpoint, title, method, path, body }: {
 	endpoint: string
 	title: string
@@ -167,6 +222,7 @@ function Capability({ endpoint, title, method, path, body }: {
 }
 
 function FleetCard({ signedIn }: { signedIn: boolean }) {
+	const { t } = useTranslator()
 	const { keys, loading, error } = useAgentKeys(signedIn)
 
 	const agents = useMemo(() => {
@@ -226,8 +282,7 @@ function FleetCard({ signedIn }: { signedIn: boolean }) {
 			)}
 
 			<p className="tiny muted" style={{ margin: 0 }}>
-				Tool count per agent is the server registry, not a per-key metric yet: 11 tools across
-				onboarding and accounting.
+				{t("mcp.fleet.note")}
 			</p>
 		</section>
 	)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	canonicalCategory,
 	EXPENSE_CATEGORIES,
 	EXPENSE_CATEGORY_SLUGS,
 	isExpenseCategory,
@@ -32,6 +33,22 @@ describe("expense category vocabulary (#173)", () => {
 		expect(normalizeCategory("subscription")).toBe("entertainment");
 		expect(normalizeCategory("utilities")).toBe("connectivity");
 		expect(normalizeCategory("Other Personal Outflow")).toBe("other");
+	});
+
+	it("canonicalises the app's own catalog slugs and common ค่า- labels", () => {
+		// packages/accounting/src/catalog.ts and the client autofill write these.
+		expect(normalizeCategory("infra")).toBe("infrastructure");
+		expect(normalizeCategory("automation")).toBe("saas");
+		expect(normalizeCategory("general")).toBe("other");
+		expect(normalizeCategory("ค่าอาหาร")).toBe("food");
+		expect(normalizeCategory("ค่าเดินทาง")).toBe("transit");
+		expect(normalizeCategory("ค่าอินเทอร์เน็ต")).toBe("connectivity");
+		expect(normalizeCategory("ค่าสมาชิก")).toBe("entertainment");
+		// The write edge uses the same map, so the app never sends a non-key.
+		expect(canonicalCategory("infra")).toBe("infrastructure");
+		expect(canonicalCategory("automation")).toBe("saas");
+		expect(canonicalCategory("อาหาร")).toBe("food");
+		expect(canonicalCategory("nonsense")).toBe("nonsense");
 	});
 
 	it("sends unknown free text to other, never an error", () => {

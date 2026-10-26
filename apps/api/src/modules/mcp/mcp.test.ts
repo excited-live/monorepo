@@ -405,6 +405,41 @@ describe("/mcp", () => {
 		expect(statusResult.structuredContent?.method).toBe("agent");
 	});
 
+	it("canonicalises the app's own catalog slugs and ค่า- labels on write (#173)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// `packages/accounting/src/catalog.ts` stores infra/automation, and the
+		// client's catalog autofill falls back to general: a bare enum would 400
+		// the app's own saves. They must canonicalise, not reject.
+		const cases: Array<[string, string]> = [
+			["infra", "infrastructure"],
+			["automation", "saas"],
+			["general", "other"],
+			["ค่าอาหาร", "food"],
+			["ค่าเดินทาง", "transit"],
+		];
+		for (const [input, expected] of cases) {
+			const added = await rpc(
+				app,
+				{
+					jsonrpc: "2.0",
+					id: 43,
+					method: "tools/call",
+					params: {
+						name: "add_expense",
+						arguments: { name: `Category ${input}`, category: input, amount: 1, startMonth: "2026-10" },
+					},
+				},
+				key,
+			);
+			const result = added.json?.result as ToolResult;
+			expect(result.isError).toBeUndefined();
+			expect((result.structuredContent?.expense as { category: string }).category).toBe(expected);
+		}
+	});
+
 	it("publishes the expense keys with Thai labels and totals by category (#173)", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);

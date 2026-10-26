@@ -63,6 +63,30 @@ export const EXPENSE_CATEGORY_ALIASES: ReadonlyMap<string, ExpenseCategory> = ne
 	["other personal outflow", "other"],
 	["other business outflow", "other"],
 	["อื่น ๆ", "other"],
+	// The app's own catalog presets (packages/accounting/src/catalog.ts) and
+	// its autofill fallback store these slugs verbatim. A bare enum 400s them,
+	// so canonicalise at the write edge instead.
+	["infra", "infrastructure"],
+	["automation", "saas"],
+	["general", "other"],
+	// Common Thai ค่า- forms. The bare label is already in the vocabulary.
+	["ค่าอาหาร", "food"],
+	["ค่าเดินทาง", "transit"],
+	["ค่าเช่า", "housing"],
+	["ค่าที่พัก", "housing"],
+	["ค่าไฟ", "connectivity"],
+	["ค่าน้ำ", "connectivity"],
+	["ค่าอินเทอร์เน็ต", "connectivity"],
+	["ค่ามือถือ", "connectivity"],
+	["ค่าสุขภาพ", "healthcare"],
+	["ค่าของชำ", "groceries"],
+	["ค่าโฆษณา", "marketing"],
+	["ค่าการตลาด", "marketing"],
+	["ค่าออฟฟิศ", "office"],
+	["ค่าสมาชิก", "entertainment"],
+	["ค่าซอฟต์แวร์", "saas"],
+	["ค่าเครื่องมือ", "dev_tool"],
+	["ค่าลงทุน", "capital_deploy"],
 ]);
 
 /** True for a stored slug (case-sensitive; the wire value). */

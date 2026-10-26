@@ -129,6 +129,38 @@ const DICTIONARY: Dictionary = {
 		th: "จำนวนเครื่องมือมาจากทะเบียนเซิร์ฟเวอร์ ไม่ใช่ตัวชี้วัดรายคีย์",
 	},
 
+	// ---------- Scoped Keys · minted handoff (#135) -------------------------
+	"tokens.minted.warning": {
+		en: "You won't see this key again. Copy it now — closing this page is the only way to lose it.",
+		th: "คุณจะไม่เห็นคีย์นี้อีก คัดลอกตอนนี้ — การปิดหน้านี้เป็นวิธีเดียวที่จะทำให้คีย์หาย",
+	},
+	"tokens.minted.setup": { en: "Open the setup steps →", th: "เปิดขั้นตอนการตั้งค่า →" },
+	"tokens.minted.dismiss": { en: "Done — I pasted it", th: "เสร็จแล้ว — วางคีย์แล้ว" },
+	"tokens.minted.agent.yourKey": { en: "your key", th: "คีย์ของคุณ" },
+	"tokens.minted.agent.claudeDesktop": {
+		en: "Paste this into your Claude.ai MCP connector as the bearer token. Claude.ai is still being verified — if it does not connect, that is expected today, not your key.",
+		th: "วางคีย์นี้ในตัวเชื่อมต่อ MCP ของ Claude.ai ในช่อง bearer token Claude.ai ยังอยู่ระหว่างการตรวจสอบ หากเชื่อมต่อไม่ได้ ถือเป็นเรื่องปกติในตอนนี้ ไม่ใช่ปัญหาที่คีย์ของคุณ",
+	},
+	"tokens.minted.agent.chatgpt": {
+		en: "Paste this into your ChatGPT MCP connector as the bearer token. ChatGPT is still being verified — if it does not connect, that is expected today, not your key.",
+		th: "วางคีย์นี้ในตัวเชื่อมต่อ MCP ของ ChatGPT ในช่อง bearer token ChatGPT ยังอยู่ระหว่างการตรวจสอบ หากเชื่อมต่อไม่ได้ ถือเป็นเรื่องปกติในตอนนี้ ไม่ใช่ปัญหาที่คีย์ของคุณ",
+	},
+	"tokens.minted.agent.openmaus": {
+		en: "Paste this into your OpenMaus MCP server settings as the bearer token.",
+		th: "วางคีย์นี้ในการตั้งค่าเซิร์ฟเวอร์ MCP ของ OpenMaus ในช่อง bearer token",
+	},
+	"tokens.minted.agent.cursor.add": { en: "Add ", th: "เพิ่ม " },
+	"tokens.minted.agent.cursor.entry": {
+		en: " to the server entry in ",
+		th: " ในรายการเซิร์ฟเวอร์ใน ",
+	},
+	"tokens.minted.agent.cursor.note": {
+		en: ". Cursor uses the key header, not browser sign-in.",
+		th: " Cursor ใช้ส่วนหัวคีย์แทนการลงชื่อเข้าใช้ผ่านเบราว์เซอร์",
+	},
+	"tokens.minted.agent.custom.send": { en: "Send it as ", th: "ส่งเป็น " },
+	"tokens.minted.agent.custom.to": { en: " to ", th: " ไปที่ " },
+
 	// ---------- API Playground ---------------------------------------------
 	"data.eyebrow": { en: "API Playground · interactive API", th: "ทดลอง API · เรียกใช้งานจริง" },
 	"data.title": { en: "Every call, and what it returns.", th: "ทุกคำขอ และสิ่งที่ได้กลับมา" },

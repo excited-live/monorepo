@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 import { CodeDeck } from "../components/CodeDeck"
 import { formatRelative } from "../lib/format"
+import { useTranslator } from "../lib/i18n"
 import {
 	mintAgentKey,
 	revokeAgentKey,
@@ -23,11 +24,13 @@ import { useSession } from "../lib/session"
  */
 export function TokensPage() {
 	const session = useSession()
+	const { t } = useTranslator()
 	const { keys, loading, error, reload } = useAgentKeys(Boolean(session))
 
 	const [agentId, setAgentId] = useState("claude-desktop")
 	const [name, setName] = useState("")
 	const [minted, setMinted] = useState<MintedAgentKey | null>(null)
+	const [mintedAgentId, setMintedAgentId] = useState("claude-desktop")
 	const [busy, setBusy] = useState(false)
 	const [failure, setFailure] = useState<string | null>(null)
 
@@ -37,6 +40,7 @@ export function TokensPage() {
 		try {
 			const created = await mintAgentKey(agentId, name.trim() || undefined)
 			setMinted(created)
+			setMintedAgentId(agentId)
 			setName("")
 			await reload()
 		} catch (cause) {
@@ -146,11 +150,25 @@ export function TokensPage() {
 				</div>
 
 				{minted ? (
-					<div className="stack" style={{ gap: 8 }}>
+					<div className="stack" style={{ gap: 12 }}>
 						<CodeDeck code={minted.key} label="secret · shown once" wrap />
-						<span className="tiny muted">
-							{minted.name ?? minted.id} · expires {formatRelative(minted.expiresAt)}
-						</span>
+						<p style={{ margin: 0, maxWidth: "62ch" }}>{t("tokens.minted.warning")}</p>
+						<p style={{ margin: 0, maxWidth: "62ch" }}>
+							<MintedNextStep agentId={mintedAgentId} />
+						</p>
+						<div className="stack" style={{ gap: 8, alignItems: "flex-start" }}>
+							<a
+								className="btn secondary"
+								href="https://excited.live/docs/mcp"
+								target="_blank"
+								rel="noreferrer"
+							>
+								{t("tokens.minted.setup")}
+							</a>
+							<button type="button" className="btn ghost" onClick={() => setMinted(null)}>
+								{t("tokens.minted.dismiss")}
+							</button>
+						</div>
 					</div>
 				) : null}
 
@@ -208,4 +226,47 @@ export function TokensPage() {
 			</section>
 		</div>
 	)
+}
+
+/**
+ * The next step for the agent the key was minted for (#135).
+ *
+ * The minted secret is a handoff: this line says what to paste it into, and it
+ * is honest per client — Claude.ai and ChatGPT cannot complete a connection
+ * yet (#31), so their line says so instead of implying success.
+ *
+ * Technical tokens stay literal in `<code>` elements; only the prose around
+ * them comes from the dictionary, which keeps Thai word order free.
+ */
+function MintedNextStep({ agentId }: { agentId: string }) {
+	const { t, locale } = useTranslator()
+
+	switch (agentId) {
+		case "claude-desktop":
+			return <>{t("tokens.minted.agent.claudeDesktop")}</>
+		case "chatgpt":
+			return <>{t("tokens.minted.agent.chatgpt")}</>
+		case "openmaus":
+			return <>{t("tokens.minted.agent.openmaus")}</>
+		case "cursor":
+			return (
+				<>
+					{t("tokens.minted.agent.cursor.add")}
+					<code>x-api-key: &lt;{t("tokens.minted.agent.yourKey")}&gt;</code>
+					{t("tokens.minted.agent.cursor.entry")}
+					<code>mcp.json</code>
+					{t("tokens.minted.agent.cursor.note")}
+				</>
+			)
+		default:
+			return (
+				<>
+					{t("tokens.minted.agent.custom.send")}
+					<code>Authorization: Bearer &lt;{t("tokens.minted.agent.yourKey")}&gt;</code>
+					{t("tokens.minted.agent.custom.to")}
+					<code>https://api.excited.live/mcp</code>
+					{locale === "en" ? "." : null}
+				</>
+			)
+	}
 }

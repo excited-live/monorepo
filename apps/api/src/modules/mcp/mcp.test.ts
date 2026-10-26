@@ -78,11 +78,19 @@ async function signIn(app: Hono<ApiEnv>, email = EMAIL): Promise<{ token: string
 	return { token: token as string, userId: meData.user.id };
 }
 
-async function mintKey(app: Hono<ApiEnv>, token: string, agentId = "claude-code"): Promise<string> {
+/** The tokens that grant every tool, in the PRM vocabulary a mint accepts. */
+const FULL_SCOPES = ["onboarding", "accounting:read", "accounting:write"];
+
+async function mintKey(
+	app: Hono<ApiEnv>,
+	token: string,
+	agentId = "claude-code",
+	scopes: string[] = FULL_SCOPES,
+): Promise<string> {
 	const res = await app.request("/api/v1/agent-keys", {
 		method: "POST",
 		headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
-		body: JSON.stringify({ agentId }),
+		body: JSON.stringify({ agentId, scopes }),
 	});
 	expect(res.status).toBe(201);
 	const data = (await res.json()) as { key: string };
@@ -256,9 +264,10 @@ describe("/mcp", () => {
 		const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" }, key);
 		expect(list.status).toBe(200);
 		const tools = (list.json?.result as { tools: Array<{ name: string }> }).tools.map((tool) => tool.name);
-		expect(tools).toHaveLength(16);
+		expect(tools).toHaveLength(17);
 		expect(tools).toEqual(
 			expect.arrayContaining([
+				"whoami",
 				"get_onboarding_status",
 				"list_entities",
 				"create_business",
@@ -638,6 +647,66 @@ describe("/mcp", () => {
 		const deniedResult = denied.json?.result as ToolResult;
 		expect(deniedResult.isError).toBe(true);
 		expect(deniedResult.content[0]?.text).toContain("accounting:write");
+	});
+
+	it("grants exactly the requested scope: a read-only key lists it and is refused a write (#161)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+
+		const minted = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+			body: JSON.stringify({ agentId: "read-only-agent", scopes: ["accounting:read"] }),
+		});
+		expect(minted.status).toBe(201);
+		const created = (await minted.json()) as { key: string; scopes: string[] };
+		// The mint receipt states the grant instead of implying it.
+		expect(created.scopes).toEqual(["accounting:read"]);
+
+		const listed = await app.request("/api/v1/agent-keys", {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		const keys = (await listed.json()) as { keys: Array<{ scopes: string[] }> };
+		expect(keys.keys).toHaveLength(1);
+		expect(keys.keys[0]?.scopes).toEqual(["accounting:read"]);
+
+		// The read half is allowed...
+		const read = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 40, method: "tools/call", params: { name: "get_cash_flows", arguments: {} } },
+			created.key,
+		);
+		expect((read.json?.result as ToolResult).isError).toBeUndefined();
+
+		// ...and the write half is refused by the stored grant, not by the request.
+		const write = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 41,
+				method: "tools/call",
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+			},
+			created.key,
+		);
+		const writeResult = write.json?.result as ToolResult;
+		expect(writeResult.isError).toBe(true);
+		expect(writeResult.content[0]?.text).toContain("accounting:write");
+
+		// The credential can be asked what it is before it writes: the tool
+		// scopes, not the request vocabulary, because that is what gates a call.
+		const who = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "whoami", arguments: {} } },
+			created.key,
+		);
+		const whoResult = who.json?.result as ToolResult;
+		expect(whoResult.isError).toBeUndefined();
+		expect(whoResult.structuredContent).toMatchObject({
+			via: "apiKey",
+			scopes: ["accounting:read"],
+		});
+		expect(typeof (whoResult.structuredContent as { userId?: unknown }).userId).toBe("string");
 	});
 
 	it("rejects a revoked key", async () => {

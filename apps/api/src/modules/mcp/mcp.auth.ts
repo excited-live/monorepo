@@ -8,6 +8,7 @@ import {
 	oauthConfigured,
 	verifyOAuthAccessToken,
 } from "../../lib/oauth";
+import { ALL_SCOPES, scopesFromPermissions } from "../../lib/scopes";
 
 /**
  * Principal resolution for `/mcp` (separate from the `/api/v1/*` identity
@@ -64,25 +65,10 @@ export type PrincipalResolution =
 /** The `elk_` prefix is set by packages/auth's apiKey configuration. */
 export const API_KEY_PREFIX = "elk_";
 
-export const ALL_SCOPES = [
-	"onboarding:read",
-	"onboarding:write",
-	"accounting:read",
-	"accounting:write",
-] as const;
-
 function bearerToken(header: string | undefined): string | undefined {
 	if (!header) return undefined;
 	const match = /^Bearer\s+(.+)$/i.exec(header.trim());
 	return match?.[1]?.trim() || undefined;
-}
-
-function scopesFromPermissions(permissions: Record<string, string[]> | null | undefined): Set<string> {
-	const scopes = new Set<string>();
-	for (const [resource, actions] of Object.entries(permissions ?? {})) {
-		for (const action of actions) scopes.add(`${resource}:${action}`);
-	}
-	return scopes;
 }
 
 function toMillis(value: Date | string | null | undefined): number | undefined {

@@ -1,4 +1,5 @@
 export {
+	AGENT_KEY_RATE_LIMIT,
 	apiKeyApi,
 	createAuth,
 	DEVICE_CLIENT_ID,
@@ -6,6 +7,7 @@ export {
 	OAUTH_DEFAULT_SCOPES,
 	type ApiKeyApi,
 	type ApiKeyRecord,
+	type ApiKeyVerifyError,
 	type Auth,
 	type AuthInput,
 	type AuthOAuthInput,

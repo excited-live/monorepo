@@ -33,7 +33,7 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `id` | `string` | no |  |
+| `id` | `string` | no | Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE. |
 | `type` | `"personal"` \| `"business"` | no | Only `business` can be created; the personal entity is created on first use. |
 | `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
 | `name` | `string` | yes |  |
@@ -505,7 +505,7 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `id` | `string` | no |  |
+| `id` | `string` | no | Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE. |
 | `entityId` | `string` | yes |  |
 | `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
 | `name` | `string` | yes |  |
@@ -832,7 +832,7 @@ Type: `object`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `id` | `string` | no |  |
+| `id` | `string` | no | Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE. |
 | `amount` | `number` | yes |  |
 | `date` | `string` | yes |  |
 | `cycle` | `"one_time"` \| `"monthly"` | no |  |

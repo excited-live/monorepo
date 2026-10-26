@@ -53,7 +53,16 @@ export function corsAllowlist(options: { allowLocalhost: boolean }): MiddlewareH
 		const handler = cors({
 			origin: () => (permitted ? requested : null),
 			allowHeaders: ["Content-Type", "Authorization", "x-user-id", "x-api-key", "Mcp-Protocol-Version", "Mcp-Session-Id"],
-			exposeHeaders: ["set-auth-token"],
+			// Clients must be able to read the budget headers (#140) and the
+			// edge request id (#144) cross-origin.
+			exposeHeaders: [
+				"set-auth-token",
+				"retry-after",
+				"x-ratelimit-limit",
+				"x-ratelimit-remaining",
+				"x-ratelimit-reset",
+				"cf-ray",
+			],
 			allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			// Decide credentials per request: Hono adds allow-credentials
 			// unconditionally and merges its own headers back onto the final

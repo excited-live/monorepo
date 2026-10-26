@@ -7,8 +7,12 @@ on:
 env:
   WRANGLER_VERSION: "4.127.1"
   PRELIVE_PROJECT: excited-live-prelive
-  IAM_PROJECT: excited-live-iam
-  IAM_DOMAIN: iam.excited.live
+  # Prelive iam is its own Pages project with no custom domain (#88). It used to
+  # deploy to `excited-live-iam` with `--branch=main`, which is a *production*
+  # deployment of the project that owns iam.excited.live: one merge silently
+  # replaced the production bundle with a prelive one on 2026-10-25. Production
+  # now moves only through iam-production.yml.
+  IAM_PROJECT: excited-live-iam-prelive
   # The single API, inlined by Vite at build time. `apps/iam/src/lib/env.ts`
   # falls back to http://localhost:8000, so leaving this unset ships a bundle
   # that only works on a developer's machine — the same silent-misconfiguration
@@ -19,10 +23,12 @@ env:
   IAM_AUTH_SERVER_URL: https://prelive.excited.live
 
 jobs:
-  # iam.excited.live: a static client SPA with no server and no bindings, so it
-  # only needs a build, a Pages project, a custom domain, and a deploy. Kept in
-  # the same workflow as the webapp because both talk to the prelive API: a
-  # merge that changes the API should redeploy both, in one run and one place.
+  # Prelive iam: a static client SPA with no server and no bindings, so it only
+  # needs a build, a Pages project, and a deploy. It serves at
+  # excited-live-iam-prelive.pages.dev and owns no hostname in excited.live.
+  # Kept in the same workflow as the webapp because both talk to the prelive
+  # API: a merge that changes the API should redeploy both, in one run and one
+  # place.
   iam:
     runs-on: ubuntu-latest
     steps:
@@ -67,11 +73,10 @@ jobs:
 
       # Idempotent provisioning, and no blanket `|| true`: a 403 here means the
       # token lacks Pages:Edit, which must fail now rather than at the deploy.
-      # The custom domain is read before it is added: a repeated POST returns
-      # 400 / 8000018 ("You have already added this custom domain"), not the 409
-      # this step used to expect, so every run after the first failed here while
-      # the attachment itself was fine.
-      - name: Ensure iam Pages project and custom domain
+      # No custom domain: this project is reachable only at
+      # excited-live-iam-prelive.pages.dev. iam.excited.live belongs to
+      # excited-live-iam and is deployed only by iam-production.yml.
+      - name: Ensure prelive iam Pages project
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -98,55 +103,7 @@ jobs:
             show
             exit 1
           else
-            echo "Pages project $IAM_PROJECT already exists."
-          fi
-
-          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT/domains/$IAM_DOMAIN")
-          case "$code" in
-            200) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
-            404)
-              code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api/$IAM_PROJECT/domains" \
-                -H "$auth" -H 'content-type: application/json' \
-                --data "$(jq -cn --arg name "$IAM_DOMAIN" '{name:$name}')")
-              case "$code" in
-                200|201) echo "Attached $IAM_DOMAIN to $IAM_PROJECT." ;;
-                409) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
-                *)
-                  echo "::error::attaching $IAM_DOMAIN returned $code"
-                  show
-                  exit 1
-                  ;;
-              esac
-              ;;
-            *)
-              echo "::error::reading custom domain $IAM_DOMAIN returned $code (needs a token with Pages:Edit)"
-              show
-              exit 1
-              ;;
-          esac
-
-          # Attaching a custom domain through the API does NOT create its DNS
-          # record — only the dashboard does that. With no proxied CNAME the
-          # domain stays "pending / CNAME record not set" forever and the smoke
-          # test below times out on 000, so say so here in plain words. Not fatal:
-          # the smoke test is the gate, and a DNS token may not be available.
-          code=$(curl -sS -m 30 -o /tmp/dom.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT/domains/$IAM_DOMAIN")
-          if [ "$code" = "200" ]; then
-            echo "Custom domain status: $(jq -r '.result.status' /tmp/dom.json)"
-            zone=$(jq -r '.result.zone_tag // empty' /tmp/dom.json)
-            cname_error=$(jq -r '.result.verification_data.error_message // empty' /tmp/dom.json)
-            if [ -n "$cname_error" ]; then
-              echo "::warning::Cloudflare says: $cname_error — add a proxied CNAME $IAM_DOMAIN -> $IAM_PROJECT.pages.dev."
-            fi
-            if [ -n "$zone" ]; then
-              dns_code=$(curl -sS -m 30 -o /tmp/dns.json -w '%{http_code}' -H "$auth" \
-                "https://api.cloudflare.com/client/v4/zones/$zone/dns_records?name=$IAM_DOMAIN")
-              if [ "$dns_code" = "200" ] && [ "$(jq -r '.result | length' /tmp/dns.json)" = "0" ]; then
-                echo "::warning::$IAM_DOMAIN has no DNS record. Cloudflare does not create it for a Pages custom domain: add a proxied CNAME $IAM_DOMAIN -> $IAM_PROJECT.pages.dev."
-              fi
-            fi
-          else
-            echo "::warning::could not read custom domain $IAM_DOMAIN back ($code)"
+            echo "Pages project $IAM_PROJECT already exists (custom domains: $(jq -cr '[.result.domains[]?]' /tmp/cf.json))."
           fi
 
       - name: Deploy iam
@@ -156,12 +113,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist --project-name="$IAM_PROJECT" --branch=main --commit-dirty=true
 
-      # The only proof that matters: the hostname serves the SPA shell, and a
+      # The only proof that matters: the project serves the SPA shell, and a
       # client route returns that same shell instead of a 404.
-      - name: Smoke — iam SPA on its custom domain
+      - name: Smoke — prelive iam SPA on its pages.dev host
         run: |
           set -euo pipefail
-          base="https://$IAM_DOMAIN"
+          base="https://$IAM_PROJECT.pages.dev"
           root=""
           for attempt in $(seq 1 18); do
             root=$(curl -sS -m 20 -o /tmp/root.html -w '%{http_code}' "$base/" || true)
@@ -171,7 +128,7 @@ jobs:
           done
           echo "/ -> $root"
           if [ "$root" != "200" ]; then
-            echo "::error::$base/ returned $root (first custom-domain attach can take minutes for DNS + certificate)"
+            echo "::error::$base/ returned $root (a fresh Pages project can take a minute to propagate)"
             exit 1
           fi
           if ! grep -qi '<div id="root"' /tmp/root.html; then
@@ -191,7 +148,7 @@ jobs:
       - name: Show the iam deployment URL
         if: always()
         run: |
-          echo "iam: https://$IAM_DOMAIN (project $IAM_PROJECT)"
+          echo "prelive iam: https://$IAM_PROJECT.pages.dev (project $IAM_PROJECT)"
 
   prelive:
     runs-on: ubuntu-latest

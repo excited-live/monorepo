@@ -1,0 +1,55 @@
+name: IAM Production Guard
+
+# Gitea Actions only reads `.gitea/workflows` on this instance, so the
+# production workflow itself cannot prove its guard on a Gitea PR. This
+# workflow runs the same guard script the deploy workflow uses — one
+# implementation, two callers — and never touches Cloudflare.
+#
+# What it does NOT do: deploy, read a secret, change DNS or KV. The gated
+# production deploy lives in .github/workflows/iam-production.yml, which runs
+# on GitHub Actions after the mirror.
+
+on:
+  pull_request:
+    paths:
+      - "apps/iam/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "turbo.json"
+      - "scripts/check-iam-production-bundle.mjs"
+      - ".gitea/workflows/iam-production-guard.yml"
+      - ".github/workflows/iam-production.yml"
+
+concurrency:
+  group: iam-production-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: guard
+    runs-on: self-hosted
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build production iam
+        working-directory: apps/iam
+        env:
+          VITE_API_URL: https://api.excited.live
+          VITE_AUTH_SERVER_URL: https://auth.excited.live
+          VITE_MCP_URL: https://api.excited.live/mcp
+        run: pnpm --filter @excited-live/iam^... build && pnpm build
+
+      - name: Guard the production bundle
+        run: node scripts/check-iam-production-bundle.mjs --dir apps/iam/dist --self-test

@@ -1,0 +1,268 @@
+name: IAM Deploy Production
+
+# The production build of apps/iam — iam.excited.live — and the gate that keeps a
+# prelive bundle off that hostname (#88).
+#
+# There is no push trigger on purpose. A normal merge to main runs
+# `prelive.yml`, which now deploys iam to `excited-live-iam-prelive`; production
+# moves only through a manual dispatch with a typed PROD confirmation. Until the
+# first gated dispatch (G2), iam.excited.live keeps its last bundle, and a
+# rollback is a revert of the PR that introduced this file.
+#
+# The guard job also runs on pull requests that touch apps/iam, its
+# dependencies, or this workflow. It only builds and inspects the bundle — it
+# never reads a Cloudflare secret and never deploys, so a PR proves the guard
+# without being able to reach production.
+#
+# Bundle contract (all seven zero-hit strings are from #88's acceptance list;
+# the hand-off note calls them "six"):
+#   required  https://api.excited.live, https://auth.excited.live, dist/_redirects
+#   forbidden workers.dev, prelive.excited.live, mcp.excited.live, ex_live_,
+#             /api/v1/plan, /api/v1/sim, play.google.com (the last one only
+#             while the Play listing 404s — re-check it when the listing ships)
+# Don't grep the bare word `prelive`: env.ts contains it as a host prefix.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type PROD to confirm production deploy"
+        required: true
+        default: ""
+      ref:
+        description: "Ref or sha to build (rollback: an earlier sha on main)"
+        required: false
+        default: "main"
+      dry_run:
+        description: "true = build + guard only, no deploy (default); type false to deploy"
+        required: true
+        default: "true"
+  pull_request:
+    paths:
+      - "apps/iam/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "turbo.json"
+      - "scripts/check-iam-production-bundle.mjs"
+      - ".github/workflows/iam-production.yml"
+
+concurrency:
+  group: iam-production
+  cancel-in-progress: false
+
+env:
+  WRANGLER_VERSION: "4.127.1"
+  IAM_PROJECT: excited-live-iam
+  IAM_DOMAIN: iam.excited.live
+  # Production origins, inlined by Vite at build time. VITE_ENV_LABEL is
+  # deliberately absent: apps/iam/src/lib/env.ts derives `production` from the
+  # hostname, and a set label would only be a second source of truth.
+  IAM_API_URL: https://api.excited.live
+  IAM_AUTH_SERVER_URL: https://auth.excited.live
+  IAM_MCP_URL: https://api.excited.live/mcp
+
+jobs:
+  # Builds the artifact and proves it is a production bundle. Runs on PRs too,
+  # which is where the guard's negative self-test (a planted workers.dev) is
+  # exercised. This job has no secrets.
+  guard:
+    name: Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Empty on pull_request (actions/checkout then uses the PR merge ref);
+          # "main" or an earlier sha on a dispatch.
+          ref: ${{ github.event.inputs.ref }}
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build production iam
+        working-directory: apps/iam
+        env:
+          VITE_API_URL: ${{ env.IAM_API_URL }}
+          VITE_AUTH_SERVER_URL: ${{ env.IAM_AUTH_SERVER_URL }}
+          VITE_MCP_URL: ${{ env.IAM_MCP_URL }}
+        run: pnpm --filter @excited-live/iam^... build && pnpm build
+
+      - name: Guard the production bundle
+        # One implementation, shared with the Gitea PR guard. --self-test plants
+        # a workers.dev string in a throwaway copy and fails unless the guard
+        # rejects it; dist/ is never mutated.
+        run: node scripts/check-iam-production-bundle.mjs --dir apps/iam/dist --self-test
+
+  # The only job that can touch Pages, and only for a manual dispatch from main
+  # with confirm=PROD and dry_run=false. A PR never reaches it.
+  deploy:
+    name: Deploy production
+    needs: guard
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.confirm == 'PROD' &&
+      github.ref == 'refs/heads/main' &&
+      github.event.inputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build production iam
+        working-directory: apps/iam
+        env:
+          VITE_API_URL: ${{ env.IAM_API_URL }}
+          VITE_AUTH_SERVER_URL: ${{ env.IAM_AUTH_SERVER_URL }}
+          VITE_MCP_URL: ${{ env.IAM_MCP_URL }}
+        run: pnpm --filter @excited-live/iam^... build && pnpm build
+
+      # Re-run the same guard on the exact artifact this job will upload. The
+      # guard job's workspace is gone, and `ref` may be an older sha, so the
+      # deploy job proves its own build rather than trusting a different one.
+      - name: Guard the production bundle
+        run: node scripts/check-iam-production-bundle.mjs --dir apps/iam/dist
+
+      # Idempotent provisioning, no blanket `|| true`: a 403 means the token
+      # lacks Pages:Edit and must fail now, not at the upload.
+      - name: Ensure iam Pages project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          show() { jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/cf.json 2>/dev/null || cat /tmp/cf.json; }
+
+          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT")
+          if [ "$code" = "404" ]; then
+            code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api" \
+              -H "$auth" -H 'content-type: application/json' \
+              --data "$(jq -cn --arg name "$IAM_PROJECT" '{name:$name, production_branch:"main"}')")
+            if [ "$code" != "200" ]; then
+              echo "::error::creating Pages project $IAM_PROJECT returned $code"
+              show
+              exit 1
+            fi
+            echo "Created Pages project $IAM_PROJECT."
+          elif [ "$code" != "200" ]; then
+            echo "::error::reading Pages project $IAM_PROJECT returned $code (needs a token with Pages:Edit)"
+            show
+            exit 1
+          else
+            echo "Pages project $IAM_PROJECT already exists."
+          fi
+
+      # Attach iam.excited.live only if it is missing. GET-then-act, and never
+      # DELETE: this hostname is the live production alias and a routine deploy
+      # must not detach it (#54, Ada's blocker on PR #50). No DNS record is
+      # touched here — the proxied CNAME already exists and this workflow has no
+      # business changing it.
+      - name: Ensure iam.excited.live stays attached
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          show() { jq -r '.errors[]? | "CF error \(.code): \(.message)"' /tmp/cf.json 2>/dev/null || cat /tmp/cf.json; }
+
+          code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -H "$auth" "$api/$IAM_PROJECT/domains/$IAM_DOMAIN")
+          case "$code" in
+            200)
+              echo "$IAM_DOMAIN is attached to $IAM_PROJECT (status $(jq -r '.result.status // "unknown"' /tmp/cf.json)). Leaving it in place."
+              ;;
+            404)
+              code=$(curl -sS -m 30 -o /tmp/cf.json -w '%{http_code}' -X POST "$api/$IAM_PROJECT/domains" \
+                -H "$auth" -H 'content-type: application/json' \
+                --data "$(jq -cn --arg name "$IAM_DOMAIN" '{name:$name}')")
+              case "$code" in
+                200|201) echo "Attached $IAM_DOMAIN to $IAM_PROJECT." ;;
+                409) echo "$IAM_DOMAIN is already attached to $IAM_PROJECT." ;;
+                *)
+                  echo "::error::attaching $IAM_DOMAIN returned $code"
+                  show
+                  exit 1
+                  ;;
+              esac
+              ;;
+            *)
+              echo "::error::reading custom domain $IAM_DOMAIN returned $code (needs a token with Pages:Edit)"
+              show
+              exit 1
+              ;;
+          esac
+
+      - name: Deploy iam to production
+        working-directory: apps/iam
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@${{ env.WRANGLER_VERSION }} pages deploy dist --project-name="$IAM_PROJECT" --branch=main --commit-dirty=true
+
+      # Proof, not a conclusion: the hostname serves the iam title (Pages
+      # soft-404s, so a bare 200 is not enough), a hard refresh of /mcp serves
+      # the same shell, and the served JS names the production API and no
+      # workers.dev host.
+      - name: Smoke — production iam
+        run: |
+          set -euo pipefail
+          base="https://$IAM_DOMAIN"
+
+          fetch_shell() {
+            url="$1"
+            out="$2"
+            code=""
+            for attempt in $(seq 1 18); do
+              code=$(curl -sS -m 20 -o "$out" -w '%{http_code}' "$url" || true)
+              [ "$code" = "200" ] && break
+              echo "attempt $attempt: $url -> $code"
+              sleep 10
+            done
+            echo "$url -> $code"
+            [ "$code" = "200" ] || { echo "::error::$url returned $code"; return 1; }
+            grep -q '<title>iam.excited.live' "$out" || { echo "::error::$url did not return the iam title"; head -20 "$out"; return 1; }
+          }
+
+          fetch_shell "$base/" /tmp/iam-root.html
+          fetch_shell "$base/mcp" /tmp/iam-mcp.html
+
+          js_path=$(grep -oE 'src="/[^"]+\.js"' /tmp/iam-root.html | head -n 1 | sed -E 's/^src="//; s/"$//')
+          [ -n "$js_path" ] || { echo "::error::no JS asset in the served HTML"; exit 1; }
+          curl -sS -m 30 "$base$js_path" -o /tmp/iam-app.js
+          echo "served JS: $js_path ($(wc -c < /tmp/iam-app.js) bytes)"
+          grep -qF 'https://api.excited.live' /tmp/iam-app.js || { echo "::error::served JS does not name https://api.excited.live"; exit 1; }
+          if grep -qF 'workers.dev' /tmp/iam-app.js; then
+            echo "::error::served JS still contains workers.dev"
+            exit 1
+          fi
+          echo "Production smoke passed: production API, no workers.dev."
+
+      - name: Show the iam deployment URL
+        if: always()
+        run: |
+          echo "iam: https://$IAM_DOMAIN (project $IAM_PROJECT)"

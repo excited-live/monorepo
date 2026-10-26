@@ -10,39 +10,60 @@ import { AutofillBanner, SuggestionChips } from "../../../../components/Autofill
 import { CurrencyInput } from "../../../../components/CurrencyInput";
 import {
 	calculateAvailableCash,
+	EXPENSE_CATEGORIES,
 	isCashAsset,
-	resolveCatalogAmount, type BillingCycle, type RecurringSubscription } from "@excited-live/accounting";
+	resolveCatalogAmount,
+	type BillingCycle,
+	type RecurringSubscription } from "@excited-live/accounting";
 import { formatMoney } from "../../../../utils/format";
 import { ModalImageSection } from "../../../../components/ModalImageSection";
 import { useModalBack } from "../../../../hooks/useModalBack";
 import { useFinances, useAppUI } from "../../../../state";
 import { useCatalogAutofill, type AutofillValues } from "../../../../hooks/useCatalogAutofill";
 
-const PERSONAL_CATEGORIES = [
-	{ value: "housing", label: "Housing & Rent" },
-	{ value: "food", label: "Food & Dining" },
-	{ value: "groceries", label: "Groceries & Household" },
-	{ value: "transit", label: "Transit & Transport" },
-	{ value: "healthcare", label: "Healthcare & Wellness" },
-	{ value: "entertainment", label: "Subscriptions & Living" },
-	{ value: "connectivity", label: "Internet & Mobile" },
-	{ value: "family", label: "Family & Personal" },
-	{ value: "capital_deploy", label: "Deploy Capital to Business" },
-	{ value: "dev_tool", label: "Developer Tools & AI" },
-	{ value: "other", label: "Other Personal Outflow" },
-];
+// The vocabulary is the shared one (#173); these are the two UI subsets the
+// drawer offers. The two longer labels are the app's wording, not contract.
+const PERSONAL_SLUGS = [
+	"housing",
+	"food",
+	"groceries",
+	"transit",
+	"healthcare",
+	"entertainment",
+	"connectivity",
+	"family",
+	"capital_deploy",
+	"dev_tool",
+	"other",
+] as const;
 
-const BUSINESS_CATEGORIES = [
-	{ value: "dev_tool", label: "Developer Tools & APIs" },
-	{ value: "ai", label: "AI Subscriptions" },
-	{ value: "saas", label: "SaaS & Productivity" },
-	{ value: "infrastructure", label: "Hosting & Infrastructure" },
-	{ value: "transit", label: "Transit & Transport" },
-	{ value: "connectivity", label: "Internet & Mobile" },
-	{ value: "office", label: "Office & Workspace" },
-	{ value: "marketing", label: "Marketing & Sales" },
-	{ value: "other", label: "Other Business Outflow" },
-];
+const BUSINESS_SLUGS = [
+	"dev_tool",
+	"ai",
+	"saas",
+	"infrastructure",
+	"transit",
+	"connectivity",
+	"office",
+	"marketing",
+	"other",
+] as const;
+
+const UI_LABELS: Record<string, { personal?: string; business?: string }> = {
+	dev_tool: { personal: "Developer Tools & AI" },
+	other: { personal: "Other Personal Outflow", business: "Other Business Outflow" },
+};
+
+function categoryOptions(slugs: readonly string[], entity: "personal" | "business") {
+	return slugs.flatMap((slug) => {
+		const entry = EXPENSE_CATEGORIES.find((candidate) => candidate.slug === slug);
+		if (!entry) return [];
+		return [{ value: entry.slug, label: UI_LABELS[slug]?.[entity] ?? entry.en }];
+	});
+}
+
+const PERSONAL_CATEGORIES = categoryOptions(PERSONAL_SLUGS, "personal");
+const BUSINESS_CATEGORIES = categoryOptions(BUSINESS_SLUGS, "business");
 
 export const AddExpenseDrawer: React.FC<{
 	isOpen: boolean;

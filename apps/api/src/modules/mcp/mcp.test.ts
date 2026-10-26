@@ -11,7 +11,7 @@ import {
 	CreateLiabilityBody,
 	CreateTransferBody,
 } from "../accounting/route/accounting.schemas";
-import { apiKeyApi } from "@excited-live/auth";
+import { AGENT_KEY_RATE_LIMIT, apiKeyApi } from "@excited-live/auth";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Hono } from "hono";
 import { createApp } from "../../app";
@@ -137,11 +137,10 @@ type ToolResult = {
 };
 
 describe("/mcp", () => {
-	it("answers GET and DELETE with a fast 405 before auth, never a stream (#142)", async () => {
+	it("answers GET and DELETE with a 405 before auth, never a stream (#142)", async () => {
 		const app = configuredApp();
 
 		for (const method of ["GET", "DELETE"] as const) {
-			const started = Date.now();
 			// No credential: the method gate must come before auth resolution,
 			// so this is 405 rather than a 401 challenge.
 			const res = await app.request("/mcp", { method });
@@ -149,9 +148,10 @@ describe("/mcp", () => {
 			expect(res.headers.get("allow")).toBe("POST");
 			expect(res.headers.get("content-type") ?? "").not.toContain("text/event-stream");
 			// Reading the body proves the response ends: an idle SSE stream would
-			// hang here until the test timeout.
-			await res.text();
-			expect(Date.now() - started).toBeLessThan(1000);
+			// hang here until the test timeout. The wall clock is deliberately not
+			// asserted — this runner shares two cores with every other package, and
+			// a 1 s bound flaked at 3.2 s under load (main, run 272).
+			expect(await res.text()).toContain("POST only");
 		}
 	});
 
@@ -215,25 +215,42 @@ describe("/mcp", () => {
 
 		const first = await rpc(app, initialize(), key);
 		expect(first.status).toBe(200);
-		expect(first.headers.get("x-ratelimit-limit")).toBe("200");
-		expect(first.headers.get("x-ratelimit-remaining")).toBe("199");
+		expect(first.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
+		expect(first.headers.get("x-ratelimit-remaining")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests - 1));
 		expect(Number(first.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
 		const second = await rpc(app, initialize(2), key);
 		expect(second.status).toBe(200);
-		expect(second.headers.get("x-ratelimit-remaining")).toBe("198");
+		expect(second.headers.get("x-ratelimit-remaining")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests - 2));
 	});
 
 	it("answers 429 with Retry-After when the key's budget is spent, never 401 (#140)", async () => {
 		const app = configuredApp();
-		const { token } = await signIn(app);
-		const key = await mintKey(app, token);
+		const { userId } = await signIn(app);
+		// An explicit two-call budget, not the product default: spending 200
+		// sequential RPCs at ~90ms each made this test time out at 20s. The
+		// semantics under test are identical, and the small budget also proves
+		// the per-key limit is what gets enforced, not the global one.
+		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
+		const minted = await apiKeyApi(auth!).createApiKey({
+			body: {
+				userId,
+				expiresIn: 24 * 60 * 60,
+				permissions: { onboarding: ["read", "write"], accounting: ["read", "write"] },
+				rateLimitMax: 2,
+				rateLimitTimeWindow: 24 * 60 * 60 * 1000,
+			},
+		});
+		const key = minted.key;
 
-		// AGENT_KEY_RATE_LIMIT: 200 requests per key per window.
-		for (let i = 0; i < 200; i++) {
-			const ok = await rpc(app, initialize(i + 1), key);
-			expect(ok.status).toBe(200);
-		}
+		const first = await rpc(app, initialize(1), key);
+		expect(first.status).toBe(200);
+		expect(first.headers.get("x-ratelimit-limit")).toBe("2");
+		expect(first.headers.get("x-ratelimit-remaining")).toBe("1");
+
+		const second = await rpc(app, initialize(2), key);
+		expect(second.status).toBe(200);
+		expect(second.headers.get("x-ratelimit-remaining")).toBe("0");
 
 		const limited = await rpc(app, initialize(999), key);
 		expect(limited.status).toBe(429);
@@ -241,7 +258,11 @@ describe("/mcp", () => {
 		const retryAfter = Number(limited.headers.get("retry-after"));
 		expect(retryAfter).toBeGreaterThan(0);
 		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
-		expect(limited.headers.get("x-ratelimit-limit")).toBe("200");
+		// #177: a refusal publishes the product default, not this key's own
+		// budget of 2, because verifyApiKey returns no key row on a 429. That is
+		// known wrong and tracked, so only the limit is pinned loosely; a fix
+		// should turn these two assertions into 2 and then drop this comment.
+		expect(limited.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
 		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
 		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
@@ -259,7 +280,9 @@ describe("/mcp", () => {
 		// distinction an unattended agent needs.
 		expect(body.hint).toContain("do not rotate");
 		expect(body.rateLimit).toEqual({
-			limit: 200,
+			// #177: should be 2 (this key's own budget); the refusal path cannot
+			// see the row yet, so it reports the product default.
+			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
 			remaining: 0,
 			reset: Number(limited.headers.get("x-ratelimit-reset")),
 		});
@@ -346,7 +369,7 @@ describe("/mcp", () => {
 				method: "tools/call",
 				params: {
 					name: "add_expense",
-					arguments: { name: "Netflix", category: "subscription", amount: 420, cycle: "monthly" },
+					arguments: { name: "Netflix", category: "entertainment", amount: 420, cycle: "monthly" },
 				},
 			},
 			key,
@@ -382,6 +405,58 @@ describe("/mcp", () => {
 		expect(statusResult.structuredContent?.method).toBe("agent");
 	});
 
+	it("publishes the expense keys with Thai labels and totals by category (#173)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const list = await rpc(app, { jsonrpc: "2.0", id: 40, method: "tools/list" }, key);
+		const tools = (list.json?.result as { tools: Array<{ name: string; description: string; inputSchema: { properties?: Record<string, { enum?: string[]; description?: string }> } }> }).tools;
+		const addExpense = tools.find((tool) => tool.name === "add_expense");
+		const category = addExpense?.inputSchema.properties?.category;
+		expect(category?.enum).toHaveLength(16);
+		expect(category?.enum).toContain("food");
+		expect(category?.description ?? "").toContain("อาหาร");
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 41,
+				method: "tools/call",
+				params: {
+					name: "add_expense",
+					arguments: { name: "ร้านอาหารตามสั่ง", category: "อาหาร", amount: 250, cycle: "one_time", startMonth: "2026-10" },
+				},
+			},
+			key,
+		);
+		const addedResult = added.json?.result as ToolResult;
+		expect(addedResult.isError).toBeUndefined();
+		expect((addedResult.structuredContent?.expense as { category: string }).category).toBe("food");
+
+		const flows = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "get_cash_flows", arguments: { month: "2026-10" } } },
+			key,
+		);
+		const payload = (flows.json?.result as ToolResult).structuredContent as {
+			items: Array<{ name: string; category?: string }>;
+			totals: { spending: number };
+			spendingByCategory: Array<{ category: string; spending: number; count: number; share: number }>;
+		};
+		expect(payload.items.find((item) => item.name === "ร้านอาหารตามสั่ง")?.category).toBe("food");
+		expect(payload.spendingByCategory.find((bucket) => bucket.category === "food")).toMatchObject({
+			spending: 250,
+			count: 1,
+			share: 1,
+		});
+		expect(payload.spendingByCategory.some((bucket) => bucket.category === "uncategorised")).toBe(true);
+		expect(payload.spendingByCategory.reduce((sum, bucket) => sum + bucket.spending, 0)).toBe(
+			payload.totals.spending,
+		);
+	});
+
 	it("stores the catalog image on a created expense", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);
@@ -395,7 +470,7 @@ describe("/mcp", () => {
 				method: "tools/call",
 				params: {
 					name: "add_expense",
-					arguments: { name: "Figma Professional", category: "subscription", amount: 450, cycle: "monthly" },
+					arguments: { name: "Figma Professional", category: "saas", amount: 450, cycle: "monthly" },
 				},
 			},
 			key,
@@ -442,7 +517,7 @@ describe("/mcp", () => {
 				method: "tools/call",
 				params: {
 					name: "add_expense",
-					arguments: { name: "Figma Professional", category: "subscription", amount: 450, imageUrl: sent },
+					arguments: { name: "Figma Professional", category: "saas", amount: 450, imageUrl: sent },
 				},
 			},
 			key,
@@ -658,7 +733,7 @@ describe("/mcp", () => {
 				jsonrpc: "2.0",
 				id: 21,
 				method: "tools/call",
-				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "entertainment", amount: 150 } },
 			},
 			limited.key,
 		);
@@ -703,7 +778,7 @@ describe("/mcp", () => {
 				jsonrpc: "2.0",
 				id: 41,
 				method: "tools/call",
-				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "entertainment", amount: 150 } },
 			},
 			created.key,
 		);
@@ -908,8 +983,9 @@ describe("/mcp", () => {
 	it("treats a retried create with the same id as a no-op on every write (#143)", async () => {
 		const app = configuredApp();
 		const { userId } = await signIn(app);
-		// 1 + 6 x 2 + 1 requests, so this key needs more than the published
-		// 10-request budget the #140 tests pin.
+		// 1 + 6 x 2 + 1 requests: mint an explicit 500-call budget so this test
+		// does not depend on the default AGENT_KEY_RATE_LIMIT, which #140 covers
+		// separately.
 		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
 		const minted = await apiKeyApi(auth!).createApiKey({
 			body: {
@@ -961,7 +1037,7 @@ describe("/mcp", () => {
 		await replay("add_expense", "expense", {
 			id: randomUUID(),
 			name: "Netflix",
-			category: "subscription",
+			category: "entertainment",
 			amount: 420,
 			cycle: "monthly",
 		});

@@ -1,3 +1,4 @@
+import { canonicalCategory, EXPENSE_CATEGORIES, EXPENSE_CATEGORY_SLUGS, UNCATEGORISED } from "@excited-live/accounting";
 import type {
 	BalanceSheet,
 	CashFlowItem,
@@ -243,9 +244,25 @@ export const SetCareerIncomeBody = z.object({
 
 // EXPENSES ----------------------------------------------------------------
 
+/**
+ * #173: the 16 shipped keys, accepted as a key or as a Thai/English label and
+ * stored as the key. The description is the only place `tools/list` can map a
+ * Thai label onto its key, so it carries the whole table.
+ */
+const expenseCategoryField = z
+	.preprocess(
+		(value) => (typeof value === "string" ? canonicalCategory(value) : value),
+		z.enum(EXPENSE_CATEGORY_SLUGS),
+	)
+	.describe(
+		`Expense category. Accepts a key or a Thai/English label and stores the key. ${EXPENSE_CATEGORIES.map(
+			(entry) => `${entry.slug} = ${entry.th} (${entry.en})`,
+		).join("; ")}`,
+	);
+
 const expenseFields = {
 	name: z.string().min(1, "Name is required"),
-	category: z.string().min(1, "Category is required"),
+	category: expenseCategoryField,
 	amount: z.number().min(0),
 	cycle: cycle.optional(),
 	dayOfMonth: dayOfMonth.optional(),
@@ -453,6 +470,12 @@ export const CashFlowItemSchema = z
 		amount: z.number(),
 		isCash: z.boolean().describe("False for card charges and depreciation: they move no cash."),
 		spendingAmount: z.number().describe("The part of the amount that counts as spending."),
+		category: z
+			.string()
+			.optional()
+			.describe(
+				"On an expense item, the canonical expense category (see `spendingByCategory`). On other items, the ledger flow class (revenue, salary, transfer, …).",
+			),
 		cashAssetId: z.string().optional(),
 		chargedToLiabilityId: z.string().optional().describe("Revolving liability a card charge lands on."),
 		interest: z.number().optional().describe("Loan payments only."),
@@ -470,6 +493,18 @@ export const CashFlowsResponseSchema = z
 			moneyOut: z.number().describe("Cash out, from cash items only."),
 			spending: z.number().describe("Sum of spendingAmount over every item."),
 		}),
+		spendingByCategory: z
+			.array(
+				z.object({
+					category: z.string().describe(`An expense key, or "${UNCATEGORISED}" for spending without one.`),
+					spending: z.number(),
+					count: z.number().int().describe("Items in the bucket."),
+					share: z.number().describe("spending / totals.spending, 4 dp; 0 when nothing was spent."),
+				}),
+			)
+			.describe(
+				`Spending by expense category for the month, over the unfiltered feed. Always contains "${UNCATEGORISED}"; the buckets sum to totals.spending. Answer "how much on X this month" from here, never by grouping items.`,
+			),
 	})
 	.meta({ id: "CashFlowsResponse", description: "Cash-flow feed of one entity for one month, with totals over all items." });
 

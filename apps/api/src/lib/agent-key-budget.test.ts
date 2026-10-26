@@ -15,35 +15,48 @@ describe("agentKeyBudget", () => {
 	});
 
 	it("reports the key's own limit when the row disagrees with the default", () => {
+		// Derived from the default so this stays a real disagreement after a
+		// budget raise; a literal that equals the default would pass even if
+		// agentKeyBudget ignored the row (#140).
+		const rowLimit = AGENT_KEY_RATE_LIMIT.maxRequests + 25;
 		const budget = agentKeyBudget(
-			{ rateLimitMax: 200, rateLimitTimeWindow: 60 * 60 * 1000, requestCount: 3, lastRequest: new Date(NOW - 1000) },
+			{ rateLimitMax: rowLimit, rateLimitTimeWindow: 60 * 60 * 1000, requestCount: 3, lastRequest: new Date(NOW - 1000) },
 			NOW,
 		);
-		expect(budget?.limit).toBe(200);
-		expect(budget?.remaining).toBe(197);
+		expect(budget?.limit).toBe(rowLimit);
+		expect(budget?.remaining).toBe(rowLimit - 3);
 	});
 
 	it("counts down inside the window and reports the reset instant", () => {
 		const lastRequest = new Date(NOW - 60 * 60 * 1000);
 		const budget = agentKeyBudget({ requestCount: 3, lastRequest }, NOW);
 		expect(budget).toEqual({
-			limit: 10,
-			remaining: 7,
+			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
+			remaining: AGENT_KEY_RATE_LIMIT.maxRequests - 3,
 			reset: Math.ceil((lastRequest.getTime() + WINDOW) / 1000),
 		});
 	});
 
 	it("clamps spent budgets at zero instead of going negative", () => {
-		const budget = agentKeyBudget({ requestCount: 14, lastRequest: new Date(NOW - 1000) }, NOW);
+		// A legacy key that still carries the old explicit 10-call budget, spent
+		// past its limit: the remaining count floors at 0, never a negative.
+		const budget = agentKeyBudget(
+			{ rateLimitMax: 10, requestCount: 14, lastRequest: new Date(NOW - 1000) },
+			NOW,
+		);
 		expect(budget?.remaining).toBe(0);
 	});
 
 	it("refills after the window lapses and forgets the old reset", () => {
 		const budget = agentKeyBudget(
-			{ requestCount: 10, lastRequest: new Date(NOW - WINDOW - 1000) },
+			{ requestCount: AGENT_KEY_RATE_LIMIT.maxRequests, lastRequest: new Date(NOW - WINDOW - 1000) },
 			NOW,
 		);
-		expect(budget).toEqual({ limit: 10, remaining: 10, reset: null });
+		expect(budget).toEqual({
+			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
+			remaining: AGENT_KEY_RATE_LIMIT.maxRequests,
+			reset: null,
+		});
 	});
 
 	it("returns null when the key has rate limiting turned off", () => {

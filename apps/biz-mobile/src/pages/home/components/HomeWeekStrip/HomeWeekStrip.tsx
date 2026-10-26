@@ -7,6 +7,7 @@ import { PlainButton } from "@excited-live/design-system";
 import type { MobileLocale } from "../../../../domain/types";
 import { t } from "../../../../i18n";
 import type { WeekDay, WeekStripModel } from "../../../../domain/weekLoop";
+import { weekDayLabels } from "./dayLabels";
 
 /**
  * HomeWeekStrip — S1 of the week-one loop (#102).
@@ -39,7 +40,8 @@ const dotClass = (state: WeekDay["state"]): string => {
 
 export const HomeWeekStrip: React.FC<HomeWeekStripProps> = ({ model, onPrimary, onOpenWeek, lang }) => {
 	const { variant, days, doneCount, quietDays } = model;
-	const letters = t("week.strip.days", lang).split(" ");
+	// Seven explicit labels, Monday first — no `split` on a translated string (#168).
+	const dayLabels = weekDayLabels(lang);
 
 	const copy =
 		variant === "stale"
@@ -86,33 +88,36 @@ export const HomeWeekStrip: React.FC<HomeWeekStripProps> = ({ model, onPrimary, 
 				gap={2}
 				className="w-full"
 			>
-				{days.map((day) => (
-					<Stack
-						key={day.date}
-						gap={1.5}
-						hAlign="center"
-						className="shrink-0"
-						aria-label={t("week.strip.a11y.day", lang, {
-							day: letters[day.index] ?? "",
-							state: t(DAY_STATE_KEY[day.state], lang),
-						})}
-					>
-						<Text
-							className={`grid size-[34px] place-items-center rounded-pill text-[13px] leading-none ${dotClass(
-								day.state,
-							)}`}
+				{days.map((day) => {
+					const label = dayLabels[day.index];
+					return (
+						<Stack
+							key={day.date}
+							gap={1.5}
+							hAlign="center"
+							className="shrink-0"
+							aria-label={t("week.strip.a11y.day", lang, {
+								day: label?.full ?? "",
+								state: t(DAY_STATE_KEY[day.state], lang),
+							})}
 						>
-							{day.state === "done" ? "✓" : day.state === "today" ? "•" : ""}
-						</Text>
-						<Text
-							className={`text-[12px] ${
-								day.state === "today" ? "font-semibold text-ink" : "text-slate"
-							}`}
-						>
-							{letters[day.index] ?? ""}
-						</Text>
-					</Stack>
-				))}
+							<Text
+								className={`grid size-[34px] place-items-center rounded-pill text-[13px] leading-none ${dotClass(
+									day.state,
+								)}`}
+							>
+								{day.state === "done" ? "✓" : day.state === "today" ? "•" : ""}
+							</Text>
+							<Text
+								className={`text-[12px] ${
+									day.state === "today" ? "font-semibold text-ink" : "text-slate"
+								}`}
+							>
+								{label?.short ?? ""}
+							</Text>
+						</Stack>
+					);
+				})}
 			</HStack>
 
 			{variant === "empty" && (

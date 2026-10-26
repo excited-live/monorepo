@@ -10,8 +10,10 @@ import {
 	calculateLoanPayment,
 	calculateProjectionBalances,
 	generateMonthlyLedger,
+	normalizeCategory,
 	shiftYearMonth,
 	summarizeCashFlows,
+	summarizeSpendingByCategory,
 	type AccountingBook,
 	type AccountingSnapshot,
 	type BookAsset,
@@ -588,8 +590,13 @@ export function createAccountingService(repo: AccountingRepository) {
 
 	// EXPENSES -----------------------------------------------------------------
 
-	type CreateExpenseInput = z.output<typeof CreateExpenseBody>;
-	type UpdateExpenseInput = z.output<typeof UpdateExpenseBody>;
+	// The schema's category is a strict enum at the edge; the service accepts any
+	// string because it canonicalizes one itself (a legacy Thai label on a PATCH
+	// must not fail re-validation, #173).
+	type CreateExpenseInput = Omit<z.output<typeof CreateExpenseBody>, "category"> & { category: string };
+	type UpdateExpenseInput = Omit<z.output<typeof UpdateExpenseBody>, "category"> & {
+		category?: string | null;
+	};
 
 	async function validateExpenseLinks(userId: string, expense: BookExpense): Promise<void> {
 		await requireEntity(userId, expense.entityId);
@@ -610,7 +617,9 @@ export function createAccountingService(repo: AccountingRepository) {
 			id: body.id ?? crypto.randomUUID(),
 			entityId: body.entityId,
 			name: body.name,
-			category: body.category,
+			// Strict at the edge (schema enum); normalized here so a direct service
+			// caller and a legacy label still store the canonical key (#173).
+			category: normalizeCategory(body.category),
 			amount: body.amount,
 			cycle: body.cycle ?? "monthly",
 			startMonth: body.startMonth ?? monthOf(body.asOf),
@@ -641,6 +650,9 @@ export function createAccountingService(repo: AccountingRepository) {
 		// check-in. Same rule as `loan`/`revolving` on a liability.
 		const merged: Record<string, unknown> = applyPatch(plain(stored), fields);
 		if (details !== undefined) merged.details = { ...(plain(stored).details ?? {}), ...details };
+		// A legacy free-text or Thai-label row converges on its next write instead
+		// of failing the strict enum (#173).
+		if (typeof merged.category === "string") merged.category = normalizeCategory(merged.category);
 		const next = parseRecord(CreateExpenseBody, merged) as BookExpense;
 		await validateExpenseLinks(userId, next);
 		return written(await repo.write(userId, [update("expenses", next, version)]), id);
@@ -923,6 +935,9 @@ export function createAccountingService(repo: AccountingRepository) {
 			entityId: account.id,
 			items: query.direction !== undefined ? all.filter((item) => item.direction === query.direction) : all,
 			totals: summarizeCashFlows(all),
+			// Over the unfiltered feed, like totals: a direction filter must not
+			// change the month's category split (#173).
+			spendingByCategory: summarizeSpendingByCategory(all),
 		};
 	}
 

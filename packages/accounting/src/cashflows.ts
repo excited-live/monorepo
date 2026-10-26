@@ -4,6 +4,7 @@ import {
 	isSubscriptionInMonth,
 	subscriptionChargeDate,
 } from "./ledger";
+import { normalizeCategory, UNCATEGORISED } from "./categories";
 import type { LedgerAction } from "./ledger";
 import { calculateMonthlyEquivalent, round2 } from "./math";
 import type {
@@ -42,10 +43,26 @@ export interface CashFlowItem {
 	isCash: boolean;
 	/** The part of the amount that counts as spending. */
 	spendingAmount: number;
+	/**
+	 * On an expense item this is the canonical expense category (#173). On other
+	 * items it is the ledger's flow class (`revenue`, `salary`, `transfer`, …),
+	 * matching `get_monthly_ledger`'s actionItems — which is why a total must
+	 * come from `spendingByCategory`, never from grouping items.
+	 */
+	category?: string;
 	cashAssetId?: string;
 	chargedToLiabilityId?: string;
 	interest?: number;
 	principal?: number;
+}
+
+/** One bucket of the month's spending. `uncategorised` is always present. */
+export interface SpendingByCategoryBucket {
+	category: string;
+	spending: number;
+	count: number;
+	/** `spending / totals.spending`, 4 dp; 0 when the month spent nothing. */
+	share: number;
 }
 
 export interface CashFlowSummary {
@@ -140,6 +157,7 @@ export function buildCashFlows(params: {
 			amount: action.amount,
 			isCash: !isDepreciation,
 			spendingAmount: round2(spendingAmount),
+			category: flowType === "expense" ? normalizeCategory(action.category) : action.category,
 			cashAssetId: action.cashAssetId,
 			interest,
 			principal,
@@ -161,6 +179,7 @@ export function buildCashFlows(params: {
 			amount,
 			isCash: false,
 			spendingAmount: amount,
+			category: normalizeCategory(sub.category),
 			chargedToLiabilityId: sub.paidFromLiabilityId,
 		});
 	}
@@ -184,4 +203,36 @@ export function summarizeCashFlows(items: CashFlowItem[]): CashFlowSummary {
 		spending += item.spendingAmount;
 	}
 	return { moneyIn: round2(moneyIn), moneyOut: round2(moneyOut), spending: round2(spending) };
+}
+
+/**
+ * Spending grouped by expense category (#173). Invariant: the buckets sum to
+ * `summarizeCashFlows(items).spending`, so an agent can prove a total is
+ * complete instead of guessing whether it filtered out a row.
+ *
+ * Only `spendingAmount > 0` is bucketed, over the unfiltered feed: expenses and
+ * card charges by their category; loan interest, fees and depreciation have no
+ * user category and land in `uncategorised`, which is always present. Runs on
+ * the whole month rather than the direction-filtered feed, exactly like
+ * `totals`.
+ */
+export function summarizeSpendingByCategory(items: CashFlowItem[]): SpendingByCategoryBucket[] {
+	const buckets = new Map<string, { spending: number; count: number }>([[UNCATEGORISED, { spending: 0, count: 0 }]]);
+	for (const item of items) {
+		if (item.spendingAmount <= 0) continue;
+		const key = item.flowType === "expense" ? normalizeCategory(item.category) : UNCATEGORISED;
+		const bucket = buckets.get(key) ?? { spending: 0, count: 0 };
+		bucket.spending += item.spendingAmount;
+		bucket.count += 1;
+		buckets.set(key, bucket);
+	}
+	const total = items.reduce((sum, item) => sum + item.spendingAmount, 0);
+	return [...buckets.entries()]
+		.map(([category, bucket]) => ({
+			category,
+			spending: round2(bucket.spending),
+			count: bucket.count,
+			share: total === 0 ? 0 : Math.round((bucket.spending / total) * 10_000) / 10_000,
+		}))
+		.sort((a, b) => b.spending - a.spending || a.category.localeCompare(b.category));
 }

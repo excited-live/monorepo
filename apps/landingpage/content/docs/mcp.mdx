@@ -141,6 +141,20 @@ Most clients under **Being verified** use the browser sign-in and consent flow; 
 
 Never paste a key into a chat, a support message, an issue or a screenshot: anyone who sees it can use it for as long as it is valid. To revoke a key, go back to the same console — `https://excited-live-iam-prelive.pages.dev/tokens` until production key minting opens with the launch — and revoke it from the same page. Revoking a key stops it immediately.
 
+## Rate limits
+
+Each API key can make **200 calls per key per 24 hours**. The budget belongs to the key, not to your user account or your IP address, and each key counts its own window, so there is no fixed daily reset time. `X-RateLimit-Reset` on a response is the only clock that matters.
+
+Every successful response served by a key carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` (calls left in the window) and `X-RateLimit-Reset` (Unix epoch seconds when the budget resets). When the budget is spent, the server answers **HTTP 429** with `Retry-After` (seconds to wait), the same `X-RateLimit-*` headers, and a JSON body carrying `error: "rate_limited"`, `code: "RATE_LIMITED"`, `retryAfter`, a `message` that names the reset instant in UTC, and `rateLimit` (`limit`, `remaining`, `reset`). The key is still valid: wait for the instant and retry, and do not mint a replacement.
+
+A **401** means something different: the key is missing, invalid, revoked or expired. Fix it or [mint a new key](https://iam.excited.live/tokens); waiting does not help.
+
+คีย์ API แต่ละคีย์เรียกได้ **200 ครั้งต่อคีย์ต่อรอบ 24 ชั่วโมง** โควตานี้เป็นของคีย์ ไม่ใช่ของบัญชีผู้ใช้หรือ IP และแต่ละคีย์นับรอบของตัวเอง จึงไม่มีเวลารีเซ็ตตายตัวทุกวัน ค่า `X-RateLimit-Reset` ในคำตอบคือเวลาที่ใช้ได้จริง
+
+ทุกคำตอบที่สำเร็จซึ่งเรียกด้วยคีย์จะแนบ `X-RateLimit-Limit`, `X-RateLimit-Remaining` (จำนวนครั้งที่เหลือในรอบนี้) และ `X-RateLimit-Reset` (เวลา Unix epoch เป็นวินาทีที่โควตาจะรีเซ็ต) เมื่อใช้โควตาครบแล้ว เซิร์ฟเวอร์จะตอบ **HTTP 429** พร้อม `Retry-After` (จำนวนวินาทีที่ต้องรอ) หัว `X-RateLimit-*` ชุดเดียวกัน และเนื้อหา JSON ที่มี `error: "rate_limited"`, `code: "RATE_LIMITED"`, `retryAfter`, `message` ที่บอกเวลากลับมาใช้งานได้เป็น UTC และ `rateLimit` (`limit`, `remaining`, `reset`) คีย์ยังใช้ได้ตามปกติ โปรดรอตามเวลานั้นแล้วลองใหม่ ไม่ต้องสร้างคีย์ใหม่
+
+**401** หมายถึงเรื่องอื่น: คีย์หาย ไม่ถูกต้อง ถูกเพิกถอน หรือหมดอายุ โปรดแก้ไขหรือ[สร้างคีย์ใหม่](https://iam.excited.live/tokens) การรอไม่ช่วย
+
 ## Set up your books with onboard_me
 
 `onboard_me` is a prompt published by the excited.live server. It turns the connection into a short interview:

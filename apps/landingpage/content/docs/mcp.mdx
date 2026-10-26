@@ -9,6 +9,8 @@ MCP (Model Context Protocol) lets your own AI agent read and update your excited
 https://api.excited.live/mcp
 ```
 
+เชื่อมต่อเอเจนต์ AI ของคุณกับ excited.live ผ่าน MCP ที่ https://api.excited.live/mcp แล้วให้เอเจนต์ช่วยตั้งสมุดบัญชีของคุณ
+
 > **In final testing.** The endpoint, the sign-in page and the consent page are live, but each client below is still being verified end to end. If your client does not connect, contact support from [Help](/docs/help#contact-support) with the client name and the time you tried. Do not enter the same data twice; the first connection may not have completed.
 
 ## Before you start
@@ -86,6 +88,53 @@ Then:
 
 `--scope user` makes the server available in every project. Use `--scope project` if you only want it in the current repository.
 
+## Mint a key
+
+The clients above use the browser sign-in and consent flow. You can also connect with a key instead, for a client that takes a header rather than a sign-in, or for your own scripts.
+
+1. Open `https://iam.excited.live/tokens` in your browser and sign in to excited.live.
+2. Choose **Mint a key**.
+3. Give the key a name you recognise, tick only the **onboarding** and **accounting** scopes, and set it to be valid for **90 days**.
+4. Copy the key. It starts with `elk_`.
+5. Send it as a header on every request to the server:
+
+   ```text
+   Authorization: Bearer elk_...
+   ```
+
+   If your client cannot set an `Authorization` header, send the same key as `x-api-key` instead:
+
+   ```text
+   x-api-key: elk_...
+   ```
+
+Never paste a key into a chat, a support message, an issue or a screenshot: anyone who sees it can use it for as long as it is valid. To revoke a key, go back to `https://iam.excited.live/tokens` and revoke it from the same page. Revoking a key stops it immediately.
+
+## Cursor
+
+**Status: in final testing.**
+
+Cursor connects with the key header, not with the browser sign-in flow above.
+
+1. Open Cursor and go to **Settings → MCP**.
+2. Add a new server and set its transport to **streamable HTTP**.
+3. Use the server URL:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. Add the header, with the key you minted above:
+
+   ```text
+   Authorization: Bearer elk_...
+   ```
+
+5. Save the server. Reload the MCP servers if Cursor asks you to.
+6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.**
+
+A real Cursor connection has not been verified yet, so treat this section as in final testing along with the clients above.
+
 ## Set up your books with onboard_me
 
 `onboard_me` is a prompt published by the excited.live server. It turns the connection into a short interview:
@@ -118,7 +167,7 @@ Remove the connector in your client. Your books stay in your excited.live accoun
 
 ## Other MCP clients
 
-Any client that supports remote MCP servers over Streamable HTTP with OAuth can use `https://api.excited.live/mcp`. The setup differs by client; use its "add remote MCP server" flow and the same URL. The three clients above are the ones being verified for launch.
+Any client that supports remote MCP servers over Streamable HTTP with OAuth can use `https://api.excited.live/mcp`. The setup differs by client; use its "add remote MCP server" flow and the same URL. The three OAuth clients above are the ones being verified for launch. Cursor uses a key header instead and is also still in final testing.
 
 ## Related
 

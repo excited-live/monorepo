@@ -7,6 +7,7 @@ import { CodeDeck } from "../components/CodeDeck"
 import { ENDPOINTS, API_VERSION, type Endpoint } from "../generated/endpoints"
 import { apiFetch, ApiError } from "../lib/api"
 import { formatMonth } from "../lib/format"
+import { useTranslator } from "../lib/i18n"
 import { SAMPLES } from "../lib/samples"
 import { useSession } from "../lib/session"
 import { endpointView } from "../lib/views"
@@ -28,6 +29,7 @@ export function DataPage() {
 	const search = useSearch({ strict: false }) as { endpoint?: string }
 	const navigate = useNavigate()
 	const session = useSession()
+	const { t } = useTranslator()
 
 	const [selectedId, setSelectedId] = useState(() => {
 		const requested = search.endpoint
@@ -100,13 +102,9 @@ export function DataPage() {
 		<div className="page" style={{ gap: 20 }}>
 			<div className="page-head">
 				<div>
-					<span className="eyebrow">Data · interactive API</span>
-					<h1 style={{ fontSize: "clamp(26px, 3.6vw, 38px)" }}>Every call, and what it returns.</h1>
-					<p className="lede">
-						The catalog is generated from the API's OpenAPI document, version {API_VERSION}. Run a
-						request against the single API and see the component an agent would get back — plus
-						the exact cURL, package function and MCP tool call behind it.
-					</p>
+					<span className="eyebrow">{t("data.eyebrow")}</span>
+					<h1 style={{ fontSize: "clamp(26px, 3.6vw, 38px)" }}>{t("data.title")}</h1>
+					<p className="lede">{t("data.lede", { version: API_VERSION })}</p>
 				</div>
 				{!session ? (
 					<div className="row">

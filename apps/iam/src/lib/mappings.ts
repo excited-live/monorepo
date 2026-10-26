@@ -5,8 +5,8 @@ import type { McpHint, SdkHint } from "./snippets"
  * answers in the inspector deck.
  *
  * Both sides are verified against the repo, not aspirational:
- *  - `sdk` names real exports of `@excited-live/accounting`, `@excited-live/sim`
- *    or `@excited-live/tax` (see each package's index.ts).
+ *  - `sdk` names real exports of `@excited-live/accounting` or
+ *    `@excited-live/tax` (see each package's index.ts).
  *  - `mcp` names tools registered in `apps/api/src/modules/mcp/tools/*.tools.ts`.
  * An endpoint without an entry is shown as server-only / REST-only, which is
  * accurate — only the onboarding + accounting suites are exposed over MCP today.

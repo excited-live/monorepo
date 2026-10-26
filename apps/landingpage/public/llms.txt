@@ -35,12 +35,19 @@ Guide: https://excited.live/docs/mcp/
 
 Tool names and inputs are in the connect guide, which tracks the live registry: https://excited.live/docs/mcp/
 
+## Cost
+
+excited.live is free during launch. No card is required, and nothing is charged today.
+There is no trial end date, no automatic charge, and no plan, seat or usage fee. The
+machine-readable version of this answer is https://excited.live/pricing.md
+
 ## Status
 
-Agent connect is in final testing before the 2026-10-31 launch. Pricing is not announced yet: https://excited.live/docs/pricing/
+Agent connect is in final testing before the 2026-10-31 launch.
 
 ## Links
 
 - Connect guide: https://excited.live/docs/mcp/
 - Pricing: https://excited.live/docs/pricing/
+- Pricing, plain text: https://excited.live/pricing.md
 - Help: https://excited.live/docs/help/

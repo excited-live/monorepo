@@ -43,7 +43,10 @@ export const documentation = {
 			"REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.\n\n" +
 			"**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key). " +
 			"On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, " +
-			"and falls back to a shared `default` bucket.",
+			"and falls back to a shared `default` bucket.\n\n" +
+			"**Cost.** excited.live is free during launch: no card is required and nothing is charged today. " +
+			"There is no trial end date, no automatic charge, and no plan, seat or usage fee. " +
+			"The machine-readable answer is https://excited.live/pricing.md",
 	},
 	tags: [
 		{ name: "Accounting", description: "Per-resource accounting API: entities, assets, incomes, expenses, liabilities and transfers, plus computed summary (wealth and balance sheet), ledger, cash-flows, liability schedules and projection." },

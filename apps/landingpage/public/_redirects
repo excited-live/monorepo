@@ -1,0 +1,4 @@
+# /pricing is a docs page, not a landing-page section (#192).
+# A real 301 beats the build's meta-refresh stub: crawlers and agents follow it.
+/pricing /docs/pricing/ 301
+/pricing/ /docs/pricing/ 301

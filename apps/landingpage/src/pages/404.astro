@@ -1,0 +1,88 @@
+---
+import Layout from '@/components/layout.astro';
+import '@/styles/global.css';
+
+// A 200 is a promise: an unknown path must not answer with the landing page.
+// Cloudflare Pages serves this file (404.html) with a 404 status for any path
+// that the build did not generate (#187).
+const title = 'Page not found — excited.live';
+---
+
+<Layout
+	title={title}
+	description="This page is not here yet. Set up excited.live from the landing page."
+	canonical={false}
+	noindex
+>
+	<main class="not-found" data-od-id="404">
+		<a class="not-found-brand" href="/">
+			<img src="/logo-mark.png" alt="" width="30" height="30" />
+			<span>excited<span class="not-found-dot">.live</span></span>
+		</a>
+
+		<h1>This page is not here yet</h1>
+		<p class="not-found-body">
+			The page you followed does not exist. You can set up excited.live from the
+			landing page.
+		</p>
+		<a class="btn-ink not-found-cta" href="/">Go to setup</a>
+	</main>
+</Layout>
+
+<style>
+	.not-found {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 14px;
+		padding: 32px 20px;
+		text-align: center;
+		background: var(--canvas, #f3f0ee);
+		color: var(--ink, #141413);
+	}
+
+	.not-found-brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-family: var(--font-family-body, 'Sofia Sans', sans-serif);
+		font-size: 17px;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		text-decoration: none;
+		color: inherit;
+		margin-bottom: 8px;
+	}
+
+	.not-found-brand img {
+		border-radius: 999px;
+		display: block;
+	}
+
+	.not-found-dot {
+		color: #cf4500;
+	}
+
+	.not-found h1 {
+		font-family: var(--font-family-heading, 'Sofia Sans', sans-serif);
+		font-size: clamp(26px, 5vw, 38px);
+		line-height: 1.15;
+		margin: 0;
+	}
+
+	.not-found-body {
+		max-width: 46ch;
+		font-size: 16px;
+		line-height: 1.55;
+		color: var(--slate, #696969);
+		margin: 0 0 6px;
+	}
+
+	.not-found-cta {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+	}
+</style>

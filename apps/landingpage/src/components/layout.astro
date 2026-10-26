@@ -10,6 +10,10 @@ interface Props {
 	ogType?: 'website' | 'article';
 	/** Extra JSON-LD node(s) appended to the sitewide schema graph. */
 	schema?: Record<string, unknown> | Record<string, unknown>[];
+	/** Override the canonical URL, or pass false to omit it (404 pages). */
+	canonical?: string | false;
+	/** Ask crawlers not to index this page (404 pages). */
+	noindex?: boolean;
 }
 
 const {
@@ -19,10 +23,15 @@ const {
 	ogImage = '/og.png',
 	ogType = 'website',
 	schema,
+	canonical: canonicalProp,
+	noindex = false,
 } = Astro.props;
 
 const site = Astro.site ?? new URL('https://excited.live');
-const canonical = new URL(Astro.url.pathname, site).href;
+const canonical =
+	canonicalProp === false
+		? null
+		: new URL(canonicalProp ?? Astro.url.pathname, site).href;
 const ogImageUrl = new URL(ogImage, site).href;
 
 const orgId = new URL('/#org', site).href;
@@ -61,12 +70,13 @@ const jsonLd = {
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
-		<link rel="canonical" href={canonical} />
+		{canonical && <link rel="canonical" href={canonical} />}
+		{noindex && <meta name="robots" content="noindex" />}
 		<meta property="og:type" content={ogType} />
 		<meta property="og:site_name" content="excited.live" />
 		<meta property="og:title" content={title} />
 		<meta property="og:description" content={description} />
-		<meta property="og:url" content={canonical} />
+		{canonical && <meta property="og:url" content={canonical} />}
 		<meta property="og:image" content={ogImageUrl} />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />

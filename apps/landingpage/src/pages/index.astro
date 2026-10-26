@@ -42,7 +42,7 @@ const appSchema = {
         <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">Agents</span><span data-lang-th="">สำหรับเอเจนต์</span></a></li>
         <li><a href="#cap-card-human" data-door-target="humans"><span data-lang-en="">Humans</span><span data-lang-th="">สำหรับคุณ</span></a></li>
         <li><a href="/docs"><span data-lang-en="">Docs</span><span data-lang-th="">เอกสาร</span></a></li>
-        <li><a href="/docs/help#connect-your-agent-over-mcp"><span data-lang-en="">Setup</span><span data-lang-th="">วิธีติดตั้ง</span></a></li>
+        <li><a href="/docs/mcp/"><span data-lang-en="">Setup</span><span data-lang-th="">วิธีติดตั้ง</span></a></li>
       </ul>
       <div class="nav-right">
         <div class="lang-switch country-dropdown-wrap" id="country-dropdown-wrap" role="group" aria-label="Country and language selector">
@@ -347,17 +347,17 @@ const appSchema = {
         
 
         <div class="hero-editorial-center">
-          {/* TODO(#31): eyebrow claims MCP is available now; flip after Rigel's #31 protocol results (sign-in currently fails discovery on prod). */}
+          {/* One availability claim, identical to /docs/mcp and /docs/pricing: MCP sign-in is "in final testing" (issue #104). Flip only when #31 passes end to end. */}
           <div class="eyebrow">
-            <span data-lang-en="">Connect your agent over MCP</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span>
+            <span data-lang-en="">Connect your agent over MCP · in final testing</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP · กำลังทดสอบขั้นสุดท้าย</span>
           </div>
           <h1>
             <span data-lang-en="">Financial planning for <span class="xai-swap-container"><span class="xai-swap-roller" aria-label="solopreneurs, first jobber, AI native"><span class="xai-swap-track"><span class="xai-swap-word">solopreneurs.</span><span class="xai-swap-word">first jobber.</span><span class="xai-swap-word">AI native.</span><span class="xai-swap-word" aria-hidden="true">solopreneurs.</span></span></span><span class="xai-swap-underline" aria-hidden="true"></span></span></span>
             <span data-lang-th="">การวางแผนการเงินสำหรับ <span class="xai-swap-container"><span class="xai-swap-roller" aria-label="โซโลพรีเนอร์, First Jobber, AI Native"><span class="xai-swap-track"><span class="xai-swap-word">โซโลพรีเนอร์</span><span class="xai-swap-word">First Jobber</span><span class="xai-swap-word">AI Native</span><span class="xai-swap-word" aria-hidden="true">โซโลพรีเนอร์</span></span></span><span class="xai-swap-underline" aria-hidden="true"></span></span></span>
           </h1>
-          <p class="hero-editorial-sub"><span data-lang-en="">Connect Claude, ChatGPT, or Claude Code over MCP, then ask your agent to set up your accounts, bills, and runway. Built for your agent and for you.</span><span data-lang-th="">เชื่อมต่อ Claude, ChatGPT หรือ Claude Code ผ่าน MCP แล้วให้เอเจนต์ช่วยตั้งค่าบัญชี บิล และรันเวย์ของคุณ สร้างมาเพื่อเอเจนต์และตัวคุณ</span></p>
+          <p class="hero-editorial-sub"><span data-lang-en="">Connect Claude, ChatGPT, or Claude Code over MCP, then ask your agent to set up your accounts, bills, and runway. MCP sign-in is in final testing; we launch on 31 Oct 2026.</span><span data-lang-th="">เชื่อมต่อ Claude, ChatGPT หรือ Claude Code ผ่าน MCP แล้วให้เอเจนต์ช่วยตั้งค่าบัญชี บิล และรันเวย์ของคุณ การเข้าสู่ระบบ MCP กำลังทดสอบขั้นสุดท้าย เราเปิดตัว 31 ต.ค. 2026</span></p>
           <div class="hero-actions" data-od-id="hero-actions">
-            <a href="#final-cta" class="btn btn-primary" data-door-target="agents" data-od-id="hero-btn-getting-started">
+            <a href="/docs/mcp/" class="btn btn-primary" data-od-id="hero-btn-getting-started">
               <span data-lang-en="">Connect your agent</span>
               <span data-lang-th="">เชื่อมต่อเอเจนต์</span>
             </a>
@@ -404,7 +404,7 @@ const appSchema = {
             </div>
             <div class="b-card-foot">
               <div><span class="b-card-label" id="cap-card-what-if-label"><span data-lang-en="">Planning for Future</span><span data-lang-th="">วางแผนอนาคต</span></span><span class="b-card-sub"><span data-lang-en="">What-if simulation, retirement planning</span><span data-lang-th="">จำลองสถานการณ์ · วางแผนเกษียณ</span></span></div>
-              <span class="b-card-cta" id="cap-card-what-if-cta"><span data-lang-en="">Use it now →</span><span data-lang-th="">ใช้งานเลย →</span></span>
+              <span class="b-card-cta" id="cap-card-what-if-cta"><span data-lang-en="">Connect your agent →</span><span data-lang-th="">เชื่อมต่อเอเจนต์ →</span></span>
             </div>
           </a>
 
@@ -421,7 +421,7 @@ const appSchema = {
             </div>
             <div class="b-card-foot">
               <div><span class="b-card-label" id="cap-card-log-label"><span data-lang-en="">Manage the Current</span><span data-lang-th="">จัดการปัจจุบัน</span></span><span class="b-card-sub"><span data-lang-en="">Budgeting, asset depreciation, tax</span><span data-lang-th="">งบประมาณ · ค่าเสื่อมราคา · ภาษี</span></span></div>
-              <span class="b-card-cta" id="cap-card-log-cta"><span data-lang-en="">Use it now →</span><span data-lang-th="">ใช้งานเลย →</span></span>
+              <span class="b-card-cta" id="cap-card-log-cta"><span data-lang-en="">Connect your agent →</span><span data-lang-th="">เชื่อมต่อเอเจนต์ →</span></span>
             </div>
           </a>
 
@@ -435,7 +435,7 @@ const appSchema = {
               </div>
             </div>
             <div class="b-card-foot">
-              <div><span class="b-card-label" id="cap-card-human-label"><span data-lang-en="">Human Control</span><span data-lang-th="">คุณควบคุม</span></span><span class="b-card-sub"><span data-lang-en="">Web app now · Android app at launch</span><span data-lang-th="">เว็บแอปใช้ได้แล้ว · แอป Android เปิดตัวพร้อมกัน</span></span></div>
+              <div><span class="b-card-label" id="cap-card-human-label"><span data-lang-en="">Human Control</span><span data-lang-th="">คุณควบคุม</span></span><span class="b-card-sub"><span data-lang-en="">Free during early access · Android app at launch</span><span data-lang-th="">ฟรีช่วง Early Access · แอป Android เปิดตัวพร้อมกัน</span></span></div>
               <span class="b-card-cta" id="cap-card-human-cta"><span data-lang-en="">Create an account →</span><span data-lang-th="">สร้างบัญชี →</span></span>
             </div>
           </a>
@@ -477,6 +477,7 @@ const appSchema = {
               <span data-lang-en="">Ready when you are</span><span data-lang-th="">พร้อมเมื่อคุณต้องการ</span>
             </div>
             <h2 style="margin-top: 12px; margin-bottom: 10px;"><span data-lang-en="">Connect your agent over MCP.</span><span data-lang-th="">เชื่อมต่อเอเจนต์ของคุณผ่าน MCP</span></h2>
+            <p style="color:var(--charcoal); font-size:14px; margin-top:0; margin-bottom:10px;"><span data-lang-en="">MCP sign-in is in final testing. We launch on 31 Oct 2026 — the steps below are the ones we are verifying.</span><span data-lang-th="">การเข้าสู่ระบบ MCP กำลังทดสอบขั้นสุดท้าย เราเปิดตัว 31 ต.ค. 2026 ขั้นตอนด้านล่างคือขั้นตอนที่เรากำลังตรวจสอบอยู่</span> <a href="/docs/mcp/"><span data-lang-en="">Read the connect guide →</span><span data-lang-th="">อ่านคู่มือเชื่อมต่อ →</span></a></p>
             <p style="color:var(--charcoal);"><span data-lang-en="">Each client connects a little differently — from one CLI command to a custom connector. Pick yours and copy the exact setup.</span><span data-lang-th="">แต่ละไคลเอนต์เชื่อมต่อไม่เหมือนกัน ตั้งแต่คำสั่ง CLI เดียวไปจนถึงคอนเนกเตอร์กำหนดเอง เลือกของคุณแล้วคัดลอกวิธีตั้งค่าได้เลย</span></p>
             <p style="color:var(--charcoal); font-size:14px; margin-top:12px;"><span data-lang-en="">The 50-year planner is being rebuilt and returns after launch.</span><span data-lang-th="">แพลนเนอร์ 50 ปีกำลังถูกออกแบบใหม่ และจะกลับมาหลังเปิดตัว</span></p>
           </div>
@@ -511,11 +512,12 @@ const appSchema = {
             <textarea class="copy-fallback-area" readonly="" aria-label="Fallback copy setup" set:text={`Add excited.live to Claude Code:\n\nclaude mcp add --scope user --transport http excited ${MCP_URL}\n\nThen use the onboard_me prompt and follow its guide. Your client will ask you to sign in to excited.live. Talk to me in English.`}></textarea>
           </div>
         </div>
-        {/* TODO(#31): all setupsGuest prompts say "Your client will ask you to sign in to excited.live" (OAuth via auth.excited.live); no sign-in tool exists. Re-check after Rigel's #31 protocol results.
+        {/* Availability copy is deliberately hedged to match /docs/mcp and /docs/pricing ("in final testing", launch 31 Oct 2026). Flip to "works today" only after #31 passes end to end.
+            TODO(#31): all setupsGuest prompts say "Your client will ask you to sign in to excited.live" (OAuth via auth.excited.live); no sign-in tool exists. Re-check after Rigel's #31 protocol results.
             TODO(#31): Codex needs `codex mcp login excited` for OAuth; untested.
             TODO(#31): Claude "Settings → Connectors → Add custom connector" path unverified; DCR/OAuth is #31.
             TODO(#31): ChatGPT "Settings → Apps → Advanced settings → Developer mode" path unverified; DCR/OAuth is #31.
-            TODO(#31): content/docs/help.mdx mirrors all of the above (Codex login, Claude/ChatGPT paths, sign-in sentence) and says MCP is "in final testing"; flip to "works today" once prod sign-in discovery works. Kept out of help.mdx because its comments leak into dist/api/search.json. */}
+            TODO(#31): content/docs/help.mdx mirrors all of the above (Codex login, Claude/ChatGPT paths, sign-in sentence) and says MCP is "in final testing"; flip together. Kept out of help.mdx because its comments leak into dist/api/search.json. */}
         <script is:inline define:vars={{ MCP_URL }}>
           (function () {
             var section = document.querySelector('[data-od-id="dir-b-final-cta"]');
@@ -608,8 +610,8 @@ const appSchema = {
           </p>
           <div class="footer-status-pill">
             <span class="status-indicator-dot" aria-hidden="true"></span>
-            <span data-lang-en="">MCP endpoint · {MCP_DISPLAY}</span>
-            <span data-lang-th="">MCP endpoint · {MCP_DISPLAY}</span>
+            <span data-lang-en="">MCP endpoint · {MCP_DISPLAY} · in final testing</span>
+            <span data-lang-th="">MCP endpoint · {MCP_DISPLAY} · กำลังทดสอบขั้นสุดท้าย</span>
           </div>
         </div>
 
@@ -620,7 +622,7 @@ const appSchema = {
               <span data-lang-th="">ผลิตภัณฑ์</span>
             </h3>
             <ul class="footer-col-list">
-              <li><a href="#final-cta" data-door-target="agents"><span data-lang-en="">AI Agent MCP</span><span data-lang-th="">เอเจนต์ MCP</span></a></li>
+              <li><a href="/docs/mcp/"><span data-lang-en="">AI Agent MCP</span><span data-lang-th="">เอเจนต์ MCP</span></a></li>
               <li><a href="#cap-card-human" data-door-target="humans"><span data-lang-en="">Your account</span><span data-lang-th="">บัญชีของคุณ</span></a></li>
               <li><a href="/docs"><span data-lang-en="">Documentation</span><span data-lang-th="">เอกสารประกอบ</span></a></li>
               <li><a href="/docs/pricing"><span data-lang-en="">Pricing</span><span data-lang-th="">ราคา</span></a></li>

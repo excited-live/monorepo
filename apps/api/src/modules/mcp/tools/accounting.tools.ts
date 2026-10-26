@@ -92,7 +92,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		name: "get_cash_flows",
 		title: "Get cash flows",
 		description:
-			"Query dated cash flows and totals (income, expense, transfer, debt service) for one month. Defaults to current month and personal entity. Each expense item carries its `category`; answer \"how much on X this month\" from `spendingByCategory` (it always includes `uncategorised` and sums to `totals.spending`), never by grouping `items` yourself — on non-expense rows `category` is a flow class, not a user category.",
+			"Query dated cash flows and totals (income, expense, transfer, debt service) for one month. Defaults to current month and personal entity. Each expense item carries its `category`; answer \"how much on X this month\" from `spendingByCategory` (it always includes `uncategorised` and sums to `totals.spending`), never by grouping `items` yourself — on non-expense rows `category` is a flow class, not a user category. `spendingByCategory` is recorded spend, not a limit: there are no per-category budgets, so never subtract it from income or treasury to answer \"what's left\".",
 		inputSchema: input(CashFlowsInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {

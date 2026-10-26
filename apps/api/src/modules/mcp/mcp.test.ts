@@ -137,6 +137,24 @@ type ToolResult = {
 };
 
 describe("/mcp", () => {
+	it("answers GET and DELETE with a fast 405 before auth, never a stream (#142)", async () => {
+		const app = configuredApp();
+
+		for (const method of ["GET", "DELETE"] as const) {
+			const started = Date.now();
+			// No credential: the method gate must come before auth resolution,
+			// so this is 405 rather than a 401 challenge.
+			const res = await app.request("/mcp", { method });
+			expect(res.status).toBe(405);
+			expect(res.headers.get("allow")).toBe("POST");
+			expect(res.headers.get("content-type") ?? "").not.toContain("text/event-stream");
+			// Reading the body proves the response ends: an idle SSE stream would
+			// hang here until the test timeout.
+			await res.text();
+			expect(Date.now() - started).toBeLessThan(1000);
+		}
+	});
+
 	it("answers 401 with the protected-resource challenge when no key is sent", async () => {
 		const app = configuredApp();
 		const res = await rpc(app, initialize());

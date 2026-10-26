@@ -17,7 +17,16 @@ export interface ApiEnv {
 	}
 	Variables: {
 		db: SqlDriver
-		/** Verified bearer-session user id (set only when auth is configured and the token resolves). */
+		/** Verified user id (set only when auth is configured and the credential resolves). */
 		userId?: string
+		/**
+		 * What the credential was: an `elk_` key, an OAuth access token, a Better
+		 * Auth session, or the unconfigured-environment dev passthrough. Routes
+		 * gate on it where a key must not be accepted (minting keys, editing the
+		 * human's settings, #193).
+		 */
+		via?: "apiKey" | "oauth" | "session" | "dev"
+		/** The principal's tool scopes, e.g. `accounting:read` (#193). */
+		scopes?: Set<string>
 	}
 }

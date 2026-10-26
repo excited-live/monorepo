@@ -14,7 +14,7 @@ Defaults (`\{ profileName: "", gender: "female" }`) for a user who never saved.
 **Responses**
 
 - `200` — The settings. [UserSettings](#usersettings)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/settings" \
@@ -34,7 +34,7 @@ Type: [UserSettings](#usersettings)
 **Responses**
 
 - `200` — Saved. `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl -X PUT "$API_URL/api/v1/settings" \

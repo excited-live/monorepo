@@ -20,7 +20,7 @@ description: "Autofill catalog for subscriptions and hardware."
 **Responses**
 
 - `200` — Best match, suggestions and a favicon fallback. `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/catalog/suggest" \
@@ -56,7 +56,7 @@ Type: `object`
 **Responses**
 
 - `200` — Autofill values. `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl -X POST "$API_URL/api/v1/catalog/resolve" \

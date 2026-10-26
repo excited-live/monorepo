@@ -6,7 +6,8 @@ import { protectedResourceMetadata } from "../../lib/oauth";
 import { createOnboardingStore } from "../../stores/onboarding-store";
 import { createSqlAccountingRepository } from "../accounting/repository/sql-accounting.repository";
 import { createAccountingService } from "../accounting/service/accounting.service";
-import { rateLimitHeaders, rateLimitedResponse, resolvePrincipal, unauthorizedResponse } from "./mcp.auth";
+import { resolvePrincipal } from "../../lib/principal";
+import { rateLimitHeaders, rateLimitedResponse, unauthorizedResponse } from "./mcp.auth";
 import { createMcpServer } from "./registry";
 
 /**

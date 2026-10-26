@@ -1231,6 +1231,7 @@ Wealth metrics per entity and consolidated, for one month.
 | `entities[].metrics.gearPct` | `number` | yes |  |
 | `entities[].metrics.totalIncome` | `number` | yes |  |
 | `entities[].metrics.totalExpense` | `number` | yes |  |
+| `entities[].metrics.totalAdjustments` | `number` | yes |  |
 | `entities[].metrics.liabilityMonthly` | `number` | yes |  |
 | `entities[].metrics.liabPct` | `number` | yes |  |
 | `entities[].metrics.runwayMonths` | `number` \| `null` | yes |  |
@@ -1258,7 +1259,9 @@ Computed cash ledger for one entity and month.
 | `summary.totalInflow` | `number` | yes |  |
 | `summary.totalCashOutflow` | `number` | yes |  |
 | `summary.totalDepreciation` | `number` | yes |  |
+| `summary.totalAdjustments` | `number` | yes |  |
 | `summary.netCashFlow` | `number` | yes |  |
+| `summary.netChange` | `number` | yes |  |
 | `summary.runwayMonths` | `number` \| `null` | no |  |
 | `summary.isDefaultAlive` | `boolean` | no |  |
 | `actionItems` | `object`[] | yes |  |
@@ -1304,6 +1307,7 @@ Treasury balance per month around a centre month.
 | `totalIncome` | `number` | yes |  |
 | `totalExpense` | `number` | yes |  |
 | `liabilityMonthly` | `number` | yes |  |
+| `adjustments` | `number` | yes |  |
 | `projectedNet` | `number` | yes |  |
 
 ### CashAsset

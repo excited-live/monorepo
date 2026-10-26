@@ -21,7 +21,7 @@ import {
 	CreateIncomeBody,
 	CreateLiabilityBody,
 } from "../../accounting/route/accounting.schemas";
-import { productMonth } from "../../../lib/product-time";
+import { productDate, productMonth } from "../../../lib/product-time";
 import { publishableObjectSchema } from "../publish-schema";
 import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
@@ -74,6 +74,10 @@ const AssetInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion
 	kind: "cash = a wallet; fixed = gear, property or a vehicle; investment = stocks, funds or crypto.",
 	name: "Display name.",
 	category: 'Short free-text category, e.g. "bank" or "electronics".',
+	balance:
+		"Cash wallet balance. A balance statement, not income. When `balanceAsOf` is omitted it is dated to today (Asia/Bangkok), never the 1st of the UTC month.",
+	balanceAsOf:
+		"`YYYY-MM` or `YYYY-MM-DD`, the day the balance was true. Defaults to today (Asia/Bangkok) when `balance` is sent; a day-precision date books one balance_statement entry on that day.",
 });
 const IncomeInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateIncomeBody)), {
 	kind: "employment = salary; business = revenue the user earns; investment = dividends, rent or interest; other.",
@@ -226,7 +230,7 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		name: "add_asset",
 		title: "Add an asset",
 		description:
-			"Creates a cash wallet, a fixed asset (gear, laptop, vehicle, property) or an investment. Defaults to the personal entity. The image is picked automatically.",
+			"Creates a cash wallet, a fixed asset (gear, laptop, vehicle, property) or an investment. Defaults to the personal entity. The image is picked automatically. A cash `balance` is a stock statement, not income; when `balanceAsOf` is omitted it is dated to today (Asia/Bangkok), so the wallet states ฿0 before that day and books exactly one dated balance_statement entry on it.",
 		inputSchema: input(AssetInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
@@ -234,6 +238,11 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 				...stripImageUrl(raw),
 				entityId: raw.entityId ?? (await personalEntityId(ctx)),
 			});
+			// A wallet balance is a dated statement. Without a day the REST default
+			// would assert 1st-of-month cash; date it to the product's today instead.
+			if (body.kind === "cash" && body.balance !== undefined && body.balanceAsOf === undefined) {
+				body.balanceAsOf = productDate();
+			}
 			body.imageUrl = pickSuggestedImage(body.name, { kind: "asset", assetKind: body.kind });
 			return createOrReuse({
 				id: body.id,
@@ -443,7 +452,7 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		name: "get_financial_summary",
 		title: "Get the financial summary",
 		description:
-			"Wealth metrics and balance sheet per entity plus the consolidated totals, for one month. Use it for the closing recap.",
+			"Wealth metrics and balance sheet per entity plus the consolidated totals, for one month. Use it for the closing recap. `metrics.totalAdjustments` is a dated wallet balance statement, not income: it is excluded from `metrics.totalIncome` and shown on its own.",
 		inputSchema: input(SummaryInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {

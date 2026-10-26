@@ -242,7 +242,11 @@ export interface MonthlySummary {
 	totalInflow: number;
 	totalCashOutflow: number;
 	totalDepreciation: number;
+	/** Dated balance statements: stock corrections, never income. */
+	totalAdjustments: number;
 	netCashFlow: number;
+	/** netCashFlow + totalAdjustments; endingTreasury = startingTreasury + netChange. */
+	netChange: number;
 	runwayMonths?: number | null;
 	isDefaultAlive?: boolean;
 }
@@ -290,6 +294,8 @@ export interface EntityWealthMetrics {
 	gearPct: number;
 	totalIncome: number;
 	totalExpense: number;
+	/** Dated balance statements this month: a stock correction, not income. */
+	totalAdjustments: number;
 	liabilityMonthly: number;
 	liabPct: number;
 	runwayMonths: number | null;
@@ -309,6 +315,8 @@ export interface ProjectionBalances {
 	totalIncome: number;
 	totalExpense: number;
 	liabilityMonthly: number;
+	/** Dated balance statements in the selected month: stock, not income. */
+	adjustments: number;
 	projectedNet: number;
 }
 

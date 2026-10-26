@@ -149,7 +149,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		name: "get_cash_flows",
 		title: "Get cash flows",
 		description:
-			"Query dated cash flows and totals (income, expense, transfer, debt service) for one month. Defaults to current month and personal entity. Each expense item carries its `category`; answer \"how much on X this month\" from `spendingByCategory` (it always includes `uncategorised` and sums to `totals.spending`), never by grouping `items` yourself — on non-expense rows `category` is a flow class, not a user category. `spendingByCategory` is recorded spend, not a limit: there are no per-category budgets, so never subtract it from income or treasury to answer \"what's left\".",
+			"Query dated cash flows and totals (income, expense, transfer, debt service) for one month. Defaults to current month and personal entity. Each expense item carries its `category`; answer \"how much on X this month\" from `spendingByCategory` (it always includes `uncategorised` and sums to `totals.spending`), never by grouping `items` yourself — on non-expense rows `category` is a flow class, not a user category. `spendingByCategory` is recorded spend, not a limit: there are no per-category budgets, so never subtract it from income or treasury to answer \"what's left\". A `balance_statement` item is a dated wallet balance statement, not income: it is excluded from `totals.moneyIn` and reported separately in `totals.adjustments`.",
 		inputSchema: input(CashFlowsInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {
@@ -207,7 +207,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		name: "update_asset",
 		title: "Update an asset",
 		description:
-			"Correct an existing asset: a wallet balance, a rename, or any other field the REST PATCH accepts. Select it with exactly one of `id` or `name` (`id` wins; `name` is matched exactly, trimmed, inside `entityId`, which defaults to the personal entity) and pass only what changes. An asset's `kind` cannot change, and neither can the entity it belongs to: delete the asset and add it again instead. A `balance` edit is a stock (balance-sheet) correction, not income: `balanceAsOf` defaults to today when `balance` changes, and the response carries `balanceChange` plus that month's `ledger` with `totalInflow` unchanged. Never square a balance correction with income, expense or transfer entries. Pass `newName` to rename; `name` only selects.",
+			"Correct an existing asset: a wallet balance, a rename, or any other field the REST PATCH accepts. Select it with exactly one of `id` or `name` (`id` wins; `name` is matched exactly, trimmed, inside `entityId`, which defaults to the personal entity) and pass only what changes. An asset's `kind` cannot change, and neither can the entity it belongs to: delete the asset and add it again instead. A `balance` edit is a stock (balance-sheet) correction, not income: `balanceAsOf` defaults to today when `balance` changes, and the response carries `balanceChange` plus that month's `ledger`, where the statement appears in `totalAdjustments` and `totalInflow` stays unchanged. Funding a wallet that still states ฿0 is allowed; a second balance edit on a wallet that already states a non-zero balance is refused with `balance_correction_requires_events`, because the only stored statement cannot hold a second dated correction until the events table exists. Never square a balance correction with income, expense or transfer entries. Pass `newName` to rename; `name` only selects.",
 		inputSchema: input(UpdateAssetInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
@@ -235,6 +235,18 @@ export const accountingTools: readonly McpToolDefinition[] = [
 			}
 
 			const balanceChanged = stored.kind === "cash" && body.balance !== undefined && body.balance !== stored.balance;
+			// A wallet can hold ONE statement. Funding a ฿0 wallet is the first
+			// statement; a second correction would overwrite it and leave the
+			// difference undated, so it waits for the events table.
+			if (balanceChanged && stored.kind === "cash" && stored.balance !== 0) {
+				throw new ValidationError(
+					"balance_correction_requires_events: this wallet already states a non-zero balance " +
+						`(${stored.balance} as of ${stored.balanceAsOf}). A second correction needs the events-table follow-up ` +
+						"(dated wallet balance events): the stored statement cannot be rewritten without losing the day the " +
+						"difference belongs to. Nothing was changed. Correct the first statement in the app, or record the " +
+						"difference as its own dated entry.",
+				);
+			}
 			// Date the correction to the day it was made (the product's Bangkok
 			// day), not the UTC month: a balance read today and typed today must
 			// book today. The REST default is left alone.
@@ -254,8 +266,10 @@ export const accountingTools: readonly McpToolDefinition[] = [
 					endingTreasury: ledger.summary.endingTreasury,
 					totalInflow: ledger.summary.totalInflow,
 					totalCashOutflow: ledger.summary.totalCashOutflow,
+					totalAdjustments: ledger.summary.totalAdjustments,
+					netChange: ledger.summary.netChange,
 				},
-				note: "A balance correction is a stock (balance-sheet) adjustment, not income: it rewrites the wallet's opening balance and creates no inflow. Do not record it as income, expense or transfer.",
+				note: "A balance correction is a stock (balance-sheet) statement, not income: it lands as one dated balance_statement action reported in totalAdjustments, adds nothing to totalInflow, and never squares with income, expense or transfer entries.",
 			};
 		},
 	},
@@ -289,7 +303,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		name: "get_monthly_ledger",
 		title: "Get monthly ledger",
 		description:
-			"Get the computed double-entry monthly ledger with summary metrics (opening/closing treasury, inflow, outflow, runway) and dated action items.",
+			"Get the computed double-entry monthly ledger with summary metrics (opening/closing treasury, inflow, outflow, adjustments, runway) and dated action items. `totalAdjustments` is a dated wallet balance statement — a stock correction, not income; it is excluded from `totalInflow`. `netChange = netCashFlow + totalAdjustments` and `endingTreasury = startingTreasury + netChange`, so a month can open at ฿0 and still close funded by its balance statement.",
 		inputSchema: input(MonthlyLedgerInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {

@@ -128,6 +128,7 @@ describe("buildCashFlows", () => {
 			moneyIn: 3800,
 			moneyOut: 11084.88,
 			spending: 1600,
+			adjustments: 0,
 		});
 		expect(summarizeCashFlows(buildCashFlows(args)).spending).toBe(1500);
 	});

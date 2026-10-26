@@ -1787,41 +1787,91 @@ describe("/mcp", () => {
 			kind: "adjustment",
 		});
 
-		// The ledger proves it is a stock correction: opening = closing, no inflow.
+		// The ledger proves it is a stock statement: the month opens at 0 and the
+		// balance lands as one dated adjustment, never as inflow.
 		expect(updated.structuredContent?.ledger).toEqual({
 			yearMonth: productMonth(),
-			startingTreasury: 74970.63,
+			startingTreasury: 0,
 			endingTreasury: 74970.63,
 			totalInflow: 0,
 			totalCashOutflow: 0,
+			totalAdjustments: 74970.63,
+			netChange: 74970.63,
 		});
 		expect(String(updated.structuredContent?.note)).toContain("not income");
 
-		// The same truth through the read tools: cash assets and income agree.
-		const summaryResult = await callTool(app, key, "get_financial_summary", { month: productMonth() }, 72);
+		// A second balance edit is refused: one wallet holds one statement until
+		// the events table exists.
+		const again = await callTool(app, key, "update_asset", { name: "Personal Main Wallet", balance: 70000 }, 72);
+		expect(again.isError).toBe(true);
+		expect(toolText(again)).toContain("balance_correction_requires_events");
+		expect(toolText(again)).toContain("events-table");
+
+		// The same truth through every read tool: cash assets and income agree,
+		// and the statement is reported on its own.
+		const summaryResult = await callTool(app, key, "get_financial_summary", { month: productMonth() }, 73);
 		const summary = summaryResult.structuredContent?.summary as {
-			entities: Array<{ entityId: string; metrics: { cashAssetsValue: number; totalIncome: number } }>;
+			entities: Array<{
+				entityId: string;
+				metrics: { cashAssetsValue: number; totalIncome: number; totalAdjustments: number };
+			}>;
 		};
 		const personal = summary.entities.find((entity) => entity.entityId === asset.entityId);
 		expect(personal?.metrics.cashAssetsValue).toBe(74970.63);
 		expect(personal?.metrics.totalIncome).toBe(0);
+		expect(personal?.metrics.totalAdjustments).toBe(74970.63);
 
-		// /cash-flows has no income item: a balance edit is never income.
-		const flowsResult = await callTool(app, key, "get_cash_flows", { month: productMonth() }, 73);
+		// /cash-flows has one balance_statement item and no income: moneyIn excludes
+		// the statement and totals.adjustments carries it.
+		const flowsResult = await callTool(app, key, "get_cash_flows", { month: productMonth() }, 74);
 		const flows = flowsResult.structuredContent as {
-			items: Array<{ sourceType: string; flowType: string }>;
-			totals: { moneyIn: number; moneyOut: number };
+			items: Array<{ sourceType: string; flowType: string; amount: number; spendingAmount: number; date: string }>;
+			totals: { moneyIn: number; moneyOut: number; spending: number; adjustments: number };
 		};
-		expect(flows.items).toEqual([]);
-		expect(flows.totals.moneyIn).toBe(0);
-		expect(flows.totals.moneyOut).toBe(0);
+		expect(flows.items).toHaveLength(1);
+		expect(flows.items[0]).toMatchObject({
+			sourceType: "asset",
+			flowType: "balance_statement",
+			amount: 74970.63,
+			spendingAmount: 0,
+			date: productDate(),
+		});
+		expect(flows.totals).toEqual({ moneyIn: 0, moneyOut: 0, spending: 0, adjustments: 74970.63 });
+
+		// /monthly-ledger tells the identical story.
+		const ledgerResult = await callTool(app, key, "get_monthly_ledger", { yearMonth: productMonth() }, 75);
+		const ledger = ledgerResult.structuredContent?.ledger as {
+			summary: {
+				startingTreasury: number;
+				endingTreasury: number;
+				totalInflow: number;
+				totalAdjustments: number;
+				netChange: number;
+			};
+			actionItems: Array<{ title: string; amount: number; category: string; date: string }>;
+		};
+		expect(ledger.summary).toMatchObject({
+			startingTreasury: 0,
+			endingTreasury: 74970.63,
+			totalInflow: 0,
+			totalAdjustments: 74970.63,
+			netChange: 74970.63,
+		});
+		expect(ledger.actionItems).toHaveLength(1);
+		expect(ledger.actionItems[0]).toMatchObject({
+			date: productDate(),
+			amount: 74970.63,
+			category: "balance_statement",
+		});
 	});
 
-	it("updates an asset by id and a rename shows in get_onboarding_status labels", async () => {
+	it("defaults a new wallet's balance to today, renames it, and refuses a second balance edit", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);
 		const key = await mintKey(app, token);
 
+		// add_asset with a balance and no balanceAsOf: the MCP layer dates the
+		// statement to the product's today (never the UTC month's 1st).
 		const added = await callTool(
 			app,
 			key,
@@ -1830,28 +1880,34 @@ describe("/mcp", () => {
 			74,
 		);
 		expect(added.isError).toBeUndefined();
-		const savingsId = (added.structuredContent?.asset as { id: string }).id;
+		const addedAsset = added.structuredContent?.asset as { id: string; balanceAsOf: string };
+		const savingsId = addedAsset.id;
+		expect(addedAsset.balanceAsOf).toBe(productDate());
 
-		const updated = await callTool(
+		// A rename is not a balance change, so it needs no events table.
+		const renamed = await callTool(app, key, "update_asset", { id: savingsId, newName: "Emergency Fund" }, 75);
+		expect(renamed.isError).toBeUndefined();
+		expect(renamed.structuredContent?.balanceChange).toBeUndefined();
+		const renamedAsset = renamed.structuredContent?.asset as { id: string; name: string; balance: number };
+		expect(renamedAsset.id).toBe(savingsId);
+		expect(renamedAsset.name).toBe("Emergency Fund");
+		expect(renamedAsset.balance).toBe(1000);
+
+		// Changing the balance of a wallet that already states a non-zero balance is
+		// refused: the difference has no date without the events table.
+		const corrected = await callTool(
 			app,
 			key,
 			"update_asset",
-			{ id: savingsId, newName: "Emergency Fund", balance: 2500 },
-			75,
+			{ id: savingsId, balance: 2500 },
+			76,
 		);
-		expect(updated.isError).toBeUndefined();
-		const asset = updated.structuredContent?.asset as { id: string; name: string; balance: number };
-		expect(asset.id).toBe(savingsId);
-		expect(asset.name).toBe("Emergency Fund");
-		expect(asset.balance).toBe(2500);
-		expect(updated.structuredContent?.balanceChange).toEqual({
-			from: 1000,
-			to: 2500,
-			asOf: productDate(),
-			kind: "adjustment",
-		});
+		expect(corrected.isError).toBe(true);
+		expect(toolText(corrected)).toContain("balance_correction_requires_events");
+		expect(toolText(corrected)).toContain("1000 as of " + productDate());
+		expect(toolText(corrected)).toContain("events-table");
 
-		const status = await callTool(app, key, "get_onboarding_status", {}, 76);
+		const status = await callTool(app, key, "get_onboarding_status", {}, 77);
 		const steps = status.structuredContent?.steps as Array<{ id: string; entryLabels: string[] }>;
 		const labels = steps.find((step) => step.id === "assets_wallet")?.entryLabels ?? [];
 		expect(labels).toContain("Emergency Fund");

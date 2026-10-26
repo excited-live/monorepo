@@ -26,15 +26,20 @@ export const DEFAULT_BASELINE_MONTH = "2026-10";
 export const RUNWAY_HORIZON_MONTHS = 120;
 
 /**
- * A wallet's balance is true as of its purchaseDate: `YYYY-MM` means the start
- * of that month, `YYYY-MM-DD` the start of that day.
+ * The month a wallet's balance is stated in: `YYYY-MM` is that month's opening
+ * balance (the 1st), `YYYY-MM-DD` the month of the statement day.
  */
 export function walletBaselineMonth(purchaseDate?: string): string {
 	return purchaseDate && /^\d{4}-\d{2}/.test(purchaseDate) ? purchaseDate.slice(0, 7) : DEFAULT_BASELINE_MONTH;
 }
 
-/** The as-of day of a wallet balance recorded mid-month, if any. */
-function walletBaselineDay(purchaseDate?: string): string | undefined {
+/**
+ * The statement day of a wallet balance recorded mid-month, if any. A balance
+ * with a day is a dated statement: it contributes nothing before that day and
+ * lands as one `balance_statement` action on it. A month-only balance keeps the
+ * opening-balance behaviour (stated at the start of the 1st).
+ */
+export function walletBaselineDay(purchaseDate?: string): string | undefined {
 	return purchaseDate && /^\d{4}-\d{2}-\d{2}/.test(purchaseDate) ? purchaseDate.slice(0, 10) : undefined;
 }
 
@@ -445,12 +450,28 @@ export function calculateWalletBalance(params: {
 		}).netOperatingCash;
 	};
 
-	// wallet.balance is the balance at the start of baselineMonth. Flows are
-	// accumulated through the end of yearMonth: forwards from the baseline, or
-	// backwards (un-applying months) when yearMonth precedes it.
+	// A balance with a day is a dated statement: it contributes nothing to
+	// earlier months, and the anchor month opens without it (buildMonthlyActions
+	// lands it on the day). A month-only balance keeps the legacy convention: it
+	// is the opening balance of that month, projected backwards as a constant.
 	const startYm = baselineMonth;
 	const effectiveYm = yearMonth ?? startYm;
-	const forwards = effectiveYm >= startYm;
+	const datedStatement = baselineDay !== undefined;
+	if (datedStatement && effectiveYm < startYm) {
+		return {
+			openingBalance: 0,
+			assetInjections: 0,
+			currentCashOnHand: 0,
+			netOperatingCash: 0,
+			projectedEomBalance: 0,
+			effectiveBalance: 0,
+			isDefault: isDefaultWallet,
+		};
+	}
+
+	// Flows accumulate through the end of yearMonth: forwards from the baseline,
+	// or backwards from it for a month-only balance read before its month.
+	const forwards = datedStatement || effectiveYm >= startYm;
 	const months = forwards
 		? getYearMonthRange(startYm, effectiveYm)
 		: getYearMonthRange(shiftYearMonth(effectiveYm, 1), shiftYearMonth(startYm, -1));
@@ -463,8 +484,10 @@ export function calculateWalletBalance(params: {
 		netOperatingCash = round2(netOperatingCash + sign * operatingDelta(ym));
 	}
 
-	// A balance recorded mid-month already reflects this wallet's movements dated
-	// before that day; take them out so they are not applied twice.
+	// A balance stated on a day already reflects this wallet's movements dated
+	// before that day; take them out so the statement and the month's flows are
+	// never applied twice. The month's opening treasury excludes the statement
+	// (see calculateOpeningTreasury) and buildMonthlyActions lands it on the day.
 	if (baselineDay && baselineDay.startsWith(startYm) && baselineDay.slice(0, 10) > `${startYm}-01`) {
 		const transfersById = new Map(transfers.map((t) => [t.id, t]));
 		const { actions } = buildMonthlyActions({
@@ -654,7 +677,9 @@ export function calculateOpeningTreasury(params: EntityFlowParams & { yearMonth:
 
 /**
  * Cash flow of an entity in one month: operating income/expenses plus capital
- * transfers in and out. Matches the ledger's inflow/outflow totals.
+ * transfers in and out. Matches the ledger's inflow/outflow totals. `adjustments`
+ * is the separate stock total (a dated wallet balance statement, not income):
+ * the month's total change is `net + adjustments`.
  */
 export function calculateEntityMonthlyCashFlow(params: {
 	account: EntityAccount;
@@ -665,27 +690,41 @@ export function calculateEntityMonthlyCashFlow(params: {
 	/** book: the entity's assets; a missing list treats every transfer endpoint as cash. */
 	hardware?: HardwareAsset[];
 	yearMonth: string;
-}): { inflow: number; outflow: number; net: number } {
+}): { inflow: number; outflow: number; net: number; adjustments: number } {
 	const { account, transfers, subscriptions = [], revenues = [], liabilities = [], hardware = [], yearMonth } = params;
 
-	const operating = calculateEntityMonthlyOperatingCash({
+	const { totalInflow, totalCashOutflow, totalAdjustments } = buildMonthlyActions({
 		account,
-		revenues,
-		subscriptions,
-		liabilities,
 		yearMonth,
+		subscriptions,
+		hardware,
+		revenues,
 		transfers,
+		liabilities,
 	});
-	const monthTransfers = transfers.filter((t) => isTransferInMonth(t, yearMonth));
-	const transferIn = monthTransfers.reduce((acc, t) => acc + transferCashIn(t, account.id, hardware), 0);
-	const transferOut = monthTransfers.reduce(
-		(acc, t) => acc + transferCashOut(t, account.id, hardware, { yearMonth, liabilities, transfers, subscriptions }),
-		0,
-	);
+	const net = round2(totalInflow - totalCashOutflow);
+	return { inflow: totalInflow, outflow: totalCashOutflow, net, adjustments: totalAdjustments };
+}
 
-	const inflow = round2(operating.totalIncome + transferIn);
-	const outflow = round2(operating.totalExpense + transferOut);
-	return { inflow, outflow, net: round2(inflow - outflow) };
+
+/**
+ * Cash wallets stating a day-level balance in yearMonth. A month-only balance
+ * keeps the opening-balance behaviour and is not a statement.
+ */
+function cashBalanceStatements(params: {
+	account: EntityAccount;
+	hardware: HardwareAsset[];
+	yearMonth: string;
+}): Array<{ asset: HardwareAsset; date: string }> {
+	const { account, hardware, yearMonth } = params;
+	const statements: Array<{ asset: HardwareAsset; date: string }> = [];
+	for (const asset of hardware) {
+		if (asset.entityId !== account.id || !isCashAsset(asset)) continue;
+		const day = walletBaselineDay(asset.purchaseDate);
+		if (!day || !day.startsWith(yearMonth) || asset.cost === 0) continue;
+		statements.push({ asset, date: day });
+	}
+	return statements;
 }
 
 /**
@@ -715,19 +754,23 @@ export function calculateRunwayProjection(
 	for (let i = 0; i < horizonMonths; i++) {
 		const flow = flowAt(i);
 		if (flow.inflow > 0) hasInflow = true;
-		const next = balance + flow.net;
+		// A dated balance statement is a stock adjustment, not income, but it
+		// does fund the months after it: count it in the balance walk.
+		const change = round2(flow.net + flow.adjustments);
+		const next = balance + change;
 		if (next < 0) {
 			// Runs out inside this month (interpolated), or was already overdrawn and
 			// this month's flow does not bring it back above zero.
-			const runwayMonths = balance > 0 && flow.net < 0 ? round2(i + balance / -flow.net) : i;
+			const runwayMonths = balance > 0 && change < 0 ? round2(i + balance / -change) : i;
 			return { runwayMonths, isDefaultAlive: false };
 		}
 		balance = round2(next);
 	}
 
 	const steadyState = flowAt(horizonMonths);
-	if (steadyState.net < 0) {
-		return { runwayMonths: round2(horizonMonths + balance / -steadyState.net), isDefaultAlive: false };
+	const steadyChange = round2(steadyState.net + steadyState.adjustments);
+	if (steadyChange < 0) {
+		return { runwayMonths: round2(horizonMonths + balance / -steadyChange), isDefaultAlive: false };
 	}
 	return { runwayMonths: null, isDefaultAlive: hasInflow };
 }
@@ -854,7 +897,16 @@ export interface LedgerAction {
 	category: string;
 	counterparty?: string;
 	/** book: what the movement is for. */
-	flowType?: "income" | "expense" | "debt_payment" | "asset_purchase" | "investment" | "transfer" | "loan_proceeds" | "depreciation";
+	flowType?:
+		| "income"
+		| "expense"
+		| "debt_payment"
+		| "asset_purchase"
+		| "investment"
+		| "transfer"
+		| "loan_proceeds"
+		| "depreciation"
+		| "balance_statement";
 	/** book: the record that produced the movement. */
 	sourceType?: "income" | "expense" | "liability" | "transfer" | "asset" | "account";
 	/** book: cash asset the movement lands in or leaves; absent = the default wallet. */
@@ -883,6 +935,7 @@ export function buildMonthlyActions(params: LedgerParams): {
 	totalInflow: number;
 	totalCashOutflow: number;
 	totalDepreciation: number;
+	totalAdjustments: number;
 } {
 	const {
 		account,
@@ -898,6 +951,7 @@ export function buildMonthlyActions(params: LedgerParams): {
 
 	let totalInflow = 0;
 	let totalCashOutflow = 0;
+	let totalAdjustments = 0;
 
 	// Inflows: Revenues
 	const activeRevenues = revenues.filter((r) => r.entityId === account.id && isRevenueInMonth(r, yearMonth));
@@ -971,6 +1025,25 @@ export function buildMonthlyActions(params: LedgerParams): {
 			flowType: "loan_proceeds",
 			sourceType: "liability",
 			cashAssetId: liab.loan.proceedsAssetId,
+		});
+	}
+
+	// Inflows (stock, not income): a dated wallet balance statement. A wallet
+	// stated on a day contributes nothing before it, so the statement is the one
+	// dated entry that brings the balance into the book. It is NOT income: it
+	// stays out of totalInflow and is reported as totalAdjustments instead.
+	for (const { asset: wallet, date } of cashBalanceStatements({ account, hardware, yearMonth })) {
+		totalAdjustments = round2(totalAdjustments + wallet.cost);
+		actions.push({
+			id: `action_balance_${wallet.id}`,
+			date,
+			description: `Balance statement: ${wallet.name}`,
+			amount: wallet.cost,
+			direction: "inflow",
+			category: "balance_statement",
+			flowType: "balance_statement",
+			sourceType: "asset",
+			cashAssetId: wallet.id,
 		});
 	}
 
@@ -1072,6 +1145,25 @@ export function buildMonthlyActions(params: LedgerParams): {
 	}
 	totalDepreciation = round2(totalDepreciation);
 
+	// Movements dated before a wallet's own statement are already inside that
+	// statement (the balance was read after they happened). Apply them again and
+	// the statement would count twice, so they leave the month's cash totals.
+	const statements = cashBalanceStatements({ account, hardware, yearMonth });
+	if (statements.length > 0) {
+		const entityCash = hardware.filter((h) => h.entityId === account.id && isCashAsset(h));
+		const defaultWalletId = (entityCash.find((h) => h.isDefault) ?? entityCash[0])?.id;
+		for (let index = actions.length - 1; index >= 0; index -= 1) {
+			const action = actions[index]!;
+			if (action.flowType === "balance_statement" || action.flowType === "depreciation") continue;
+			const owner = action.cashAssetId ?? defaultWalletId;
+			const covered = statements.some((statement) => statement.asset.id === owner && action.date < statement.date);
+			if (!covered) continue;
+			if (action.direction === "inflow") totalInflow = round2(totalInflow - action.amount);
+			else totalCashOutflow = round2(totalCashOutflow - action.amount);
+			actions.splice(index, 1);
+		}
+	}
+
 	// Sort actions by date ascending
 	actions.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -1080,6 +1172,7 @@ export function buildMonthlyActions(params: LedgerParams): {
 		totalInflow: round2(totalInflow),
 		totalCashOutflow: round2(totalCashOutflow),
 		totalDepreciation,
+		totalAdjustments: round2(totalAdjustments),
 	};
 }
 
@@ -1096,7 +1189,9 @@ export function generateMonthlyLedger(params: LedgerParams): {
 		totalInflow: number;
 		totalCashOutflow: number;
 		totalDepreciation: number;
+		totalAdjustments: number;
 		netCashFlow: number;
+		netChange: number;
 		endingTreasury: number;
 		runwayMonths?: number | null;
 		isDefaultAlive?: boolean;
@@ -1104,11 +1199,14 @@ export function generateMonthlyLedger(params: LedgerParams): {
 	};
 } {
 	const { account, yearMonth } = params;
-	const { actions, totalInflow, totalCashOutflow, totalDepreciation } = buildMonthlyActions(params);
+	const { actions, totalInflow, totalCashOutflow, totalDepreciation, totalAdjustments } = buildMonthlyActions(params);
 
 	const startingTreasury = calculateOpeningTreasury(params);
 	const netCashFlow = round2(totalInflow - totalCashOutflow);
-	const endingTreasury = round2(startingTreasury + netCashFlow);
+	// A balance statement is a stock adjustment: it changes treasury but is not
+	// cash flow, so the two totals stay separate and both add up to the change.
+	const netChange = round2(netCashFlow + totalAdjustments);
+	const endingTreasury = round2(startingTreasury + netChange);
 
 	const { runwayMonths, isDefaultAlive } = calculateRunwayProjection({
 		...params,
@@ -1125,7 +1223,9 @@ export function generateMonthlyLedger(params: LedgerParams): {
 			totalInflow,
 			totalCashOutflow,
 			totalDepreciation,
+			totalAdjustments,
 			netCashFlow,
+			netChange,
 			endingTreasury,
 			runwayMonths,
 			isDefaultAlive,

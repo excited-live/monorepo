@@ -188,15 +188,27 @@ describe("cashflow projection & runway", () => {
 		expect(calculateAvailableCash({ account: paid, asOfDate: "2026-10-26", ...params })).toBe(240000);
 	});
 
-	it("treats a balance typed mid-month as already including earlier movements", () => {
+	it("treats a balance typed mid-month as a dated statement, not double-counted", () => {
 		const paid: EntityAccount = { ...personal, paydayDayOfMonth: 25 };
 		// Bank shows 50k on Oct 18, after rent (5th); salary still to come on the 25th
 		const typed: HardwareAsset = { ...wallet, cost: 50000, purchaseDate: "2026-10-18" };
 		const params = { ...base, hardware: [typed], subscriptions: [rent], transfers: [] };
+		expect(calculateTreasuryAsOf({ account: paid, asOfDate: "2026-10-17", ...params })).toBe(0);
 		expect(calculateTreasuryAsOf({ account: paid, asOfDate: "2026-10-18", ...params })).toBe(50000);
 		const oct = generateMonthlyLedger({ account: paid, yearMonth: "2026-10", ...params });
-		expect(oct.summary.startingTreasury).toBe(80000); // rent not yet paid on the 1st
-		expect(oct.summary.endingTreasury).toBe(100000); // 50k + salary
+		// The statement is the only October cash movement before the 18th: the
+		// rent on the 5th already sits inside the 50k balance and is not deducted
+		// a second time.
+		expect(oct.summary.startingTreasury).toBe(0);
+		expect(oct.summary.totalInflow).toBe(50000); // salary on the 25th
+		expect(oct.summary.totalCashOutflow).toBe(0);
+		expect(oct.summary.totalAdjustments).toBe(50000);
+		expect(oct.summary.netChange).toBe(100000);
+		expect(oct.summary.endingTreasury).toBe(100000); // 50k statement + salary
+		expect(oct.actions.filter((action) => action.flowType === "balance_statement")).toEqual([
+			expect.objectContaining({ date: "2026-10-18", amount: 50000, category: "balance_statement" }),
+		]);
+		expect(oct.actions.some((action) => action.id === rent.id)).toBe(false);
 	});
 
 	it("does not call a dip that recovers within the month overdrawn", () => {

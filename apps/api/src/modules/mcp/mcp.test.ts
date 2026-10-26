@@ -1181,7 +1181,7 @@ describe("/mcp", () => {
 			list.json?.result as {
 				tools: Array<{
 					name: string;
-					inputSchema: { properties?: Record<string, { enum?: string[] }>; required?: string[] };
+					inputSchema: { properties?: Record<string, { enum?: string[]; description?: string }>; required?: string[] };
 				}>;
 			}
 		).tools;
@@ -1216,9 +1216,37 @@ describe("/mcp", () => {
 				}
 			}
 			expect(tool!.inputSchema.properties?.kind?.enum?.length, `${name} publishes the kind enum`).toBeGreaterThan(1);
-			expect(tool!.inputSchema.required ?? [], `${name} publishes no required list`).toEqual(
-				expect.arrayContaining(["kind", "name"]),
-			);
+		}
+
+		// Required exactly where the body requires it, and nowhere else: the four
+		// all-optional read tools publish no required array by design (#201).
+		const requiredFields: Record<string, string[]> = {
+			add_expense: ["name", "category", "amount"],
+			create_business: ["name"],
+			create_transfer: ["amount"],
+			add_asset: ["name", "category", "kind"],
+			add_liability: ["name", "category", "kind"],
+			add_income: ["name", "category", "amount", "kind"],
+		};
+		for (const [name, required] of Object.entries(requiredFields)) {
+			const tool = tools.find((entry) => entry.name === name);
+			expect(tool, name).toBeDefined();
+			expect([...(tool!.inputSchema.required ?? [])].sort(), `${name} required`).toEqual([...required].sort());
+		}
+
+		// #201 review 3213: six fields an agent previously had to guess from a bare
+		// type. The descriptions are publication-only; the required lists above are
+		// unchanged by them.
+		const described: Array<[string, string[]]> = [
+			["add_asset", ["kind", "name", "category"]],
+			["add_income", ["kind", "name", "category", "amount", "cycle", "employment"]],
+			["add_liability", ["kind", "name", "category"]],
+		];
+		for (const [name, fields] of described) {
+			const tool = tools.find((entry) => entry.name === name);
+			for (const field of fields) {
+				expect(tool!.inputSchema.properties?.[field]?.description, `${name}.${field} has no description`).toBeTruthy();
+			}
 		}
 	});
 

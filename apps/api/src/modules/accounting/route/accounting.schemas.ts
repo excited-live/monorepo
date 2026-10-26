@@ -584,6 +584,7 @@ const entityWealthMetrics = z.object({
 	gearPct: z.number(),
 	totalIncome: z.number(),
 	totalExpense: z.number(),
+	totalAdjustments: z.number(),
 	liabilityMonthly: z.number(),
 	liabPct: z.number(),
 	runwayMonths: z.number().nullable(),
@@ -611,6 +612,7 @@ export const ProjectionSchema = z
 		totalIncome: z.number(),
 		totalExpense: z.number(),
 		liabilityMonthly: z.number(),
+		adjustments: z.number(),
 		projectedNet: z.number(),
 	})
 	.meta({ id: "Projection", description: "Treasury balance per month around a centre month." });

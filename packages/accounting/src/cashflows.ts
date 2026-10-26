@@ -24,7 +24,8 @@ export type CashFlowType =
 	| "investment"
 	| "transfer"
 	| "loan_proceeds"
-	| "depreciation";
+	| "depreciation"
+	| "balance_statement";
 
 /** One dated movement of a month, as shown in the money-in / money-out feed. */
 export interface CashFlowItem {
@@ -69,9 +70,11 @@ export interface CashFlowSummary {
 	moneyIn: number;
 	moneyOut: number;
 	spending: number;
+	/** Dated balance statements: stock corrections, excluded from moneyIn. */
+	adjustments: number;
 }
 
-const ACTION_PREFIXES = ["action_dep_", "loan_proceeds_"];
+const ACTION_PREFIXES = ["action_dep_", "loan_proceeds_", "action_balance_"];
 
 /** The record id behind a ledger action (strips the prefix of generated ids). */
 function sourceIdOf(action: LedgerAction, account: EntityAccount): string {
@@ -190,19 +193,29 @@ export function buildCashFlows(params: {
 /**
  * Totals of a feed: moneyIn / moneyOut sum the cash items per direction (they match
  * the ledger's totalInflow / totalCashOutflow); spending sums every item's spendingAmount.
+ * A `balance_statement` is a dated stock correction, not income: it is excluded from
+ * moneyIn and reported on its own as `adjustments`.
  */
 export function summarizeCashFlows(items: CashFlowItem[]): CashFlowSummary {
 	let moneyIn = 0;
 	let moneyOut = 0;
 	let spending = 0;
+	let adjustments = 0;
 	for (const item of items) {
-		if (item.isCash) {
+		if (item.isCash && item.flowType === "balance_statement") {
+			adjustments += item.amount;
+		} else if (item.isCash) {
 			if (item.direction === "in") moneyIn += item.amount;
 			else moneyOut += item.amount;
 		}
 		spending += item.spendingAmount;
 	}
-	return { moneyIn: round2(moneyIn), moneyOut: round2(moneyOut), spending: round2(spending) };
+	return {
+		moneyIn: round2(moneyIn),
+		moneyOut: round2(moneyOut),
+		spending: round2(spending),
+		adjustments: round2(adjustments),
+	};
 }
 
 /**

@@ -92,6 +92,7 @@ export function calculateEntityWealthMetrics(params: {
 		endingTreasury,
 		totalInflow,
 		totalCashOutflow,
+		totalAdjustments,
 		runwayMonths = null,
 		isDefaultAlive = false,
 	} = ledger.summary;
@@ -135,6 +136,7 @@ export function calculateEntityWealthMetrics(params: {
 		gearPct,
 		totalIncome,
 		totalExpense,
+		totalAdjustments,
 		liabilityMonthly,
 		liabPct,
 		runwayMonths,
@@ -255,6 +257,12 @@ export function calculateProjectionBalances(params: {
 
 	const flowOf = (ym: string) =>
 		calculateEntityMonthlyCashFlow({ account, transfers, subscriptions, revenues, liabilities, hardware, yearMonth: ym });
+	// A dated balance statement is stock, not income, but it does move the
+	// balance line: the month's total change is netCashFlow + adjustments.
+	const changeOf = (ym: string) => {
+		const flow = flowOf(ym);
+		return round2(flow.net + flow.adjustments);
+	};
 
 	// Waterfall figures for the selected month, straight from the ledger so the
 	// bars add up to the same net the balance line uses.
@@ -266,7 +274,7 @@ export function calculateProjectionBalances(params: {
 	);
 	const totalIncome = selected.inflow;
 	const totalExpense = round2(Math.max(0, selected.outflow - liabilityMonthly));
-	const projectedNet = selected.net;
+	const projectedNet = round2(selected.net + selected.adjustments);
 
 	const offsets: number[] = [];
 	for (let m = -pastMonths; m <= futureMonths; m++) offsets.push(m);
@@ -279,11 +287,11 @@ export function calculateProjectionBalances(params: {
 	);
 
 	for (let m = -1; m >= -pastMonths; m--) {
-		balances.set(m, round2((balances.get(m + 1) ?? 0) - flowOf(shiftYearMonth(yearMonth, m)).net));
+		balances.set(m, round2((balances.get(m + 1) ?? 0) - changeOf(shiftYearMonth(yearMonth, m))));
 	}
 
 	for (let m = 1; m <= futureMonths; m++) {
-		balances.set(m, round2((balances.get(m - 1) ?? 0) + flowOf(shiftYearMonth(yearMonth, m - 1)).net));
+		balances.set(m, round2((balances.get(m - 1) ?? 0) + changeOf(shiftYearMonth(yearMonth, m - 1))));
 	}
 
 	// The "Now" point shows today's balance when viewing the current month; the
@@ -301,6 +309,7 @@ export function calculateProjectionBalances(params: {
 		totalIncome,
 		totalExpense,
 		liabilityMonthly,
+		adjustments: selected.adjustments,
 		projectedNet,
 	};
 }

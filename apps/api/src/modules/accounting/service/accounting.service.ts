@@ -1058,7 +1058,9 @@ export function createAccountingService(repo: AccountingRepository) {
 				totalInflow: raw.summary.totalInflow,
 				totalCashOutflow: raw.summary.totalCashOutflow,
 				totalDepreciation: raw.summary.totalDepreciation,
+				totalAdjustments: raw.summary.totalAdjustments,
 				netCashFlow: raw.summary.netCashFlow,
+				netChange: raw.summary.netChange,
 				runwayMonths: raw.summary.runwayMonths,
 				isDefaultAlive: raw.summary.isDefaultAlive,
 			},
@@ -1110,6 +1112,7 @@ export function createAccountingService(repo: AccountingRepository) {
 			totalIncome: projection.totalIncome,
 			totalExpense: projection.totalExpense,
 			liabilityMonthly: projection.liabilityMonthly,
+			adjustments: projection.adjustments,
 			projectedNet: projection.projectedNet,
 		};
 	}

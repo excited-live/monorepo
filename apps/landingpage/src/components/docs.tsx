@@ -6,6 +6,7 @@ import { navigate } from 'astro:transitions/client';
 import { RootProvider } from 'fumadocs-ui/provider/astro';
 import type { AstroProviderProps } from 'fumadocs-core/framework/astro';
 import SearchDialog from './search';
+import { addressForLang } from '@/lib/lang';
 
 /** The two languages the landing chrome and the docs prose share. */
 type Lang = 'en' | 'th';
@@ -37,10 +38,18 @@ function LangSwitch() {
 	const choose = (next: Lang) => {
 		setLang(next);
 		document.documentElement.dataset.lang = next;
+		document.documentElement.lang = next;
 		try {
 			localStorage.setItem('exl-lang', next);
 		} catch {
 			/* storage unavailable — the choice lasts this page */
+		}
+		// #197 R1: the address carries the language — `?lang=th` for Thai, the
+		// clean URL for English — so copying the URL keeps the choice.
+		try {
+			history.replaceState(history.state, '', addressForLang(window.location.href, next));
+		} catch {
+			/* sandboxed frame — the language still applies */
 		}
 		window.gtag?.('event', 'lang_toggle', { lang: next, surface: 'docs' });
 	};
@@ -53,6 +62,7 @@ function LangSwitch() {
 					type="button"
 					className="docs-lang-switch__btn"
 					aria-pressed={lang === value}
+					aria-current={lang === value ? 'true' : 'false'}
 					lang={value}
 					onClick={() => choose(value)}
 				>

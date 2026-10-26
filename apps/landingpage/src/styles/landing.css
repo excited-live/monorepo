@@ -68,7 +68,7 @@ html[data-lang='en'] [data-lang-th] {
    look from the old landing (pill, 13.5px/600, chevron at right 12px); the
    Astryx popover keeps its own styled menu. */
 .lang-island .astryx-selector {
-	min-height: 38px;
+	min-height: 44px;
 	padding: 8px 30px 8px 14px;
 	border: 1px solid rgba(20, 20, 19, 0.15);
 	border-radius: 999px;

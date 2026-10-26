@@ -26,6 +26,18 @@ export interface AlternateLink {
 }
 
 /**
+ * The address of a page in a given language (#197 R1): `?lang=th` for Thai and
+ * the clean URL for English. Pure so the docs switch, the landing switch and
+ * the pre-paint script can all write the same string.
+ */
+export function addressForLang(href: string | URL, lang: Lang): string {
+	const url = new URL(typeof href === 'string' ? href : href.href, 'https://excited.live');
+	if (lang === 'th') url.searchParams.set('lang', 'th');
+	else url.searchParams.delete('lang');
+	return `${url.pathname}${url.search}${url.hash}`;
+}
+
+/**
  * `hreflang` for a page that carries both languages.
  *
  * `en` and `x-default` are the clean URL (that is what a visitor with no

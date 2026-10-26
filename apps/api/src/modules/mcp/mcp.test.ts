@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CATALOG_PRESETS } from "@excited-live/accounting";
+import { CATALOG_PRESETS, shiftYearMonth } from "@excited-live/accounting";
 import {
 	CreateAssetBody,
 	CreateEntityBody,
@@ -17,6 +17,7 @@ import type { Hono } from "hono";
 import { createApp } from "../../app";
 import { DB_FILE_ENV, resetDbCache } from "../../db";
 import { getTokensAuth, resetTokensAuthCache } from "../../lib/auth";
+import { productDate, productMonth } from "../../lib/product-time";
 import type { ApiEnv } from "../../lib/env";
 
 /**
@@ -559,6 +560,45 @@ describe("/mcp", () => {
 		);
 
 	const toolText = (result: ToolResult): string => result.content.map((part) => part.text).join(" ");
+
+	it("books the three-field expense as a one-off on today, not the 1st (#202)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+		const today = productDate();
+		const thisMonth = productMonth();
+		const nextMonth = shiftYearMonth(thisMonth, 1);
+
+		// The exact call from #202: name, category and amount, nothing else.
+		const added = await addExpense(key, app, { name: "Lunch", category: "food", amount: 250 }, 49);
+		const addedResult = added.json?.result as ToolResult;
+		expect(addedResult.isError).toBeUndefined();
+		const expense = addedResult.structuredContent?.expense as {
+			id: string;
+			cycle: string;
+			startMonth: string;
+			dayOfMonth?: number;
+		};
+		expect(expense.cycle).toBe("one_time");
+		expect(expense.startMonth).toBe(thisMonth);
+		expect(expense.dayOfMonth).toBe(Number(today.slice(8, 10)));
+
+		const flows = async (month: string) => {
+			const read = await rpc(
+				app,
+				{ jsonrpc: "2.0", id: 50, method: "tools/call", params: { name: "get_cash_flows", arguments: { month } } },
+				key,
+			);
+			return (read.json?.result as ToolResult).structuredContent as {
+				items: Array<{ sourceId: string; date: string }>;
+			};
+		};
+
+		// Dated today in this month's flows, and absent the next month: one
+		// receipt, not a monthly charge the user never asked for.
+		expect((await flows(thisMonth)).items.find((item) => item.sourceId === expense.id)?.date).toBe(today);
+		expect((await flows(nextMonth)).items.some((item) => item.sourceId === expense.id)).toBe(false);
+	});
 
 	it("names the ฿0 bootstrap wallet and flags it as unfunded, without blocking the write (#174)", async () => {
 		const app = configuredApp();

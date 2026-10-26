@@ -47,7 +47,7 @@ import {
 	UpdateTransferBody,
 	type SetCareerIncomeBody,
 } from "../route/accounting.schemas";
-import { productMonth } from "../../../lib/product-time";
+import { productDate, productMonth } from "../../../lib/product-time";
 
 /**
  * Accounting use cases over the normalized book (docs/accounting-data-model.md).
@@ -624,8 +624,16 @@ export function createAccountingService(repo: AccountingRepository) {
 	}
 
 	async function createExpense(userId: string, body: CreateExpenseInput): Promise<Stored<BookExpense>> {
-		await ensureBootstrap(userId, monthOf(body.asOf));
-		const cycle = body.cycle ?? "monthly";
+		// #202: a request that names one thing to buy is a receipt, not a
+		// subscription. Recurrence is opt-in; `?? "monthly"` turned a three-field
+		// "250 THB lunch today" into a charge on the 1st, every month.
+		const cycle = body.cycle ?? "one_time";
+		// A one-time expense with no `asOf` happened today, so its day is today's:
+		// left undefined it falls back to the 1st (bookExpenseToExpense), which
+		// books the receipt in the wrong week. A month-only `asOf` keeps the
+		// documented 1st.
+		const receiptDay = body.asOf ?? productDate();
+		await ensureBootstrap(userId, monthOf(receiptDay));
 		const expense: BookExpense = {
 			id: body.id ?? crypto.randomUUID(),
 			entityId: body.entityId,
@@ -635,13 +643,13 @@ export function createAccountingService(repo: AccountingRepository) {
 			category: normalizeCategory(body.category),
 			amount: body.amount,
 			cycle,
-			startMonth: body.startMonth ?? monthOf(body.asOf),
+			startMonth: body.startMonth ?? monthOf(receiptDay),
 			active: body.active ?? true,
 			...definedOnly({
 				// A one-time expense happens on one day: `asOf`'s day is that day,
 				// whatever month `startMonth` names (a backdated receipt). Recurring
 				// cycles keep `dayOfMonth` as their billing day and are untouched.
-				dayOfMonth: body.dayOfMonth ?? (cycle === "one_time" ? dayOfMonthOf(body.asOf) : undefined),
+				dayOfMonth: body.dayOfMonth ?? (cycle === "one_time" ? dayOfMonthOf(receiptDay) : undefined),
 				endMonth: body.endMonth,
 				paidFromAssetId: body.paidFromAssetId,
 				paidFromLiabilityId: body.paidFromLiabilityId,

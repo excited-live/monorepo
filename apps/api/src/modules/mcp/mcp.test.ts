@@ -78,11 +78,19 @@ async function signIn(app: Hono<ApiEnv>, email = EMAIL): Promise<{ token: string
 	return { token: token as string, userId: meData.user.id };
 }
 
-async function mintKey(app: Hono<ApiEnv>, token: string, agentId = "claude-code"): Promise<string> {
+/** The tokens that grant every tool, in the PRM vocabulary a mint accepts. */
+const FULL_SCOPES = ["onboarding", "accounting:read", "accounting:write"];
+
+async function mintKey(
+	app: Hono<ApiEnv>,
+	token: string,
+	agentId = "claude-code",
+	scopes: string[] = FULL_SCOPES,
+): Promise<string> {
 	const res = await app.request("/api/v1/agent-keys", {
 		method: "POST",
 		headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
-		body: JSON.stringify({ agentId }),
+		body: JSON.stringify({ agentId, scopes }),
 	});
 	expect(res.status).toBe(201);
 	const data = (await res.json()) as { key: string };
@@ -129,6 +137,27 @@ type ToolResult = {
 };
 
 describe("/mcp", () => {
+	it("answers GET and DELETE with a fast 405 before auth, never a stream (#142)", async () => {
+		const app = configuredApp();
+
+		for (const method of ["GET", "DELETE"] as const) {
+			const started = Date.now();
+			// No credential: the method gate must come before auth resolution,
+			// so this is 405 rather than a 401 challenge.
+			const res = await app.request("/mcp", { method });
+			expect(res.status).toBe(405);
+			expect(res.headers.get("allow")).toBe("POST");
+			expect(res.headers.get("content-type") ?? "").not.toContain("text/event-stream");
+			// Reading the body proves the response ends: an idle SSE stream would
+			// hang here until the test timeout. That body read IS the real guard;
+			// the bound below is only a coarse liveness check. It was 1000ms and
+			// measured ~3.2s on loaded runs (#171 run 270, main run 272, 24 vitest
+			// files in parallel), so it is no longer a latency assertion.
+			await res.text();
+			expect(Date.now() - started).toBeLessThan(5000);
+		}
+	});
+
 	it("answers 401 with the protected-resource challenge when no key is sent", async () => {
 		const app = configuredApp();
 		const res = await rpc(app, initialize());
@@ -189,33 +218,54 @@ describe("/mcp", () => {
 
 		const first = await rpc(app, initialize(), key);
 		expect(first.status).toBe(200);
-		expect(first.headers.get("x-ratelimit-limit")).toBe("10");
-		expect(first.headers.get("x-ratelimit-remaining")).toBe("9");
+		expect(first.headers.get("x-ratelimit-limit")).toBe("200");
+		expect(first.headers.get("x-ratelimit-remaining")).toBe("199");
 		expect(Number(first.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
 		const second = await rpc(app, initialize(2), key);
 		expect(second.status).toBe(200);
-		expect(second.headers.get("x-ratelimit-remaining")).toBe("8");
+		expect(second.headers.get("x-ratelimit-remaining")).toBe("198");
 	});
 
 	it("answers 429 with Retry-After when the key's budget is spent, never 401 (#140)", async () => {
 		const app = configuredApp();
-		const { token } = await signIn(app);
-		const key = await mintKey(app, token);
+		const { userId } = await signIn(app);
+		// An explicit two-call budget, not the product default: spending 200
+		// sequential RPCs at ~90ms each made this test time out at 20s. The
+		// semantics under test are identical, and the small budget also proves
+		// the per-key limit is what gets enforced, not the global one.
+		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
+		const minted = await apiKeyApi(auth!).createApiKey({
+			body: {
+				userId,
+				expiresIn: 24 * 60 * 60,
+				permissions: { onboarding: ["read", "write"], accounting: ["read", "write"] },
+				rateLimitMax: 2,
+				rateLimitTimeWindow: 24 * 60 * 60 * 1000,
+			},
+		});
+		const key = minted.key;
 
-		// AGENT_KEY_RATE_LIMIT: 10 requests per key per window.
-		for (let i = 0; i < 10; i++) {
-			const ok = await rpc(app, initialize(i + 1), key);
-			expect(ok.status).toBe(200);
-		}
+		const first = await rpc(app, initialize(1), key);
+		expect(first.status).toBe(200);
+		expect(first.headers.get("x-ratelimit-limit")).toBe("2");
+		expect(first.headers.get("x-ratelimit-remaining")).toBe("1");
 
-		const limited = await rpc(app, initialize(99), key);
+		const second = await rpc(app, initialize(2), key);
+		expect(second.status).toBe(200);
+		expect(second.headers.get("x-ratelimit-remaining")).toBe("0");
+
+		const limited = await rpc(app, initialize(999), key);
 		expect(limited.status).toBe(429);
 		expect(limited.headers.get("www-authenticate")).toBeNull();
 		const retryAfter = Number(limited.headers.get("retry-after"));
 		expect(retryAfter).toBeGreaterThan(0);
 		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
-		expect(limited.headers.get("x-ratelimit-limit")).toBe("10");
+		// A refusal carries no key row back from the plugin, so the published
+		// limit is the product default even when the key's own budget is
+		// smaller; only the 200 path can report a per-key limit (#156). That
+		// gap is pre-existing and out of scope for this red-main fix.
+		expect(limited.headers.get("x-ratelimit-limit")).toBe("200");
 		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
 		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
@@ -233,7 +283,7 @@ describe("/mcp", () => {
 		// distinction an unattended agent needs.
 		expect(body.hint).toContain("do not rotate");
 		expect(body.rateLimit).toEqual({
-			limit: 10,
+			limit: 200,
 			remaining: 0,
 			reset: Number(limited.headers.get("x-ratelimit-reset")),
 		});
@@ -256,9 +306,10 @@ describe("/mcp", () => {
 		const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" }, key);
 		expect(list.status).toBe(200);
 		const tools = (list.json?.result as { tools: Array<{ name: string }> }).tools.map((tool) => tool.name);
-		expect(tools).toHaveLength(16);
+		expect(tools).toHaveLength(17);
 		expect(tools).toEqual(
 			expect.arrayContaining([
+				"whoami",
 				"get_onboarding_status",
 				"list_entities",
 				"create_business",
@@ -640,6 +691,66 @@ describe("/mcp", () => {
 		expect(deniedResult.content[0]?.text).toContain("accounting:write");
 	});
 
+	it("grants exactly the requested scope: a read-only key lists it and is refused a write (#161)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+
+		const minted = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+			body: JSON.stringify({ agentId: "read-only-agent", scopes: ["accounting:read"] }),
+		});
+		expect(minted.status).toBe(201);
+		const created = (await minted.json()) as { key: string; scopes: string[] };
+		// The mint receipt states the grant instead of implying it.
+		expect(created.scopes).toEqual(["accounting:read"]);
+
+		const listed = await app.request("/api/v1/agent-keys", {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		const keys = (await listed.json()) as { keys: Array<{ scopes: string[] }> };
+		expect(keys.keys).toHaveLength(1);
+		expect(keys.keys[0]?.scopes).toEqual(["accounting:read"]);
+
+		// The read half is allowed...
+		const read = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 40, method: "tools/call", params: { name: "get_cash_flows", arguments: {} } },
+			created.key,
+		);
+		expect((read.json?.result as ToolResult).isError).toBeUndefined();
+
+		// ...and the write half is refused by the stored grant, not by the request.
+		const write = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 41,
+				method: "tools/call",
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+			},
+			created.key,
+		);
+		const writeResult = write.json?.result as ToolResult;
+		expect(writeResult.isError).toBe(true);
+		expect(writeResult.content[0]?.text).toContain("accounting:write");
+
+		// The credential can be asked what it is before it writes: the tool
+		// scopes, not the request vocabulary, because that is what gates a call.
+		const who = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "whoami", arguments: {} } },
+			created.key,
+		);
+		const whoResult = who.json?.result as ToolResult;
+		expect(whoResult.isError).toBeUndefined();
+		expect(whoResult.structuredContent).toMatchObject({
+			via: "apiKey",
+			scopes: ["accounting:read"],
+		});
+		expect(typeof (whoResult.structuredContent as { userId?: unknown }).userId).toBe("string");
+	});
+
 	it("rejects a revoked key", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);
@@ -821,8 +932,9 @@ describe("/mcp", () => {
 	it("treats a retried create with the same id as a no-op on every write (#143)", async () => {
 		const app = configuredApp();
 		const { userId } = await signIn(app);
-		// 1 + 6 x 2 + 1 requests, so this key needs more than the published
-		// 10-request budget the #140 tests pin.
+		// 1 + 6 x 2 + 1 requests: mint an explicit 500-call budget so this test
+		// does not depend on the default AGENT_KEY_RATE_LIMIT, which #140 covers
+		// separately.
 		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
 		const minted = await apiKeyApi(auth!).createApiKey({
 			body: {

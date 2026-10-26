@@ -4341,6 +4341,7 @@
 					"Accounting"
 				],
 				"summary": "Update an expense",
+				"description": "Partial update. `details` merges shallowly onto the stored details, so a patch for one key keeps the rest.",
 				"responses": {
 					"200": {
 						"description": "Expense updated.",
@@ -6313,7 +6314,7 @@
 					"Auth"
 				],
 				"summary": "Mint an agent API key",
-				"description": "Creates a 90-day key scoped to onboarding and accounting, owned by the signed-in user. The full key is returned once.",
+				"description": "Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant in the same vocabulary the PRM advertises: `onboarding`, `accounting:read`, `accounting:write`; a token grants exactly itself and `accounting:write` does not imply read. Omit `scopes` for the full read+write grant every key has had (onboarding and accounting). An unknown token is a 400 with `code: \"invalid_scope\"` and the supported list, never silently dropped; unknown body fields are rejected. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.",
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -6328,11 +6329,19 @@
 									"name": {
 										"type": "string",
 										"minLength": 1
+									},
+									"scopes": {
+										"minItems": 1,
+										"type": "array",
+										"items": {
+											"type": "string"
+										}
 									}
 								},
 								"required": [
 									"agentId"
-								]
+								],
+								"additionalProperties": false
 							}
 						}
 					}
@@ -6369,6 +6378,13 @@
 												"string",
 												"null"
 											]
+										},
+										"scopes": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											},
+											"description": "The granted scopes, derived from what was stored."
 										}
 									},
 									"required": [
@@ -6376,14 +6392,15 @@
 										"key",
 										"name",
 										"start",
-										"expiresAt"
+										"expiresAt",
+										"scopes"
 									]
 								}
 							}
 						}
 					},
 					"400": {
-						"description": "Malformed request.",
+						"description": "Malformed request, or a scope outside the supported set.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6420,7 +6437,7 @@
 					"Auth"
 				],
 				"summary": "List agent API keys",
-				"description": "Keys owned by the signed-in user. The secret is never returned.",
+				"description": "Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned. Each key also carries `rateLimit`, the same budget the MCP endpoint publishes as `X-RateLimit-*`, so a client can show calls left and the reset instant without calling the key.",
 				"responses": {
 					"200": {
 						"description": "The user's keys.",
@@ -6455,6 +6472,12 @@
 															"null"
 														]
 													},
+													"scopes": {
+														"type": "array",
+														"items": {
+															"type": "string"
+														}
+													},
 													"createdAt": {
 														"type": "string"
 													},
@@ -6469,6 +6492,39 @@
 															"string",
 															"null"
 														]
+													},
+													"rateLimit": {
+														"anyOf": [
+															{
+																"type": "object",
+																"properties": {
+																	"limit": {
+																		"type": "number",
+																		"description": "Calls allowed per window for this key."
+																	},
+																	"remaining": {
+																		"type": "number",
+																		"description": "Calls left in the current window."
+																	},
+																	"reset": {
+																		"description": "Unix epoch seconds when the window ends; null before the first call.",
+																		"type": [
+																			"number",
+																			"null"
+																		]
+																	}
+																},
+																"required": [
+																	"limit",
+																	"remaining",
+																	"reset"
+																]
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "The key's request budget. Same numbers as the MCP `X-RateLimit-*` headers."
 													}
 												},
 												"required": [
@@ -6476,9 +6532,11 @@
 													"name",
 													"start",
 													"agentId",
+													"scopes",
 													"createdAt",
 													"expiresAt",
-													"lastRequest"
+													"lastRequest",
+													"rateLimit"
 												]
 											}
 										}

@@ -34,6 +34,16 @@ export function createMcpRouter(): Hono<ApiEnv> {
 	router.get("/.well-known/oauth-protected-resource/mcp", serveProtectedResourceMetadata);
 
 	router.all("/mcp", async (c) => {
+		// Streamable HTTP allows GET for an optional server-to-client stream, but
+		// this server never sends one (JSON responses, no session). A GET would
+		// hold `200 text/event-stream` with 0 bytes until the client's timeout,
+		// and sessions are off so DELETE has nothing to tear down (#142). Refuse
+		// before auth resolution: there is nothing here to authenticate.
+		if (c.req.method !== "POST") {
+			c.header("allow", "POST");
+			return c.json({ error: "This MCP endpoint accepts POST only." }, 405);
+		}
+
 		const resolved = await resolvePrincipal(c);
 		if (resolved.status === "unauthenticated") return unauthorizedResponse(c.req.url);
 		if (resolved.status === "rate_limited") {

@@ -188,6 +188,9 @@ function bookExpenseToExpense(expense: BookExpense): Expense {
 			paidFromLiabilityId: expense.paidFromLiabilityId,
 			assetId: expense.assetId,
 			incomeId: expense.incomeId,
+			// Passed through as-is: `renewalDate` is display-only and stays part of
+			// the object, so read → write is lossless for every other key.
+			details: expense.details,
 		}),
 	};
 }
@@ -361,6 +364,13 @@ export function incomeToBookIncome(income: Income, account?: Account): BookIncom
 export function expenseToBookExpense(expense: Expense): BookExpense {
 	const renewalDay = dayOfDate(expense.nextRenewalDate);
 	const oneTime = expense.cycle === "one_time";
+	// Merge, never replace. A recurring row still records its display-only
+	// renewal day, and every other key the row already carried survives the
+	// write — a check-in's `details.checkin` was silently erased here before.
+	const details = {
+		...expense.details,
+		...(!oneTime && renewalDay !== undefined ? { renewalDate: expense.nextRenewalDate.slice(0, 10) } : {}),
+	};
 	return {
 		id: expense.id,
 		entityId: expense.entityId,
@@ -379,7 +389,7 @@ export function expenseToBookExpense(expense: Expense): BookExpense {
 			paidFromLiabilityId: expense.paidFromLiabilityId,
 			assetId: expense.assetId,
 			incomeId: expense.incomeId,
-			details: !oneTime && renewalDay !== undefined ? { renewalDate: expense.nextRenewalDate.slice(0, 10) } : undefined,
+			details: Object.keys(details).length > 0 ? details : undefined,
 		}),
 	};
 }

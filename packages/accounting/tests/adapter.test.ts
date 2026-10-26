@@ -258,6 +258,18 @@ const legacy: AccountingSnapshot = {
 };
 
 describe("@excited-live/accounting - book adapter", () => {
+	/** A book holding one expense and nothing else, for details round-trip tests. */
+	function bookWithExpense(expense: AccountingBook["expenses"][number]): AccountingBook {
+		return {
+			entities: [{ id: "acc_personal", name: "Prame Personal", type: "personal", currency: "THB", active: true }],
+			assets: [],
+			incomes: [],
+			expenses: [expense],
+			liabilities: [],
+			transfers: [],
+		};
+	}
+
 	describe("reverse converters", () => {
 		it("defaults entity active to true when absent", () => {
 			const entity = accountToBookEntity({ ...business, active: undefined });
@@ -356,6 +368,57 @@ describe("@excited-live/accounting - book adapter", () => {
 				details: { renewalDate: "2026-01-20" },
 			});
 			expect(expenseToBookExpense(netflix).dayOfMonth).toBe(5);
+		});
+
+		it("merges details onto a recurring expense instead of replacing them", () => {
+			const book = expenseToBookExpense({ ...netflix, details: { checkin: "off", checkinAmount: 380, amountSource: "typed" } });
+			expect(book.details).toEqual({
+				checkin: "off",
+				checkinAmount: 380,
+				amountSource: "typed",
+				renewalDate: "2026-01-05",
+			});
+		});
+
+		it("keeps details untouched on a one-time expense, with no renewalDate", () => {
+			const book = expenseToBookExpense({ ...passport, details: { checkin: "way_off", checkinAmount: 4200, amountSource: "typed" } });
+			expect(book.details).toEqual({ checkin: "way_off", checkinAmount: 4200, amountSource: "typed" });
+		});
+
+		it("leaves details absent rather than empty when the expense has none", () => {
+			expect(expenseToBookExpense(passport).details).toBeUndefined();
+			expect(expenseToBookExpense(netflix).details).toEqual({ renewalDate: "2026-01-05" });
+		});
+
+		it("survives a write → read round trip with a non-renewal key", () => {
+			const checkinRow: Expense = {
+				...passport,
+				name: "Food and travel - check-in",
+				amount: 620,
+				details: { checkin: "off", checkinAmount: 600, amountSource: "typed" },
+			};
+
+			const book = expenseToBookExpense(checkinRow);
+			const readBack = bookToSnapshot(bookWithExpense(book)).subscriptions[0]!;
+
+			expect(readBack.details).toEqual({ checkin: "off", checkinAmount: 600, amountSource: "typed" });
+			expect(readBack.nextRenewalDate).toBe("2026-11-08");
+
+			// A second edit must not accumulate or drop keys.
+			expect(expenseToBookExpense(readBack).details).toEqual({
+				checkin: "off",
+				checkinAmount: 600,
+				amountSource: "typed",
+			});
+		});
+
+		it("keeps renewalDate on read for a recurring expense and merges other keys around it", () => {
+			const book = expenseToBookExpense({ ...netflix, details: { category: "streaming" } });
+			const readBack = bookToSnapshot(bookWithExpense(book)).subscriptions[0]!;
+
+			expect(readBack.nextRenewalDate).toBe("2026-01-05");
+			expect(readBack.details).toEqual({ category: "streaming", renewalDate: "2026-01-05" });
+			expect(expenseToBookExpense(readBack).details).toEqual({ category: "streaming", renewalDate: "2026-01-05" });
 		});
 
 		it("converts a revolving card and a loan with defaults", () => {

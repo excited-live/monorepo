@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { z } from "zod";
+import { z } from "zod";
 import type { SqlDriver } from "../../db/types";
 import type { AccountingService } from "../accounting/service/accounting.service";
 import type { OnboardingStore } from "../../stores/onboarding-store";
@@ -37,6 +37,32 @@ export interface McpToolDefinition {
 }
 
 export const ALL_TOOLS: readonly McpToolDefinition[] = [...onboardingTools, ...accountingTools];
+
+/**
+ * What the credential behind this request actually is (#161).
+ *
+ * Not on `GET /mcp` (an SSE stream that holds 0 bytes, #142) and not in
+ * `initialize` (which a client caches once), so the only per-credential answer
+ * is a tool. `scopes` are the tool scopes enforced here, not the request tokens:
+ * the question it answers is "can I call `add_expense` before I try?".
+ */
+function registerWhoami(server: McpServer, principal: McpPrincipal, ctx: McpToolContext): void {
+	server.registerTool(
+		"whoami",
+		{
+			title: "Who am I",
+			description:
+				"The user and credential serving this request, and the scopes it can use. Call it before a write to check least privilege.",
+			inputSchema: z.object({}),
+		},
+		async (): Promise<CallToolResult> =>
+			successResult({
+				userId: ctx.userId,
+				via: principal.via,
+				scopes: [...principal.scopes].sort(),
+			}),
+	);
+}
 
 function toolError(message: string): CallToolResult {
 	return { content: [{ type: "text", text: message }], isError: true };
@@ -96,6 +122,8 @@ export function createMcpServer(principal: McpPrincipal, ctx: McpToolContext): M
 		{ name: "excited-live", version: "0.1.0" },
 		{ instructions: ONBOARDING_INSTRUCTIONS },
 	);
+
+	registerWhoami(server, principal, ctx);
 
 	for (const tool of ALL_TOOLS) {
 		server.registerTool(

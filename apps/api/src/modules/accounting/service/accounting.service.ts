@@ -634,8 +634,14 @@ export function createAccountingService(repo: AccountingRepository) {
 	async function updateExpense(userId: string, id: string, patch: UpdateExpenseInput): Promise<Stored<BookExpense>> {
 		await ensureBootstrap(userId, monthOf());
 		const stored = await findOrThrow(userId, "expenses", id, "Expense");
-		const { version, ...fields } = patch;
-		const next = parseRecord(CreateExpenseBody, applyPatch(plain(stored), fields)) as BookExpense;
+		const { version, details, ...fields } = patch;
+		// `details` merges shallowly onto what is stored. `applyPatch` is shallow,
+		// so leaving it in `fields` would let a PATCH carrying only one key (for
+		// example the webapp's `renewalDate`) replace the whole object and drop a
+		// check-in. Same rule as `loan`/`revolving` on a liability.
+		const merged: Record<string, unknown> = applyPatch(plain(stored), fields);
+		if (details !== undefined) merged.details = { ...(plain(stored).details ?? {}), ...details };
+		const next = parseRecord(CreateExpenseBody, merged) as BookExpense;
 		await validateExpenseLinks(userId, next);
 		return written(await repo.write(userId, [update("expenses", next, version)]), id);
 	}

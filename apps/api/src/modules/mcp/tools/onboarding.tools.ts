@@ -22,6 +22,7 @@ import {
 	CreateLiabilityBody,
 } from "../../accounting/route/accounting.schemas";
 import { productMonth } from "../../../lib/product-time";
+import { publishableObjectSchema } from "../publish-schema";
 import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
 /**
@@ -64,9 +65,14 @@ function stripImageUrl(raw: Record<string, unknown>): Record<string, unknown> {
 
 const emptyInput = z.object({});
 
-const AssetInput = withoutImageUnion(optionalEntityUnion(CreateAssetBody));
-const IncomeInput = withoutImageUnion(optionalEntityUnion(CreateIncomeBody));
-const LiabilityInput = withoutImageUnion(optionalEntityUnion(CreateLiabilityBody));
+/**
+ * The three create tools whose REST body is a discriminated union (#201): the
+ * SDK cannot publish a root union, so flatten it into one object. `parseBody`
+ * in each handler still enforces the real variant.
+ */
+const AssetInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateAssetBody)));
+const IncomeInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateIncomeBody)));
+const LiabilityInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateLiabilityBody)));
 const ExpenseInput = withoutImage(optionalEntity(CreateExpenseBody));
 
 const StepInput = z.object({

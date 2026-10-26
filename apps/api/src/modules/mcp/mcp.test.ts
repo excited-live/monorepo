@@ -1082,8 +1082,58 @@ describe("/mcp", () => {
 		expect((result.structuredContent?.liability as { imageUrl?: string }).imageUrl).toBeUndefined();
 	});
 
-	it("hides imageUrl from the create tool inputs", async () => {
+	it("publishes a callable input schema for every tool that takes arguments (#201)", async () => {
 		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const list = await rpc(app, { jsonrpc: "2.0", id: 43, method: "tools/list" }, key);
+		const tools = (
+			list.json?.result as {
+				tools: Array<{
+					name: string;
+					inputSchema: { properties?: Record<string, { enum?: string[] }>; required?: string[] };
+				}>;
+			}
+		).tools;
+
+		// A zero-argument tool is a deliberate, named exception. A new tool that
+		// forgets its schema fails this list instead of publishing `properties: {}`.
+		const noArguments = ["whoami", "get_onboarding_status", "list_entities", "list_transfers"];
+		for (const tool of tools) {
+			const properties = Object.keys(tool.inputSchema.properties ?? {});
+			if (noArguments.includes(tool.name)) {
+				expect(properties, tool.name).toEqual([]);
+				continue;
+			}
+			expect(properties.length, `${tool.name} publishes no input fields`).toBeGreaterThan(0);
+		}
+
+		// The three union bodies are flattened from the REST schemas, so every
+		// field a variant validates has to be visible to the client.
+		const variants: Array<[string, readonly { shape: Record<string, unknown> }[]]> = [
+			["add_asset", CreateAssetBody.options],
+			["add_income", CreateIncomeBody.options],
+			["add_liability", CreateLiabilityBody.options],
+		];
+		for (const [name, options] of variants) {
+			const tool = tools.find((entry) => entry.name === name);
+			expect(tool, name).toBeDefined();
+			const published = Object.keys(tool!.inputSchema.properties ?? {});
+			for (const option of options) {
+				for (const field of Object.keys(option.shape)) {
+					if (field === "imageUrl") continue;
+					expect(published, `${name} hides ${field}`).toContain(field);
+				}
+			}
+			expect(tool!.inputSchema.properties?.kind?.enum?.length, `${name} publishes the kind enum`).toBeGreaterThan(1);
+			expect(tool!.inputSchema.required ?? [], `${name} publishes no required list`).toEqual(
+				expect.arrayContaining(["kind", "name"]),
+			);
+		}
+	});
+
+	it("hides imageUrl from the create tool inputs", async () => {		const app = configuredApp();
 		const { token } = await signIn(app);
 		const key = await mintKey(app, token);
 

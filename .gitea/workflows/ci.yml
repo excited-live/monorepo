@@ -38,7 +38,7 @@ jobs:
       # deploys and every six hours. Not duplicated here because prelive serves
       # main: a PR run would assert on a build the PR never changed.
       - name: Prelive MCP discovery guard
-        run: node scripts/check-prelive-mcp-discovery.mjs
+        run: node scripts/check-prelive-mcp-discovery.mjs --self-test
       - uses: pnpm/action-setup@v6
         with:
           version: 10.12.0

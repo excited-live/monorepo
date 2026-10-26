@@ -95,10 +95,11 @@ function mentionsInternalHost(source) {
 /** `--self-test`: prove the detector both fires on a literal and ignores prose. */
 function selfTest() {
 	const planted = 'return "https://excited-live-api-prelive.preamza02.workers.dev";'
+	const plantedAfterUrl = 'const base = "https://api.excited.live"\nconst bad = "https://x.workers.dev" // internal'
 	const prose = "// the workers.dev pin is documented here\nconst x = 1"
 	const checks = [
 		["a hard-coded workers.dev literal is detected", mentionsInternalHost(planted), true],
-		["a URL in a string is not swallowed by comment stripping", mentionsInternalHost(planted), true],
+		["a trailing comment does not hide the next line's literal", mentionsInternalHost(plantedAfterUrl), true],
 		["a workers.dev mention in a comment is ignored", mentionsInternalHost(prose), false],
 	]
 	const failed = checks.filter(([, actual, wanted]) => actual !== wanted)
@@ -172,8 +173,12 @@ const mcpAuthSource = read(MCP_AUTH_SOURCE)
 const advertisedBody = functionBody(oauthSource, "mcpAdvertisedOrigin")
 if (!/export function mcpAdvertisedOrigin\s*\(/.test(oauthSource)) {
 	problems.push(`${OAUTH_SOURCE} no longer exports mcpAdvertisedOrigin(); MCP discovery must derive its origin from the request URL (#116)`)
-} else if (!/new URL\(\s*requestUrl\s*\)/.test(advertisedBody) || /process\.env/.test(advertisedBody)) {
-	problems.push(`${OAUTH_SOURCE} mcpAdvertisedOrigin() must parse requestUrl (new URL(requestUrl)) and must not read process.env — that would be the BETTER_AUTH_URL pin again (#116)`)
+} else if (
+	!/new URL\(\s*requestUrl\s*\)/.test(advertisedBody) ||
+	/process\.env/.test(advertisedBody) ||
+	/requestOrigin\s*\(/.test(advertisedBody)
+) {
+	problems.push(`${OAUTH_SOURCE} mcpAdvertisedOrigin() must parse requestUrl (new URL(requestUrl)) and must not read process.env or call requestOrigin() — either is the BETTER_AUTH_URL pin again (#116)`)
 }
 for (const [name, source, file] of [
 	["mcpResource", oauthSource, OAUTH_SOURCE],

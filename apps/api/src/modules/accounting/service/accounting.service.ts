@@ -87,6 +87,17 @@ function monthOf(asOf?: string): string {
 	return asOf ? asOf.slice(0, 7) : new Date().toISOString().slice(0, 7);
 }
 
+/**
+ * Day of the month carried by a day-precision `asOf` (`YYYY-MM-DD`), else
+ * undefined. A `one_time` expense's occurrence day is `dayOfMonth`, so without
+ * this a receipt recorded "today" is booked on the 1st (#172).
+ */
+function dayOfMonthOf(asOf?: string | null): number | undefined {
+	if (!asOf || asOf.length !== 10) return undefined;
+	const day = Number(asOf.slice(8, 10));
+	return Number.isInteger(day) && day >= 1 && day <= 31 ? day : undefined;
+}
+
 /** Validates a merged record against a schema; the output is the record to store. */
 function parseRecord<S extends z.ZodType>(schema: S, value: unknown): z.output<S> {
 	const result = schema.safeParse(value);
@@ -613,6 +624,7 @@ export function createAccountingService(repo: AccountingRepository) {
 
 	async function createExpense(userId: string, body: CreateExpenseInput): Promise<Stored<BookExpense>> {
 		await ensureBootstrap(userId, monthOf(body.asOf));
+		const cycle = body.cycle ?? "monthly";
 		const expense: BookExpense = {
 			id: body.id ?? crypto.randomUUID(),
 			entityId: body.entityId,
@@ -621,11 +633,14 @@ export function createAccountingService(repo: AccountingRepository) {
 			// caller and a legacy label still store the canonical key (#173).
 			category: normalizeCategory(body.category),
 			amount: body.amount,
-			cycle: body.cycle ?? "monthly",
+			cycle,
 			startMonth: body.startMonth ?? monthOf(body.asOf),
 			active: body.active ?? true,
 			...definedOnly({
-				dayOfMonth: body.dayOfMonth,
+				// A one-time expense happens on one day: `asOf`'s day is that day,
+				// whatever month `startMonth` names (a backdated receipt). Recurring
+				// cycles keep `dayOfMonth` as their billing day and are untouched.
+				dayOfMonth: body.dayOfMonth ?? (cycle === "one_time" ? dayOfMonthOf(body.asOf) : undefined),
 				endMonth: body.endMonth,
 				paidFromAssetId: body.paidFromAssetId,
 				paidFromLiabilityId: body.paidFromLiabilityId,
@@ -643,7 +658,7 @@ export function createAccountingService(repo: AccountingRepository) {
 	async function updateExpense(userId: string, id: string, patch: UpdateExpenseInput): Promise<Stored<BookExpense>> {
 		await ensureBootstrap(userId, monthOf());
 		const stored = await findOrThrow(userId, "expenses", id, "Expense");
-		const { version, details, ...fields } = patch;
+		const { version, details, asOf: patchAsOf, ...fields } = patch;
 		// `details` merges shallowly onto what is stored. `applyPatch` is shallow,
 		// so leaving it in `fields` would let a PATCH carrying only one key (for
 		// example the webapp's `renewalDate`) replace the whole object and drop a
@@ -653,6 +668,13 @@ export function createAccountingService(repo: AccountingRepository) {
 		// A legacy free-text or Thai-label row converges on its next write instead
 		// of failing the strict enum (#173).
 		if (typeof merged.category === "string") merged.category = normalizeCategory(merged.category);
+		// A PATCH may turn a recurring expense into `one_time` and say when it
+		// happened with `asOf`; the day is then the same one createExpense would
+		// have used (#172). An explicit dayOfMonth always wins.
+		if (merged.cycle === "one_time" && merged.dayOfMonth === undefined) {
+			const impliedDay = dayOfMonthOf(patchAsOf);
+			if (impliedDay !== undefined) merged.dayOfMonth = impliedDay;
+		}
 		const next = parseRecord(CreateExpenseBody, merged) as BookExpense;
 		await validateExpenseLinks(userId, next);
 		return written(await repo.write(userId, [update("expenses", next, version)]), id);

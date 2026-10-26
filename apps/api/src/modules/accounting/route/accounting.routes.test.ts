@@ -448,6 +448,34 @@ describe("request validation", () => {
 		const noMonth = await client.summary.$get({ query: {} as never });
 		expect(noMonth.status).toBe(400);
 	});
+
+	it("rejects a Buddhist-era asOf and names the Gregorian fix (#172)", async () => {
+		const me = await personalId();
+		const body = {
+			entityId: me,
+			name: "ค่ากาแฟ",
+			category: "food",
+			amount: 65,
+			cycle: "one_time",
+			asOf: "2569-10-26",
+		};
+		const res = await client.expenses.$post({ json: body as never });
+		expect(res.status).toBe(400);
+		const payload = await res.json();
+		expect(JSON.stringify(payload)).toMatch(/ค\.ศ\. 2026/);
+
+		// A PATCH carries the same client field and the same bound.
+		const created = await client.expenses.$post({
+			json: { entityId: me, name: "Food", category: "food", amount: 65, cycle: "one_time", asOf: "2026-10-26" } as never,
+		});
+		expect(created.status).toBe(201);
+		const stored = await created.json();
+		const patch = await client.expenses[":id"].$patch({
+			param: { id: stored.id },
+			json: { asOf: "2569-10-26", version: stored.version } as never,
+		});
+		expect(patch.status).toBe(400);
+	});
 });
 
 describe("expense categories (#173)", () => {

@@ -315,9 +315,10 @@ describe("api/v1 identity — API keys and the scope gate (#193)", () => {
 		expect(body.message).toBe("This API key is over its request budget.");
 		expect(body.hint).toContain("do not rotate it");
 		expect(body.rateLimit.remaining).toBe(0);
-		// #178 keeps the 429's advertised limit at the product default for now;
-		// this asserts only that a limit is published, not which one.
-		expect(body.rateLimit.limit).toBe(AGENT_KEY_RATE_LIMIT.maxRequests);
+		// #178: the key's own budget of 2, not the product default — the same
+		// number the two 200s above advertised.
+		expect(body.rateLimit.limit).toBe(2);
+		expect(limited.headers.get("x-ratelimit-limit")).toBe("2");
 	});
 
 	it("refuses key minting from a key with 403 session_required", async () => {

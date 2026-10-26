@@ -17,7 +17,11 @@ on:
     - cron: "0 */6 * * *"
   workflow_dispatch:
   workflow_run:
-    workflows: ["Deploy Prelive", "API Deploy Prelive"]
+    # IAM Deploy Production is here on purpose (#185): production iam moves only
+    # through a manual dispatch, so without this entry the guard that watches
+    # iam.excited.live would not look again until the six-hour cron — the exact
+    # blind spot that let a prelive bundle sit on the prod host for a day.
+    workflows: ["Deploy Prelive", "API Deploy Prelive", "IAM Deploy Production"]
     types: [completed]
 
 permissions:

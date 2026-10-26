@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Hono } from "hono";
-import { apiKeyApi } from "@excited-live/auth";
+import { AGENT_KEY_RATE_LIMIT, apiKeyApi } from "@excited-live/auth";
 import { createApp } from "../app";
 import { DB_FILE_ENV, resetDbCache } from "../db";
 import { getTokensAuth, resetTokensAuthCache } from "../lib/auth";
@@ -121,7 +121,11 @@ describe("api/v1/agent-keys", () => {
 		expect(listed.keys[0]?.scopes).toEqual(["onboarding", "accounting:read", "accounting:write"]);
 		// #156: a fresh key reports a whole budget and no window yet — the
 		// window starts at its first call, so there is no reset instant to show.
-		expect(listed.keys[0]?.rateLimit).toEqual({ limit: 10, remaining: 10, reset: null });
+		expect(listed.keys[0]?.rateLimit).toEqual({
+			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
+			remaining: AGENT_KEY_RATE_LIMIT.maxRequests,
+			reset: null,
+		});
 		expect(JSON.stringify(listed)).not.toContain(key.key);
 
 		// A call through /mcp spends one of those calls; the list must show the
@@ -141,14 +145,14 @@ describe("api/v1/agent-keys", () => {
 			}),
 		});
 		expect(call.status).toBe(200);
-		expect(call.headers.get("x-ratelimit-remaining")).toBe("9");
+		expect(call.headers.get("x-ratelimit-remaining")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests - 1));
 
 		const afterCall = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
 		const afterCallData = (await afterCall.json()) as {
 			keys: Array<{ rateLimit: { limit: number; remaining: number; reset: number | null } | null }>;
 		};
-		expect(afterCallData.keys[0]?.rateLimit?.limit).toBe(10);
-		expect(afterCallData.keys[0]?.rateLimit?.remaining).toBe(9);
+		expect(afterCallData.keys[0]?.rateLimit?.limit).toBe(AGENT_KEY_RATE_LIMIT.maxRequests);
+		expect(afterCallData.keys[0]?.rateLimit?.remaining).toBe(AGENT_KEY_RATE_LIMIT.maxRequests - 1);
 		expect(afterCallData.keys[0]?.rateLimit?.reset).toBe(Number(call.headers.get("x-ratelimit-reset")));
 
 		const revoked = await app.request(`/api/v1/agent-keys/${key.id}`, {

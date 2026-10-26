@@ -149,9 +149,12 @@ describe("/mcp", () => {
 			expect(res.headers.get("allow")).toBe("POST");
 			expect(res.headers.get("content-type") ?? "").not.toContain("text/event-stream");
 			// Reading the body proves the response ends: an idle SSE stream would
-			// hang here until the test timeout.
+			// hang here until the test timeout. That body read IS the real guard;
+			// the bound below is only a coarse liveness check. It was 1000ms and
+			// measured ~3.2s on loaded runs (#171 run 270, main run 272, 24 vitest
+			// files in parallel), so it is no longer a latency assertion.
 			await res.text();
-			expect(Date.now() - started).toBeLessThan(1000);
+			expect(Date.now() - started).toBeLessThan(5000);
 		}
 	});
 
@@ -226,14 +229,31 @@ describe("/mcp", () => {
 
 	it("answers 429 with Retry-After when the key's budget is spent, never 401 (#140)", async () => {
 		const app = configuredApp();
-		const { token } = await signIn(app);
-		const key = await mintKey(app, token);
+		const { userId } = await signIn(app);
+		// An explicit two-call budget, not the product default: spending 200
+		// sequential RPCs at ~90ms each made this test time out at 20s. The
+		// semantics under test are identical, and the small budget also proves
+		// the per-key limit is what gets enforced, not the global one.
+		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
+		const minted = await apiKeyApi(auth!).createApiKey({
+			body: {
+				userId,
+				expiresIn: 24 * 60 * 60,
+				permissions: { onboarding: ["read", "write"], accounting: ["read", "write"] },
+				rateLimitMax: 2,
+				rateLimitTimeWindow: 24 * 60 * 60 * 1000,
+			},
+		});
+		const key = minted.key;
 
-		// AGENT_KEY_RATE_LIMIT: 200 requests per key per window.
-		for (let i = 0; i < 200; i++) {
-			const ok = await rpc(app, initialize(i + 1), key);
-			expect(ok.status).toBe(200);
-		}
+		const first = await rpc(app, initialize(1), key);
+		expect(first.status).toBe(200);
+		expect(first.headers.get("x-ratelimit-limit")).toBe("2");
+		expect(first.headers.get("x-ratelimit-remaining")).toBe("1");
+
+		const second = await rpc(app, initialize(2), key);
+		expect(second.status).toBe(200);
+		expect(second.headers.get("x-ratelimit-remaining")).toBe("0");
 
 		const limited = await rpc(app, initialize(999), key);
 		expect(limited.status).toBe(429);
@@ -241,6 +261,10 @@ describe("/mcp", () => {
 		const retryAfter = Number(limited.headers.get("retry-after"));
 		expect(retryAfter).toBeGreaterThan(0);
 		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
+		// A refusal carries no key row back from the plugin, so the published
+		// limit is the product default even when the key's own budget is
+		// smaller; only the 200 path can report a per-key limit (#156). That
+		// gap is pre-existing and out of scope for this red-main fix.
 		expect(limited.headers.get("x-ratelimit-limit")).toBe("200");
 		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
 		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
@@ -908,8 +932,9 @@ describe("/mcp", () => {
 	it("treats a retried create with the same id as a no-op on every write (#143)", async () => {
 		const app = configuredApp();
 		const { userId } = await signIn(app);
-		// 1 + 6 x 2 + 1 requests, so this key needs more than the published
-		// 10-request budget the #140 tests pin.
+		// 1 + 6 x 2 + 1 requests: mint an explicit 500-call budget so this test
+		// does not depend on the default AGENT_KEY_RATE_LIMIT, which #140 covers
+		// separately.
 		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
 		const minted = await apiKeyApi(auth!).createApiKey({
 			body: {

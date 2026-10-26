@@ -110,16 +110,21 @@ describe("auth lockdown: /api/v1", () => {
 describe("auth lockdown: /mcp", () => {
 	const rpcHeaders = { "content-type": "application/json", accept: "application/json, text/event-stream" }
 
-	it("answers 401 to GET, POST and DELETE without a key", async () => {
+	it("answers 405 to GET/DELETE before auth and 401 to POST without a key", async () => {
 		const app = configuredApp()
-		for (const method of ["GET", "POST", "DELETE"]) {
-			const res = await app.request("/mcp", {
-				method,
-				headers: rpcHeaders,
-				...(method === "POST" ? { body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) } : {}),
-			})
-			expect(res.status, method).toBe(401)
+		// The optional SSE stream is not implemented, so the method gate runs
+		// before auth resolution (#142); POST is the only MCP verb.
+		for (const method of ["GET", "DELETE"] as const) {
+			const res = await app.request("/mcp", { method, headers: rpcHeaders })
+			expect(res.status, method).toBe(405)
+			expect(res.headers.get("allow"), method).toBe("POST")
 		}
+		const post = await app.request("/mcp", {
+			method: "POST",
+			headers: rpcHeaders,
+			body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+		})
+		expect(post.status).toBe(401)
 	})
 
 	it("answers 401 to every tool call with no key or an invalid key", async () => {

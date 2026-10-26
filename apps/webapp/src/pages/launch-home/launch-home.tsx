@@ -79,6 +79,9 @@ export function LaunchHome({ mcpUrl }: LaunchHomeProps) {
 					/>
 				</Stack>
 				<Text size="sm" color="secondary">
+					{t("launchHome.authNote")}
+				</Text>
+				<Text size="sm" color="secondary">
 					{t("launchHome.mcpNote")}
 				</Text>
 				<Text size="sm" className="launch-home__status" role="status" aria-live="polite">

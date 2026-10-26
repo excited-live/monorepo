@@ -47,7 +47,20 @@ const cycle = z.enum(["weekly", "monthly", "quarterly", "semi-annual", "yearly",
 const dayOfMonth = z.number().int().min(1).max(31);
 const version = z.number().int().min(1).optional().describe("Stored version the caller last read; a mismatch returns 409.");
 const details = z.record(z.string(), z.unknown());
-const asOf = monthOrDate.optional().describe("Client's current month or day. Default month for startMonth; otherwise the UTC month.");
+// A client sends Thai Buddhist-era years as often as Gregorian ones (พ.ศ. 2569
+// is ค.ศ. 2026); accepting one silently files the record 543 years away. The
+// bound is applied to `asOf` only, because that is client input that is never
+// stored: `month` also re-validates stored rows on PATCH, so bounding it would
+// make a legacy Buddhist-era row un-editable (#172).
+const asOf = monthOrDate
+	.refine((value) => {
+		const year = Number(value.slice(0, 4));
+		return year >= 2000 && year <= 2100;
+	}, "Use a Gregorian (ค.ศ.) year, e.g. 2026-10-26 (พ.ศ. 2569 = ค.ศ. 2026).")
+	.optional()
+	.describe(
+		"Client's current month or day. For `cycle: \"one_time\"`, a day-precision value such as 2026-10-26 is the date of the receipt (it sets dayOfMonth); a month-only value lands on the 1st. Otherwise the default month for startMonth.",
+	);
 /** PATCH fields: every field optional; fields that are optional on create also accept null, which clears them. */
 type Patchable<T extends z.ZodRawShape> = {
 	[K in keyof T]: T[K] extends z.ZodOptional<z.ZodType> ? z.ZodOptional<z.ZodNullable<T[K]>> : z.ZodOptional<T[K]>;
@@ -265,7 +278,11 @@ const expenseFields = {
 	category: expenseCategoryField,
 	amount: z.number().min(0),
 	cycle: cycle.optional(),
-	dayOfMonth: dayOfMonth.optional(),
+	dayOfMonth: dayOfMonth
+		.optional()
+		.describe(
+			"Day of the month the cycle falls on. For `cycle: \"one_time\"` this is the date of the receipt; it defaults from a day-precision `asOf`, otherwise the 1st.",
+		),
 	startMonth: month.optional(),
 	endMonth: month.optional(),
 	paidFromAssetId: z.string().min(1).optional(),
@@ -285,7 +302,7 @@ export const CreateExpenseBody = z.object({
 	...expenseFields,
 });
 
-export const UpdateExpenseBody = z.object({ version, ...partial(expenseFields) });
+export const UpdateExpenseBody = z.object({ version, asOf, ...partial(expenseFields) });
 
 // LIABILITIES -------------------------------------------------------------
 

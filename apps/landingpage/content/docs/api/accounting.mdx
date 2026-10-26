@@ -35,7 +35,7 @@ Type: `object`
 | --- | --- | --- | --- |
 | `id` | `string` | no | Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE. |
 | `type` | `"personal"` \| `"business"` | no | Only `business` can be created; the personal entity is created on first use. |
-| `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
+| `asOf` | `string` | no | Client's current month or day. For `cycle: "one_time"`, a day-precision value such as 2026-10-26 is the date of the receipt (it sets dayOfMonth); a month-only value lands on the 1st. Otherwise the default month for startMonth. |
 | `name` | `string` | yes |  |
 | `currency` | `string` | no |  |
 | `targetSafetyBuffer` | `number` | no |  |
@@ -457,7 +457,7 @@ Type: `object`
 | `imageUrl` | `string` | no |  |
 | `startMonth` | `string` \| `""` | no | `YYYY-MM`. Empty string keeps the existing start month. |
 | `endMonth` | `string` \| `""` | no | `YYYY-MM`. Empty string clears the end month. |
-| `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
+| `asOf` | `string` | no | Client's current month or day. For `cycle: "one_time"`, a day-precision value such as 2026-10-26 is the date of the receipt (it sets dayOfMonth); a month-only value lands on the 1st. Otherwise the default month for startMonth. |
 
 **Responses**
 
@@ -507,12 +507,12 @@ Type: `object`
 | --- | --- | --- | --- |
 | `id` | `string` | no | Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE. |
 | `entityId` | `string` | yes |  |
-| `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
+| `asOf` | `string` | no | Client's current month or day. For `cycle: "one_time"`, a day-precision value such as 2026-10-26 is the date of the receipt (it sets dayOfMonth); a month-only value lands on the 1st. Otherwise the default month for startMonth. |
 | `name` | `string` | yes |  |
 | `category` | `"ai"` \| `"capital_deploy"` \| `"connectivity"` \| `"dev_tool"` \| `"entertainment"` \| `"family"` \| `"food"` \| `"groceries"` \| `"healthcare"` \| `"housing"` \| `"infrastructure"` \| `"marketing"` \| `"office"` \| `"other"` \| `"saas"` \| `"transit"` | yes | Expense category. Accepts a key or a Thai/English label and stores the key. ai = ค่าสมาชิก AI (AI Subscriptions); capital_deploy = ลงทุนในธุรกิจ (Deploy Capital to Business); connectivity = อินเทอร์เน็ตและมือถือ (Internet & Mobile); dev_tool = เครื่องมือนักพัฒนาและ API (Developer Tools & APIs); entertainment = สมาชิกและค่าใช้จ่ายในชีวิต (Subscriptions & Living); family = ครอบครัวและค่าใช้จ่ายส่วนตัว (Family & Personal); food = อาหาร (Food & Dining); groceries = ของชำและของใช้ในบ้าน (Groceries & Household); healthcare = สุขภาพ (Healthcare & Wellness); housing = ที่อยู่อาศัยและค่าเช่า (Housing & Rent); infrastructure = โฮสติ้งและโครงสร้างพื้นฐาน (Hosting & Infrastructure); marketing = การตลาดและการขาย (Marketing & Sales); office = ออฟฟิศและพื้นที่ทำงาน (Office & Workspace); other = อื่น ๆ (Other); saas = SaaS และเครื่องมือทำงาน (SaaS & Productivity); transit = เดินทาง (Transit & Transport) |
 | `amount` | `number` | yes |  |
 | `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
-| `dayOfMonth` | `integer` | no |  |
+| `dayOfMonth` | `integer` | no | Day of the month the cycle falls on. For `cycle: "one_time"` this is the date of the receipt; it defaults from a day-precision `asOf`, otherwise the 1st. |
 | `startMonth` | `string` | no |  |
 | `endMonth` | `string` | no |  |
 | `paidFromAssetId` | `string` | no |  |
@@ -579,6 +579,7 @@ Type: `object`
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
+| `asOf` | `string` | no | Client's current month or day. For `cycle: "one_time"`, a day-precision value such as 2026-10-26 is the date of the receipt (it sets dayOfMonth); a month-only value lands on the 1st. Otherwise the default month for startMonth. |
 | `name` | `string` | no |  |
 | `category` | `"ai"` \| `"capital_deploy"` \| `"connectivity"` \| `"dev_tool"` \| `"entertainment"` \| `"family"` \| `"food"` \| `"groceries"` \| `"healthcare"` \| `"housing"` \| `"infrastructure"` \| `"marketing"` \| `"office"` \| `"other"` \| `"saas"` \| `"transit"` | no | Expense category. Accepts a key or a Thai/English label and stores the key. ai = ค่าสมาชิก AI (AI Subscriptions); capital_deploy = ลงทุนในธุรกิจ (Deploy Capital to Business); connectivity = อินเทอร์เน็ตและมือถือ (Internet & Mobile); dev_tool = เครื่องมือนักพัฒนาและ API (Developer Tools & APIs); entertainment = สมาชิกและค่าใช้จ่ายในชีวิต (Subscriptions & Living); family = ครอบครัวและค่าใช้จ่ายส่วนตัว (Family & Personal); food = อาหาร (Food & Dining); groceries = ของชำและของใช้ในบ้าน (Groceries & Household); healthcare = สุขภาพ (Healthcare & Wellness); housing = ที่อยู่อาศัยและค่าเช่า (Housing & Rent); infrastructure = โฮสติ้งและโครงสร้างพื้นฐาน (Hosting & Infrastructure); marketing = การตลาดและการขาย (Marketing & Sales); office = ออฟฟิศและพื้นที่ทำงาน (Office & Workspace); other = อื่น ๆ (Other); saas = SaaS และเครื่องมือทำงาน (SaaS & Productivity); transit = เดินทาง (Transit & Transport) |
 | `amount` | `number` | no |  |

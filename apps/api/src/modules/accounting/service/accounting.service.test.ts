@@ -820,3 +820,103 @@ describe("#173 — one expense vocabulary", () => {
 		expect(updated.amount).toBe(130);
 	});
 });
+
+describe("asOf day for one-time expenses (#172)", () => {
+	it("books a same-day receipt on that day in both read paths", async () => {
+		const me = await personalEntity();
+		const wallet = await defaultWallet(me.id);
+
+		const expense = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "ร้านอาหารตามสั่ง",
+			category: "food",
+			amount: 250,
+			cycle: "one_time",
+			asOf: "2026-10-26",
+			paidFromAssetId: wallet.id,
+		});
+		expect(expense.dayOfMonth).toBe(26);
+		expect(expense.startMonth).toBe("2026-10");
+
+		const flows = await service.getCashFlows(USER, { month: "2026-10" });
+		const item = flows.items.find((i) => i.sourceId === expense.id);
+		expect(item?.date).toBe("2026-10-26");
+
+		const ledger = await service.getLedger(USER, "2026-10", me.id);
+		expect(ledger.actionItems.find((a) => a.id === expense.id)?.date).toBe("2026-10-26");
+	});
+
+	it("keeps a month-only asOf on the 1st and leaves a recurring cycle's billing day alone", async () => {
+		const me = await personalEntity();
+
+		const monthOnly = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Food",
+			category: "food",
+			amount: 250,
+			cycle: "one_time",
+			asOf: "2026-10",
+		});
+		expect(monthOnly.dayOfMonth).toBeUndefined();
+		expect((await service.getCashFlows(USER, { month: "2026-10" })).items.find((i) => i.sourceId === monthOnly.id)?.date).toBe(
+			"2026-10-01",
+		);
+
+		const monthly = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Rent",
+			category: "housing",
+			amount: 12000,
+			asOf: "2026-10-26",
+		});
+		expect(monthly.cycle).toBe("monthly");
+		expect(monthly.dayOfMonth).toBeUndefined();
+		expect((await service.getCashFlows(USER, { month: "2026-10" })).items.find((i) => i.sourceId === monthly.id)?.date).toBe(
+			"2026-10-01",
+		);
+	});
+
+	it("honours a backdated receipt: month from startMonth, day from asOf", async () => {
+		const me = await personalEntity();
+		const expense = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Taxi",
+			category: "transit",
+			amount: 80,
+			cycle: "one_time",
+			startMonth: "2026-09",
+			asOf: "2026-09-05",
+		});
+		expect(expense.startMonth).toBe("2026-09");
+		expect(expense.dayOfMonth).toBe(5);
+		expect((await service.getCashFlows(USER, { month: "2026-09" })).items.find((i) => i.sourceId === expense.id)?.date).toBe(
+			"2026-09-05",
+		);
+	});
+
+	it("takes the day from asOf when a PATCH turns an expense one_time", async () => {
+		const me = await personalEntity();
+		const expense = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Lunch",
+			category: "food",
+			amount: 120,
+			startMonth: "2026-10",
+		});
+		expect(expense.dayOfMonth).toBeUndefined();
+
+		const patched = await service.updateExpense(USER, expense.id, {
+			cycle: "one_time",
+			asOf: "2026-10-26",
+		});
+		expect(patched.dayOfMonth).toBe(26);
+		expect((patched as unknown as Record<string, unknown>).asOf).toBeUndefined();
+		expect((await service.getCashFlows(USER, { month: "2026-10" })).items.find((i) => i.sourceId === expense.id)?.date).toBe(
+			"2026-10-26",
+		);
+
+		// An explicit dayOfMonth still wins over asOf's day.
+		const explicit = await service.updateExpense(USER, expense.id, { dayOfMonth: 3, asOf: "2026-10-26" });
+		expect(explicit.dayOfMonth).toBe(3);
+	});
+});

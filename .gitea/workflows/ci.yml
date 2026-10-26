@@ -11,13 +11,21 @@ on:
     branches: [main]
 
 # One run per pull request (or per pushed ref) at a time. The self-hosted runner
-# has a single slot, so a superseded push would otherwise sit in the queue and
+# has a single slot, so a superseded PR push would otherwise sit in the queue and
 # delay every other PR; cancelling it immediately frees that slot. Keyed on the
-# PR number so two different PRs never cancel each other, and on github.ref for
-# pushes to main, where the newer commit is the one worth testing.
+# PR number so two different PRs never cancel each other.
+#
+# A push to main is never cancelled once it is running: that run carries the
+# commit that is now main, and losing it left main with no completed run at all
+# (8f66cd65 died at 0 s when 408f607e landed; 408f607e died at 0 s when
+# 23047474 landed). Gitea keeps one running and one pending run per group, so a
+# run still waiting for the slot is still replaced by the next merge. That is
+# deliberate: it bounds a merge storm to the slot's current work plus the tip,
+# where keying pushes by SHA would queue every stale commit ahead of the one
+# that has to be green.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:

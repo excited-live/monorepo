@@ -622,20 +622,32 @@ if (key) {
 		const missingCategory = expenseItems.filter((entry) => typeof entry.category !== "string" || !entry.category)
 		const byCategory = flowsNow.spendingByCategory
 		const total = expenseTotal(flowsNow.items)
-		const byCategoryTotal = (() => {
+		// The documented bucket is {category, spending, count, share}; older shapes are
+		// {category, amount} / {category, total}, and a map keyed by slug holds the
+		// number (or a bucket) as its value.
+		const bucketSpending = (entry) =>
+			entry !== null && typeof entry === "object"
+				? entry.spending ?? entry.amount ?? entry.total ?? 0
+				: entry
+		const buckets = (() => {
 			if (!byCategory) return null
-			const entries = Array.isArray(byCategory)
-				? byCategory.map((entry) => [entry.category ?? entry.slug, entry.amount ?? entry.total])
-				: Object.entries(byCategory)
-			return entries.reduce((sum, [, value]) => sum + Math.abs(Number(value ?? 0)), 0)
+			return Array.isArray(byCategory)
+				? byCategory.map((entry) => [entry.category ?? entry.slug, bucketSpending(entry)])
+				: Object.entries(byCategory).map(([slug, value]) => [slug, bucketSpending(value)])
 		})()
+		const byCategoryTotal = buckets
+			? buckets.reduce((sum, [, value]) => sum + Math.abs(Number(value ?? 0)), 0)
+			: null
+		const bucketsSeen = buckets
+			? buckets.map(([slug, value]) => `${slug ?? "(unnamed)"} ${Math.abs(Number(value ?? 0))}`).join(", ")
+			: null
 		const parts = [
 			`write echoed ${JSON.stringify(responseCategory)}`,
 			`read item category ${JSON.stringify(readCategory)}`,
 			`read item keys [${thisItem ? Object.keys(thisItem).join(",") : "none"}]`,
 			known.length ? `known slug ${known.join("/")}` : "no known slug",
 			missingCategory.length ? `${missingCategory.length} expense item(s) lack category` : "every expense item carries category",
-			byCategory ? `spendingByCategory total ${byCategoryTotal} vs month expense total ${total}` : "no spendingByCategory",
+			byCategory ? `spendingByCategory buckets [${bucketsSeen}] sum ${byCategoryTotal} vs month expense total ${total}` : "no spendingByCategory",
 		]
 		const ok =
 			known.length > 0 &&

@@ -260,8 +260,24 @@ export const strings: Dictionary = {
 	"week.strip.a11y.label": { en: "Your week", th: "สัปดาห์ของคุณ" },
 	"week.strip.a11y.days": { en: "Days with a check-in", th: "วันที่เช็คอินแล้ว" },
 	"week.strip.a11y.day": { en: "{day}: {state}", th: "{day}: {state}" },
-	// Mon → Sun. Thai uses single-letter day initials, Arabic numerals elsewhere.
-	"week.strip.days": { en: "M T W T F S S", th: "จ อ พ พ ศ ส อ" },
+	// Mon → Sun, one key per day: never a space-separated string to split at render
+	// (#168). Thai bare initials collide — อ is Tue and Sun, พ is Wed and Thu — so
+	// the strip uses the abbreviated forms (จ. อ. พ. พฤ. ศ. ส. อา.) and the full
+	// name in `aria-label`, where a screen reader hears the day without ambiguity.
+	"week.strip.dayShort.mon": { en: "M", th: "จ." },
+	"week.strip.dayShort.tue": { en: "T", th: "อ." },
+	"week.strip.dayShort.wed": { en: "W", th: "พ." },
+	"week.strip.dayShort.thu": { en: "T", th: "พฤ." },
+	"week.strip.dayShort.fri": { en: "F", th: "ศ." },
+	"week.strip.dayShort.sat": { en: "S", th: "ส." },
+	"week.strip.dayShort.sun": { en: "S", th: "อา." },
+	"week.strip.dayFull.mon": { en: "Monday", th: "วันจันทร์" },
+	"week.strip.dayFull.tue": { en: "Tuesday", th: "วันอังคาร" },
+	"week.strip.dayFull.wed": { en: "Wednesday", th: "วันพุธ" },
+	"week.strip.dayFull.thu": { en: "Thursday", th: "วันพฤหัสบดี" },
+	"week.strip.dayFull.fri": { en: "Friday", th: "วันศุกร์" },
+	"week.strip.dayFull.sat": { en: "Saturday", th: "วันเสาร์" },
+	"week.strip.dayFull.sun": { en: "Sunday", th: "วันอาทิตย์" },
 	"week.strip.dayState.done": { en: "checked in", th: "เช็คอินแล้ว" },
 	"week.strip.dayState.quiet": { en: "quiet", th: "เงียบ" },
 	"week.strip.dayState.today": { en: "today", th: "วันนี้" },

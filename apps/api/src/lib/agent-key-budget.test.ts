@@ -15,12 +15,16 @@ describe("agentKeyBudget", () => {
 	});
 
 	it("reports the key's own limit when the row disagrees with the default", () => {
+		// Derived from the default so this stays a real disagreement after a
+		// budget raise; a literal that equals the default would pass even if
+		// agentKeyBudget ignored the row (#140).
+		const rowLimit = AGENT_KEY_RATE_LIMIT.maxRequests + 25;
 		const budget = agentKeyBudget(
-			{ rateLimitMax: 200, rateLimitTimeWindow: 60 * 60 * 1000, requestCount: 3, lastRequest: new Date(NOW - 1000) },
+			{ rateLimitMax: rowLimit, rateLimitTimeWindow: 60 * 60 * 1000, requestCount: 3, lastRequest: new Date(NOW - 1000) },
 			NOW,
 		);
-		expect(budget?.limit).toBe(200);
-		expect(budget?.remaining).toBe(197);
+		expect(budget?.limit).toBe(rowLimit);
+		expect(budget?.remaining).toBe(rowLimit - 3);
 	});
 
 	it("counts down inside the window and reports the reset instant", () => {

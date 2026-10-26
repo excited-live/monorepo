@@ -47,6 +47,7 @@ import {
 	UpdateTransferBody,
 	type SetCareerIncomeBody,
 } from "../route/accounting.schemas";
+import { productMonth } from "../../../lib/product-time";
 
 /**
  * Accounting use cases over the normalized book (docs/accounting-data-model.md).
@@ -84,7 +85,7 @@ function applyPatch<T extends object>(record: T, patch: object): T {
 }
 
 function monthOf(asOf?: string): string {
-	return asOf ? asOf.slice(0, 7) : new Date().toISOString().slice(0, 7);
+	return asOf ? asOf.slice(0, 7) : productMonth();
 }
 
 /**

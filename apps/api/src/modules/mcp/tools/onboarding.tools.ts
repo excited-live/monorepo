@@ -21,6 +21,7 @@ import {
 	CreateIncomeBody,
 	CreateLiabilityBody,
 } from "../../accounting/route/accounting.schemas";
+import { productMonth } from "../../../lib/product-time";
 import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
 /**
@@ -95,10 +96,6 @@ function parseBody<S extends z.ZodType>(schema: S, value: unknown): z.output<S> 
 	if (result.success) return result.data;
 	const issue = result.error.issues[0];
 	throw new ValidationError(issue ? [issue.path.join("."), issue.message].filter(Boolean).join(": ") : "Invalid input");
-}
-
-function currentMonth(): string {
-	return new Date().toISOString().slice(0, 7);
 }
 
 async function personalEntityId(ctx: McpToolContext): Promise<string> {
@@ -378,7 +375,7 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		inputSchema: input(SummaryInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {
-			const month = typeof raw.month === "string" && raw.month ? raw.month : currentMonth();
+			const month = typeof raw.month === "string" && raw.month ? raw.month : productMonth();
 			return { summary: await ctx.accounting.getSummary(ctx.userId, { month }) };
 		},
 	},

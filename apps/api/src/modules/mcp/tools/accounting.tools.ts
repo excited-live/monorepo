@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ValidationError } from "../../accounting/domain/errors";
 import { CreateTransferBody } from "../../accounting/route/accounting.schemas";
+import { productDate, productMonth } from "../../../lib/product-time";
 import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
 /**
@@ -20,14 +21,6 @@ function parseBody<S extends z.ZodType>(schema: S, value: unknown): z.output<S> 
 	if (result.success) return result.data;
 	const issue = result.error.issues[0];
 	throw new ValidationError(issue ? [issue.path.join("."), issue.message].filter(Boolean).join(": ") : "Invalid input");
-}
-
-function currentMonth(): string {
-	return new Date().toISOString().slice(0, 7);
-}
-
-function currentDate(): string {
-	return new Date().toISOString().slice(0, 10);
 }
 
 async function personalEntityId(ctx: McpToolContext): Promise<string> {
@@ -103,7 +96,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		inputSchema: input(CashFlowsInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {
-			const month = typeof raw.month === "string" && raw.month ? raw.month : currentMonth();
+			const month = typeof raw.month === "string" && raw.month ? raw.month : productMonth();
 			const entityId = typeof raw.entityId === "string" && raw.entityId ? raw.entityId : undefined;
 			const direction = raw.direction === "in" || raw.direction === "out" ? raw.direction : undefined;
 			const includeDepreciation = raw.includeDepreciation ? "true" : "false";
@@ -128,7 +121,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 				raw.fromAssetId || raw.fromEntityId
 					? (raw.fromEntityId as string | undefined)
 					: await personalEntityId(ctx);
-			const date = typeof raw.date === "string" && raw.date ? raw.date : currentDate();
+			const date = typeof raw.date === "string" && raw.date ? raw.date : productDate();
 			const body = parseBody(CreateTransferBody, {
 				...raw,
 				date,
@@ -161,7 +154,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		inputSchema: input(MonthlyLedgerInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {
-			const yearMonth = typeof raw.yearMonth === "string" && raw.yearMonth ? raw.yearMonth : currentMonth();
+			const yearMonth = typeof raw.yearMonth === "string" && raw.yearMonth ? raw.yearMonth : productMonth();
 			const entityId = typeof raw.entityId === "string" && raw.entityId ? raw.entityId : undefined;
 			const ledger = await ctx.accounting.getLedger(ctx.userId, yearMonth, entityId);
 			return { ledger, ...ledger };
@@ -175,7 +168,7 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		inputSchema: input(TreasuryProjectionInput),
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {
-			const month = typeof raw.month === "string" && raw.month ? raw.month : currentMonth();
+			const month = typeof raw.month === "string" && raw.month ? raw.month : productMonth();
 			const entityId = typeof raw.entityId === "string" && raw.entityId ? raw.entityId : undefined;
 			const pastMonths = typeof raw.pastMonths === "number" ? raw.pastMonths : undefined;
 			const futureMonths = typeof raw.futureMonths === "number" ? raw.futureMonths : undefined;

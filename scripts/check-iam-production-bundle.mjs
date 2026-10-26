@@ -15,7 +15,9 @@
  *   node scripts/check-iam-production-bundle.mjs [--dir apps/iam/dist] [--self-test]
  *
  * `--self-test` copies the bundle, plants a workers.dev string in a JS asset
- * and fails unless the guard rejects that copy. The real `dist/` is untouched.
+ * and fails unless the guard rejects that copy, then copies it again without
+ * index.html and fails unless the completeness check catches that too. The
+ * real `dist/` is untouched.
  */
 import {
 	appendFileSync,
@@ -28,7 +30,7 @@ import {
 	statSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { join, relative, resolve } from "node:path"
 
 const REQUIRED = [
 	"https://api.excited.live",
@@ -64,15 +66,23 @@ function walk(dir) {
 	return out
 }
 
+/**
+ * Count every occurrence of `needle` across `files` and remember the first
+ * offending file, so a failure can name it instead of only its total.
+ */
 function countHits(files, needle) {
-	let hits = 0
+	let total = 0
+	let first
 	for (const file of files) {
 		const bytes = readFileSync(file)
 		// Skip images/fonts/binaries; only text can carry an inlined origin.
 		if (bytes.includes(0)) continue
-		hits += bytes.toString("utf8").split(needle).length - 1
+		const hits = bytes.toString("utf8").split(needle).length - 1
+		if (hits === 0) continue
+		total += hits
+		first ??= { file, hits }
 	}
-	return hits
+	return { total, first }
 }
 
 function check(dir, { quiet = false } = {}) {
@@ -87,8 +97,25 @@ function check(dir, { quiet = false } = {}) {
 		if (!quiet) console.error(`::error::${message}`)
 	}
 
+	// A dist can carry every REQUIRED origin in its JS chunk and still be
+	// undeployable: the three required strings live in the asset chunk, so
+	// without index.html or a readable assets/ the SPA 404s on every route.
+	const indexHtml = join(dir, "index.html")
+	if (!existsSync(indexHtml)) {
+		fail("dist/index.html is missing; the SPA would 404 on every route")
+	} else if (statSync(indexHtml).size === 0) {
+		fail("dist/index.html is empty; the SPA would 404 on every route")
+	}
+
+	const assets = join(dir, "assets")
+	if (!existsSync(assets) || !statSync(assets).isDirectory()) {
+		fail("dist/assets is missing; the SPA would have no JavaScript to run")
+	} else if (readdirSync(assets).length === 0) {
+		fail("dist/assets is empty; the SPA would have no JavaScript to run")
+	}
+
 	for (const marker of REQUIRED) {
-		if (countHits(files, marker) === 0) {
+		if (countHits(files, marker).total === 0) {
 			fail(`the bundle never mentions ${marker}`)
 		}
 	}
@@ -98,9 +125,10 @@ function check(dir, { quiet = false } = {}) {
 	}
 
 	for (const marker of FORBIDDEN) {
-		const hits = countHits(files, marker)
-		if (hits !== 0) {
-			fail(`${marker} appears ${hits} time(s); zero allowed`)
+		const { total, first } = countHits(files, marker)
+		if (total !== 0) {
+			const where = first ? ` in ${relative(dir, first.file)}` : ""
+			fail(`${marker} appears ${total} time(s)${where}; zero allowed`)
 		} else if (!quiet) {
 			console.log(`zero hits: ${marker}`)
 		}
@@ -145,8 +173,35 @@ if (selfTest) {
 			console.error(`::error::self-test failed for the wrong reason: ${plantedProblems.join("; ")}`)
 			process.exit(1)
 		}
+		// The failure must name the offending file, not only the total.
+		const namedFile = relative(planted, js)
+		if (!plantedProblems.some((problem) => problem.includes(namedFile))) {
+			console.error(
+				`::error::self-test failed: the workers.dev problem never names ${namedFile}: ${plantedProblems.join("; ")}`,
+			)
+			process.exit(1)
+		}
 		console.log("Self-test passed: the guard rejects a planted workers.dev string.")
 	} finally {
 		rmSync(planted, { recursive: true, force: true })
+	}
+
+	const noIndex = mkdtempSync(join(tmpdir(), "iam-guard-"))
+	try {
+		cpSync(dir, noIndex, { recursive: true })
+		rmSync(join(noIndex, "index.html"), { force: true })
+
+		const noIndexProblems = check(noIndex, { quiet: true })
+		if (!noIndexProblems.some((problem) => problem.startsWith("dist/index.html is missing"))) {
+			console.error(
+				`::error::self-test failed: a bundle without index.html was accepted: ${
+					noIndexProblems.length === 0 ? "no problems reported" : noIndexProblems.join("; ")
+				}`,
+			)
+			process.exit(1)
+		}
+		console.log("Self-test passed: the guard rejects a bundle without index.html.")
+	} finally {
+		rmSync(noIndex, { recursive: true, force: true })
 	}
 }

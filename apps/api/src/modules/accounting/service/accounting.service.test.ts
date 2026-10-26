@@ -84,7 +84,7 @@ describe("entities", () => {
 	it("deletes a business entity and cascades to its records", async () => {
 		const acme = await createBusiness();
 		await service.createIncome(USER, { kind: "business", entityId: acme.id, name: "Retainer", category: "freelance", amount: 1000 });
-		await service.createExpense(USER, { entityId: acme.id, name: "Hosting", category: "subscription", amount: 50 });
+		await service.createExpense(USER, { entityId: acme.id, name: "Hosting", category: "saas", amount: 50 });
 
 		await service.deleteEntity(USER, acme.id);
 
@@ -752,7 +752,7 @@ describe("PATCH clearing", () => {
 		const expense = await service.createExpense(USER, {
 			entityId: me.id,
 			name: "Gym",
-			category: "health",
+			category: "healthcare",
 			amount: 1500,
 			notes: "annual plan",
 			endMonth: "2027-06",
@@ -765,5 +765,58 @@ describe("PATCH clearing", () => {
 		expect(cleared.notes).toBeUndefined();
 		expect(cleared.endMonth).toBeUndefined();
 		expect(cleared.amount).toBe(1600);
+	});
+});
+
+describe("#173 — one expense vocabulary", () => {
+	async function legacyExpense(entityId: string, category: string, amount: number) {
+		const id = crypto.randomUUID();
+		await repo.write(USER, [
+			{
+				op: "insert",
+				resource: "expenses",
+				// Written before the vocabulary existed: straight past the schema.
+				record: { id, entityId, name: "Legacy receipt", category, amount, cycle: "one_time", startMonth: "2026-10", active: true },
+			},
+		]);
+		return id;
+	}
+
+	it("totals a Thai legacy row and a new app-key row in the same bucket", async () => {
+		const me = await personalEntity();
+		await service.createExpense(USER, {
+			entityId: me.id,
+			name: "ร้านอาหารตามสั่ง",
+			category: "อาหาร",
+			amount: 250,
+			cycle: "one_time",
+			startMonth: "2026-10",
+		});
+		await legacyExpense(me.id, "อาหาร", 120);
+
+		const flows = await service.getCashFlows(USER, { month: "2026-10", entityId: me.id });
+		expect(flows.items.find((item) => item.name === "Legacy receipt")?.category).toBe("food");
+		expect(flows.spendingByCategory.find((bucket) => bucket.category === "food")).toEqual({
+			category: "food",
+			spending: 370,
+			count: 2,
+			share: 1,
+		});
+		expect(flows.spendingByCategory.reduce((sum, bucket) => sum + bucket.spending, 0)).toBe(
+			flows.totals.spending,
+		);
+
+		// The direction filter narrows items only, exactly like totals.
+		const out = await service.getCashFlows(USER, { month: "2026-10", entityId: me.id, direction: "out" });
+		expect(out.spendingByCategory).toEqual(flows.spendingByCategory);
+	});
+
+	it("keeps a legacy free-text row editable and converges it on the next write", async () => {
+		const me = await personalEntity();
+		const id = await legacyExpense(me.id, "tools", 100);
+
+		const updated = await service.updateExpense(USER, id, { amount: 130 });
+		expect(updated.category).toBe("other");
+		expect(updated.amount).toBe(130);
 	});
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCashFlows, summarizeCashFlows } from "../src/cashflows";
+import { buildCashFlows, summarizeCashFlows, summarizeSpendingByCategory } from "../src/cashflows";
 import { buildMonthlyActions } from "../src/ledger";
 import type { Asset, CapitalTransfer, EntityAccount, Expense, Income, Liability } from "../src/types";
 
@@ -137,5 +137,75 @@ describe("buildCashFlows", () => {
 		const summary = summarizeCashFlows(buildCashFlows({ ...args, includeDepreciation: true }));
 		expect(summary.moneyIn).toBe(ledger.totalInflow);
 		expect(summary.moneyOut).toBe(ledger.totalCashOutflow);
+	});
+});
+
+
+describe("spending by category (#173)", () => {
+	const wallet: Asset = {
+		id: "w_main",
+		entityId: "acc_p",
+		name: "Main",
+		cost: 0,
+		lifespanMonths: 0,
+		purchaseDate: YM,
+		category: "cash",
+		kind: "cash",
+		isDefault: true,
+	};
+
+	function argsFor(categories: string[]) {
+		return {
+			account: personal,
+			yearMonth: YM,
+			subscriptions: categories.map((category, index) => ({
+				id: `sub_${index}`,
+				entityId: "acc_p",
+				name: `Item ${index}`,
+				amount: 100,
+				cycle: "monthly" as const,
+				category,
+				nextRenewalDate: "2026-10-05",
+				active: true,
+			})),
+			hardware: [wallet],
+			revenues: [],
+			transfers: [],
+		};
+	}
+
+	it("reads a Thai label and an app key into the same bucket", () => {
+		const items = buildCashFlows(argsFor(["อาหาร", "food"]));
+		expect(items.every((item) => item.category === "food")).toBe(true);
+
+		const buckets = summarizeSpendingByCategory(items);
+		expect(buckets.find((bucket) => bucket.category === "food")).toEqual({
+			category: "food",
+			spending: 200,
+			count: 2,
+			share: 1,
+		});
+	});
+
+	it("always includes uncategorised, and the buckets sum to totals.spending", () => {
+		const items = buildCashFlows(argsFor(["food", "unknown free text"]));
+		const buckets = summarizeSpendingByCategory(items);
+		expect(buckets.some((bucket) => bucket.category === "uncategorised")).toBe(true);
+		expect(buckets.find((bucket) => bucket.category === "other")?.spending).toBe(100);
+		const sum = buckets.reduce((total, bucket) => total + bucket.spending, 0);
+		expect(sum).toBe(summarizeCashFlows(items).spending);
+	});
+
+	it("puts depreciation, which has no user category, into uncategorised", () => {
+		const items = buildCashFlows({ ...args, includeDepreciation: true });
+		const buckets = summarizeSpendingByCategory(items);
+		const sum = buckets.reduce((total, bucket) => total + bucket.spending, 0);
+		expect(sum).toBe(summarizeCashFlows(items).spending);
+		expect(buckets.find((bucket) => bucket.category === "uncategorised")?.count).toBeGreaterThan(0);
+	});
+
+	it("returns only uncategorised at zero for an empty month", () => {
+		const buckets = summarizeSpendingByCategory([]);
+		expect(buckets).toEqual([{ category: "uncategorised", spending: 0, count: 0, share: 0 }]);
 	});
 });

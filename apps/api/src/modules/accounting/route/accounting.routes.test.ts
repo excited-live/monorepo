@@ -146,7 +146,7 @@ describe("expenses", () => {
 		expect((await client.expenses.$get({ query: { entityId: me } })).status).toBe(200);
 
 		const created = await client.expenses.$post({
-			json: { entityId: me, name: "Hosting", category: "subscription", amount: 300 },
+			json: { entityId: me, name: "Hosting", category: "saas", amount: 300 },
 		});
 		expect(created.status).toBe(201);
 		const hosting = await created.json();
@@ -215,7 +215,7 @@ describe("expenses", () => {
 			json: {
 				entityId: me,
 				name: "Internet",
-				category: "utilities",
+				category: "connectivity",
 				amount: 700,
 				cycle: "monthly",
 				startMonth: "2026-10",
@@ -441,11 +441,49 @@ describe("request validation", () => {
 
 	it("rejects a non-UUID client id and a missing month on the summary", async () => {
 		const me = await personalId();
-		const body = { id: "not-a-uuid", entityId: me, name: "X", category: "x", amount: 1 };
+		const body = { id: "not-a-uuid", entityId: me, name: "X", category: "other", amount: 1 };
 		const badId = await client.expenses.$post({ json: body as never });
 		expect(badId.status).toBe(400);
 
 		const noMonth = await client.summary.$get({ query: {} as never });
 		expect(noMonth.status).toBe(400);
+	});
+});
+
+describe("expense categories (#173)", () => {
+	it("accepts a Thai label and stores the canonical key", async () => {
+		const me = await personalId();
+		const created = await client.expenses.$post({
+			json: {
+				entityId: me,
+				name: "ร้านอาหารตามสั่ง",
+				category: "อาหาร",
+				amount: 250,
+				cycle: "one_time",
+				startMonth: "2026-10",
+			} as never,
+		});
+		expect(created.status).toBe(201);
+		expect(await created.json()).toMatchObject({ category: "food" });
+	});
+
+	it("rejects an unknown category with the allowed values, and writes nothing", async () => {
+		const me = await personalId();
+		const refused = await client.expenses.$post({
+			json: {
+				entityId: me,
+				name: "Mystery",
+				category: "groceries2",
+				amount: 100,
+				startMonth: "2026-10",
+			} as never,
+		});
+		expect(refused.status).toBe(400);
+		const text = JSON.stringify(await refused.json());
+		expect(text).toContain("food");
+		expect(text).toContain("housing");
+
+		const list = await (await client.expenses.$get({ query: { entityId: me } })).json();
+		expect(list).toHaveLength(0);
 	});
 });

@@ -653,6 +653,18 @@ export function createAccountingService(repo: AccountingRepository) {
 			}),
 		};
 		await validateExpenseLinks(userId, expense);
+		// #174: an expense that names no funding source needs a wallet to book
+		// against. Every entity starts with one; the only way to have none is
+		// deleteAsset on the last wallet. A ฿0 wallet is not this case and must
+		// still accept the write.
+		if (expense.paidFromAssetId === undefined && expense.paidFromLiabilityId === undefined) {
+			const cash = await cashAssetsOf(userId, expense.entityId);
+			if (cash.length === 0) {
+				throw new ValidationError(
+					'This entity has no cash wallet: call add_asset with kind: "cash" before recording an expense that names no funding source',
+				);
+			}
+		}
 		return written(await repo.write(userId, [insert("expenses", expense)]), expense.id);
 	}
 

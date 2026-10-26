@@ -457,6 +457,305 @@ describe("/mcp", () => {
 		);
 	});
 
+/** A one-time receipt on the personal entity, through the MCP tool. */
+	const addExpense = (key: string, app: Hono<ApiEnv>, args: Record<string, unknown>, id = 30) =>
+		rpc(
+			app,
+			{ jsonrpc: "2.0", id, method: "tools/call", params: { name: "add_expense", arguments: args } },
+			key,
+		);
+
+	const toolText = (result: ToolResult): string => result.content.map((part) => part.text).join(" ");
+
+	it("names the ฿0 bootstrap wallet and flags it as unfunded, without blocking the write (#174)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// A fresh account's wallet is ฿0 (ensureBootstrap). This is the normal
+		// first-week receipt: it must be written, and the unfunded wallet named.
+		const added = await addExpense(key, app, {
+			name: "ร้านอาหารตามสั่ง",
+			category: "food",
+			amount: 250,
+			cycle: "one_time",
+			asOf: "2026-10-26",
+		});
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.expense as { amount: number }).amount).toBe(250);
+		expect(result.structuredContent?.paidFrom).toEqual({
+			assetId: expect.any(String),
+			name: "Personal Main Wallet",
+			isDefault: true,
+		});
+		// Both codes, never deduped: the ฿0 wallet was unfunded and the month ends
+		// at −250. One envelope, different scopes (#174, Ada 15:43).
+		expect(result.structuredContent?.warnings).toEqual([
+			{ code: "cash_negative", month: "2026-10", treasuryAfter: -250 },
+			{ code: "funding_wallet_zero_balance", month: "2026-10", assetId: expect.any(String), treasuryAfter: -250 },
+		]);
+		expect(result.structuredContent?.treasuryAfter).toBe(-250);
+
+		// The model is unchanged: the ฿0 wallet really does carry the -250.
+		const ledgerRes = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 31,
+				method: "tools/call",
+				params: { name: "get_monthly_ledger", arguments: { yearMonth: "2026-10" } },
+			},
+			key,
+		);
+		const ledger = (ledgerRes.json?.result as ToolResult).structuredContent?.ledger as {
+			summary: { endingTreasury: number; startingTreasury: number; totalInflow: number };
+		};
+		expect(ledger.summary.endingTreasury).toBe(-250);
+		// An unstated ฿0 opening is unknown, not dead (#174 deliverable 3).
+		expect((ledgerRes.json?.result as ToolResult).structuredContent?.treasuryStatus).toBe("unknown");
+
+		const summaryRes = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 32,
+				method: "tools/call",
+				params: { name: "get_financial_summary", arguments: { month: "2026-10" } },
+			},
+			key,
+		);
+		expect((summaryRes.json?.result as ToolResult).structuredContent?.treasuryStatus).toBe("unknown");
+	});
+
+	it("names a funded wallet, warns nothing and asserts no unknown treasury (#174)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const wallet = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 33,
+				method: "tools/call",
+				params: {
+					name: "add_asset",
+					arguments: {
+						kind: "cash",
+						name: "Funded Wallet",
+						category: "cash",
+						balance: 5000,
+						balanceAsOf: "2026-10",
+						isDefault: true,
+					},
+				},
+			},
+			key,
+		);
+		expect((wallet.json?.result as ToolResult).isError).toBeUndefined();
+
+		const added = await addExpense(key, app, {
+			name: "Coffee",
+			category: "food",
+			amount: 250,
+			startMonth: "2026-10",
+		});
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBeUndefined();
+		expect((result.structuredContent?.paidFrom as { name: string }).name).toBe("Funded Wallet");
+		expect(result.structuredContent?.warnings).toEqual([]);
+		expect(result.structuredContent?.treasuryAfter).toBe(4750);
+		expect(result.structuredContent?.treasuryStatus).toBeUndefined();
+
+		const summaryRes = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 34,
+				method: "tools/call",
+				params: { name: "get_financial_summary", arguments: { month: "2026-10" } },
+			},
+			key,
+		);
+		expect((summaryRes.json?.result as ToolResult).structuredContent?.treasuryStatus).toBeUndefined();
+	});
+
+	it("rejects an unfunded expense when deleteAsset removed the only wallet (#174)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// Bootstrap the personal entity and its wallet through the read route.
+		const assetsRes = await app.request("/api/v1/accounting/assets", {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(assetsRes.status).toBe(200);
+		const assets = (await assetsRes.json()) as Array<{ id: string; kind: string }>;
+		const wallet = assets.find((asset) => asset.kind === "cash");
+		expect(wallet).toBeDefined();
+		const deleted = await app.request(`/api/v1/accounting/assets/${wallet?.id}`, {
+			method: "DELETE",
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(deleted.status).toBe(200);
+
+		const added = await addExpense(key, app, { name: "Lunch", category: "food", amount: 250, asOf: "2026-10-26" });
+		const result = added.json?.result as ToolResult;
+		expect(result.isError).toBe(true);
+		expect(toolText(result)).toContain("add_asset");
+		expect(toolText(result)).toContain('kind: "cash"');
+
+		// Nothing was written.
+		const expensesRes = await app.request("/api/v1/accounting/expenses", {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(expensesRes.status).toBe(200);
+		expect((await expensesRes.json()) as Array<unknown>).toHaveLength(0);
+	});
+
+	it("rejects a non-cash paidFromAssetId and accepts a card-paid expense without a warning (#174)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const fixed = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 35,
+				method: "tools/call",
+				params: {
+					name: "add_asset",
+					arguments: {
+						kind: "fixed",
+						name: "Camera",
+						category: "gear",
+						cost: 1000,
+						acquiredOn: "2026-10-01",
+						usefulLifeMonths: 24,
+					},
+				},
+			},
+			key,
+		);
+		const fixedId = ((fixed.json?.result as ToolResult).structuredContent?.asset as { id: string }).id;
+		const refused = await addExpense(key, app, {
+			name: "Lens",
+			category: "food",
+			amount: 100,
+			paidFromAssetId: fixedId,
+		});
+		const refusedResult = refused.json?.result as ToolResult;
+		expect(refusedResult.isError).toBe(true);
+		expect(toolText(refusedResult)).toContain("must be a cash asset");
+
+		const card = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 36,
+				method: "tools/call",
+				params: {
+					name: "add_liability",
+					arguments: {
+						kind: "revolving",
+						name: "Credit Card",
+						category: "credit_card",
+						amount: 0,
+						revolving: { creditLimit: 10000, balance: 0, balanceAsOf: "2026-10" },
+					},
+				},
+			},
+			key,
+		);
+		const cardId = ((card.json?.result as ToolResult).structuredContent?.liability as { id: string }).id;
+		const charged = await addExpense(key, app, {
+			name: "Subscription",
+			category: "saas",
+			amount: 199,
+			paidFromLiabilityId: cardId,
+			startMonth: "2026-10",
+		});
+		const chargedResult = charged.json?.result as ToolResult;
+		expect(chargedResult.isError).toBeUndefined();
+		expect(chargedResult.structuredContent?.warnings).toEqual([]);
+		expect(chargedResult.structuredContent?.paidFrom).toBeNull();
+	});
+
+	it("keeps the two warning scopes separate instead of deduping them (#174)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// A ฿0 default wallet drawn to −50, with ฿1,000 in another wallet: the
+		// month still ends positive, so only the wallet is unfunded.
+		const spare = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 37,
+				method: "tools/call",
+				params: {
+					name: "add_asset",
+					arguments: { kind: "cash", name: "Spare Wallet", category: "cash", balance: 1000, balanceAsOf: "2026-10" },
+				},
+			},
+			key,
+		);
+		expect((spare.json?.result as ToolResult).isError).toBeUndefined();
+
+		const zeroOnly = await addExpense(key, app, { name: "Tram fare", category: "transit", amount: 50, startMonth: "2026-10" });
+		const zeroOnlyResult = zeroOnly.json?.result as ToolResult;
+		expect(zeroOnlyResult.isError).toBeUndefined();
+		expect((zeroOnlyResult.structuredContent?.paidFrom as { name: string }).name).toBe("Personal Main Wallet");
+		expect(zeroOnlyResult.structuredContent?.treasuryAfter).toBe(950);
+		expect(zeroOnlyResult.structuredContent?.warnings).toEqual([
+			{ code: "funding_wallet_zero_balance", month: "2026-10", assetId: expect.any(String), treasuryAfter: 950 },
+		]);
+
+		// A funded ฿100 wallet drawn to −50: the wallet was funded, so only the
+		// month goes negative.
+		const thinApp = configuredApp();
+		const thinSession = await signIn(thinApp);
+		const thinKey = await mintKey(thinApp, thinSession.token);
+		const thin = await rpc(
+			thinApp,
+			{
+				jsonrpc: "2.0",
+				id: 38,
+				method: "tools/call",
+				params: {
+					name: "add_asset",
+					arguments: {
+						kind: "cash",
+						name: "Thin Wallet",
+						category: "cash",
+						balance: 100,
+						balanceAsOf: "2026-10",
+						isDefault: true,
+					},
+				},
+			},
+			thinKey,
+		);
+		expect((thin.json?.result as ToolResult).isError).toBeUndefined();
+
+		const negativeOnly = await addExpense(
+			thinKey,
+			thinApp,
+			{ name: "Dinner", category: "food", amount: 150, startMonth: "2026-10" },
+			39,
+		);
+		const negativeOnlyResult = negativeOnly.json?.result as ToolResult;
+		expect(negativeOnlyResult.isError).toBeUndefined();
+		expect((negativeOnlyResult.structuredContent?.paidFrom as { name: string }).name).toBe("Thin Wallet");
+		expect(negativeOnlyResult.structuredContent?.treasuryAfter).toBe(-50);
+		expect(negativeOnlyResult.structuredContent?.warnings).toEqual([
+			{ code: "cash_negative", month: "2026-10", treasuryAfter: -50 },
+		]);
+	});
+
 	it("stores the catalog image on a created expense", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);
@@ -703,7 +1002,7 @@ describe("/mcp", () => {
 		);
 		expect(createTools).toHaveLength(5);
 		expect(JSON.stringify(createTools.map((tool) => tool.inputSchema))).not.toContain("imageUrl");
-		expect(createTools.every((tool) => tool.description.endsWith("The image is picked automatically."))).toBe(true);
+		expect(createTools.every((tool) => tool.description.includes("The image is picked automatically."))).toBe(true);
 	});
 
 	it("denies a tool whose scope the key lacks", async () => {

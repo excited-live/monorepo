@@ -157,7 +157,12 @@ export const accountingTools: readonly McpToolDefinition[] = [
 			const yearMonth = typeof raw.yearMonth === "string" && raw.yearMonth ? raw.yearMonth : productMonth();
 			const entityId = typeof raw.entityId === "string" && raw.entityId ? raw.entityId : undefined;
 			const ledger = await ctx.accounting.getLedger(ctx.userId, yearMonth, entityId);
-			return { ledger, ...ledger };
+			// #174 (Ada's 15:22 ruling): a ฿0 opening with no inflow and no runway
+			// is an unstated balance, not a solvency fact. Adapter-level only.
+			const { startingTreasury, totalInflow, runwayMonths, isDefaultAlive } = ledger.summary;
+			const unknown =
+				startingTreasury === 0 && totalInflow === 0 && runwayMonths === 0 && !isDefaultAlive;
+			return { ledger, ...ledger, ...(unknown ? { treasuryStatus: "unknown" } : {}) };
 		},
 	},
 	{

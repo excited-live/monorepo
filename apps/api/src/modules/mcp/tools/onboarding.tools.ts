@@ -270,7 +270,8 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 	{
 		name: "add_expense",
 		title: "Add an expense",
-		description: "Creates an expense or subscription. Defaults to the personal entity. The image is picked automatically.",
+		description:
+			"Creates an expense or subscription. Defaults to the personal entity. The image is picked automatically. The write is never rejected because the wallet is at ฿0: the response names the wallet it booked against in `paidFrom` (null when a card liability funds it), and `warnings` lists what the ledger knows about this write. `funding_wallet_zero_balance` means the funding wallet has never been funded; `cash_negative` means the month's ending treasury is below zero. Each warning carries `month` and `treasuryAfter`; `assetId` appears only on `funding_wallet_zero_balance`. Pass both codes on — they measure different things — and ask the human for the wallet's real balance instead of presenting the projection as a solvency fact.",
 		inputSchema: input(ExpenseInput),
 		requiredScope: "accounting:write",
 		async handler(ctx, raw) {
@@ -279,12 +280,62 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 				entityId: raw.entityId ?? (await personalEntityId(ctx)),
 			});
 			body.imageUrl = pickSuggestedImage(body.name, { kind: "expense" });
-			return createOrReuse({
+			const result = await createOrReuse({
 				id: body.id,
 				key: "expense",
 				create: () => ctx.accounting.createExpense(ctx.userId, body),
 				read: (id) => ctx.accounting.getExpense(ctx.userId, id),
 			});
+			// #174 (Ada's 15:22 ruling): a receipt recorded before an opening
+			// balance is normal, so the write stands. Name the wallet it resolved
+			// and flag an unfunded one; a ฿0 stored balance is not an error.
+			const expense = result.expense as
+				| { entityId: string; startMonth: string; paidFromAssetId?: string; paidFromLiabilityId?: string }
+				| undefined;
+			if (!expense) return result;
+			const cash =
+				expense.paidFromLiabilityId === undefined
+					? (await ctx.accounting.listAssets(ctx.userId, { entityId: expense.entityId, kind: "cash" })).filter(
+							(asset) => asset.kind === "cash",
+						)
+					: [];
+			// The ledger resolves an explicit link to that wallet and an absent one
+			// to the entity's default (flagged, else oldest) wallet.
+			const wallet =
+				expense.paidFromAssetId !== undefined
+					? cash.find((asset) => asset.id === expense.paidFromAssetId)
+					: (cash.find((asset) => asset.isDefault) ?? cash[0]);
+			const isDefault = wallet !== undefined && (wallet.isDefault || (!cash.some((a) => a.isDefault) && cash[0]?.id === wallet.id));
+			const ledger = await ctx.accounting.getLedger(ctx.userId, expense.startMonth, expense.entityId);
+			const treasuryAfter = ledger.summary.endingTreasury;
+			// #174 (Ada's 15:43 ruling): one envelope, two codes with different
+			// scopes, so they are never deduped. cash_negative is the entity's
+			// month-end treasury after the write; funding_wallet_zero_balance is
+			// the resolved wallet's stored balance before it.
+			const warnings: Array<{
+				code: "cash_negative" | "funding_wallet_zero_balance";
+				month: string;
+				assetId?: string;
+				treasuryAfter: number;
+			}> = [];
+			if (treasuryAfter < 0) {
+				warnings.push({ code: "cash_negative", month: expense.startMonth, treasuryAfter });
+			}
+			if (wallet !== undefined && wallet.balance === 0) {
+				warnings.push({
+					code: "funding_wallet_zero_balance",
+					month: expense.startMonth,
+					assetId: wallet.id,
+					treasuryAfter,
+				});
+			}
+			return {
+				...result,
+				// null, not absent, when a card funds it: "not funded by cash" stated once.
+				paidFrom: wallet ? { assetId: wallet.id, name: wallet.name, isDefault } : null,
+				treasuryAfter,
+				warnings,
+			};
 		},
 	},
 	{
@@ -376,7 +427,19 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		requiredScope: "accounting:read",
 		async handler(ctx, raw) {
 			const month = typeof raw.month === "string" && raw.month ? raw.month : productMonth();
-			return { summary: await ctx.accounting.getSummary(ctx.userId, { month }) };
+			const summary = await ctx.accounting.getSummary(ctx.userId, { month });
+			// #174 (Ada's 15:22 ruling): on a never-funded account `isDefaultAlive:
+			// false` is an unknown, not a death sentence. Derive it here; the
+			// accounting model is unchanged.
+			const personalId = await personalEntityId(ctx);
+			const metrics = summary.entities.find((entity) => entity.entityId === personalId)?.metrics;
+			const unknown =
+				metrics !== undefined &&
+				metrics.currentLiquid === 0 &&
+				metrics.totalIncome === 0 &&
+				metrics.runwayMonths === 0 &&
+				!metrics.isDefaultAlive;
+			return { summary, ...(unknown ? { treasuryStatus: "unknown" } : {}) };
 		},
 	},
 ];

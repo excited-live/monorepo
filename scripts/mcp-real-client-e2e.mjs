@@ -29,9 +29,27 @@
  *  11. tools/list                         -> exactly --expect-tools (16)
  *  12. tools/call get_onboarding_status   -> non-error, real onboarding data
  *
+ * With `--iam <origin>` it also runs the iam stage (#93) after step 12. The
+ * twelve MCP steps above are untouched, so a run without --iam is bit-for-bit
+ * the same gate as before.
+ *
+ *   I1. bundle        iam / is the shell (title, not status: the site soft-404s),
+ *                     its JS names the target API + auth origins and contains
+ *                     zero forbidden markers (the #88 guard list on prod)
+ *   I2. CORS          <iam> gets ACAO + ACAC on the API and the auth server;
+ *                     an evil origin and `null` get no ACAO
+ *   I3. tokens mount  sign-in from <iam> on <api>/api/v1/auth/email returns 200,
+ *                     exposes set-auth-token, and is not 403 INVALID_ORIGIN
+ *   I4. AS session    sign in on the auth server, then get-session cross-origin
+ *                     with the cookie -> 200 with a session
+ *   I5. keys          mint an agent key from <iam>, see it in the list, delete it
+ *   I6. DB isolation  the same throwaway account must not sign in on the other
+ *                     environment's API (prod vs prelive D1 are separate)
+ *
  * Usage:
  *   node scripts/mcp-real-client-e2e.mjs --env prelive --email qa@example.com --password '…'
  *   node scripts/mcp-real-client-e2e.mjs --mcp https://api.excited.live/mcp …
+ *   node scripts/mcp-real-client-e2e.mjs --env prelive --iam https://excited-live-iam-prelive.pages.dev --create-user …
  *
  * Credentials come from --email/--password or MCP_QA_EMAIL/MCP_QA_PASSWORD.
  * Pass --create-user when the account does not exist yet (prelive QA only).
@@ -39,6 +57,9 @@
  * Flags:
  *   --env prelive|prod   target preset (default: prod)
  *   --mcp URL            MCP endpoint, overrides --env
+ *   --iam URL            run the iam stage against this origin (off by default)
+ *   --api URL            API origin for the iam stage (default: from --env)
+ *   --as URL             auth-server origin for the iam stage (default: from --env)
  *   --email EMAIL        QA account (or MCP_QA_EMAIL)
  *   --password PW        QA password (or MCP_QA_PASSWORD)
  *   --create-user        sign up first; a throwaway address is fine on prelive
@@ -95,20 +116,54 @@ for (let i = 0; i < argv.length; i++) {
 function usage(message) {
 	if (message) console.error(`mcp-real-client-e2e: ${message}`)
 	console.error(
-		"usage: node scripts/mcp-real-client-e2e.mjs --env prelive|prod [--email E --password P] [--create-user] [--mcp URL] [--expect-tools N] [--bootstrap-discovery] [--json FILE]",
+		"usage: node scripts/mcp-real-client-e2e.mjs --env prelive|prod [--email E --password P] [--create-user] [--mcp URL] [--iam URL] [--api URL] [--as URL] [--expect-tools N] [--bootstrap-discovery] [--json FILE]",
 	)
 	process.exit(2)
 }
 
 const PRESETS = {
-	prelive: "https://excited-live-api-prelive.preamza02.workers.dev/mcp",
-	prod: "https://api.excited.live/mcp",
+	prelive: {
+		mcp: "https://excited-live-api-prelive.preamza02.workers.dev/mcp",
+		api: "https://excited-live-api-prelive.preamza02.workers.dev",
+		as: "https://prelive.excited.live",
+		otherApi: "https://api.excited.live",
+		otherAs: "https://auth.excited.live",
+	},
+	prod: {
+		mcp: "https://api.excited.live/mcp",
+		api: "https://api.excited.live",
+		as: "https://auth.excited.live",
+		otherApi: "https://excited-live-api-prelive.preamza02.workers.dev",
+		otherAs: "https://prelive.excited.live",
+	},
 }
 
 const ENVIRONMENT = args.get("env") ?? "prod"
 if (!(ENVIRONMENT in PRESETS) && !args.has("mcp")) usage(`--env must be prelive or prod, got ${JSON.stringify(ENVIRONMENT)}`)
 
-const MCP_URL = args.get("mcp") ?? PRESETS[ENVIRONMENT]
+const preset = PRESETS[ENVIRONMENT] ?? PRESETS.prod
+const MCP_URL = args.get("mcp") ?? preset.mcp
+const API_URL = (args.get("api") ?? preset.api).replace(/\/+$/, "")
+const AS_URL = (args.get("as") ?? preset.as).replace(/\/+$/, "")
+const OTHER_API_URL = preset.otherApi.replace(/\/+$/, "")
+const OTHER_AS_URL = preset.otherAs.replace(/\/+$/, "")
+
+/** `--iam` turns the iam stage on; absent means the gate is exactly the 12 MCP steps. */
+const IAM_ORIGIN = (() => {
+	const raw = args.get("iam")
+	if (!raw) return null
+	let url
+	try {
+		url = new URL(raw)
+	} catch {
+		usage(`--iam must be an absolute URL, got ${JSON.stringify(raw)}`)
+	}
+	if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+		usage("--iam must be https (http is allowed only for localhost)")
+	}
+	return url.origin
+})()
+
 const EMAIL = args.get("email") ?? process.env.MCP_QA_EMAIL
 const PASSWORD = args.get("password") ?? process.env.MCP_QA_PASSWORD
 const CREATE_USER = args.has("create-user")
@@ -747,6 +802,213 @@ try {
 	}
 	done()
 
+	// -----------------------------------------------------------------------
+	// iam stage (#93) — only with --iam. The twelve MCP steps above are untouched.
+	// -----------------------------------------------------------------------
+	let hubToken = null
+
+	async function iamStep(name, detail, body) {
+		start(name, detail)
+		try {
+			await body()
+		} catch (error) {
+			fail(describeError(error))
+		}
+		done()
+	}
+
+	if (IAM_ORIGIN) {
+		// I1. bundle ---------------------------------------------------------
+		await iamStep("I1. iam bundle — shell, title, baked origins", IAM_ORIGIN, async () => {
+			const root = await request(`${IAM_ORIGIN}/`, { headers: { accept: "text/html" } })
+			note(`GET ${IAM_ORIGIN}/ -> ${describe(root)}`)
+			if (root.status !== 200) return fail(`want HTTP 200, got ${root.status}`)
+			const title = (root.text.match(/<title[^>]*>([\s\S]*?)<\/title>/i) ?? [])[1]?.replace(/\s+/g, " ").trim() ?? ""
+			note(`title: ${JSON.stringify(title)}`)
+			// The site soft-404s with 200, so the title is the real signal.
+			if (!/iam/i.test(title)) return fail(`the page title is ${JSON.stringify(title)}, not the iam shell — a soft 404 passes a status check`)
+			// Same-origin only: Cloudflare injects a beacon into the served HTML, and a
+			// third-party asset failing must not fail an iam gate.
+			const sources = [...root.text.matchAll(/<script[^>]+src="([^"]+\.js[^"]*)"/gi)]
+				.map((match) => new URL(match[1], `${IAM_ORIGIN}/`).toString())
+				.filter((url) => new URL(url).origin === IAM_ORIGIN)
+			if (sources.length === 0) return fail("the shell has no same-origin <script src=…js> entry")
+			let js = ""
+			for (const src of sources.slice(0, 3)) {
+				const asset = await request(src)
+				note(`GET ${src} -> HTTP ${asset.status} · ${asset.text.length} bytes`)
+				if (asset.status !== 200) return fail(`asset ${src} returned ${asset.status}`)
+				js += asset.text
+			}
+			const preliveTarget = /prelive|workers\.dev/i.test(API_URL)
+			const required = [API_URL, AS_URL]
+			const forbidden = [
+				...(preliveTarget ? ["https://api.excited.live", "https://auth.excited.live"] : ["workers.dev", "prelive.excited.live"]),
+				"mcp.excited.live",
+				"ex_live_",
+				"/api/v1/plan",
+				"/api/v1/sim",
+				"play.google.com",
+			]
+			const hits = (needle) => js.split(needle).length - 1
+			const missing = required.filter((needle) => hits(needle) === 0)
+			const dirty = forbidden.map((needle) => [needle, hits(needle)]).filter(([, count]) => count > 0)
+			if (missing.length > 0) return fail(`the bundle never mentions ${missing.join(", ")}`)
+			if (dirty.length > 0) return fail(`forbidden markers in the bundle: ${dirty.map(([needle, count]) => `${needle} ×${count}`).join(", ")}`)
+			pass(`${js.length} bytes of JS · ${required.length} required origins present · ${forbidden.length} forbidden markers at zero`)
+		})
+
+		// I2. CORS -----------------------------------------------------------
+		await iamStep("I2. CORS — iam allowed, evil and null refused", IAM_ORIGIN, async () => {
+			const targets = [
+				{ label: "api /api/v1/agent-keys", url: `${API_URL}/api/v1/agent-keys` },
+				{ label: "auth /api/auth/get-session", url: `${AS_URL}/api/auth/get-session` },
+			]
+			const problems = []
+			const shape = (response) =>
+				`HTTP ${response.status} · ACAO ${response.headers.get("access-control-allow-origin") ?? "(none)"} · ACAC ${
+					response.headers.get("access-control-allow-credentials") ?? "(none)"
+				}`
+			for (const target of targets) {
+				const preflight = await request(target.url, {
+					method: "OPTIONS",
+					headers: {
+						origin: IAM_ORIGIN,
+						"access-control-request-method": "GET",
+						"access-control-request-headers": "content-type",
+					},
+				})
+				const real = await request(target.url, { headers: { origin: IAM_ORIGIN, accept: "application/json" } })
+				const evil = await request(target.url, { headers: { origin: "https://evil.example", accept: "application/json" } })
+				const nullOrigin = await request(target.url, { headers: { origin: "null", accept: "application/json" } })
+				note(`${target.label} preflight -> ${shape(preflight)}`)
+				note(`${target.label} real      -> ${shape(real)}`)
+				note(`${target.label} evil      -> ${shape(evil)}`)
+				note(`${target.label} null      -> ${shape(nullOrigin)}`)
+				for (const [phase, response] of [
+					["preflight", preflight],
+					["real", real],
+				]) {
+					const acao = response.headers.get("access-control-allow-origin")
+					if (acao !== IAM_ORIGIN) problems.push(`${target.label} ${phase}: ACAO ${JSON.stringify(acao)}, want ${JSON.stringify(IAM_ORIGIN)}`)
+					if (response.headers.get("access-control-allow-credentials") !== "true") problems.push(`${target.label} ${phase}: ACAC is not true`)
+				}
+				for (const [phase, response] of [
+					["evil", evil],
+					["null", nullOrigin],
+				]) {
+					const leaked = response.headers.get("access-control-allow-origin")
+					if (leaked) problems.push(`${target.label} ${phase}: leaked ACAO ${JSON.stringify(leaked)}`)
+				}
+			}
+			if (problems.length > 0) return fail(problems.join("; "))
+			pass("both mounts: ACAO + ACAC for iam, no ACAO for an evil origin or null")
+		})
+
+		// I3. tokens mount ---------------------------------------------------
+		await iamStep("I3. tokens mount — sign-in from iam returns set-auth-token", `${API_URL}/api/v1/auth`, async () => {
+			const signIn = () =>
+				request(`${API_URL}/api/v1/auth/sign-in/email`, {
+					method: "POST",
+					headers: { "content-type": "application/json", origin: IAM_ORIGIN },
+					body: { email: EMAIL, password: PASSWORD },
+				})
+			let response = await signIn()
+			note(`POST /api/v1/auth/sign-in/email -> HTTP ${response.status} · ${response.json?.code ?? response.json?.error ?? "(no code)"}`)
+			if (response.status === 401 && CREATE_USER) {
+				const signUp = await request(`${API_URL}/api/v1/auth/sign-up/email`, {
+					method: "POST",
+					headers: { "content-type": "application/json", origin: IAM_ORIGIN },
+					body: { email: EMAIL, password: PASSWORD, name: NAME },
+				})
+				note(`POST /api/v1/auth/sign-up/email -> HTTP ${signUp.status} · ${signUp.json?.code ?? "(no code)"}`)
+				response = await signIn()
+			}
+			const token = response.headers.get("set-auth-token")
+			const exposed = response.headers.get("access-control-expose-headers") ?? ""
+			note(`set-auth-token: ${token ? `${token.length} chars` : "(absent)"} · expose-headers: ${exposed || "(absent)"}`)
+			const code = String(response.json?.code ?? response.json?.error ?? "")
+			if (response.status === 403 && /INVALID_ORIGIN/i.test(code)) return fail(`403 INVALID_ORIGIN — the API does not trust ${IAM_ORIGIN}`)
+			if (response.status !== 200) return fail(`want HTTP 200 from the tokens mount, got ${response.status}`)
+			if (!token) return fail("no set-auth-token header on sign-in (the tokens mount needs BETTER_AUTH_SECRET)")
+			if (!/set-auth-token/i.test(exposed)) return fail("set-auth-token is absent from access-control-expose-headers, so a browser cannot read it")
+			hubToken = token
+			pass("200 · set-auth-token present and exposed · no INVALID_ORIGIN")
+		})
+
+		// I4. credentialed AS session ----------------------------------------
+		await iamStep("I4. AS session — sign in, then get-session cross-origin", `${AS_URL}/api/auth`, async () => {
+			const browser = new Browser()
+			// Sign-in itself is a same-origin top-level navigation in the real flow
+			// (the user is on the AS's /sign-in page). Better Auth rejects a
+			// cross-origin POST as INVALID_ORIGIN by design, so the Origin here is
+			// the AS, not iam. What iam does cross-origin is read the session.
+			const signIn = await browser.request(`${AS_URL}/api/auth/sign-in/email`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: AS_URL },
+				body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+			})
+			const signInBody = safeJson(await signIn.text())
+			note(`sign-in (Origin ${AS_URL}): HTTP ${signIn.status} · user ${signInBody?.user?.id ?? "(none)"}`)
+			if (signIn.status !== 200) return fail(`sign-in on the authorization server returned ${signIn.status}`)
+			const session = await browser.request(`${AS_URL}/api/auth/get-session`, { headers: { origin: IAM_ORIGIN, accept: "application/json" } })
+			const body = safeJson(await session.text())
+			note(
+				`get-session (Origin ${IAM_ORIGIN}): HTTP ${session.status} · ACAO ${session.headers.get("access-control-allow-origin") ?? "(none)"} · session ${
+					body?.session ? "present" : "null"
+				}`,
+			)
+			if (session.status !== 200) return fail(`get-session returned ${session.status}`)
+			if (session.headers.get("access-control-allow-origin") !== IAM_ORIGIN) return fail(`get-session did not allow ${IAM_ORIGIN}`)
+			if (!body?.session) return fail("get-session returned no session for the cookie it had just set")
+			pass("the cookie session survived a cross-origin get-session")
+		})
+
+		// I5. agent keys -----------------------------------------------------
+		await iamStep("I5. agent keys — mint from iam, list, revoke", `${API_URL}/api/v1/agent-keys`, async () => {
+			if (!hubToken) return skip("no hub token from I3")
+			const authHeaders = { authorization: `Bearer ${hubToken}`, origin: IAM_ORIGIN, "content-type": "application/json" }
+			const minted = await request(`${API_URL}/api/v1/agent-keys`, {
+				method: "POST",
+				headers: authHeaders,
+				body: { agentId: "qa-rigel-iam-gate", name: "Rigel iam stage (#93)" },
+			})
+			const keyId = minted.json?.id
+			note(`POST /api/v1/agent-keys -> HTTP ${minted.status} · id ${keyId ?? "(none)"} · key ${minted.json?.key ? "returned" : "MISSING"}`)
+			if (minted.status !== 201 || !keyId || !minted.json?.key) return fail(`want 201 + id + key, got ${minted.status}`)
+			const listed = await request(`${API_URL}/api/v1/agent-keys`, {
+				headers: { authorization: `Bearer ${hubToken}`, origin: IAM_ORIGIN },
+			})
+			const keys = Array.isArray(listed.json?.keys) ? listed.json.keys : []
+			note(`GET /api/v1/agent-keys -> HTTP ${listed.status} · ${keys.length} key(s)`)
+			if (listed.status !== 200) return fail(`list returned ${listed.status}`)
+			if (!keys.some((key) => key.id === keyId)) return fail("the key just minted is not in the list")
+			const revoked = await request(`${API_URL}/api/v1/agent-keys/${encodeURIComponent(keyId)}`, {
+				method: "DELETE",
+				headers: { authorization: `Bearer ${hubToken}`, origin: IAM_ORIGIN },
+			})
+			note(`DELETE /api/v1/agent-keys/${keyId} -> HTTP ${revoked.status}`)
+			if (revoked.status !== 200) return fail(`revoke returned ${revoked.status}; key ${keyId} may be left behind`)
+			pass("201 minted · listed · revoked")
+		})
+
+		// I6. DB isolation ---------------------------------------------------
+		await iamStep("I6. DB isolation — the throwaway account is absent from the other environment", OTHER_API_URL, async () => {
+			// A trusted Origin from the *other* environment: without one, Better Auth
+			// answers 403 MISSING_OR_NULL_ORIGIN, which says nothing about the account.
+			const response = await request(`${OTHER_API_URL}/api/v1/auth/sign-in/email`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: OTHER_AS_URL },
+				body: { email: EMAIL, password: PASSWORD },
+			})
+			const code = String(response.json?.code ?? response.json?.error ?? "")
+			note(`POST ${OTHER_API_URL}/api/v1/auth/sign-in/email (Origin ${OTHER_AS_URL}) -> HTTP ${response.status} · ${code || "(no code)"}`)
+			if (response.status === 200) return fail(`${EMAIL} can sign in on BOTH environments — the D1s are not isolated`)
+			if (response.status === 401) return pass(`no such account on the other environment (HTTP 401 ${code || "unauthorized"})`)
+			return fail(`${response.status} ${code || "(no code)"} is inconclusive: the probe must reach the account lookup`)
+		})
+	}
+
 	if (client) await client.close().catch(() => {})
 } catch (error) {
 	summary.error = String(error?.stack ?? error)
@@ -761,6 +1023,13 @@ summary.ok = notPassed.length === 0
 summary.finishedAt = new Date().toISOString()
 summary.notPassed = notPassed.map((step) => step.name)
 summary.exitCode = summary.ok ? 0 : 1
+summary.iamOrigin = IAM_ORIGIN
+const mcpSteps = steps.filter((step) => /^\d+\./.test(step.name))
+const iamSteps = steps.filter((step) => /^I\d/.test(step.name))
+const scope =
+	iamSteps.length > 0
+		? `${mcpSteps.filter((step) => step.ok === true).length}/${mcpSteps.length} MCP + ${iamSteps.filter((step) => step.ok === true).length}/${iamSteps.length} iam steps`
+		: `${steps.length}/${steps.length} steps`
 
 process.stdout.write(`\n${"=".repeat(78)}\n`)
 for (const step of steps) {
@@ -769,8 +1038,10 @@ for (const step of steps) {
 }
 process.stdout.write(
 	summary.ok
-		? `RESULT: PASS — ${steps.length}/${steps.length} steps on ${ENVIRONMENT} (${MCP_URL})\n`
-		: `RESULT: FAIL — ${notPassed.length}/${steps.length} steps not passed on ${ENVIRONMENT} (${MCP_URL})\n`,
+		? `RESULT: PASS — ${scope} on ${ENVIRONMENT} (${MCP_URL}${IAM_ORIGIN ? `, iam ${IAM_ORIGIN}` : ""})\n`
+		: `RESULT: FAIL — ${notPassed.length}/${steps.length} steps not passed on ${ENVIRONMENT} (${MCP_URL}${
+				IAM_ORIGIN ? `, iam ${IAM_ORIGIN}` : ""
+			})\n`,
 )
 
 if (JSON_OUT) {

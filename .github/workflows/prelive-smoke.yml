@@ -43,3 +43,17 @@ jobs:
           node-version: 22
       - name: Smoke — prelive authorization server and protected resource
         run: node scripts/smoke-prelive.mjs --retries 3 --wait 10
+      # The prelive workflow used to deploy to `excited-live-iam` (the project that
+      # owns iam.excited.live) and did it three times on 2026-10-25, so production
+      # served a prelive bundle. Build-time guards cannot see that: the bundle was
+      # valid, it was deployed to the wrong project. This reads the host itself,
+      # on a schedule and after every Deploy Prelive, and fails on any #88 marker.
+      - name: Guard — production iam host serves a production bundle (#88 #93)
+        run: node scripts/check-iam-live-bundle.mjs --retries 3 --wait 10
+      # #99 and #100 shipped on the prod landing while checks 1-5 were green: the
+      # dead MCP host is in the landing's copy-paste snippet and /llms.txt served
+      # the landing HTML. Neither surface is touched by the prelive checks, so run
+      # the landing check explicitly here (it is off in the default --only list so
+      # a prelive deploy is not failed by a prod landing regression).
+      - name: Smoke — landing entry points, advertised MCP host and /llms.txt (#99 #100)
+        run: node scripts/smoke-prelive.mjs --only 6 --retries 3 --wait 10

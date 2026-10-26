@@ -6313,7 +6313,7 @@
 					"Auth"
 				],
 				"summary": "Mint an agent API key",
-				"description": "Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant (`onboarding:read`, `onboarding:write`, `accounting:read`, `accounting:write`); omit it for read-only, or send `permissions` in the same `{resource: [action]}` shape. An unknown scope is a 400, never silently dropped. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.",
+				"description": "Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant in the same vocabulary the PRM advertises: `onboarding`, `accounting:read`, `accounting:write`; a token grants exactly itself and `accounting:write` does not imply read. Omit `scopes` for the full read+write grant every key has had (onboarding and accounting). An unknown token is a 400 with `code: \"invalid_scope\"` and the supported list, never silently dropped; unknown body fields are rejected. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.",
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -6334,18 +6334,6 @@
 										"type": "array",
 										"items": {
 											"type": "string"
-										}
-									},
-									"permissions": {
-										"type": "object",
-										"propertyNames": {
-											"type": "string"
-										},
-										"additionalProperties": {
-											"type": "array",
-											"items": {
-												"type": "string"
-											}
 										}
 									}
 								},
@@ -6395,7 +6383,7 @@
 											"items": {
 												"type": "string"
 											},
-											"description": "The grant. Read-only unless a write scope was requested."
+											"description": "The granted scopes, derived from what was stored."
 										}
 									},
 									"required": [
@@ -6411,7 +6399,7 @@
 						}
 					},
 					"400": {
-						"description": "Malformed request, or a scope outside the allowed set.",
+						"description": "Malformed request, or a scope outside the supported set.",
 						"content": {
 							"application/json": {
 								"schema": {

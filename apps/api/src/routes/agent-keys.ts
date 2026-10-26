@@ -4,13 +4,13 @@ import type { ApiEnv } from "../lib/env";
 import { apiKeyApi } from "@excited-live/auth";
 import { getTokensAuth } from "../lib/auth";
 import {
-	ALL_SCOPES,
-	DEFAULT_AGENT_KEY_SCOPES,
-	isScope,
-	permissionsFromScopes,
-	scopeList,
-	sortScopes,
-	type Scope,
+	DEFAULT_AGENT_KEY_REQUEST_SCOPES,
+	REQUEST_SCOPES,
+	grantedScopes,
+	isRequestScope,
+	permissionsFromRequestScopes,
+	sortRequestScopes,
+	type RequestScope,
 } from "../lib/scopes";
 import { getUserId } from "../lib/request";
 import { jsonBody, jsonResponse, route } from "../openapi/docs";
@@ -21,9 +21,10 @@ import { ErrorSchema, OkSchema } from "../openapi/schemas";
  *
  * Keys are created HERE, never by the client calling Better Auth directly, and
  * the grant is chosen by the request: `scopes` is honoured exactly or rejected
- * with a 400 — it is never silently ignored (#161). Omitting `scopes` mints a
- * read-only key for both domains; changing books requires asking for a write
- * scope. A key can still only ever touch onboarding and accounting.
+ * with a 400 — it is never silently ignored (#161). Omitting `scopes` keeps
+ * today's full read+write grant, so existing onboarding agents are not narrowed;
+ * a read-only key is an explicit request. A key can still only ever touch
+ * onboarding and accounting.
  *
  * The identity middleware runs first, which means an API key itself can never
  * mint another key.
@@ -32,23 +33,21 @@ import { ErrorSchema, OkSchema } from "../openapi/schemas";
 /** 90 days, in seconds (Better Auth's `expiresIn` unit). */
 const KEY_TTL_SECONDS = 90 * 24 * 60 * 60;
 
-const allowedScopes = ALL_SCOPES.join(", ");
+const allowedScopes = REQUEST_SCOPES.join(", ");
 
 const CreateAgentKeyBody = z
 	.object({
 		agentId: z.string().min(1, "agentId is required"),
 		name: z.string().min(1).optional(),
 		/**
-		 * The grant, as `<resource>:<action>` strings. Every entry must be in
-		 * `ALL_SCOPES`; an unknown one is a 400 rather than a silent drop.
+		 * The grant, in the PRM's vocabulary: `onboarding`, `accounting:read`,
+		 * `accounting:write`. Every entry must be one of them; an unknown token is
+		 * a 400 rather than a silent drop, and there is no `permissions` alias.
 		 */
-		scopes: z.array(z.string()).min(1).optional(),
-		/**
-		 * The plugin-shaped alias for `scopes` (`{ accounting: ["read"] }`), kept
-		 * because it is the name the underlying apiKey API uses. Sending both is
-		 * allowed only when they describe the same grant.
-		 */
-		permissions: z.record(z.string(), z.array(z.string())).optional(),
+		scopes: z
+			.array(z.string())
+			.min(1, "at least one scope is required")
+			.optional(),
 	})
 	.strict();
 
@@ -57,7 +56,7 @@ const AgentKeySchema = z.object({
 	name: z.string().nullable(),
 	start: z.string().nullable(),
 	agentId: z.string().nullable(),
-	/** The grant, exactly as enforced on `/mcp`. */
+	/** The grant, derived from storage in the same vocabulary a mint accepts. */
 	scopes: z.array(z.string()),
 	createdAt: z.string(),
 	expiresAt: z.string().nullable(),
@@ -70,7 +69,7 @@ const CreatedAgentKeySchema = z.object({
 	name: z.string().nullable(),
 	start: z.string().nullable(),
 	expiresAt: z.string().nullable(),
-	scopes: z.array(z.string()).describe("The grant. Read-only unless a write scope was requested."),
+	scopes: z.array(z.string()).describe("The granted scopes, derived from what was stored."),
 });
 
 type ApiKeyLike = {
@@ -89,57 +88,32 @@ const malformed = (message: string) => ({ error: `Malformed agent key payload: $
 function issues(error: z.ZodError): string {
 	const unknownKey = error.issues.find((issue) => issue.code === "unrecognized_keys");
 	if (unknownKey && "keys" in unknownKey) {
-		return `unknown field(s) ${unknownKey.keys.map((key) => `"${key}"`).join(", ")}; send \`scopes\` and \`permissions\` only`;
+		return `unknown field(s) ${unknownKey.keys.map((key) => `"${key}"`).join(", ")}; send \`agentId\`, \`name\` and \`scopes\` only`;
 	}
 	return error.issues.map((issue) => issue.message).join("; ");
 }
 
 /**
- * Turn `scopes` / `permissions` into the exact grant to store.
+ * Turn the request into the exact grant to store.
  *
- * Both input shapes normalize to the same scope set. Sending neither means the
- * read-only default; sending both means they must agree, so a request can never
- * ask for one thing and be granted another without knowing.
+ * Omitting `scopes` means the full grant every pre-#161 key has; asking for
+ * scopes means those scopes and nothing else. An unknown token is rejected with
+ * the supported list rather than dropped, because dropping it is the bug.
  */
 function requestedScopes(body: z.infer<typeof CreateAgentKeyBody>):
-	| { ok: true; scopes: Scope[] }
+	| { ok: true; scopes: RequestScope[] }
 	| { ok: false; error: string } {
-	const fromScopes = body.scopes ? new Set(body.scopes) : undefined;
-	const fromPermissions = body.permissions
-		? new Set(
-				Object.entries(body.permissions).flatMap(([resource, actions]) =>
-					actions.map((action) => `${resource}:${action}`),
-				),
-			)
-		: undefined;
+	if (!body.scopes) return { ok: true, scopes: [...DEFAULT_AGENT_KEY_REQUEST_SCOPES] };
 
-	const requested = fromScopes ?? fromPermissions;
-	if (!requested) return { ok: true, scopes: [...DEFAULT_AGENT_KEY_SCOPES] };
-
-	if (requested.size === 0) {
-		return { ok: false, error: `at least one scope is required; allowed scopes: ${allowedScopes}` };
-	}
-
-	const unknown = [...requested].filter((scope) => !isScope(scope));
+	const unknown = body.scopes.filter((scope) => !isRequestScope(scope));
 	if (unknown.length > 0) {
 		return {
 			ok: false,
-			error: `unknown scope(s) ${unknown.map((scope) => `"${scope}"`).join(", ")}; allowed scopes: ${allowedScopes}`,
+			error: `unknown scope(s) ${unknown.map((scope) => `"${scope}"`).join(", ")}; supported scopes: ${allowedScopes}`,
 		};
 	}
 
-	if (fromScopes && fromPermissions) {
-		const same =
-			fromScopes.size === fromPermissions.size && [...fromScopes].every((scope) => fromPermissions.has(scope));
-		if (!same) {
-			return {
-				ok: false,
-				error: "`scopes` and `permissions` describe different grants; send one of them or make them agree",
-			};
-		}
-	}
-
-	return { ok: true, scopes: sortScopes(requested) };
+	return { ok: true, scopes: sortRequestScopes(body.scopes) };
 }
 
 function iso(value: Date | string | null | undefined): string | null {
@@ -156,7 +130,7 @@ function keyView(key: ApiKeyLike) {
 		agentId: typeof agentId === "string" ? agentId : null,
 		// Derived from what the plugin stored, so the list is the truth the
 		// tools enforce rather than a copy of the mint request.
-		scopes: scopeList(key.permissions),
+		scopes: grantedScopes(key.permissions),
 		createdAt: iso(key.createdAt) ?? new Date(0).toISOString(),
 		expiresAt: iso(key.expiresAt),
 		lastRequest: iso(key.lastRequest),
@@ -185,11 +159,11 @@ export function createAgentKeysRouter(): Hono<ApiEnv> {
 			operationId: "createAgentKey",
 			summary: "Mint an agent API key",
 			description:
-				"Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant (`onboarding:read`, `onboarding:write`, `accounting:read`, `accounting:write`); omit it for read-only, or send `permissions` in the same `{resource: [action]}` shape. An unknown scope is a 400, never silently dropped. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.",
+				"Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant in the same vocabulary the PRM advertises: `onboarding`, `accounting:read`, `accounting:write`; a token grants exactly itself and `accounting:write` does not imply read. Omit `scopes` for the full read+write grant every key has had (onboarding and accounting). An unknown token is a 400 with `code: \"invalid_scope\"` and the supported list, never silently dropped; unknown body fields are rejected. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.",
 			requestBody: jsonBody(CreateAgentKeyBody),
 			responses: {
 				201: jsonResponse("The new key. The `key` field is shown only here.", CreatedAgentKeySchema),
-				400: jsonResponse("Malformed request, or a scope outside the allowed set.", ErrorSchema),
+				400: jsonResponse("Malformed request, or a scope outside the supported set.", ErrorSchema),
 				401: jsonResponse("Not signed in.", ErrorSchema),
 				503: jsonResponse("Auth is not configured in this environment.", ErrorSchema),
 			},
@@ -202,10 +176,12 @@ export function createAgentKeysRouter(): Hono<ApiEnv> {
 			if (!parsed.success) return c.json(malformed(issues(parsed.error)), 400);
 
 			const granted = requestedScopes(parsed.data);
-			if (!granted.ok) return c.json({ error: granted.error }, 400);
+			if (!granted.ok) {
+				return c.json({ error: granted.error, code: "invalid_scope" as const, supported: [...REQUEST_SCOPES] }, 400);
+			}
 
 			const userId = getUserId(c);
-			const permissions = permissionsFromScopes(granted.scopes);
+			const permissions = permissionsFromRequestScopes(granted.scopes);
 			try {
 				const created = await apiKeyApi(auth).createApiKey({
 					body: {
@@ -223,9 +199,9 @@ export function createAgentKeysRouter(): Hono<ApiEnv> {
 						name: created.name ?? null,
 						start: created.start ?? null,
 						expiresAt: iso(created.expiresAt),
-						// Echo what the plugin stored when it reports it back; a key
-						// row with no permissions is honestly reported as no scopes.
-						scopes: created.permissions == null ? granted.scopes : scopeList(created.permissions),
+						// Derive from the stored row when the plugin echoes it; if it
+						// does not, the grant we just persisted is the same set.
+						scopes: created.permissions ? grantedScopes(created.permissions) : granted.scopes,
 					},
 					201,
 				);

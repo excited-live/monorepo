@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Hono } from "hono";
+import { apiKeyApi } from "@excited-live/auth";
 import { createApp } from "../app";
 import { DB_FILE_ENV, resetDbCache } from "../db";
-import { resetTokensAuthCache } from "../lib/auth";
+import { getTokensAuth, resetTokensAuthCache } from "../lib/auth";
 import type { ApiEnv } from "../lib/env";
 
 /**
@@ -66,6 +67,16 @@ async function signIn(app: Hono<ApiEnv>, email: string): Promise<{ token: string
 
 const authHeaders = (token: string) => ({ "content-type": "application/json", Authorization: `Bearer ${token}` });
 
+/** The stored rows behind the list endpoint, so a test can assert the grant itself. */
+async function storedKeys(token: string) {
+	const auth = await getTokensAuth(`${BASE_URL}/api/v1/agent-keys`);
+	expect(auth).toBeTruthy();
+	const { apiKeys } = await apiKeyApi(auth!).listApiKeys({
+		headers: new Headers({ Authorization: `Bearer ${token}` }),
+	});
+	return apiKeys;
+}
+
 describe("api/v1/agent-keys", () => {
 	it("mints a key, lists it without the secret, and revokes it", async () => {
 		const app = configuredApp();
@@ -88,8 +99,8 @@ describe("api/v1/agent-keys", () => {
 		expect(key.key.startsWith("elk_")).toBe(true);
 		expect(key.start).toBeTruthy();
 		expect(key.expiresAt).toBeTruthy();
-		// No scope requested: read-only on both domains, never an implied write.
-		expect(key.scopes).toEqual(["onboarding:read", "accounting:read"]);
+		// No scope requested: the full grant every pre-#161 key has, in the PRM's words.
+		expect(key.scopes).toEqual(["onboarding", "accounting:read", "accounting:write"]);
 
 		const list = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
 		expect(list.status).toBe(200);
@@ -106,7 +117,7 @@ describe("api/v1/agent-keys", () => {
 		expect(listed.keys[0]?.id).toBe(key.id);
 		expect(listed.keys[0]?.agentId).toBe("claude-code");
 		expect(listed.keys[0]?.createdAt).toBeTruthy();
-		expect(listed.keys[0]?.scopes).toEqual(["onboarding:read", "accounting:read"]);
+		expect(listed.keys[0]?.scopes).toEqual(["onboarding", "accounting:read", "accounting:write"]);
 		expect(JSON.stringify(listed)).not.toContain(key.key);
 
 		const revoked = await app.request(`/api/v1/agent-keys/${key.id}`, {
@@ -120,30 +131,33 @@ describe("api/v1/agent-keys", () => {
 		expect(afterData.keys).toHaveLength(0);
 	});
 
-	it("honours a requested grant exactly, including the permissions alias", async () => {
+	it("honours a requested grant exactly, with no implication between tokens", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app, A_EMAIL);
 
-		const viaScopes = await app.request("/api/v1/agent-keys", {
-			method: "POST",
-			headers: authHeaders(token),
-			body: JSON.stringify({ agentId: "scopes", scopes: ["accounting:write", "accounting:read"] }),
-		});
-		expect(viaScopes.status).toBe(201);
-		// Ordered by the policy, not by the request.
-		expect(((await viaScopes.json()) as { scopes: string[] }).scopes).toEqual(["accounting:read", "accounting:write"]);
+		const mint = (agentId: string, scopes: string[]) =>
+			app.request("/api/v1/agent-keys", {
+				method: "POST",
+				headers: authHeaders(token),
+				body: JSON.stringify({ agentId, scopes }),
+			});
 
-		const viaPermissions = await app.request("/api/v1/agent-keys", {
-			method: "POST",
-			headers: authHeaders(token),
-			body: JSON.stringify({ agentId: "permissions", permissions: { onboarding: ["read", "write"] } }),
-		});
-		expect(viaPermissions.status).toBe(201);
-		expect(((await viaPermissions.json()) as { scopes: string[] }).scopes).toEqual([
-			"onboarding:read",
-			"onboarding:write",
-		]);
+		const readOnly = await mint("read-only", ["accounting:read"]);
+		expect(readOnly.status).toBe(201);
+		expect(((await readOnly.json()) as { scopes: string[] }).scopes).toEqual(["accounting:read"]);
 
+		// The umbrella covers onboarding only; it does not leak into accounting.
+		const onboarding = await mint("onboarding", ["onboarding"]);
+		expect(onboarding.status).toBe(201);
+		expect(((await onboarding.json()) as { scopes: string[] }).scopes).toEqual(["onboarding"]);
+
+		// A write token does not silently imply its read half.
+		const writeOnly = await mint("write-only", ["accounting:write"]);
+		expect(writeOnly.status).toBe(201);
+		expect(((await writeOnly.json()) as { scopes: string[] }).scopes).toEqual(["accounting:write"]);
+
+		// Order comes from the policy, not the request, and the list is the
+		// grant the tools enforce.
 		const listed = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
 		const listedScopes = Object.fromEntries(
 			((await listed.json()) as { keys: Array<{ agentId: string | null; scopes: string[] }> }).keys.map((key) => [
@@ -152,45 +166,86 @@ describe("api/v1/agent-keys", () => {
 			]),
 		);
 		expect(listedScopes).toEqual({
-			permissions: ["onboarding:read", "onboarding:write"],
-			scopes: ["accounting:read", "accounting:write"],
+			onboarding: ["onboarding"],
+			"read-only": ["accounting:read"],
+			"write-only": ["accounting:write"],
 		});
 	});
 
-	it("rejects an unknown scope with 400 instead of silently dropping it", async () => {
+	it("rejects an unknown scope with invalid_scope and the supported list", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app, A_EMAIL);
 
 		const res = await app.request("/api/v1/agent-keys", {
 			method: "POST",
 			headers: authHeaders(token),
-			body: JSON.stringify({ agentId: "typo", scopes: ["accounting:admin"] }),
+			body: JSON.stringify({ agentId: "typo", scopes: ["accounting:read", "bogus"] }),
 		});
 		expect(res.status).toBe(400);
-		const body = (await res.json()) as { error: string };
-		expect(body.error).toContain('"accounting:admin"');
-		expect(body.error).toContain("accounting:read");
+		const body = (await res.json()) as { error: string; code: string; supported: string[] };
+		expect(body.code).toBe("invalid_scope");
+		expect(body.supported).toEqual(["onboarding", "accounting:read", "accounting:write"]);
+		expect(body.error).toContain('"bogus"');
 
 		// Nothing was minted.
 		const list = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
 		expect(((await list.json()) as { keys: unknown[] }).keys).toHaveLength(0);
 	});
 
-	it("rejects scopes and permissions that disagree", async () => {
+	it("rejects the plugin-shaped permissions field instead of aliasing it", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app, A_EMAIL);
 
 		const res = await app.request("/api/v1/agent-keys", {
 			method: "POST",
 			headers: authHeaders(token),
-			body: JSON.stringify({
-				agentId: "ambiguous",
-				scopes: ["accounting:read"],
-				permissions: { accounting: ["read", "write"] },
-			}),
+			body: JSON.stringify({ agentId: "plugin-shape", permissions: { accounting: ["read"] } }),
 		});
 		expect(res.status).toBe(400);
-		expect(((await res.json()) as { error: string }).error).toContain("different grants");
+		expect(((await res.json()) as { error: string }).error).toContain('"permissions"');
+	});
+
+	it("stores today's permissions when scopes are omitted", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app, A_EMAIL);
+
+		const created = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: JSON.stringify({ agentId: "default-grant" }),
+		});
+		expect(created.status).toBe(201);
+
+		// Assert the stored row, not only the receipt: #58/#31 onboarding agents
+		// depend on the write half of an omitted request.
+		const keys = await storedKeys(token);
+		expect(keys).toHaveLength(1);
+		expect(keys[0]?.permissions).toEqual({
+			onboarding: ["read", "write"],
+			accounting: ["read", "write"],
+		});
+	});
+
+	it("reports the full grant for a key minted before this change", async () => {
+		const app = configuredApp();
+		const { token, userId } = await signIn(app, A_EMAIL);
+
+		// A pre-#161 key: created straight through the plugin with the fixed set.
+		const auth = await getTokensAuth(`${BASE_URL}/api/v1/agent-keys`);
+		expect(auth).toBeTruthy();
+		await apiKeyApi(auth!).createApiKey({
+			body: {
+				userId,
+				name: "legacy key",
+				expiresIn: 86_400,
+				permissions: { onboarding: ["read", "write"], accounting: ["read", "write"] },
+			},
+		});
+
+		const listed = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
+		const keys = (await listed.json()) as { keys: Array<{ name: string | null; scopes: string[] }> };
+		const legacy = keys.keys.find((key) => key.name === "legacy key");
+		expect(legacy?.scopes).toEqual(["onboarding", "accounting:read", "accounting:write"]);
 	});
 
 	it("rejects a body field it does not understand", async () => {

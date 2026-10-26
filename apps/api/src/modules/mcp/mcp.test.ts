@@ -78,8 +78,8 @@ async function signIn(app: Hono<ApiEnv>, email = EMAIL): Promise<{ token: string
 	return { token: token as string, userId: meData.user.id };
 }
 
-/** Scopes for a key that must be able to exercise every tool, as the old fixed grant did. */
-const FULL_SCOPES = ["onboarding:read", "onboarding:write", "accounting:read", "accounting:write"];
+/** The tokens that grant every tool, in the PRM vocabulary a mint accepts. */
+const FULL_SCOPES = ["onboarding", "accounting:read", "accounting:write"];
 
 async function mintKey(
 	app: Hono<ApiEnv>,
@@ -264,9 +264,10 @@ describe("/mcp", () => {
 		const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" }, key);
 		expect(list.status).toBe(200);
 		const tools = (list.json?.result as { tools: Array<{ name: string }> }).tools.map((tool) => tool.name);
-		expect(tools).toHaveLength(16);
+		expect(tools).toHaveLength(17);
 		expect(tools).toEqual(
 			expect.arrayContaining([
+				"whoami",
 				"get_onboarding_status",
 				"list_entities",
 				"create_business",
@@ -691,6 +692,21 @@ describe("/mcp", () => {
 		const writeResult = write.json?.result as ToolResult;
 		expect(writeResult.isError).toBe(true);
 		expect(writeResult.content[0]?.text).toContain("accounting:write");
+
+		// The credential can be asked what it is before it writes: the tool
+		// scopes, not the request vocabulary, because that is what gates a call.
+		const who = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "whoami", arguments: {} } },
+			created.key,
+		);
+		const whoResult = who.json?.result as ToolResult;
+		expect(whoResult.isError).toBeUndefined();
+		expect(whoResult.structuredContent).toMatchObject({
+			via: "apiKey",
+			scopes: ["accounting:read"],
+		});
+		expect(typeof (whoResult.structuredContent as { userId?: unknown }).userId).toBe("string");
 	});
 
 	it("rejects a revoked key", async () => {

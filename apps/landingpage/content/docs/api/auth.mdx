@@ -26,7 +26,7 @@ curl "$API_URL/api/v1/agent-keys" \
 
 `POST` `/api/v1/agent-keys`
 
-Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant (`onboarding:read`, `onboarding:write`, `accounting:read`, `accounting:write`); omit it for read-only, or send `permissions` in the same `\{resource: [action]}` shape. An unknown scope is a 400, never silently dropped. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.
+Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant in the same vocabulary the PRM advertises: `onboarding`, `accounting:read`, `accounting:write`; a token grants exactly itself and `accounting:write` does not imply read. Omit `scopes` for the full read+write grant every key has had (onboarding and accounting). An unknown token is a 400 with `code: "invalid_scope"` and the supported list, never silently dropped; unknown body fields are rejected. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.
 
 **Request body** (`application/json`)
 
@@ -37,12 +37,11 @@ Type: `object`
 | `agentId` | `string` | yes |  |
 | `name` | `string` | no |  |
 | `scopes` | `string`[] | no |  |
-| `permissions` | map of `string`[] | no |  |
 
 **Responses**
 
 - `201` — The new key. The `key` field is shown only here. `object`
-- `400` — Malformed request, or a scope outside the allowed set. [Error](#error)
+- `400` — Malformed request, or a scope outside the supported set. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
 - `503` — Auth is not configured in this environment. [Error](#error)
 

@@ -9,8 +9,6 @@ export interface AgentKey {
 	name: string | null
 	start: string | null
 	agentId: string | null
-	/** The grant the API enforces. Read-only unless a write scope was requested (#161). */
-	scopes: string[]
 	createdAt: string
 	expiresAt: string | null
 	lastRequest: string | null
@@ -22,8 +20,6 @@ export interface MintedAgentKey {
 	name: string | null
 	start: string | null
 	expiresAt: string | null
-	/** The grant the API stored; echoed on the receipt so it can be shown (#161). */
-	scopes: string[]
 }
 
 export async function listAgentKeys(): Promise<AgentKey[]> {
@@ -31,10 +27,10 @@ export async function listAgentKeys(): Promise<AgentKey[]> {
 	return body.keys
 }
 
-export async function mintAgentKey(agentId: string, name?: string, scopes?: string[]): Promise<MintedAgentKey> {
+export async function mintAgentKey(agentId: string, name?: string): Promise<MintedAgentKey> {
 	return apiFetch<MintedAgentKey>("/api/v1/agent-keys", {
 		method: "POST",
-		body: { agentId, ...(name ? { name } : {}), ...(scopes ? { scopes } : {}) },
+		body: { agentId, ...(name ? { name } : {}) },
 	})
 }
 

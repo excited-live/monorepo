@@ -363,12 +363,7 @@ export function useHome() {
 	};
 
 	const mintAgentKey = async (agentId: string): Promise<string> => {
-		// The onboarding agent is meant to fill the books in, so it asks for the
-		// write grant explicitly: a mint without `scopes` is read-only since #161.
-		const created = await createAgentKey.mutateAsync({
-			agentId,
-			scopes: ["onboarding:read", "onboarding:write", "accounting:read", "accounting:write"],
-		});
+		const created = await createAgentKey.mutateAsync({ agentId });
 		return created.key;
 	};
 

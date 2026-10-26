@@ -305,15 +305,7 @@ function McpConfigCard({ signedIn }: { signedIn: boolean }) {
 		setBusy(true)
 		setError(null)
 		try {
-			// The config card exists to run an agent that can set the books up, so
-			// it asks for the write grant explicitly: a mint without `scopes` is
-			// read-only since #161.
-			const created = await mintAgentKey(agentId, undefined, [
-				"onboarding:read",
-				"onboarding:write",
-				"accounting:read",
-				"accounting:write",
-			])
+			const created = await mintAgentKey(agentId)
 			rememberMintedKey(created)
 			setMinted(created)
 		} catch (cause) {

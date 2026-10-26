@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router"
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { CodeDeck } from "../components/CodeDeck"
+import { keyState, formatResetClock } from "../lib/budget"
 import { formatRelative } from "../lib/format"
+import { MCP_GUIDE_URL } from "../lib/hosts"
 import { useTranslator } from "../lib/i18n"
 import {
 	mintAgentKey,
@@ -18,21 +20,34 @@ import { useSession } from "../lib/session"
  * key that appears here is a key an agent is actually using. Revoking is a
  * hard delete on the API side; the row disappears after a reload.
  *
- * No scope editor yet: the API mints keys with a fixed permission set
- * (AGENT_KEY_PERMISSIONS: onboarding + accounting) and does not expose scope
- * changes per key. The page says that instead of pretending otherwise.
+ * The budget row and the paused state (#156) read the API's own counters
+ * (`key.rateLimit`, the same numbers as `X-RateLimit-*` on `/mcp`). The page
+ * never counts calls locally: a key used from two editors would otherwise show
+ * two different remaining values, and the wall would appear after the API had
+ * already refused the agent.
+ *
+ * No scope control yet: the API mints keys with a fixed permission set
+ * (AGENT_KEY_PERMISSIONS: onboarding + accounting) and does not expose a
+ * per-key scope choice. The capability line says the verb today so "scoped"
+ * cannot be read as "read-only" (#161 R1/R3).
  */
 export function TokensPage() {
 	const session = useSession()
-	const { t } = useTranslator()
 	const { keys, loading, error, reload } = useAgentKeys(Boolean(session))
+	const { t, locale } = useTranslator()
 
 	const [agentId, setAgentId] = useState("claude-desktop")
 	const [name, setName] = useState("")
 	const [minted, setMinted] = useState<MintedAgentKey | null>(null)
-	const [mintedAgentId, setMintedAgentId] = useState("claude-desktop")
 	const [busy, setBusy] = useState(false)
 	const [failure, setFailure] = useState<string | null>(null)
+
+	const mintHeading = useRef<HTMLHeadingElement>(null)
+
+	const focusMint = useCallback(() => {
+		mintHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+		document.getElementById("agent")?.focus({ preventScroll: true })
+	}, [])
 
 	const mint = useCallback(async () => {
 		setBusy(true)
@@ -40,31 +55,30 @@ export function TokensPage() {
 		try {
 			const created = await mintAgentKey(agentId, name.trim() || undefined)
 			setMinted(created)
-			setMintedAgentId(agentId)
 			setName("")
 			await reload()
 		} catch (cause) {
-			setFailure(cause instanceof Error ? cause.message : "Could not mint a key")
+			setFailure(cause instanceof Error ? cause.message : t("tokens.mint.failed"))
 		} finally {
 			setBusy(false)
 		}
-	}, [agentId, name, reload])
+	}, [agentId, name, reload, t])
 
 	const revoke = useCallback(
 		async (id: string, label: string) => {
-			if (!window.confirm(`Revoke ${label}? Any agent using it stops working immediately.`)) return
+			if (!window.confirm(t("tokens.key.revokeConfirm", { label }))) return
 			setBusy(true)
 			setFailure(null)
 			try {
 				await revokeAgentKey(id)
 				await reload()
 			} catch (cause) {
-				setFailure(cause instanceof Error ? cause.message : "Could not revoke the key")
+				setFailure(cause instanceof Error ? cause.message : t("tokens.key.revokeFailed"))
 			} finally {
 				setBusy(false)
 			}
 		},
-		[reload],
+		[reload, t],
 	)
 
 	if (!session) {
@@ -72,15 +86,12 @@ export function TokensPage() {
 			<div className="page">
 				<div className="page-head">
 					<div>
-						<span className="eyebrow">API keys &amp; scopes</span>
-						<h1>Keys belong to an account.</h1>
-						<p className="lede">
-							Sign in to see every key your agents hold, when each was last used, and to revoke
-							one.
-						</p>
+						<span className="eyebrow">{t("tokens.eyebrow")}</span>
+						<h1>{t("tokens.signedOut.title")}</h1>
+						<p className="lede">{t("tokens.signedOut.lede")}</p>
 					</div>
 					<Link to="/sign-in" search={{ returnPathname: "/tokens" }} className="btn signal">
-						Sign in
+						{t("auth.signIn")}
 					</Link>
 				</div>
 			</div>
@@ -91,30 +102,30 @@ export function TokensPage() {
 		<div className="page">
 			<div className="page-head">
 				<div>
-					<span className="eyebrow">API keys &amp; scopes · {session.user.email}</span>
-					<h1>What your agents hold.</h1>
-					<p className="lede">
-						Every key below can call the same tools the Data tab shows. Revoke one and the agent
-						loses access on its next request — no restart needed.
-					</p>
+					<span className="eyebrow">
+						{t("tokens.eyebrow")} · {session.user.email}
+					</span>
+					<h1>{t("tokens.title")}</h1>
+					<p className="lede">{t("tokens.lede")}</p>
 				</div>
 			</div>
 
 			<section className="card" aria-labelledby="mint-heading">
 				<div className="card-head">
 					<div>
-						<h2 id="mint-heading">Mint a key</h2>
+						<h2 id="mint-heading" ref={mintHeading} tabIndex={-1}>
+							{t("tokens.mint.title")}
+						</h2>
 						<p>
-							Scoped to onboarding and accounting, valid for 90 days. The secret is shown once,
-							right here.
+							{t("tokens.mint.scope_line")} {t("tokens.mint.terms")}
 						</p>
 					</div>
-					<span className="badge">{keys.length} active</span>
+					<span className="badge">{t("tokens.mint.active", { n: String(keys.length) })}</span>
 				</div>
 
 				<div className="field-grid">
 					<div className="field">
-						<label htmlFor="agent">Agent</label>
+						<label htmlFor="agent">{t("tokens.mint.agent")}</label>
 						<select
 							id="agent"
 							value={agentId}
@@ -130,12 +141,12 @@ export function TokensPage() {
 					</div>
 					<div className="field">
 						<label htmlFor="key-name">
-							Label <em>optional</em>
+							{t("tokens.mint.label")} <em>{t("tokens.mint.optional")}</em>
 						</label>
 						<input
 							id="key-name"
 							type="text"
-							placeholder="laptop"
+							placeholder={t("tokens.mint.labelPlaceholder")}
 							value={name}
 							onChange={(event) => setName(event.target.value)}
 							disabled={busy}
@@ -145,30 +156,16 @@ export function TokensPage() {
 
 				<div className="row">
 					<button type="button" className="btn signal" onClick={() => void mint()} disabled={busy}>
-						{busy ? "Working…" : "Mint a key"}
+						{busy ? t("tokens.mint.working") : t("tokens.mint.submit")}
 					</button>
 				</div>
 
 				{minted ? (
-					<div className="stack" style={{ gap: 12 }}>
-						<CodeDeck code={minted.key} label="secret · shown once" wrap />
-						<p style={{ margin: 0, maxWidth: "62ch" }}>{t("tokens.minted.warning")}</p>
-						<p style={{ margin: 0, maxWidth: "62ch" }}>
-							<MintedNextStep agentId={mintedAgentId} />
-						</p>
-						<div className="stack" style={{ gap: 8, alignItems: "flex-start" }}>
-							<a
-								className="btn secondary"
-								href="https://excited.live/docs/mcp"
-								target="_blank"
-								rel="noreferrer"
-							>
-								{t("tokens.minted.setup")}
-							</a>
-							<button type="button" className="btn ghost" onClick={() => setMinted(null)}>
-								{t("tokens.minted.dismiss")}
-							</button>
-						</div>
+					<div className="stack" style={{ gap: 8 }}>
+						<CodeDeck code={minted.key} label={t("tokens.mint.secretLabel")} wrap />
+						<span className="tiny muted">
+							{minted.name ?? minted.id} · {t("tokens.mint.expires", { time: formatRelative(minted.expiresAt) })}
+						</span>
 					</div>
 				) : null}
 
@@ -182,8 +179,8 @@ export function TokensPage() {
 			<section className="card" aria-labelledby="keys-heading">
 				<div className="card-head">
 					<div>
-						<h2 id="keys-heading">Active keys</h2>
-						<p>Newest first. “Last used” is the API’s own record, not a guess.</p>
+						<h2 id="keys-heading">{t("tokens.keys.title")}</h2>
+						<p>{t("tokens.keys.sub")}</p>
 					</div>
 				</div>
 
@@ -192,81 +189,105 @@ export function TokensPage() {
 						{error}
 					</p>
 				) : loading ? (
-					<p className="small muted">Reading keys…</p>
+					<p className="small muted">{t("tokens.keys.loading")}</p>
 				) : keys.length === 0 ? (
 					<div className="empty">
-						<p className="small">No keys yet. Mint one above, or from the Overview card.</p>
+						<p className="small">{t("tokens.keys.empty")}</p>
 					</div>
 				) : (
 					<div className="key-list">
-						{keys.map((key) => (
-							<div key={key.id} className="key-row">
-								<div>
-									<strong>{key.name ?? key.agentId ?? "agent key"}</strong>
-									<div className="key-meta">
-										<span className="mono">{key.start ?? "—"}…</span>
-										<span>agent {key.agentId ?? "unknown"}</span>
-										<span>created {formatRelative(key.createdAt)}</span>
-										<span>expires {formatRelative(key.expiresAt)}</span>
-										<span>last used {formatRelative(key.lastRequest)}</span>
+						{keys.map((key) => {
+							const label = key.name ?? key.agentId ?? "agent key"
+							const state = keyState(key)
+
+							if (state.kind === "dead") {
+								return (
+									<div key={key.id} className="key-row">
+										<div>
+											<strong>{label}</strong>
+											<div className="key-state">
+												<span className="key-state-label">{t("tokens.state.dead")}</span>
+												<div className="key-state-actions">
+													<button type="button" className="link-quiet" onClick={focusMint}>
+														{t("tokens.state.dead.next")}
+													</button>
+													<a className="link-quiet" href={MCP_GUIDE_URL}>
+														{t("tokens.state.dead.setup")}
+													</a>
+												</div>
+											</div>
+										</div>
 									</div>
+								)
+							}
+
+							return (
+								<div key={key.id} className="key-row">
+									<div>
+										<strong>{label}</strong>
+										<div className="key-capability">{t("tokens.key.capability")}</div>
+										<div className="key-meta">
+											<span className="mono">{key.start ?? "—"}…</span>
+											<span>{t("tokens.key.agent", { id: key.agentId ?? "unknown" })}</span>
+											<span>{t("tokens.key.created", { time: formatRelative(key.createdAt) })}</span>
+											<span>{t("tokens.key.expires", { time: formatRelative(key.expiresAt) })}</span>
+											<span>{t("tokens.key.lastUsed", { time: formatRelative(key.lastRequest) })}</span>
+										</div>
+
+										{state.kind === "active" ? (
+											<p className="key-budget">
+												<span>
+													{t("tokens.budget.remaining", {
+														n: String(state.remaining),
+														limit: String(state.limit),
+													})}
+												</span>
+												{state.resetAt !== null ? (
+													<span className="key-budget-reset muted">
+														{t("tokens.budget.reset", {
+															time: formatResetClock(state.resetAt, locale),
+														})}
+													</span>
+												) : null}
+											</p>
+										) : null}
+
+										{state.kind === "paused" ? (
+											<div className="key-state">
+												<span className="key-state-label">
+													{t("tokens.state.paused", {
+														time: formatResetClock(state.resetAt, locale),
+													})}
+												</span>
+												<p className="key-state-body">
+													{t("tokens.state.paused.body", {
+														limit: String(state.limit),
+														time: formatResetClock(state.resetAt, locale),
+													})}
+												</p>
+												<p className="key-state-next">
+													{t("tokens.state.paused.next", { limit: String(state.limit) })}{" "}
+													<button type="button" className="link-quiet" onClick={focusMint}>
+														{t("tokens.state.paused.mint")}
+													</button>
+												</p>
+											</div>
+										) : null}
+									</div>
+									<button
+										type="button"
+										className="btn secondary"
+										onClick={() => void revoke(key.id, label)}
+										disabled={busy}
+									>
+										{t("tokens.key.revoke")}
+									</button>
 								</div>
-								<button
-									type="button"
-									className="btn secondary"
-									onClick={() => void revoke(key.id, key.name ?? key.agentId ?? "this key")}
-									disabled={busy}
-								>
-									Revoke
-								</button>
-							</div>
-						))}
+							)
+						})}
 					</div>
 				)}
 			</section>
 		</div>
 	)
-}
-
-/**
- * The next step for the agent the key was minted for (#135).
- *
- * The minted secret is a handoff: this line says what to paste it into, and it
- * is honest per client — Claude.ai and ChatGPT cannot complete a connection
- * yet (#31), so their line says so instead of implying success.
- *
- * Technical tokens stay literal in `<code>` elements; only the prose around
- * them comes from the dictionary, which keeps Thai word order free.
- */
-function MintedNextStep({ agentId }: { agentId: string }) {
-	const { t, locale } = useTranslator()
-
-	switch (agentId) {
-		case "claude-desktop":
-			return <>{t("tokens.minted.agent.claudeDesktop")}</>
-		case "chatgpt":
-			return <>{t("tokens.minted.agent.chatgpt")}</>
-		case "openmaus":
-			return <>{t("tokens.minted.agent.openmaus")}</>
-		case "cursor":
-			return (
-				<>
-					{t("tokens.minted.agent.cursor.add")}
-					<code>x-api-key: &lt;{t("tokens.minted.agent.yourKey")}&gt;</code>
-					{t("tokens.minted.agent.cursor.entry")}
-					<code>mcp.json</code>
-					{t("tokens.minted.agent.cursor.note")}
-				</>
-			)
-		default:
-			return (
-				<>
-					{t("tokens.minted.agent.custom.send")}
-					<code>Authorization: Bearer &lt;{t("tokens.minted.agent.yourKey")}&gt;</code>
-					{t("tokens.minted.agent.custom.to")}
-					<code>https://api.excited.live/mcp</code>
-					{locale === "en" ? "." : null}
-				</>
-			)
-	}
 }

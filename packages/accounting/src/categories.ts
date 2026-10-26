@@ -16,7 +16,7 @@ export const EXPENSE_CATEGORIES = [
 	{ slug: "capital_deploy", en: "Deploy Capital to Business", th: "ลงทุนในธุรกิจ" },
 	{ slug: "connectivity", en: "Internet & Mobile", th: "อินเทอร์เน็ตและมือถือ" },
 	{ slug: "dev_tool", en: "Developer Tools & APIs", th: "เครื่องมือนักพัฒนาและ API" },
-	{ slug: "entertainment", en: "Subscriptions & Living", th: "สมาชิกและค่าใช้จ่ายในชีวิต" },
+	{ slug: "entertainment", en: "Subscriptions & Living", th: "ค่าสมาชิกและค่าใช้จ่ายในชีวิต" },
 	{ slug: "family", en: "Family & Personal", th: "ครอบครัวและค่าใช้จ่ายส่วนตัว" },
 	{ slug: "food", en: "Food & Dining", th: "อาหาร" },
 	{ slug: "groceries", en: "Groceries & Household", th: "ของชำและของใช้ในบ้าน" },
@@ -56,6 +56,11 @@ export const EXPENSE_CATEGORY_ALIASES: ReadonlyMap<string, ExpenseCategory> = ne
 	]),
 	["subscriptions", "entertainment"],
 	["subscription", "entertainment"],
+	// The `entertainment` Thai label before the #173 ratification fix (it had
+	// no leading ค่า). The map is built from the current labels, so without
+	// this entry a legacy PATCH still carrying the old string would miss the
+	// map and fall through to `other`.
+	["สมาชิกและค่าใช้จ่ายในชีวิต", "entertainment"],
 	["utilities", "connectivity"],
 	["utility", "connectivity"],
 	["internet & mobile", "connectivity"],

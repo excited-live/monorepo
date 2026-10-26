@@ -114,9 +114,10 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 		await next()
 	})
 
-	// Resolve identity from a Bearer session (Better Auth tokens mount); 401s
-	// unauthenticated calls while auth is configured, x-user-id passthrough
-	// otherwise. Runs before the routers so settings see the pinned id.
+	// Resolve the caller from the one shared resolver (API key, OAuth token or
+	// session) and gate the route on its scopes; 401s unauthenticated calls
+	// while auth is configured, x-user-id passthrough otherwise. Runs before the
+	// routers so settings see the pinned id.
 	app.use("/api/v1/*", createIdentityMiddleware())
 
 	const routes = app
@@ -131,8 +132,11 @@ export function createApp(options: AppOptions = {}): Hono<ApiEnv> {
 	// outside /api/v1 so it stays public like /health.
 	app.get("/openapi.json", openAPIRouteHandler(app, { documentation }))
 
-	// The MCP server has its own auth (API keys or sessions) and is mounted
-	// outside /api/v1 so the REST identity middleware does not 401 key calls.
+	// The MCP server has its own transport (Streamable HTTP) and is mounted
+	// outside /api/v1 for that reason, not for auth: `/mcp` and `/api/v1/*` now
+	// resolve the caller through the same `lib/principal.ts` (#193), so an
+	// `elk_` key works on both. The REST middleware's scope gate is the only
+	// difference between the two surfaces.
 	app.route("/", createMcpRouter())
 
 	return routes

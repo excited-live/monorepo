@@ -14,7 +14,7 @@ Bootstraps the personal entity and its default wallet on first call.
 **Responses**
 
 - `200` — Entities. [Entity](#entity)[]
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/entities" \
@@ -47,7 +47,7 @@ Type: `object`
 
 - `201` — Entity created. [Entity](#entity)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -71,7 +71,7 @@ curl -X POST "$API_URL/api/v1/accounting/entities" \
 **Responses**
 
 - `200` — The entity. [Entity](#entity)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 
 ```bash
@@ -110,7 +110,7 @@ Type: `object`
 
 - `200` — Entity updated. [Entity](#entity)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -137,7 +137,7 @@ The personal entity cannot be deleted. Deleting cascades to all of its records.
 
 - `200` — Entity deleted. [Ok](#ok)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -161,7 +161,7 @@ curl -X DELETE "$API_URL/api/v1/accounting/entities/:id" \
 
 - `200` — Assets. [Asset](#asset)[]
 - `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/assets" \
@@ -182,7 +182,7 @@ Type: `object` \| `object` \| `object`
 
 - `201` — Asset created. [Asset](#asset)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -206,7 +206,7 @@ curl -X POST "$API_URL/api/v1/accounting/assets" \
 **Responses**
 
 - `200` — The asset. [Asset](#asset)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 
 ```bash
@@ -260,7 +260,7 @@ Type: `object`
 
 - `200` — Asset updated. [Asset](#asset)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -287,7 +287,7 @@ Deleting the default cash asset promotes the oldest remaining cash asset of the 
 
 - `200` — Asset deleted. [Ok](#ok)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -311,7 +311,7 @@ curl -X DELETE "$API_URL/api/v1/accounting/assets/:id" \
 
 - `200` — Incomes. [Income](#income)[]
 - `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/incomes" \
@@ -332,7 +332,7 @@ Type: `object` \| `object` \| `object` \| `object`
 
 - `201` — Income created. [Income](#income)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -356,7 +356,7 @@ curl -X POST "$API_URL/api/v1/accounting/incomes" \
 **Responses**
 
 - `200` — The income. [Income](#income)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 
 ```bash
@@ -403,7 +403,7 @@ Type: `object`
 
 - `200` — Income updated. [Income](#income)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -428,7 +428,7 @@ curl -X PATCH "$API_URL/api/v1/accounting/incomes/:id" \
 
 - `200` — Income deleted. [Ok](#ok)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -463,7 +463,7 @@ Type: `object`
 
 - `200` — Primary income, or null when none exists. `object`
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -488,7 +488,7 @@ curl -X POST "$API_URL/api/v1/accounting/incomes/career" \
 
 - `200` — Expenses. [Expense](#expense)[]
 - `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/expenses" \
@@ -528,7 +528,7 @@ Type: `object`
 
 - `201` — Expense created. [Expense](#expense)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -552,7 +552,7 @@ curl -X POST "$API_URL/api/v1/accounting/expenses" \
 **Responses**
 
 - `200` — The expense. [Expense](#expense)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 
 ```bash
@@ -600,7 +600,7 @@ Type: `object`
 
 - `200` — Expense updated. [Expense](#expense)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -625,7 +625,7 @@ curl -X PATCH "$API_URL/api/v1/accounting/expenses/:id" \
 
 - `200` — Expense deleted. [Ok](#ok)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -649,7 +649,7 @@ curl -X DELETE "$API_URL/api/v1/accounting/expenses/:id" \
 
 - `200` — Liabilities. [Liability](#liability)[]
 - `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/liabilities" \
@@ -670,7 +670,7 @@ Type: `object` \| `object` \| `object`
 
 - `201` — Liability created. [Liability](#liability)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -694,7 +694,7 @@ curl -X POST "$API_URL/api/v1/accounting/liabilities" \
 **Responses**
 
 - `200` — The liability. [Liability](#liability)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 
 ```bash
@@ -750,7 +750,7 @@ Type: `object`
 
 - `200` — Liability updated. [Liability](#liability)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -775,7 +775,7 @@ curl -X PATCH "$API_URL/api/v1/accounting/liabilities/:id" \
 
 - `200` — Liability deleted. [Ok](#ok)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -801,7 +801,7 @@ Loans: payments, interest and principal per month, including extra-payment trans
 
 - `200` — Loan or revolving schedule. [LoanSchedule](#loanschedule) \| [RevolvingSchedule](#revolvingschedule)
 - `400` — Validation error, or the liability has no schedule. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Liability not found. [Error](#error)
 
 ```bash
@@ -816,7 +816,7 @@ curl "$API_URL/api/v1/accounting/liabilities/:id/schedule" \
 **Responses**
 
 - `200` — Transfers. [Transfer](#transfer)[]
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/transfers" \
@@ -850,7 +850,7 @@ Type: `object`
 
 - `201` — Transfer created. [Transfer](#transfer)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -874,7 +874,7 @@ curl -X POST "$API_URL/api/v1/accounting/transfers" \
 **Responses**
 
 - `200` — The transfer. [Transfer](#transfer)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 
 ```bash
@@ -915,7 +915,7 @@ Type: `object`
 
 - `200` — Transfer updated. [Transfer](#transfer)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -940,7 +940,7 @@ curl -X PATCH "$API_URL/api/v1/accounting/transfers/:id" \
 
 - `200` — Transfer deleted. [Ok](#ok)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Record not found. [Error](#error)
 - `409` — Version conflict or duplicate id. [Error](#error)
 
@@ -966,7 +966,7 @@ Per entity: wealth metrics and balance sheet at `month`. Consolidated: metrics p
 
 - `200` — Summary for the month. [Summary](#summary)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 
 ```bash
 curl "$API_URL/api/v1/accounting/summary" \
@@ -988,7 +988,7 @@ curl "$API_URL/api/v1/accounting/summary" \
 
 - `200` — Monthly ledger. [MonthlyLedger](#monthlyledger)
 - `400` — Validation Error `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Entity not found. [Error](#error)
 
 ```bash
@@ -1015,7 +1015,7 @@ Dated money movements of one entity (default: personal) for one month. `directio
 
 - `200` — Cash-flow feed and totals. [CashFlowsResponse](#cashflowsresponse)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Entity not found. [Error](#error)
 
 ```bash
@@ -1041,7 +1041,7 @@ curl "$API_URL/api/v1/accounting/cash-flows" \
 
 - `200` — Projection points and waterfall figures. [Projection](#projection)
 - `400` — Validation error. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Entity not found. [Error](#error)
 
 ```bash

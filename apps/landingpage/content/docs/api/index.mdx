@@ -9,7 +9,9 @@ description: "REST endpoints for every entity: accounts, subscriptions, hardware
 
 REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.
 
-**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key). On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, and falls back to a shared `default` bucket.
+**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key) or, for an API key, `x-api-key: elk_…`. A key resolves here exactly as it does on `/mcp`, with the same scopes: a missing scope is 403 `insufficient_scope` naming the scope, and key minting plus account settings need a browser session (403 `session_required`). `Authorization: ApiKey …` is not accepted. On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, and falls back to a shared `default` bucket.
+
+**Cost.** excited.live is free during launch: no card is required and nothing is charged today. There is no trial end date, no automatic charge, and no plan, seat or usage fee. The machine-readable answer is https://excited.live/pricing.md
 
 Examples use `$API_URL` for the API base URL and `$TOKEN` for your bearer token. The machine-readable document is the committed [`apps/api/openapi.json`](https://github.com/fromsukong/excited.live/blob/main/apps/api/openapi.json).
 

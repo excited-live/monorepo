@@ -56,6 +56,10 @@ function configuredApp(): Hono<ApiEnv> {
 	process.env.BETTER_AUTH_URL = BASE_URL;
 	process.env[DB_FILE_ENV] = tempDbFile();
 	resetDbCache();
+	// The tokens-auth instance is cached per process and holds the driver it was
+	// built with. A test that swaps databases mid-case (a second configuredApp())
+	// must drop it too, or /me reads users out of the previous database.
+	resetTokensAuthCache();
 	return createApp();
 }
 

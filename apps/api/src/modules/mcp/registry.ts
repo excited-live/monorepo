@@ -5,7 +5,7 @@ import type { SqlDriver } from "../../db/types";
 import type { AccountingService } from "../accounting/service/accounting.service";
 import type { OnboardingStore } from "../../stores/onboarding-store";
 import { DomainError, DuplicateError } from "../accounting/domain/errors";
-import type { McpPrincipal } from "./mcp.auth";
+import type { Principal } from "../../lib/principal";
 import { ONBOARDING_INSTRUCTIONS, ONBOARDING_PROMPT } from "./instructions";
 import { onboardingTools } from "./tools/onboarding.tools";
 import { accountingTools } from "./tools/accounting.tools";
@@ -46,7 +46,7 @@ export const ALL_TOOLS: readonly McpToolDefinition[] = [...onboardingTools, ...a
  * is a tool. `scopes` are the tool scopes enforced here, not the request tokens:
  * the question it answers is "can I call `add_expense` before I try?".
  */
-function registerWhoami(server: McpServer, principal: McpPrincipal, ctx: McpToolContext): void {
+function registerWhoami(server: McpServer, principal: Principal, ctx: McpToolContext): void {
 	server.registerTool(
 		"whoami",
 		{
@@ -117,7 +117,7 @@ export async function createOrReuse<T>(step: {
 }
 
 /** A fresh MCP server for one request, with the onboarding tool suite registered. */
-export function createMcpServer(principal: McpPrincipal, ctx: McpToolContext): McpServer {
+export function createMcpServer(principal: Principal, ctx: McpToolContext): McpServer {
 	const server = new McpServer(
 		{ name: "excited-live", version: "0.1.0" },
 		{ instructions: ONBOARDING_INSTRUCTIONS },

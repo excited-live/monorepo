@@ -14,7 +14,7 @@ Keys owned by the signed-in user, each with the scopes it actually carries. The 
 **Responses**
 
 - `200` — The user's keys. `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `503` — Auth is not configured in this environment. [Error](#error)
 
 ```bash
@@ -42,7 +42,7 @@ Type: `object`
 
 - `201` — The new key. The `key` field is shown only here. `object`
 - `400` — Malformed request, or a scope outside the supported set. [Error](#error)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `503` — Auth is not configured in this environment. [Error](#error)
 
 ```bash
@@ -67,7 +67,7 @@ Deletes one of the signed-in user's keys. Another user's key is a 404.
 **Responses**
 
 - `200` — Key revoked. [Ok](#ok)
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `404` — Key not found. [Error](#error)
 - `503` — Auth is not configured in this environment. [Error](#error)
 
@@ -80,12 +80,12 @@ curl -X DELETE "$API_URL/api/v1/agent-keys/:id" \
 
 `GET` `/api/v1/auth/me`
 
-Session check for native apps.
+The credential behind this request and the user it belongs to. `via` says which one it was: `apiKey` for an `elk_` key (`x-api-key` or `Authorization: Bearer elk_…`), `oauth` for an OAuth access token, `session` for a signed-in session token. Any valid credential may call it, so this is the one route an agent key can reach before it holds a scope (#193).
 
 **Responses**
 
 - `200` — Authenticated. `object`
-- `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
+- `401` — Missing or invalid credential (session token or API key; only when auth is configured). [Error](#error)
 - `503` — Auth is not configured in this environment. [Error](#error)
 
 ```bash

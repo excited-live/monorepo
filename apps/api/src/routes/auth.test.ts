@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { AGENT_KEY_RATE_LIMIT, apiKeyApi } from "@excited-live/auth";
 import { createApp } from "../app";
 import { DB_FILE_ENV, resetDbCache } from "../db";
-import { resetTokensAuthCache } from "../lib/auth";
+import { getTokensAuth, resetTokensAuthCache } from "../lib/auth";
 import type { Hono } from "hono";
 import type { ApiEnv } from "../lib/env";
 
@@ -49,6 +50,10 @@ function configuredApp(): Hono<ApiEnv> {
 	process.env.BETTER_AUTH_URL = BASE_URL;
 	process.env[DB_FILE_ENV] = tempDbFile();
 	resetDbCache();
+	// The tokens-auth instance is cached per process and holds the driver it was
+	// built with. A test that swaps databases mid-case (a second configuredApp())
+	// must drop it too, or /me reads users out of the previous database.
+	resetTokensAuthCache();
 	return createApp();
 }
 
@@ -144,5 +149,236 @@ describe("api/v1/auth (configured)", () => {
 			headers: { "x-user-id": "attacker" },
 		});
 		expect(anonymous.status).toBe(401);
+	});
+});
+
+const FULL_SCOPES = ["onboarding", "accounting:read", "accounting:write"];
+
+/** Session token plus the user id it belongs to (read back through /me). */
+async function signIn(app: Hono<ApiEnv>): Promise<{ token: string; userId: string }> {
+	const token = await signInToken(app);
+	const me = await app.request("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+	expect(me.status).toBe(200);
+	const body = (await me.json()) as { user: { id: string } };
+	return { token, userId: body.user.id };
+}
+
+/** Mint a key owned by the signed-in user, in the PRM vocabulary a mint accepts. */
+async function mintKey(
+	app: Hono<ApiEnv>,
+	token: string,
+	scopes: string[] = FULL_SCOPES,
+): Promise<{ id: string; key: string }> {
+	const res = await app.request("/api/v1/agent-keys", {
+		method: "POST",
+		headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
+		body: JSON.stringify({ agentId: "vitest", scopes }),
+	});
+	expect(res.status).toBe(201);
+	return (await res.json()) as { id: string; key: string };
+}
+
+/**
+ * A key with an explicit small budget. Minted through the plugin directly
+ * because the REST mint surface does not expose `rateLimitMax`; a 200-call
+ * budget would make the 429 case slow for no extra proof.
+ */
+async function budgetKey(app: Hono<ApiEnv>, userId: string, rateLimitMax = 2): Promise<string> {
+	const auth = await getTokensAuth(`${BASE_URL}/mcp`);
+	const minted = await apiKeyApi(auth!).createApiKey({
+		body: {
+			userId,
+			expiresIn: 24 * 60 * 60,
+			permissions: { onboarding: ["read", "write"], accounting: ["read", "write"] },
+			rateLimitMax,
+			rateLimitTimeWindow: 24 * 60 * 60 * 1000,
+		},
+	});
+	return minted.key;
+}
+
+type ErrorBody = { error: string; code?: string; message?: string; hint?: string; requiredScope?: string };
+
+/**
+ * #193 — one principal resolver for `/mcp` and `/api/v1/*`.
+ *
+ * An `elk_` key worked on `/mcp` and got 401 on every REST route while
+ * `openapi.json` advertised both. Accepting keys on REST is only safe with the
+ * scope gate below: without it an onboarding-only key could write accounting.
+ */
+describe("api/v1 identity — API keys and the scope gate (#193)", () => {
+	it("accepts x-api-key on a data route and advertises the key's budget", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token);
+
+		const res = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": key } });
+		expect(res.status).toBe(200);
+		expect(res.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
+		expect(res.headers.get("x-ratelimit-remaining")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests - 1));
+		expect(Number(res.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
+	});
+
+	it("accepts the same key as a Bearer elk_ token", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token);
+
+		const res = await app.request("/api/v1/accounting/summary?month=2026-10", {
+			headers: { Authorization: `Bearer ${key}` },
+		});
+		expect(res.status).toBe(200);
+		expect(res.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
+	});
+
+	it("refuses a scope the key does not hold with 403, never 401", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token, ["onboarding"]);
+
+		const denied = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": key } });
+		expect(denied.status).toBe(403);
+		const body = (await denied.json()) as ErrorBody;
+		expect(body.code).toBe("insufficient_scope");
+		expect(body.requiredScope).toBe("accounting:read");
+
+		// The scope it does hold still works: the gate is per route, not blanket.
+		const allowed = await app.request("/api/v1/onboarding", { headers: { "x-api-key": key } });
+		expect(allowed.status).toBe(200);
+	});
+
+	it("refuses a write scope the key does not hold, and a read key cannot write", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token, ["accounting:read"]);
+
+		const read = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": key } });
+		expect(read.status).toBe(200);
+
+		const write = await app.request("/api/v1/accounting/entities", {
+			method: "POST",
+			headers: { "content-type": "application/json", "x-api-key": key },
+			body: JSON.stringify({ name: "Test entity", country: "TH" }),
+		});
+		expect(write.status).toBe(403);
+		expect(((await write.json()) as ErrorBody).code).toBe("insufficient_scope");
+	});
+
+	it("answers 401 UNAUTHORIZED for a revoked key", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const minted = await mintKey(app, token);
+
+		const before = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": minted.key } });
+		expect(before.status).toBe(200);
+
+		const revoke = await app.request(`/api/v1/agent-keys/${minted.id}`, {
+			method: "DELETE",
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(revoke.status).toBe(200);
+
+		const after = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": minted.key } });
+		expect(after.status).toBe(401);
+		const body = (await after.json()) as ErrorBody;
+		expect(body.code).toBe("UNAUTHORIZED");
+		// REST's own capitalisation, not MCP's lowercase `unauthorized`.
+		expect(body.error).toBe("Unauthorized");
+	});
+
+	it("answers a spent key with the MCP 429 body, not a 401", async () => {
+		const app = configuredApp();
+		const { userId } = await signIn(app);
+		const key = await budgetKey(app, userId);
+
+		for (let call = 0; call < 2; call += 1) {
+			const ok = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": key } });
+			expect(ok.status).toBe(200);
+		}
+
+		const limited = await app.request("/api/v1/accounting/summary?month=2026-10", { headers: { "x-api-key": key } });
+		expect(limited.status).toBe(429);
+		expect(limited.headers.get("retry-after")).toBeTruthy();
+		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
+
+		const body = (await limited.json()) as {
+			error: string;
+			code: string;
+			message: string;
+			hint: string;
+			retryAfter: number;
+			rateLimit: { limit: number; remaining: number; reset: number };
+		};
+		// The /mcp vocabulary verbatim: same key, same budget, same advice.
+		expect(body.error).toBe("rate_limited");
+		expect(body.code).toBe("RATE_LIMITED");
+		expect(body.message).toBe("This API key is over its request budget.");
+		expect(body.hint).toContain("do not rotate it");
+		expect(body.rateLimit.remaining).toBe(0);
+		// #178 keeps the 429's advertised limit at the product default for now;
+		// this asserts only that a limit is published, not which one.
+		expect(body.rateLimit.limit).toBe(AGENT_KEY_RATE_LIMIT.maxRequests);
+	});
+
+	it("refuses key minting from a key with 403 session_required", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token);
+
+		for (const method of ["GET", "POST"] as const) {
+			const res = await app.request("/api/v1/agent-keys", {
+				method,
+				headers: { "content-type": "application/json", "x-api-key": key },
+				...(method === "POST" ? { body: JSON.stringify({ agentId: "self-replicating" }) } : {}),
+			});
+			expect(res.status).toBe(403);
+			expect(((await res.json()) as ErrorBody).code).toBe("session_required");
+		}
+
+		// Settings is the human's account, outside every advertised scope.
+		const settings = await app.request("/api/v1/settings", { headers: { "x-api-key": key } });
+		expect(settings.status).toBe(403);
+		expect(((await settings.json()) as ErrorBody).code).toBe("session_required");
+	});
+
+	it("names the credential on /me, which is the issue's exact repro", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token);
+
+		const viaKey = await app.request("/api/v1/auth/me", { headers: { "x-api-key": key } });
+		expect(viaKey.status).toBe(200);
+		const body = (await viaKey.json()) as { authenticated: boolean; via: string; user: { email: string } };
+		expect(body.authenticated).toBe(true);
+		expect(body.via).toBe("apiKey");
+		expect(body.user.email).toBe(EMAIL);
+
+		const viaSession = await app.request("/api/v1/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+		expect(((await viaSession.json()) as { via: string }).via).toBe("session");
+	});
+
+	it("keeps session behaviour unchanged and adds no budget headers", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+
+		const res = await app.request("/api/v1/accounting/summary?month=2026-10", {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(res.status).toBe(200);
+		expect(res.headers.get("x-ratelimit-limit")).toBeNull();
+		expect(res.headers.get("x-ratelimit-remaining")).toBeNull();
+		expect(res.headers.get("x-ratelimit-reset")).toBeNull();
+	});
+
+	it("keeps `Authorization: ApiKey …` a 401 — a third spelling is not accepted", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const { key } = await mintKey(app, token);
+
+		const res = await app.request("/api/v1/accounting/summary?month=2026-10", {
+			headers: { Authorization: `ApiKey ${key}` },
+		});
+		expect(res.status).toBe(401);
+		expect(((await res.json()) as ErrorBody).code).toBe("UNAUTHORIZED");
 	});
 });

@@ -24,7 +24,10 @@ export function jsonResponse(description: string, schema: Schema): { description
 	return { description, content: jsonContent(schema) }
 }
 
-const unauthorized = jsonResponse("Missing or invalid bearer token (only when auth is configured).", ErrorSchema)
+const unauthorized = jsonResponse(
+	"Missing or invalid credential (session token or API key; only when auth is configured).",
+	ErrorSchema,
+)
 
 /** `describeRoute` with the shared 401 response merged in. */
 export function route(options: DescribeRouteOptions) {
@@ -41,7 +44,9 @@ export const documentation = {
 		version: "0.0.1",
 		description:
 			"REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.\n\n" +
-			"**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key). " +
+			"**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key) or, for an API key, `x-api-key: elk_…`. " +
+			"A key resolves here exactly as it does on `/mcp`, with the same scopes: a missing scope is 403 `insufficient_scope` naming the scope, " +
+			"and key minting plus account settings need a browser session (403 `session_required`). `Authorization: ApiKey …` is not accepted. " +
 			"On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, " +
 			"and falls back to a shared `default` bucket.\n\n" +
 			"**Cost.** excited.live is free during launch: no card is required and nothing is charged today. " +
@@ -59,7 +64,12 @@ export const documentation = {
 	],
 	components: {
 		securitySchemes: {
-			bearerAuth: { type: "http" as const, scheme: "bearer", description: "Better Auth session token or API key." },
+			bearerAuth: {
+				type: "http" as const,
+				scheme: "bearer",
+				description:
+					"Better Auth session token, or an `elk_` API key. A key may instead be sent as `x-api-key: elk_…`; both resolve to the same user and scopes as on `/mcp`.",
+			},
 		},
 	},
 	security: [{ bearerAuth: [] }],

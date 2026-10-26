@@ -2,7 +2,7 @@
 	"openapi": "3.1.0",
 	"info": {
 		"title": "excited.live API",
-		"description": "REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.\n\n**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key). On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, and falls back to a shared `default` bucket.\n\n**Cost.** excited.live is free during launch: no card is required and nothing is charged today. There is no trial end date, no automatic charge, and no plan, seat or usage fee. The machine-readable answer is https://excited.live/pricing.md",
+		"description": "REST API behind excited.live. Every endpoint is under `/api/v1` and scoped to the authenticated user.\n\n**Authentication.** Send `Authorization: Bearer <token>` (a Better Auth session token or API key) or, for an API key, `x-api-key: elk_…`. A key resolves here exactly as it does on `/mcp`, with the same scopes: a missing scope is 403 `insufficient_scope` naming the scope, and key minting plus account settings need a browser session (403 `session_required`). `Authorization: ApiKey …` is not accepted. On environments where auth is not configured (local dev, previews) the API trusts an `x-user-id` header instead, and falls back to a shared `default` bucket.\n\n**Cost.** excited.live is free during launch: no card is required and nothing is charged today. There is no trial end date, no automatic charge, and no plan, seat or usage fee. The machine-readable answer is https://excited.live/pricing.md",
 		"version": "0.0.1"
 	},
 	"tags": [
@@ -40,7 +40,7 @@
 			"bearerAuth": {
 				"type": "http",
 				"scheme": "bearer",
-				"description": "Better Auth session token or API key."
+				"description": "Better Auth session token, or an `elk_` API key. A key may instead be sent as `x-api-key: elk_…`; both resolve to the same user and scopes as on `/mcp`."
 			}
 		},
 		"schemas": {
@@ -1778,7 +1778,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1818,7 +1818,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1924,7 +1924,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1984,7 +1984,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2124,7 +2124,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2216,7 +2216,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2277,7 +2277,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2649,7 +2649,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2709,7 +2709,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2977,7 +2977,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3069,7 +3069,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3131,7 +3131,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3615,7 +3615,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3674,7 +3674,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3903,7 +3903,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3990,7 +3990,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4141,7 +4141,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4189,7 +4189,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4360,7 +4360,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4420,7 +4420,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4671,7 +4671,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4763,7 +4763,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4824,7 +4824,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5212,7 +5212,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5272,7 +5272,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5521,7 +5521,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5600,7 +5600,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5663,7 +5663,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5703,7 +5703,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5816,7 +5816,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -5876,7 +5876,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6003,7 +6003,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6075,7 +6075,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6155,7 +6155,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6224,7 +6224,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6320,7 +6320,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6490,7 +6490,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6629,7 +6629,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6671,7 +6671,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6720,7 +6720,7 @@
 					"Auth"
 				],
 				"summary": "Current session",
-				"description": "Session check for native apps.",
+				"description": "The credential behind this request and the user it belongs to. `via` says which one it was: `apiKey` for an `elk_` key (`x-api-key` or `Authorization: Bearer elk_…`), `oauth` for an OAuth access token, `session` for a signed-in session token. Any valid credential may call it, so this is the one route an agent key can reach before it holds a scope (#193).",
 				"responses": {
 					"200": {
 						"description": "Authenticated.",
@@ -6732,6 +6732,15 @@
 										"authenticated": {
 											"type": "boolean",
 											"const": true
+										},
+										"via": {
+											"type": "string",
+											"enum": [
+												"apiKey",
+												"oauth",
+												"session",
+												"dev"
+											]
 										},
 										"user": {
 											"type": "object",
@@ -6755,6 +6764,7 @@
 									},
 									"required": [
 										"authenticated",
+										"via",
 										"user"
 									]
 								}
@@ -6762,7 +6772,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6875,7 +6885,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -7030,7 +7040,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -7073,7 +7083,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -7136,7 +7146,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -7168,7 +7178,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -7221,7 +7231,7 @@
 						}
 					},
 					"401": {
-						"description": "Missing or invalid bearer token (only when auth is configured).",
+						"description": "Missing or invalid credential (session token or API key; only when auth is configured).",
 						"content": {
 							"application/json": {
 								"schema": {

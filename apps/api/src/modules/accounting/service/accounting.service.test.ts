@@ -1,7 +1,8 @@
-import { calculateLoanPayment } from "@excited-live/accounting";
+import { calculateLoanPayment, shiftYearMonth } from "@excited-live/accounting";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDriver } from "../../../db/testing";
 import type { SqlDriver } from "../../../db/types";
+import { productDate, productMonth } from "../../../lib/product-time";
 import { DuplicateError, NotFoundError, ValidationError, VersionConflictError } from "../domain/errors";
 import { createSqlAccountingRepository } from "../repository/sql-accounting.repository";
 import { createAccountingService } from "./accounting.service";
@@ -610,6 +611,7 @@ describe("computed reads", () => {
 			name: "Rent",
 			category: "housing",
 			amount: 12000,
+			cycle: "monthly",
 			startMonth: "2026-01",
 			paidFromAssetId: wallet.id,
 		});
@@ -626,6 +628,7 @@ describe("computed reads", () => {
 			name: "Streaming",
 			category: "entertainment",
 			amount: 300,
+			cycle: "monthly",
 			startMonth: "2026-01",
 			paidFromLiabilityId: card.id,
 		});
@@ -867,6 +870,7 @@ describe("asOf day for one-time expenses (#172)", () => {
 			name: "Rent",
 			category: "housing",
 			amount: 12000,
+			cycle: "monthly",
 			asOf: "2026-10-26",
 		});
 		expect(monthly.cycle).toBe("monthly");
@@ -901,6 +905,7 @@ describe("asOf day for one-time expenses (#172)", () => {
 			name: "Lunch",
 			category: "food",
 			amount: 120,
+			cycle: "monthly",
 			startMonth: "2026-10",
 		});
 		expect(expense.dayOfMonth).toBeUndefined();
@@ -918,5 +923,47 @@ describe("asOf day for one-time expenses (#172)", () => {
 		// An explicit dayOfMonth still wins over asOf's day.
 		const explicit = await service.updateExpense(USER, expense.id, { dayOfMonth: 3, asOf: "2026-10-26" });
 		expect(explicit.dayOfMonth).toBe(3);
+	});
+});
+
+describe("minimum valid expense is a one-off today (#202)", () => {
+	it("books a three-field expense on today, once, and not again next month", async () => {
+		const me = await personalEntity();
+		const today = productDate();
+		const thisMonth = productMonth();
+
+		// The exact call from the issue: only the three required fields.
+		const expense = await service.createExpense(USER, { entityId: me.id, name: "Lunch", category: "food", amount: 250 });
+
+		expect(expense.cycle).toBe("one_time");
+		expect(expense.startMonth).toBe(thisMonth);
+		expect(expense.dayOfMonth).toBe(Number(today.slice(8, 10)));
+
+		// Today, not the 1st: `bookExpenseToExpense` clamps a missing day to 1.
+		const thisMonthFlows = await service.getCashFlows(USER, { month: thisMonth });
+		expect(thisMonthFlows.items.find((item) => item.sourceId === expense.id)?.date).toBe(today);
+
+		// One receipt, not a subscription: the row is gone the next month.
+		const nextMonthFlows = await service.getCashFlows(USER, { month: shiftYearMonth(thisMonth, 1) });
+		expect(nextMonthFlows.items.some((item) => item.sourceId === expense.id)).toBe(false);
+	});
+
+	it("keeps an explicit monthly expense recurring from its start month", async () => {
+		const me = await personalEntity();
+		const thisMonth = productMonth();
+
+		const rent = await service.createExpense(USER, {
+			entityId: me.id,
+			name: "Rent",
+			category: "housing",
+			amount: 12000,
+			cycle: "monthly",
+		});
+
+		expect(rent.cycle).toBe("monthly");
+		expect(rent.startMonth).toBe(thisMonth);
+		expect((await service.getCashFlows(USER, { month: shiftYearMonth(thisMonth, 1) })).items.some((i) => i.sourceId === rent.id)).toBe(
+			true,
+		);
 	});
 });

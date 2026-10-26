@@ -3206,7 +3206,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -3318,7 +3319,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -3420,7 +3422,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -3526,7 +3529,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -3740,7 +3744,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											{
 												"type": "null"
@@ -4280,7 +4285,8 @@
 											"semi-annual",
 											"yearly",
 											"one_time"
-										]
+										],
+										"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 									},
 									"dayOfMonth": {
 										"description": "Day of the month the cycle falls on. For `cycle: \"one_time\"` this is the date of the receipt; it defaults from a day-precision `asOf`, otherwise the 1st.",
@@ -4509,7 +4515,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											{
 												"type": "null"
@@ -4895,7 +4902,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -5020,7 +5028,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -5132,7 +5141,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											"dayOfMonth": {
 												"type": "integer",
@@ -5334,7 +5344,8 @@
 													"semi-annual",
 													"yearly",
 													"one_time"
-												]
+												],
+												"description": "How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule."
 											},
 											{
 												"type": "null"

@@ -43,7 +43,11 @@ const createId = uuid
 	);
 const month = z.string().regex(/^\d{4}-\d{2}$/, "Expected YYYY-MM");
 const monthOrDate = z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, "Expected YYYY-MM or YYYY-MM-DD");
-const cycle = z.enum(["weekly", "monthly", "quarterly", "semi-annual", "yearly", "one_time"]);
+const cycle = z
+	.enum(["weekly", "monthly", "quarterly", "semi-annual", "yearly", "one_time"])
+	.describe(
+		"How often it repeats. An expense defaults to `one_time` (one receipt, dated by `asOf`, or today); an income or a liability defaults to `monthly`. `one_time` is counted only in `startMonth`; every other value repeats from `startMonth` on its own schedule.",
+	);
 const dayOfMonth = z.number().int().min(1).max(31);
 const version = z.number().int().min(1).optional().describe("Stored version the caller last read; a mismatch returns 409.");
 const details = z.record(z.string(), z.unknown());

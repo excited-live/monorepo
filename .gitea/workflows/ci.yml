@@ -29,6 +29,16 @@ jobs:
       # is a launch bug (#89), so assert it on every PR too.
       - name: Deploy config guards
         run: node scripts/check-web-production-config.mjs && node scripts/check-prelive-auth-config.mjs
+      # #123 B: prelive's discovery documents must describe one identity. This
+      # asserts the checked-in origins and that the API still derives PRM from
+      # the request host (#116), so the workers.dev/audience split cannot return
+      # through a config edit. The deployed half — PRM resource == connected
+      # host, and every authorization_servers entry answering JSON rather than
+      # HTML/404 — is smoke-prelive.mjs check 4, which runs after both prelive
+      # deploys and every six hours. Not duplicated here because prelive serves
+      # main: a PR run would assert on a build the PR never changed.
+      - name: Prelive MCP discovery guard
+        run: node scripts/check-prelive-mcp-discovery.mjs
       - uses: pnpm/action-setup@v6
         with:
           version: 10.12.0

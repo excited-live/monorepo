@@ -101,14 +101,30 @@ export async function resolvePrincipal(c: Context<ApiEnv>): Promise<McpPrincipal
 	return { userId: session.user.id, scopes: new Set(ALL_SCOPES), via: "session" };
 }
 
-/** 401 in the shape the MCP Streamable HTTP spec expects, pointing at the resource metadata. */
+/**
+ * 401 in the shape the MCP Streamable HTTP spec expects, pointing at the
+ * resource metadata.
+ *
+ * The body also names the API-key alternative (#123 A.1): a client that stops
+ * at the 401 otherwise never learns `elk_` keys exist, even though both header
+ * transports accept them. A fresh key was proven to answer 200 on prelive, so
+ * the hint is accurate. The wording is environment-neutral: the same two
+ * transports and the same Settings screen exist on production.
+ */
 export function unauthorizedResponse(requestUrl: string): Response {
 	const origin = mcpAdvertisedOrigin(requestUrl);
-	return new Response(JSON.stringify({ error: "unauthorized" }), {
-		status: 401,
-		headers: {
-			"content-type": "application/json",
-			"www-authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`,
+	return new Response(
+		JSON.stringify({
+			error: "unauthorized",
+			message: "This endpoint needs credentials.",
+			hint: "Send an API key as `Authorization: Bearer elk_…` or `x-api-key: elk_…` (mint one under Settings → API keys), or follow the OAuth resource_metadata URL from the WWW-Authenticate header.",
+		}),
+		{
+			status: 401,
+			headers: {
+				"content-type": "application/json",
+				"www-authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`,
+			},
 		},
-	});
+	);
 }

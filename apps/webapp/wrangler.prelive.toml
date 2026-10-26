@@ -29,8 +29,11 @@ pages_build_output_dir = "dist/client"
 [vars]
 # Webapp origin: the OAuth issuer becomes https://prelive.excited.live/api/auth.
 BETTER_AUTH_URL = "https://prelive.excited.live"
-# API origin: the MCP resource/audience becomes <this>/mcp.
-EXCITED_API_URL = "https://excited-live-api-prelive.preamza02.workers.dev"
+# API origin: the MCP resource/audience becomes <this>/mcp. This must be the
+# public host clients call, because the API advertises the request host in its
+# PRM (#116); binding the Worker's workers.dev address here mints tokens with
+# the wrong `aud` and every OAuth call fails on the public host (#123 B).
+EXCITED_API_URL = "https://prelive.api.excited.live"
 # Backend origin for the BFF (src/lib/bff-proxy.ts): /api/v1/* is proxied
 # here. Without it the fallback is http://localhost:8000, which workerd cannot
 # resolve — Cloudflare answers every /api/v1/* call with 1016 "Origin DNS

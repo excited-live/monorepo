@@ -126,6 +126,12 @@ describe("/mcp", () => {
 		expect(res.status).toBe(401);
 		expect(res.headers.get("www-authenticate")).toContain("resource_metadata=");
 		expect(res.headers.get("www-authenticate")).toContain("/.well-known/oauth-protected-resource");
+		// #123 A.1: the body must name the API-key alternative, not just the
+		// OAuth challenge, or a client that stops here never finds `elk_` keys.
+		const body = res.json as { error: string; hint: string };
+		expect(body.error).toBe("unauthorized");
+		expect(body.hint).toContain("elk_");
+		expect(body.hint).toContain("x-api-key");
 	});
 
 	it("initializes, lists tools and calls get_onboarding_status with a minted key", async () => {

@@ -8,7 +8,9 @@
  *
  *   1. the same D1 database (sessions + JWKS written by one, read by the other)
  *   2. issuer = <webapp origin>/api/auth exactly as the API advertises it
- *   3. resource = <api origin>/mcp exactly as the webapp binds tokens to
+ *   3. resource = <public API origin>/mcp: the host clients connect to, which
+ *      the API advertises from the request (#116) and therefore the audience
+ *      the webapp must bind. The Worker's own workers.dev address is not it.
  *
  * `node scripts/check-prelive-auth-config.mjs` validates the checked-in files
  * and fails CI on drift. `--json` additionally prints the Pages project
@@ -22,6 +24,12 @@ import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+	PRELIVE_API_ORIGIN,
+	PRELIVE_IAM_ORIGIN,
+	PRELIVE_WEBAPP_ORIGIN,
+	PRELIVE_WORKER_ORIGIN,
+} from "./prelive-hosts.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const read = (file) => readFileSync(path.join(root, file), "utf8")
@@ -29,10 +37,13 @@ const read = (file) => readFileSync(path.join(root, file), "utf8")
 const PAGES_CONFIG = "apps/webapp/wrangler.prelive.toml"
 const API_CONFIG = "apps/api/wrangler.toml"
 const PROJECT_NAME = "excited-live-prelive"
-const API_ORIGIN = "https://excited-live-api-prelive.preamza02.workers.dev"
-const WEBAPP_ORIGIN = "https://prelive.excited.live"
+/** The Worker's own origin: BETTER_AUTH_URL pin and the BFF's internal hop. */
+const API_WORKER_ORIGIN = PRELIVE_WORKER_ORIGIN
+/** The public origin clients call; the OAuth resource/audience (#116, #123). */
+const API_RESOURCE_ORIGIN = PRELIVE_API_ORIGIN
+const WEBAPP_ORIGIN = PRELIVE_WEBAPP_ORIGIN
 /** Prelive iam (#88). It calls the prelive API and auth server cross-origin. */
-const IAM_ORIGIN = "https://excited-live-iam-prelive.pages.dev"
+const IAM_ORIGIN = PRELIVE_IAM_ORIGIN
 const DATABASE_ID = "f7bd3f26-5296-4832-96a3-1cbb01046112"
 
 /** Text of one TOML section/table header, up to the next header. */
@@ -86,15 +97,18 @@ const pagesAuthCors = stringValue(pagesVars, "AUTH_CORS_ORIGINS")
 const compatibilityDate = stringValue(pagesToml, "compatibility_date")
 const compatibilityFlags = stringArray(pagesToml, "compatibility_flags")
 
-expect("apps/api [env.prelive] BETTER_AUTH_URL", apiOrigin, API_ORIGIN)
+expect("apps/api [env.prelive] BETTER_AUTH_URL", apiOrigin, API_WORKER_ORIGIN)
 expect("apps/api [env.prelive] EXCITED_WEBAPP_URL", apiWebappOrigin, WEBAPP_ORIGIN)
 expect("apps/api [env.prelive] D1 database_id", apiDatabaseId, DATABASE_ID)
 expect(`${PAGES_CONFIG} name`, pagesName, PROJECT_NAME)
 expect(`${PAGES_CONFIG} [vars] BETTER_AUTH_URL`, pagesOrigin, WEBAPP_ORIGIN)
-expect(`${PAGES_CONFIG} [vars] EXCITED_API_URL`, pagesApiOrigin, apiOrigin)
+// The OAuth audience. PRM advertises the request host (#116), so binding the
+// Worker's workers.dev address here mints tokens the API will reject on the
+// public host — the #123 B split. Backend traffic keeps the internal origin.
+expect(`${PAGES_CONFIG} [vars] EXCITED_API_URL`, pagesApiOrigin, API_RESOURCE_ORIGIN)
 // The BFF (src/lib/bff-proxy.ts) proxies /api/v1/* to this origin; unset means
 // http://localhost:8000 inside workerd, i.e. Cloudflare 1016 on every call.
-expect(`${PAGES_CONFIG} [vars] BACKEND_API_URL`, pagesBackendOrigin, apiOrigin)
+expect(`${PAGES_CONFIG} [vars] BACKEND_API_URL`, pagesBackendOrigin, API_WORKER_ORIGIN)
 expect(`${PAGES_CONFIG} D1 binding`, stringValue(pagesDb, "binding"), "DB")
 expect(`${PAGES_CONFIG} D1 database_name`, pagesDatabaseName, "excited-live-api-prelive")
 expect(`${PAGES_CONFIG} D1 database_id must equal the API's (shared sessions/JWKS)`, pagesDatabaseId, apiDatabaseId)

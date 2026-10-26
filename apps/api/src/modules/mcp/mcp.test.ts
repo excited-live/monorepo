@@ -324,12 +324,12 @@ describe("/mcp", () => {
 		expect(initResult.serverInfo.name).toBe("excited-live");
 		expect(initResult.instructions).toContain("excited.live");
 		expect(initResult.instructions).toContain("Images are picked automatically from the catalog.");
-		expect(initResult.instructions).toContain("Guide version: 2.");
+		expect(initResult.instructions).toContain("Guide version: 3.");
 
 		const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" }, key);
 		expect(list.status).toBe(200);
 		const tools = (list.json?.result as { tools: Array<{ name: string }> }).tools.map((tool) => tool.name);
-		expect(tools).toHaveLength(17);
+		expect(tools).toHaveLength(19);
 		expect(tools).toEqual(
 			expect.arrayContaining([
 				"whoami",
@@ -337,6 +337,8 @@ describe("/mcp", () => {
 				"list_entities",
 				"create_business",
 				"add_asset",
+				"update_asset",
+				"delete_asset",
 				"add_liability",
 				"add_income",
 				"add_expense",
@@ -1202,6 +1204,7 @@ describe("/mcp", () => {
 			list.json?.result as {
 				tools: Array<{
 					name: string;
+					description: string;
 					inputSchema: { properties?: Record<string, { enum?: string[]; description?: string }>; required?: string[] };
 				}>;
 			}
@@ -1269,6 +1272,52 @@ describe("/mcp", () => {
 				expect(tool!.inputSchema.properties?.[field]?.description, `${name}.${field} has no description`).toBeTruthy();
 			}
 		}
+
+		// update_asset/delete_asset publish the REST PATCH fields plus the name
+		// selector, so a client can render them from tools/list alone. All of
+		// them are optional: the selector is what a call requires, not a field.
+		const assetTools: Array<[string, string[]]> = [
+			[
+				"update_asset",
+				[
+					"id",
+					"name",
+					"entityId",
+					"newName",
+					"version",
+					"balance",
+					"balanceAsOf",
+					"isDefault",
+					"cost",
+					"acquiredOn",
+					"instrument",
+					"marketValue",
+				],
+			],
+			["delete_asset", ["id", "name", "entityId"]],
+		];
+		for (const [name, fields] of assetTools) {
+			const tool = tools.find((entry) => entry.name === name);
+			expect(tool, name).toBeDefined();
+			const published = Object.keys(tool!.inputSchema.properties ?? {});
+			for (const field of fields) {
+				expect(published, `${name} hides ${field}`).toContain(field);
+			}
+			// The selector fields are ours, so each one explains itself: an agent
+			// has to know that `name` selects and `newName` renames.
+			for (const field of ["id", "name", "entityId", ...(name === "update_asset" ? ["newName"] : [])]) {
+				expect(tool!.inputSchema.properties?.[field]?.description, `${name}.${field} has no description`).toBeTruthy();
+			}
+			expect(published, `${name} offers imageUrl`).not.toContain("imageUrl");
+			// `kind` is absent on purpose: it is not patchable, and the description
+			// tells the agent to delete and re-add instead.
+			expect(published, `${name} offers kind`).not.toContain("kind");
+			expect(tool!.inputSchema.required ?? [], `${name} required`).toEqual([]);
+		}
+
+		const updateTool = tools.find((entry) => entry.name === "update_asset");
+		expect(updateTool!.description).toContain("cannot change");
+		expect(updateTool!.description).toContain("delete the asset and add it again");
 	});
 
 	it("still rejects a wrong field type after the union is flattened (#201)", async () => {
@@ -1680,5 +1729,267 @@ describe("/mcp", () => {
 
 		const transfers = await call("list_transfers", {}, 63);
 		expect((transfers.structuredContent?.transfers as Array<unknown>).length).toBe(1);
+	});
+
+	/** One tools/call, assert no tool error, return the structured result. */
+	const callTool = async (
+		app: Hono<ApiEnv>,
+		key: string,
+		name: string,
+		args: Record<string, unknown>,
+		id: number,
+	): Promise<ToolResult> => {
+		const res = await rpc(app, { jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args } }, key);
+		expect(res.status).toBe(200);
+		return res.json?.result as ToolResult;
+	};
+
+	it("corrects the auto-created zero-balance wallet in ONE update_asset call by name", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// Fresh account: bootstrap creates the personal entity and its ฿0 wallet.
+		// get_onboarding_status shows names only, never ids — which is why the
+		// one-call fix has to resolve the wallet by the name it was given.
+		const status = await callTool(app, key, "get_onboarding_status", {}, 70);
+		const steps = status.structuredContent?.steps as Array<{ id: string; entryLabels: string[] }>;
+		expect(steps.find((step) => step.id === "assets_wallet")?.entryLabels).toEqual(["Personal Main Wallet"]);
+
+		// The whole fix: one call, the name from above, no id and no balanceAsOf.
+		const updated = await callTool(
+			app,
+			key,
+			"update_asset",
+			{ name: "Personal Main Wallet", balance: 74970.63 },
+			71,
+		);
+		expect(updated.isError).toBeUndefined();
+		const asset = updated.structuredContent?.asset as {
+			id: string;
+			entityId: string;
+			name: string;
+			kind: string;
+			isDefault: boolean;
+			balance: number;
+			balanceAsOf: string;
+		};
+		expect(asset.balance).toBe(74970.63);
+		expect(asset.name).toBe("Personal Main Wallet");
+		expect(asset.kind).toBe("cash");
+		expect(asset.isDefault).toBe(true);
+		// Dated to the day the correction was made (Bangkok), not the UTC month.
+		expect(asset.balanceAsOf).toBe(productDate());
+		expect(updated.structuredContent?.balanceChange).toEqual({
+			from: 0,
+			to: 74970.63,
+			asOf: productDate(),
+			kind: "adjustment",
+		});
+
+		// The ledger proves it is a stock correction: opening = closing, no inflow.
+		expect(updated.structuredContent?.ledger).toEqual({
+			yearMonth: productMonth(),
+			startingTreasury: 74970.63,
+			endingTreasury: 74970.63,
+			totalInflow: 0,
+			totalCashOutflow: 0,
+		});
+		expect(String(updated.structuredContent?.note)).toContain("not income");
+
+		// The same truth through the read tools: cash assets and income agree.
+		const summaryResult = await callTool(app, key, "get_financial_summary", { month: productMonth() }, 72);
+		const summary = summaryResult.structuredContent?.summary as {
+			entities: Array<{ entityId: string; metrics: { cashAssetsValue: number; totalIncome: number } }>;
+		};
+		const personal = summary.entities.find((entity) => entity.entityId === asset.entityId);
+		expect(personal?.metrics.cashAssetsValue).toBe(74970.63);
+		expect(personal?.metrics.totalIncome).toBe(0);
+
+		// /cash-flows has no income item: a balance edit is never income.
+		const flowsResult = await callTool(app, key, "get_cash_flows", { month: productMonth() }, 73);
+		const flows = flowsResult.structuredContent as {
+			items: Array<{ sourceType: string; flowType: string }>;
+			totals: { moneyIn: number; moneyOut: number };
+		};
+		expect(flows.items).toEqual([]);
+		expect(flows.totals.moneyIn).toBe(0);
+		expect(flows.totals.moneyOut).toBe(0);
+	});
+
+	it("updates an asset by id and a rename shows in get_onboarding_status labels", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const added = await callTool(
+			app,
+			key,
+			"add_asset",
+			{ kind: "cash", name: "Savings", category: "bank", balance: 1000 },
+			74,
+		);
+		expect(added.isError).toBeUndefined();
+		const savingsId = (added.structuredContent?.asset as { id: string }).id;
+
+		const updated = await callTool(
+			app,
+			key,
+			"update_asset",
+			{ id: savingsId, newName: "Emergency Fund", balance: 2500 },
+			75,
+		);
+		expect(updated.isError).toBeUndefined();
+		const asset = updated.structuredContent?.asset as { id: string; name: string; balance: number };
+		expect(asset.id).toBe(savingsId);
+		expect(asset.name).toBe("Emergency Fund");
+		expect(asset.balance).toBe(2500);
+		expect(updated.structuredContent?.balanceChange).toEqual({
+			from: 1000,
+			to: 2500,
+			asOf: productDate(),
+			kind: "adjustment",
+		});
+
+		const status = await callTool(app, key, "get_onboarding_status", {}, 76);
+		const steps = status.structuredContent?.steps as Array<{ id: string; entryLabels: string[] }>;
+		const labels = steps.find((step) => step.id === "assets_wallet")?.entryLabels ?? [];
+		expect(labels).toContain("Emergency Fund");
+		expect(labels).not.toContain("Savings");
+		expect(labels).toContain("Personal Main Wallet");
+	});
+
+	it("rejects an invalid, unknown, ambiguous or untyped asset update and writes nothing", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// Two wallets with the same name make a name-only call ambiguous.
+		for (const [index, id] of [77, 78].entries()) {
+			const added = await callTool(
+				app,
+				key,
+				"add_asset",
+				{ kind: "cash", name: "Duplicate Wallet", category: "bank", balance: 10 + index },
+				id,
+			);
+			expect(added.isError).toBeUndefined();
+		}
+
+		const assetsBefore = (await (
+			await app.request("/api/v1/accounting/assets", { headers: { Authorization: `Bearer ${token}` } })
+		).json()) as Array<Record<string, unknown>>;
+		expect(assetsBefore.length).toBe(3);
+
+		const wrongType = await callTool(
+			app,
+			key,
+			"update_asset",
+			{ name: "Personal Main Wallet", balance: "not-a-number" },
+			79,
+		);
+		expect(wrongType.isError).toBe(true);
+		expect(toolText(wrongType)).toContain("balance");
+
+		const unknown = await callTool(app, key, "update_asset", { name: "No Such Wallet", balance: 5 }, 80);
+		expect(unknown.isError).toBe(true);
+		expect(toolText(unknown)).toContain('No asset is named "No Such Wallet"');
+		// The message names what does exist, so the agent can retry in one step.
+		expect(toolText(unknown)).toContain("Personal Main Wallet");
+
+		const noSelector = await callTool(app, key, "update_asset", { balance: 5 }, 81);
+		expect(noSelector.isError).toBe(true);
+		expect(toolText(noSelector)).toContain("`id` or `name`");
+
+		const ambiguous = await callTool(app, key, "update_asset", { name: "Duplicate Wallet", balance: 999 }, 82);
+		expect(ambiguous.isError).toBe(true);
+		expect(toolText(ambiguous)).toContain("More than one asset is named");
+		expect(toolText(ambiguous)).toContain("Pass `id`");
+
+		const kindChange = await callTool(
+			app,
+			key,
+			"update_asset",
+			{ name: "Personal Main Wallet", kind: "investment" },
+			83,
+		);
+		expect(kindChange.isError).toBe(true);
+		// `kind` is not a patchable field (the REST rule), so nothing changes and
+		// the refusal points at the supported path.
+		expect(toolText(kindChange)).toContain("kind and entity cannot change");
+
+		const nothing = await callTool(app, key, "delete_asset", {}, 84);
+		expect(nothing.isError).toBe(true);
+
+		// Not one of the six refused calls wrote: the stored rows (version
+		// included) are byte-identical to the snapshot taken before them.
+		const assetsAfter = (await (
+			await app.request("/api/v1/accounting/assets", { headers: { Authorization: `Bearer ${token}` } })
+		).json()) as Array<Record<string, unknown>>;
+		expect(assetsAfter).toEqual(assetsBefore);
+		expect(
+			assetsAfter.find((asset) => asset.name === "Personal Main Wallet") as { balance: number },
+		).toMatchObject({ balance: 0 });
+		expect(assetsAfter.some((asset) => asset.name === "No Such Wallet")).toBe(false);
+	});
+
+	it("deletes a wallet by name and promotes the oldest remaining wallet as default", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const listCash = async (): Promise<Array<{ id: string; name: string; isDefault: boolean }>> =>
+			(await (
+				await app.request("/api/v1/accounting/assets?kind=cash", {
+					headers: { Authorization: `Bearer ${token}` },
+				})
+			).json()) as Array<{ id: string; name: string; isDefault: boolean }>;
+
+		// Bootstrap's wallet is the oldest and is default.
+		for (const [index, name] of ["Second Wallet", "Third Wallet"].entries()) {
+			const added = await callTool(
+				app,
+				key,
+				"add_asset",
+				{ kind: "cash", name, category: "bank", balance: 100 * (index + 1) },
+				85 + index,
+			);
+			expect(added.isError).toBeUndefined();
+		}
+		const before = await listCash();
+		expect(before.map((asset) => asset.name)).toEqual(["Personal Main Wallet", "Second Wallet", "Third Wallet"]);
+		const main = before[0]!;
+
+		const deleted = await callTool(app, key, "delete_asset", { name: "Personal Main Wallet" }, 87);
+		expect(deleted.isError).toBeUndefined();
+		expect(deleted.structuredContent?.deleted).toEqual({ id: main.id, name: "Personal Main Wallet", kind: "cash" });
+		// The oldest remaining wallet takes over, and the response names it.
+		expect(deleted.structuredContent?.promotedDefault).toMatchObject({ name: "Second Wallet" });
+
+		const after = await listCash();
+		expect(after.map((asset) => asset.name)).toEqual(["Second Wallet", "Third Wallet"]);
+		expect(after.find((asset) => asset.isDefault)?.name).toBe("Second Wallet");
+		expect(deleted.structuredContent?.promotedDefault).toMatchObject({ id: after[0]!.id });
+	});
+
+	it("deletes the only wallet like REST and a second delete errors", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const first = await callTool(app, key, "delete_asset", { name: "Personal Main Wallet" }, 88);
+		expect(first.isError).toBeUndefined();
+		expect(first.structuredContent?.deleted).toMatchObject({ name: "Personal Main Wallet", kind: "cash" });
+		// Nothing was left to promote: null, not an invented successor.
+		expect(first.structuredContent?.promotedDefault).toBeNull();
+
+		const assets = (await (
+			await app.request("/api/v1/accounting/assets", { headers: { Authorization: `Bearer ${token}` } })
+		).json()) as Array<{ kind: string }>;
+		expect(assets.filter((asset) => asset.kind === "cash")).toEqual([]);
+
+		const again = await callTool(app, key, "delete_asset", { name: "Personal Main Wallet" }, 89);
+		expect(again.isError).toBe(true);
+		expect(toolText(again)).toContain('No asset is named "Personal Main Wallet"');
 	});
 });

@@ -437,6 +437,10 @@ export const strings: Dictionary = {
 		en: "Could not copy automatically. Select the address and copy it manually.",
 		th: "คัดลอกอัตโนมัติไม่ได้ กรุณาเลือกที่อยู่แล้วคัดลอกเอง",
 	},
+	"launchHome.authNote": {
+		en: "Your agent signs in with the same excited.live account you just created. There is no key to copy.",
+		th: "เอเจนต์ของคุณเข้าสู่ระบบด้วยบัญชี excited.live เดียวกับที่คุณเพิ่งสร้าง ไม่มีคีย์ให้คัดลอก",
+	},
 	"launchHome.mcpNote": {
 		en: "MCP is in final testing. Setup steps for each client will be on the help page.",
 		th: "MCP กำลังทดสอบขั้นสุดท้าย ขั้นตอนสำหรับแต่ละแอปจะอยู่ที่หน้าช่วยเหลือ",

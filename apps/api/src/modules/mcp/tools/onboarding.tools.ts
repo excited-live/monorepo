@@ -70,9 +70,24 @@ const emptyInput = z.object({});
  * SDK cannot publish a root union, so flatten it into one object. `parseBody`
  * in each handler still enforces the real variant.
  */
-const AssetInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateAssetBody)));
-const IncomeInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateIncomeBody)));
-const LiabilityInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateLiabilityBody)));
+const AssetInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateAssetBody)), {
+	kind: "cash = a wallet; fixed = gear, property or a vehicle; investment = stocks, funds or crypto.",
+	name: "Display name.",
+	category: 'Short free-text category, e.g. "bank" or "electronics".',
+});
+const IncomeInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateIncomeBody)), {
+	kind: "employment = salary; business = revenue the user earns; investment = dividends, rent or interest; other.",
+	name: "Display name of the income stream.",
+	category: 'Free-text source label; the career salary uses "salary".',
+	amount: "Amount per cycle.",
+	cycle: "Defaults to monthly: an income stream recurs. Use one_time for a one-off bonus.",
+	employment: "Only for kind employment: {employer, title}.",
+});
+const LiabilityInput = publishableObjectSchema(withoutImageUnion(optionalEntityUnion(CreateLiabilityBody)), {
+	kind: "loan = a fixed-term loan; revolving = a credit card or credit line; other = any other debt.",
+	name: "Display name.",
+	category: 'Short free-text category, e.g. "car_loan" or "credit_card".',
+});
 const ExpenseInput = withoutImage(optionalEntity(CreateExpenseBody));
 
 const StepInput = z.object({

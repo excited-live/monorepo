@@ -78,8 +78,16 @@ function literalValue(schema: AnyZod): string | undefined {
 /**
  * Flatten a discriminated union of object variants into one object schema.
  * Any other schema is returned unchanged.
+ *
+ * `fieldDescriptions` is publication-only text for fields the REST schema leaves
+ * bare: a schema-driven client renders `category` as a required box with no hint,
+ * and the agent guesses what goes in it. It never changes a property, a required
+ * entry or a validator.
  */
-export function publishableObjectSchema<S extends AnyZod>(schema: S): S {
+export function publishableObjectSchema<S extends AnyZod>(
+	schema: S,
+	fieldDescriptions: Record<string, string> = {},
+): S {
 	if (zodType(schema) !== "union") return schema;
 	const def = defOf(schema);
 	const discriminator = def.discriminator;
@@ -133,7 +141,9 @@ export function publishableObjectSchema<S extends AnyZod>(schema: S): S {
 
 		// Required only when every variant both accepts the key and requires it.
 		const required = presentIn.get(key) === options.length && !optionalIn.get(key);
-		shape[key] = required ? field : field.optional();
+		const published = required ? field : field.optional();
+		const note = fieldDescriptions[key];
+		shape[key] = note ? published.describe(note) : published;
 	}
 
 	return z.object(shape) as unknown as S;

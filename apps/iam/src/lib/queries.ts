@@ -12,6 +12,8 @@ export interface AgentKey {
 	createdAt: string
 	expiresAt: string | null
 	lastRequest: string | null
+	/** Request budget reported by the API's own counters (#156). */
+	rateLimit: { limit: number; remaining: number; reset: number | null } | null
 }
 
 export interface MintedAgentKey {

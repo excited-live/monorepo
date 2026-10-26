@@ -161,6 +161,78 @@ const DICTIONARY: Dictionary = {
 	"tokens.minted.agent.custom.send": { en: "Send it as ", th: "ส่งเป็น " },
 	"tokens.minted.agent.custom.to": { en: " to ", th: " ไปที่ " },
 
+	// ---------- Scoped Keys · page + key states (#156 / #161 R2-R3) ---------
+	"tokens.eyebrow": { en: "API keys & scopes", th: "คีย์ API และขอบเขต" },
+	"tokens.signedOut.title": { en: "Keys belong to an account.", th: "คีย์ผูกกับบัญชี" },
+	"tokens.signedOut.lede": {
+		en: "Sign in to see every key your agents hold, when each was last used, and to revoke one.",
+		th: "เข้าสู่ระบบเพื่อดูคีย์ทั้งหมดที่เอเจนต์ของคุณถืออยู่ เวลาที่ใช้ล่าสุด และเพิกถอนคีย์",
+	},
+	"tokens.title": { en: "What your agents hold.", th: "สิ่งที่เอเจนต์ของคุณถืออยู่" },
+	"tokens.lede": {
+		en: "Every key below can call the same tools the Data tab shows. Revoke one and the agent loses access on its next request — no restart needed.",
+		th: "ทุกคีย์ด้านล่างเรียกเครื่องมือชุดเดียวกับที่แท็บข้อมูลแสดง เพิกถอนคีย์แล้วเอเจนต์จะเข้าถึงไม่ได้ในคำขอถัดไป — ไม่ต้องรีสตาร์ต",
+	},
+	"tokens.mint.title": { en: "Mint a key", th: "สร้างคีย์" },
+	"tokens.mint.scope_line": {
+		en: "Can read and change your onboarding and accounting data.",
+		th: "อ่านและแก้ไขข้อมูลการเริ่มต้นใช้งานและบัญชีของคุณได้",
+	},
+	"tokens.mint.terms": {
+		en: "Valid for 90 days; the secret is shown once, right here.",
+		th: "ใช้ได้ 90 วัน และแสดงรหัสลับเพียงครั้งเดียวที่นี่",
+	},
+	"tokens.mint.active": { en: "{n} active", th: "{n} ใบที่ใช้งานอยู่" },
+	"tokens.mint.agent": { en: "Agent", th: "เอเจนต์" },
+	"tokens.mint.label": { en: "Label", th: "ป้ายชื่อ" },
+	"tokens.mint.optional": { en: "optional", th: "ไม่บังคับ" },
+	"tokens.mint.labelPlaceholder": { en: "laptop", th: "แล็ปท็อป" },
+	"tokens.mint.submit": { en: "Mint a key", th: "สร้างคีย์" },
+	"tokens.mint.working": { en: "Working…", th: "กำลังทำงาน…" },
+	"tokens.mint.secretLabel": { en: "secret · shown once", th: "รหัสลับ · แสดงครั้งเดียว" },
+	"tokens.mint.expires": { en: "expires {time}", th: "หมดอายุ {time}" },
+	"tokens.mint.failed": { en: "Could not mint a key", th: "สร้างคีย์ไม่ได้" },
+	"tokens.keys.title": { en: "Active keys", th: "คีย์ที่ใช้งานอยู่" },
+	"tokens.keys.sub": {
+		en: "Newest first. “Last used” is the API’s own record, not a guess.",
+		th: "ใหม่สุดก่อน “ใช้ล่าสุด” มาจากบันทึกของ API เอง ไม่ใช่การเดา",
+	},
+	"tokens.keys.loading": { en: "Reading keys…", th: "กำลังอ่านคีย์…" },
+	"tokens.keys.empty": {
+		en: "No keys yet. Mint one above, or from the Overview card.",
+		th: "ยังไม่มีคีย์ สร้างจากด้านบน หรือจากการ์ดภาพรวม",
+	},
+	"tokens.keys.loadFailed": { en: "Could not load keys", th: "โหลดคีย์ไม่ได้" },
+	"tokens.key.capability": {
+		en: "Can read and change · onboarding, accounting",
+		th: "อ่านและแก้ไขได้ · การเริ่มต้นใช้งาน, บัญชี",
+	},
+	"tokens.key.agent": { en: "agent {id}", th: "เอเจนต์ {id}" },
+	"tokens.key.created": { en: "created {time}", th: "สร้าง {time}" },
+	"tokens.key.expires": { en: "expires {time}", th: "หมดอายุ {time}" },
+	"tokens.key.lastUsed": { en: "last used {time}", th: "ใช้ล่าสุด {time}" },
+	"tokens.key.revoke": { en: "Revoke", th: "เพิกถอน" },
+	"tokens.key.revokeConfirm": {
+		en: "Revoke {label}? Any agent using it stops working immediately.",
+		th: "เพิกถอน {label}? เอเจนต์ที่ใช้คีย์นี้จะหยุดทำงานทันที",
+	},
+	"tokens.key.revokeFailed": { en: "Could not revoke the key", th: "เพิกถอนคีย์ไม่ได้" },
+	"tokens.budget.remaining": { en: "{n} of {limit} calls left", th: "เหลือ {n} จาก {limit} ครั้ง" },
+	"tokens.budget.reset": { en: "resets {time}", th: "รีเซ็ต {time}" },
+	"tokens.state.paused": { en: "Paused until {time}", th: "พักถึง {time}" },
+	"tokens.state.paused.body": {
+		en: "Your agent used all {limit} calls. It works again at {time}.",
+		th: "เอเจนต์ใช้ครบ {limit} ครั้งแล้ว จะกลับมาใช้งานได้เวลา {time}",
+	},
+	"tokens.state.paused.next": {
+		en: "Need more now? Mint another key — each key has its own {limit} calls.",
+		th: "ต้องการใช้ต่อตอนนี้? สร้างคีย์ใหม่อีกใบ — แต่ละคีย์มี {limit} ครั้งของตัวเอง",
+	},
+	"tokens.state.paused.mint": { en: "Mint another key", th: "สร้างคีย์ใหม่อีกใบ" },
+	"tokens.state.dead": { en: "This key no longer works.", th: "คีย์นี้ใช้งานไม่ได้แล้ว" },
+	"tokens.state.dead.next": { en: "Mint a new key", th: "สร้างคีย์ใหม่" },
+	"tokens.state.dead.setup": { en: "Setup steps →", th: "ขั้นตอนการตั้งค่า →" },
+
 	// ---------- API Playground ---------------------------------------------
 	"data.eyebrow": { en: "API Playground · interactive API", th: "ทดลอง API · เรียกใช้งานจริง" },
 	"data.title": { en: "Every call, and what it returns.", th: "ทุกคำขอ และสิ่งที่ได้กลับมา" },

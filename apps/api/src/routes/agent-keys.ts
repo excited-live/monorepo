@@ -12,6 +12,7 @@ import {
 	sortRequestScopes,
 	type RequestScope,
 } from "../lib/scopes";
+import { agentKeyBudget } from "../lib/agent-key-budget";
 import { getUserId } from "../lib/request";
 import { jsonBody, jsonResponse, route } from "../openapi/docs";
 import { ErrorSchema, OkSchema } from "../openapi/schemas";
@@ -61,6 +62,17 @@ const AgentKeySchema = z.object({
 	createdAt: z.string(),
 	expiresAt: z.string().nullable(),
 	lastRequest: z.string().nullable(),
+	rateLimit: z
+		.object({
+			limit: z.number().describe("Calls allowed per window for this key."),
+			remaining: z.number().describe("Calls left in the current window."),
+			reset: z
+				.number()
+				.nullable()
+				.describe("Unix epoch seconds when the window ends; null before the first call."),
+		})
+		.nullable()
+		.describe("The key's request budget. Same numbers as the MCP `X-RateLimit-*` headers."),
 });
 
 const CreatedAgentKeySchema = z.object({
@@ -81,6 +93,10 @@ type ApiKeyLike = {
 	lastRequest?: Date | string | null;
 	permissions?: Record<string, string[]> | null;
 	metadata?: Record<string, unknown> | null;
+	rateLimitEnabled?: boolean | null;
+	rateLimitMax?: number | null;
+	rateLimitTimeWindow?: number | null;
+	requestCount?: number | null;
 };
 
 const malformed = (message: string) => ({ error: `Malformed agent key payload: ${message}` });
@@ -134,6 +150,7 @@ function keyView(key: ApiKeyLike) {
 		createdAt: iso(key.createdAt) ?? new Date(0).toISOString(),
 		expiresAt: iso(key.expiresAt),
 		lastRequest: iso(key.lastRequest),
+		rateLimit: agentKeyBudget(key),
 	};
 }
 
@@ -218,7 +235,7 @@ export function createAgentKeysRouter(): Hono<ApiEnv> {
 			operationId: "listAgentKeys",
 			summary: "List agent API keys",
 			description:
-				"Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned.",
+				"Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned. Each key also carries `rateLimit`, the same budget the MCP endpoint publishes as `X-RateLimit-*`, so a client can show calls left and the reset instant without calling the key.",
 			responses: {
 				200: jsonResponse("The user's keys.", z.object({ keys: z.array(AgentKeySchema) })),
 				401: jsonResponse("Not signed in.", ErrorSchema),

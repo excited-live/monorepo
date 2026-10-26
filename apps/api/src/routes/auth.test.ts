@@ -312,7 +312,12 @@ describe("api/v1 identity — API keys and the scope gate (#193)", () => {
 		// The /mcp vocabulary verbatim: same key, same budget, same advice.
 		expect(body.error).toBe("rate_limited");
 		expect(body.code).toBe("RATE_LIMITED");
-		expect(body.message).toBe("This API key is over its request budget.");
+		// #191: the sentence names the reset instant in UTC — the docs promise
+		// it — and it is the same second the header clock carries, so REST and
+		// /mcp keep one vocabulary.
+		expect(body.message).toMatch(/resets at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/);
+		const namedInstant = body.message.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)?.[0];
+		expect(namedInstant).toBe(new Date(body.rateLimit.reset * 1000).toISOString());
 		expect(body.hint).toContain("do not rotate it");
 		expect(body.rateLimit.remaining).toBe(0);
 		// #178 keeps the 429's advertised limit at the product default for now;

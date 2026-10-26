@@ -66,6 +66,14 @@ export function unauthorizedResponse(requestUrl: string): Response {
  * challenge here would send an agent back down the sign-in path. The body
  * repeats the Retry-After number because a model that only reads the JSON
  * would otherwise invent one.
+ *
+ * `message` names the reset instant in UTC when there is one (#191): `llms.txt`
+ * and `mcp.mdx` promise an agent can read the time out of the sentence it
+ * quotes first, and a guessed retry time is how a valid key gets rotated. The
+ * instant is rendered from `snapshot.reset`, the same integer that goes into
+ * `X-RateLimit-Reset`, so the sentence and the header cannot drift. A lifetime
+ * quota (`USAGE_EXCEEDED`) has no reset, so that branch keeps the bare
+ * sentence and claims no time.
  */
 export function rateLimitedResponse(snapshot: RateLimitSnapshot, retryAfter?: number): Response {
 	const headers: Record<string, string> = {
@@ -77,7 +85,10 @@ export function rateLimitedResponse(snapshot: RateLimitSnapshot, retryAfter?: nu
 		JSON.stringify({
 			error: "rate_limited",
 			code: "RATE_LIMITED",
-			message: "This API key is over its request budget.",
+			message:
+				retryAfter !== undefined
+					? `This API key is over its request budget; the window resets at ${new Date(snapshot.reset * 1000).toISOString()}.`
+					: "This API key is over its request budget.",
 			hint:
 				retryAfter !== undefined
 					? `The key allows ${snapshot.limit} requests per window. Wait ${retryAfter} seconds (or until X-RateLimit-Reset) and retry — the key is valid, so do not rotate it.`

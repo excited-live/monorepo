@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global Headers, URL */
+/* global URL */
 /**
  * Thai expense replay gate for #172 / #173 / #174 (owner: Rigel, QA).
  *

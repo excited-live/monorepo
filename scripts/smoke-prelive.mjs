@@ -16,6 +16,12 @@
  *                                                            whose document names <issuer>
  *      GET  <api>/api/v1/settings without a token            401 (the REST mount)
  *   5. GET  <api>/health                                     200 + status "ok"
+ *   6. GET  <landing>/ and <landing>/llms.txt                every advertised
+ *      https://<host>/mcp answers a usable MCP handshake, and /llms.txt is
+ *      text (not the landing HTML) naming the canonical API and auth origins.
+ *      #99 (dead mcp.excited.live) and #100 (HTML /llms.txt) lived here, not in
+ *      1-5. Off by default so a prelive deploy is not failed by a prod landing;
+ *      prelive-smoke.yml runs it explicitly.
  *
  * It runs after each deploy (prelive.yml, api-prelive.yml) and every six hours
  * (prelive-smoke.yml). It is deliberately not wired into PR workflows: prelive
@@ -32,6 +38,7 @@
  *   --timeout MS   per-request timeout (default: 20000)
  *   --issuer URL   authorization server origin (default: the prelive webapp)
  *   --api URL      API Worker origin (default: the prelive Worker)
+ *   --landing URL  landing origin for check 6 (default: https://excited.live)
  *
  * Exits 0 only when every selected check passed; any failure exits 1. Raw
  * status and body are printed per check so a failure shows what the deployment
@@ -45,6 +52,7 @@ import { URL } from "node:url"
 const DEFAULTS = {
 	issuer: "https://prelive.excited.live/api/auth",
 	api: "https://excited-live-api-prelive.preamza02.workers.dev",
+	landing: "https://excited.live",
 }
 
 const CHECK_NAMES = {
@@ -53,13 +61,16 @@ const CHECK_NAMES = {
 	3: "dynamic client registration",
 	4: "protected resources accept no anonymous call",
 	5: "API worker health",
+	6: "landing entry points (advertised MCP host + /llms.txt)",
 }
 
 const BODY_LIMIT = 1600
 
 function usage(message) {
 	console.error(`smoke-prelive: ${message}`)
-	console.error("usage: node scripts/smoke-prelive.mjs [--only 1,2,3,4,5] [--retries N] [--wait S] [--timeout MS] [--issuer URL] [--api URL]")
+	console.error(
+		"usage: node scripts/smoke-prelive.mjs [--only 1,2,3,4,5,6] [--retries N] [--wait S] [--timeout MS] [--issuer URL] [--api URL] [--landing URL]",
+	)
 	process.exit(2)
 }
 
@@ -83,6 +94,7 @@ function positiveInt(name, fallback, { allowZero = false } = {}) {
 
 const ISSUER = flag("issuer", DEFAULTS.issuer).replace(/\/+$/, "")
 const API = flag("api", DEFAULTS.api).replace(/\/+$/, "")
+const LANDING = flag("landing", DEFAULTS.landing).replace(/\/+$/, "")
 const RETRIES = positiveInt("retries", 1)
 const WAIT = positiveInt("wait", 5, { allowZero: true })
 const TIMEOUT = positiveInt("timeout", 20000)
@@ -92,7 +104,7 @@ const only = flag("only", "1,2,3,4,5")
 	.map((entry) => entry.trim())
 	.filter(Boolean)
 	.map(Number)
-if (only.length === 0 || only.some((id) => !Number.isInteger(id) || !CHECK_NAMES[id])) usage("--only takes comma-separated check numbers from 1 to 5")
+if (only.length === 0 || only.some((id) => !Number.isInteger(id) || !CHECK_NAMES[id])) usage("--only takes comma-separated check numbers from 1 to 6")
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -248,19 +260,65 @@ async function checkApiHealth() {
 	return `/health answers 200 (${body.service ?? "unknown service"})`
 }
 
+/**
+ * The agent's first step is the landing page's copy-paste snippet, not the API.
+ * #99 shipped a dead host (`mcp.excited.live`, NXDOMAIN) in all six snippets and
+ * #100 served the landing HTML as /llms.txt; checks 1-5 never touch that
+ * surface, so both stayed green here. This follows the advertised endpoint
+ * instead of assuming it, and reads /llms.txt as an agent would.
+ */
+async function checkLandingEntryPoints() {
+	const landingUrl = `${LANDING}/`
+	const landing = await request(landingUrl)
+	console.log(`  GET ${landingUrl} -> ${landing.status} in ${landing.ms} ms · ${landing.text.length} bytes`)
+	expectStatus(landing, 200, "landing page")
+
+	const advertised = [
+		...new Set(
+			[...landing.text.matchAll(/https:\/\/([a-z0-9][a-z0-9.-]*)\/mcp\b/gi)].map((match) => `https://${match[1]}/mcp`),
+		),
+	]
+	if (advertised.length === 0) throw new Error("the landing page advertises no MCP endpoint at all")
+	console.log(`  advertised MCP endpoint(s): ${advertised.join(", ")}`)
+
+	const working = []
+	for (const url of advertised) {
+		// A dead host throws here with ENOTFOUND and names itself in the message.
+		const probe = await request(url, { method: "POST", body: { jsonrpc: "2.0", id: 1, method: "tools/list" } })
+		const header = probe.headers.get("www-authenticate") ?? ""
+		console.log(`  POST ${url} -> ${probe.status} in ${probe.ms} ms`)
+		if (probe.status === 200) working.push(`${url} (200)`)
+		else if (probe.status === 401 && /resource_metadata/.test(header)) working.push(`${url} (401 + resource_metadata)`)
+		else throw new Error(`the landing page tells agents to use ${url}, which answered ${probe.status} without a usable MCP handshake`)
+	}
+
+	const llmsUrl = `${LANDING}/llms.txt`
+	const llms = await request(llmsUrl)
+	const type = llms.headers.get("content-type") ?? "(none)"
+	console.log(`  GET ${llmsUrl} -> ${llms.status} in ${llms.ms} ms · ${type} · ${llms.text.length} bytes`)
+	expectStatus(llms, 200, "/llms.txt")
+	if (/text\/html/i.test(type)) throw new Error(`/llms.txt is served as ${type} (${llms.text.length} bytes) — that is the landing page, not a machine-readable entry point`)
+	if (/^\s*<(!doctype|html)/i.test(llms.text)) throw new Error("/llms.txt body starts with HTML")
+	if (!/https:\/\/api\.excited\.live\/mcp/.test(llms.text)) throw new Error("/llms.txt does not name the canonical MCP endpoint https://api.excited.live/mcp")
+	if (!/https:\/\/auth\.excited\.live/.test(llms.text)) throw new Error("/llms.txt does not name the authorization server https://auth.excited.live")
+
+	return `${working.length} advertised endpoint(s) live · /llms.txt is ${type}`
+}
+
 const CHECKS = {
 	1: { run: checkMetadata, needs: [] },
 	2: { run: checkHealthEndpoint, needs: [] },
 	3: { run: checkRegistration, needs: [] },
 	4: { run: checkMcpProtected, needs: [] },
 	5: { run: checkApiHealth, needs: [] },
+	6: { run: checkLandingEntryPoints, needs: [] },
 }
 
 async function runAttempt(selected, attempt) {
 	console.log(`\nprelive smoke · attempt ${attempt}/${RETRIES} · ${selected.length} check(s) · issuer ${ISSUER} · api ${API}`)
 	const failures = []
 	for (const id of selected) {
-		console.log(`[${id}/5] ${CHECK_NAMES[id]}`)
+		console.log(`[check ${id}] ${CHECK_NAMES[id]}`)
 		try {
 			const detail = await CHECKS[id].run()
 			console.log(`  PASS ${detail}`)

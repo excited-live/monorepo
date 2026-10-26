@@ -1,6 +1,6 @@
 ---
 title: "Connect your agent over MCP"
-description: "Connect Claude.ai, ChatGPT or Claude Code to excited.live, approve access, and set up your books with the onboard_me prompt."
+description: "Connect Claude Code to excited.live over MCP, approve access, and set up your books with the onboard_me prompt."
 ---
 
 MCP (Model Context Protocol) lets your own AI agent read and update your excited.live books. You only need one server URL:
@@ -11,7 +11,11 @@ https://api.excited.live/mcp
 
 เชื่อมต่อเอเจนต์ AI ของคุณกับ excited.live ผ่าน MCP ที่ https://api.excited.live/mcp แล้วให้เอเจนต์ช่วยตั้งสมุดบัญชีของคุณ
 
-> **In final testing.** excited.live launches on 31 Oct 2026. The endpoint, the sign-in page and the consent page are live, but each client below is still being verified end to end. If your client does not connect, contact support from [Help](/docs/help#contact-support) with the client name and the time you tried. Do not enter the same data twice; the first connection may not have completed.
+> MCP sign-in is in final testing; we launch on 31 Oct 2026. If your client does not connect, contact support from [Help](/docs/help#contact-support) with the client name and the time you tried.
+>
+> การลงชื่อเข้าใช้ MCP อยู่ในขั้นทดสอบสุดท้าย เราจะเปิดตัวในวันที่ 31 ต.ค. 2026 หากไคลเอนต์ของคุณเชื่อมต่อไม่ได้ โปรดติดต่อฝ่ายสนับสนุนจาก [Help](/docs/help#contact-support) พร้อมชื่อไคลเอนต์และเวลาที่คุณลอง
+
+<p><a class="btn-ink not-prose" href="#start-here">Set up Claude Code →</a></p>
 
 ## Before you start
 
@@ -33,45 +37,9 @@ The order is the same in every client:
 5. Choose **Allow**. Your client receives the connection and returns you to the chat.
 6. Start the setup with the `onboard_me` prompt. Each client section below shows how.
 
-The sign-in and consent pages are live. The hand-off back to your client is part of the final testing above.
+## Start here
 
-## Claude.ai
-
-**Status: in final testing.**
-
-1. Open Claude.ai and go to **Settings → Connectors**.
-2. Choose **Add custom connector**.
-3. Name it `excited.live` and paste the server URL:
-
-   ```text
-   https://api.excited.live/mcp
-   ```
-
-4. Add the connector. Your browser opens the excited.live sign-in and consent pages described above.
-5. After you choose **Allow**, return to Claude.ai and start a new chat.
-6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If Claude lists server prompts, you can pick `onboard_me` directly instead.
-
-If the connector does not appear in a new chat, remove it and add it again. The exact menu labels can change between Claude.ai releases; the URL is the part that must match.
-
-## ChatGPT
-
-**Status: in final testing.**
-
-1. Open ChatGPT and go to **Settings → Apps → Advanced settings**.
-2. Turn on **Developer mode**.
-3. Add a custom MCP connector with the server URL:
-
-   ```text
-   https://api.excited.live/mcp
-   ```
-
-4. Complete the connection. Your browser opens the excited.live sign-in and consent pages described above.
-5. After you choose **Allow**, return to ChatGPT and start a new chat with the connector enabled.
-6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If ChatGPT lists server prompts, you can pick `onboard_me` directly instead.
-
-## Claude Code
-
-**Status: in final testing.**
+The client we test most. Sign-in is still in final testing.
 
 Add the server from your terminal:
 
@@ -88,11 +56,72 @@ Then:
 
 `--scope user` makes the server available in every project. Use `--scope project` if you only want it in the current repository.
 
-## Mint a key
+## Being verified
 
-The clients above use the browser sign-in and consent flow. You can also connect with a key instead, for a client that takes a header rather than a sign-in, or for your own scripts.
+### Claude.ai
 
-> **Key minting on production opens with the 30 October launch.** Until then use the prelive console at `https://excited-live-iam-prelive.pages.dev/tokens`. Keys minted there are prelive-only: they work against the prelive API, not `https://api.excited.live/mcp`.
+Not yet verified with a real connection.
+
+1. Open Claude.ai and go to **Settings → Connectors**.
+2. Choose **Add custom connector**.
+3. Name it `excited.live` and paste the server URL:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. Add the connector. Your browser opens the excited.live sign-in and consent pages described above.
+5. After you choose **Allow**, return to Claude.ai and start a new chat.
+6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If Claude lists server prompts, you can pick `onboard_me` directly instead.
+
+If the connector does not appear in a new chat, remove it and add it again. The exact menu labels can change between Claude.ai releases; the URL is the part that must match.
+
+### ChatGPT
+
+Not yet verified with a real connection.
+
+1. Open ChatGPT and go to **Settings → Apps → Advanced settings**.
+2. Turn on **Developer mode**.
+3. Add a custom MCP connector with the server URL:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. Complete the connection. Your browser opens the excited.live sign-in and consent pages described above.
+5. After you choose **Allow**, return to ChatGPT and start a new chat with the connector enabled.
+6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If ChatGPT lists server prompts, you can pick `onboard_me` directly instead.
+
+### Cursor
+
+Connects with a key header, not browser sign-in. Not yet verified with a real connection.
+
+Cursor connects with the key header, not with the browser sign-in flow above.
+
+1. Open Cursor and go to **Settings → MCP**.
+2. Add a new server and set its transport to **streamable HTTP**.
+3. Use the server URL:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. Add the header, with the key you minted under [Connect with a key instead](#connect-with-a-key-instead):
+
+   ```text
+   Authorization: Bearer elk_...
+   ```
+
+5. Save the server. Reload the MCP servers if Cursor asks you to.
+6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.**
+
+A real Cursor connection has not been verified yet, so treat this section as in final testing along with the clients above.
+
+## Connect with a key instead
+
+Most clients under **Being verified** use the browser sign-in and consent flow; Cursor in that group connects with a key header. You can also connect with a key instead, for a client that takes a header rather than a sign-in, or for your own scripts.
+
+> **Key minting on production opens on 30 October, ahead of the 31 October launch.** Until then use the prelive console at `https://excited-live-iam-prelive.pages.dev/tokens`. Keys minted there are prelive-only: they work against the prelive API, not `https://api.excited.live/mcp`.
 
 1. Open `https://excited-live-iam-prelive.pages.dev/tokens` in your browser and sign in to excited.live.
 2. Choose **Mint a key** and give the key a name you recognise.
@@ -111,31 +140,6 @@ The clients above use the browser sign-in and consent flow. You can also connect
    ```
 
 Never paste a key into a chat, a support message, an issue or a screenshot: anyone who sees it can use it for as long as it is valid. To revoke a key, go back to the same console — `https://excited-live-iam-prelive.pages.dev/tokens` until production key minting opens with the launch — and revoke it from the same page. Revoking a key stops it immediately.
-
-## Cursor
-
-**Status: in final testing.**
-
-Cursor connects with the key header, not with the browser sign-in flow above.
-
-1. Open Cursor and go to **Settings → MCP**.
-2. Add a new server and set its transport to **streamable HTTP**.
-3. Use the server URL:
-
-   ```text
-   https://api.excited.live/mcp
-   ```
-
-4. Add the header, with the key you minted above:
-
-   ```text
-   Authorization: Bearer elk_...
-   ```
-
-5. Save the server. Reload the MCP servers if Cursor asks you to.
-6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.**
-
-A real Cursor connection has not been verified yet, so treat this section as in final testing along with the clients above.
 
 ## Set up your books with onboard_me
 

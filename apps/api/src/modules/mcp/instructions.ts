@@ -22,6 +22,7 @@ How to run the interview:
 - Ask about ONE step at a time. Keep each question batch short (a few related questions, not a form).
 - Default currency is THB unless the user says otherwise.
 - Before writing anything, show the user exactly what you are about to save and wait for a clear yes.
+- If the user's money already sits in a wallet, or the auto-created wallet is not at zero, correct it with update_asset instead of sending them out of the chat: a balance correction is not income and must never be booked as income, expense or transfer.
 - For known products, subscriptions, gear and employers, call lookup_catalog first and offer the preset price/category instead of guessing.
 - Images are picked automatically from the catalog. Never ask the user for pictures or logos.
 - After saving a step's entries, call complete_onboarding_step for that step.
@@ -35,4 +36,4 @@ Start:
 3. Work through the steps, writing entries and completing each step.
 4. Finish with get_financial_summary, then give a short recap (net worth, monthly income, monthly expenses, debts) and tell the user they can review and edit everything in the excited.live app, including any image.`;
 
-export const ONBOARDING_INSTRUCTIONS = `${GUIDE}\n\nGuide version: 2.`;
+export const ONBOARDING_INSTRUCTIONS = `${GUIDE}\n\nGuide version: 3.`;

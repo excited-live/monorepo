@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ValidationError } from "../../accounting/domain/errors";
-import { CreateTransferBody } from "../../accounting/route/accounting.schemas";
+import { CreateTransferBody, UpdateAssetBody } from "../../accounting/route/accounting.schemas";
 import { productDate, productMonth } from "../../../lib/product-time";
 import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
@@ -8,8 +8,65 @@ import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../r
  * Accounting MCP tool suite.
  *
  * Exposes core accounting operations: cash flows feed, inter-wallet/liability transfers,
- * computed double-entry monthly ledger, and treasury projection balances.
+ * computed double-entry monthly ledger, and treasury projection balances — plus the
+ * corrections an agent needs when the book already holds the user's money
+ * (`update_asset`, `delete_asset`).
  */
+
+type AssetRecord = Awaited<ReturnType<McpToolContext["accounting"]["getAsset"]>>;
+
+const ASSET_SELECTOR = {
+	id: z.string().uuid().optional().describe("Asset id. Takes precedence over `name`."),
+	name: z
+		.string()
+		.min(1)
+		.optional()
+		.describe("Exact asset name (surrounding spaces ignored). Used when `id` is omitted."),
+	entityId: z.string().min(1).optional().describe("Entity to search when selecting by name. Defaults to the personal entity."),
+} as const;
+
+/** Fields of `UpdateAssetBody`, minus `imageUrl` (server-picked) and `name` (see `newName`). */
+const updateAssetPatch = UpdateAssetBody.omit({ imageUrl: true, name: true });
+
+const UpdateAssetInput = updateAssetPatch.extend({
+	...ASSET_SELECTOR,
+	newName: z
+		.string()
+		.min(1)
+		.optional()
+		.describe("New name for the asset. `name` only selects the record; this renames it."),
+});
+
+const DeleteAssetInput = z.object({ ...ASSET_SELECTOR });
+
+/**
+ * Resolve an asset by id or by exact name inside one entity.
+ *
+ * `get_onboarding_status` exposes names only, never ids, so a one-call
+ * correction has to be able to start from the name the agent was shown.
+ * Anything ambiguous fails before a write instead of guessing.
+ */
+async function resolveAsset(ctx: McpToolContext, ref: Record<string, unknown>): Promise<AssetRecord> {
+	if (typeof ref.id === "string" && ref.id) return ctx.accounting.getAsset(ctx.userId, ref.id);
+
+	const name = typeof ref.name === "string" ? ref.name.trim() : "";
+	if (!name) throw new ValidationError("Pass `id` or `name` to identify the asset.");
+
+	const entityId = typeof ref.entityId === "string" && ref.entityId ? ref.entityId : await personalEntityId(ctx);
+	const assets = await ctx.accounting.listAssets(ctx.userId, { entityId });
+	const matches = assets.filter((asset) => asset.name.trim() === name);
+	if (matches.length === 1) return matches[0]!;
+
+	if (matches.length === 0) {
+		const known = assets.map((asset) => `${asset.name} (${asset.kind})`).join(", ");
+		throw new ValidationError(
+			`No asset is named "${name}" in this entity.${known ? ` Existing assets: ${known}.` : " This entity has no assets yet."}`,
+		);
+	}
+	throw new ValidationError(
+		`More than one asset is named "${name}" (ids: ${matches.map((asset) => asset.id).join(", ")}). Pass \`id\` to choose one.`,
+	);
+}
 
 const emptyInput = z.object({});
 
@@ -144,6 +201,88 @@ export const accountingTools: readonly McpToolDefinition[] = [
 		async handler(ctx) {
 			const transfers = await ctx.accounting.listTransfers(ctx.userId);
 			return { transfers };
+		},
+	},
+	{
+		name: "update_asset",
+		title: "Update an asset",
+		description:
+			"Correct an existing asset: a wallet balance, a rename, or any other field the REST PATCH accepts. Select it with exactly one of `id` or `name` (`id` wins; `name` is matched exactly, trimmed, inside `entityId`, which defaults to the personal entity) and pass only what changes. An asset's `kind` cannot change, and neither can the entity it belongs to: delete the asset and add it again instead. A `balance` edit is a stock (balance-sheet) correction, not income: `balanceAsOf` defaults to today when `balance` changes, and the response carries `balanceChange` plus that month's `ledger` with `totalInflow` unchanged. Never square a balance correction with income, expense or transfer entries. Pass `newName` to rename; `name` only selects.",
+		inputSchema: input(UpdateAssetInput),
+		requiredScope: "accounting:write",
+		async handler(ctx, raw) {
+			const stored = await resolveAsset(ctx, raw);
+
+			// `name` selects the record, so a rename arrives as `newName`.
+			const patch: Record<string, unknown> = { ...raw };
+			delete patch.id;
+			delete patch.entityId;
+			delete patch.name;
+			delete patch.newName;
+			delete patch.imageUrl;
+			if (raw.newName !== undefined) patch.name = raw.newName;
+
+			const body = parseBody(UpdateAssetBody, patch);
+			if (Object.keys(body).filter((key) => key !== "version").length === 0) {
+				throw new ValidationError(
+					"Nothing to update: pass at least one field to change. An asset's kind and entity cannot change; delete it and add it again instead.",
+				);
+			}
+			if (body.balance !== undefined && stored.kind !== "cash") {
+				throw new ValidationError(
+					"`balance` only applies to a cash wallet: a fixed asset's value comes from `cost`, an investment's from `marketValue`.",
+				);
+			}
+
+			const balanceChanged = stored.kind === "cash" && body.balance !== undefined && body.balance !== stored.balance;
+			// Date the correction to the day it was made (the product's Bangkok
+			// day), not the UTC month: a balance read today and typed today must
+			// book today. The REST default is left alone.
+			if (balanceChanged && body.balanceAsOf === undefined) body.balanceAsOf = productDate();
+
+			const asset = await ctx.accounting.updateAsset(ctx.userId, stored.id, body);
+			if (!balanceChanged || stored.kind !== "cash" || asset.kind !== "cash") return { asset };
+
+			const yearMonth = asset.balanceAsOf.slice(0, 7);
+			const ledger = await ctx.accounting.getLedger(ctx.userId, yearMonth, asset.entityId);
+			return {
+				asset,
+				balanceChange: { from: stored.balance, to: asset.balance, asOf: asset.balanceAsOf, kind: "adjustment" },
+				ledger: {
+					yearMonth: ledger.yearMonth,
+					startingTreasury: ledger.summary.startingTreasury,
+					endingTreasury: ledger.summary.endingTreasury,
+					totalInflow: ledger.summary.totalInflow,
+					totalCashOutflow: ledger.summary.totalCashOutflow,
+				},
+				note: "A balance correction is a stock (balance-sheet) adjustment, not income: it rewrites the wallet's opening balance and creates no inflow. Do not record it as income, expense or transfer.",
+			};
+		},
+	},
+	{
+		name: "delete_asset",
+		title: "Delete an asset",
+		description:
+			"Delete an existing asset. Select it with exactly one of `id` or `name` (`id` wins; `name` is matched exactly, trimmed, inside `entityId`, which defaults to the personal entity). Deleting the entity's default wallet promotes the oldest remaining wallet and the response names it in `promotedDefault` (null when nothing was promoted). The delete is permanent and moves no money.",
+		inputSchema: input(DeleteAssetInput),
+		requiredScope: "accounting:write",
+		async handler(ctx, raw) {
+			const stored = await resolveAsset(ctx, raw);
+			// Read the wallets first: the successor the service promotes is the
+			// oldest remaining cash asset, and the row is gone afterwards.
+			const cash =
+				stored.kind === "cash"
+					? (await ctx.accounting.listAssets(ctx.userId, { entityId: stored.entityId, kind: "cash" })).filter(
+							(asset) => asset.kind === "cash",
+						)
+					: [];
+			const successor =
+				stored.kind === "cash" && stored.isDefault ? cash.find((asset) => asset.id !== stored.id) : undefined;
+			await ctx.accounting.deleteAsset(ctx.userId, stored.id);
+			return {
+				deleted: { id: stored.id, name: stored.name, kind: stored.kind },
+				promotedDefault: successor ? { id: successor.id, name: successor.name } : null,
+			};
 		},
 	},
 	{

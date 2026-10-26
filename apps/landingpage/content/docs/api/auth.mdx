@@ -9,7 +9,7 @@ description: "Session check. The rest of the Better Auth surface is served under
 
 `GET` `/api/v1/agent-keys`
 
-Keys owned by the signed-in user. The secret is never returned.
+Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned.
 
 **Responses**
 
@@ -26,7 +26,7 @@ curl "$API_URL/api/v1/agent-keys" \
 
 `POST` `/api/v1/agent-keys`
 
-Creates a 90-day key scoped to onboarding and accounting, owned by the signed-in user. The full key is returned once.
+Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant (`onboarding:read`, `onboarding:write`, `accounting:read`, `accounting:write`); omit it for read-only, or send `permissions` in the same `\{resource: [action]}` shape. An unknown scope is a 400, never silently dropped. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.
 
 **Request body** (`application/json`)
 
@@ -36,11 +36,13 @@ Type: `object`
 | --- | --- | --- | --- |
 | `agentId` | `string` | yes |  |
 | `name` | `string` | no |  |
+| `scopes` | `string`[] | no |  |
+| `permissions` | map of `string`[] | no |  |
 
 **Responses**
 
 - `201` — The new key. The `key` field is shown only here. `object`
-- `400` — Malformed request. [Error](#error)
+- `400` — Malformed request, or a scope outside the allowed set. [Error](#error)
 - `401` — Missing or invalid bearer token (only when auth is configured). [Error](#error)
 - `503` — Auth is not configured in this environment. [Error](#error)
 

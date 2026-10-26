@@ -8,6 +8,8 @@ export interface AgentKeyRecord {
 	name?: string | null;
 	start?: string | null;
 	agentId: string | null;
+	/** The grant the API enforces; read-only unless a write scope was requested (#161). */
+	scopes?: string[];
 	createdAt?: string | null;
 	expiresAt?: string | null;
 	lastRequest?: string | null;
@@ -20,11 +22,15 @@ export interface CreatedAgentKey {
 	name?: string | null;
 	start?: string | null;
 	expiresAt?: string | null;
+	/** The grant the API stored and echoed on the receipt (#161). */
+	scopes?: string[];
 }
 
 export interface CreateAgentKeyInput {
 	agentId: string;
 	name?: string;
+	/** Omit for read-only; ask for `<resource>:<action>` to grant writes (#161). */
+	scopes?: string[];
 }
 
 const getAgentKeysBase = (): string => `${getApiBaseUrl()}/api/v1/agent-keys`;

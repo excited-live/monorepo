@@ -6313,7 +6313,7 @@
 					"Auth"
 				],
 				"summary": "Mint an agent API key",
-				"description": "Creates a 90-day key scoped to onboarding and accounting, owned by the signed-in user. The full key is returned once.",
+				"description": "Creates a 90-day key owned by the signed-in user. `scopes` chooses the grant (`onboarding:read`, `onboarding:write`, `accounting:read`, `accounting:write`); omit it for read-only, or send `permissions` in the same `{resource: [action]}` shape. An unknown scope is a 400, never silently dropped. The granted scopes are returned here and by `GET /api/v1/agent-keys`. The full key is returned once.",
 				"requestBody": {
 					"required": true,
 					"content": {
@@ -6328,11 +6328,31 @@
 									"name": {
 										"type": "string",
 										"minLength": 1
+									},
+									"scopes": {
+										"minItems": 1,
+										"type": "array",
+										"items": {
+											"type": "string"
+										}
+									},
+									"permissions": {
+										"type": "object",
+										"propertyNames": {
+											"type": "string"
+										},
+										"additionalProperties": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											}
+										}
 									}
 								},
 								"required": [
 									"agentId"
-								]
+								],
+								"additionalProperties": false
 							}
 						}
 					}
@@ -6369,6 +6389,13 @@
 												"string",
 												"null"
 											]
+										},
+										"scopes": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											},
+											"description": "The grant. Read-only unless a write scope was requested."
 										}
 									},
 									"required": [
@@ -6376,14 +6403,15 @@
 										"key",
 										"name",
 										"start",
-										"expiresAt"
+										"expiresAt",
+										"scopes"
 									]
 								}
 							}
 						}
 					},
 					"400": {
-						"description": "Malformed request.",
+						"description": "Malformed request, or a scope outside the allowed set.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6420,7 +6448,7 @@
 					"Auth"
 				],
 				"summary": "List agent API keys",
-				"description": "Keys owned by the signed-in user. The secret is never returned.",
+				"description": "Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned.",
 				"responses": {
 					"200": {
 						"description": "The user's keys.",
@@ -6455,6 +6483,12 @@
 															"null"
 														]
 													},
+													"scopes": {
+														"type": "array",
+														"items": {
+															"type": "string"
+														}
+													},
 													"createdAt": {
 														"type": "string"
 													},
@@ -6476,6 +6510,7 @@
 													"name",
 													"start",
 													"agentId",
+													"scopes",
 													"createdAt",
 													"expiresAt",
 													"lastRequest"

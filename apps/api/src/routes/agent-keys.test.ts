@@ -83,20 +83,30 @@ describe("api/v1/agent-keys", () => {
 			name: string | null;
 			start: string | null;
 			expiresAt: string | null;
+			scopes: string[];
 		};
 		expect(key.key.startsWith("elk_")).toBe(true);
 		expect(key.start).toBeTruthy();
 		expect(key.expiresAt).toBeTruthy();
+		// No scope requested: read-only on both domains, never an implied write.
+		expect(key.scopes).toEqual(["onboarding:read", "accounting:read"]);
 
 		const list = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
 		expect(list.status).toBe(200);
 		const listed = (await list.json()) as {
-			keys: Array<{ id: string; agentId: string | null; createdAt: string; lastRequest: string | null }>;
+			keys: Array<{
+				id: string;
+				agentId: string | null;
+				createdAt: string;
+				lastRequest: string | null;
+				scopes: string[];
+			}>;
 		};
 		expect(listed.keys).toHaveLength(1);
 		expect(listed.keys[0]?.id).toBe(key.id);
 		expect(listed.keys[0]?.agentId).toBe("claude-code");
 		expect(listed.keys[0]?.createdAt).toBeTruthy();
+		expect(listed.keys[0]?.scopes).toEqual(["onboarding:read", "accounting:read"]);
 		expect(JSON.stringify(listed)).not.toContain(key.key);
 
 		const revoked = await app.request(`/api/v1/agent-keys/${key.id}`, {
@@ -108,6 +118,92 @@ describe("api/v1/agent-keys", () => {
 		const after = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
 		const afterData = (await after.json()) as { keys: unknown[] };
 		expect(afterData.keys).toHaveLength(0);
+	});
+
+	it("honours a requested grant exactly, including the permissions alias", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app, A_EMAIL);
+
+		const viaScopes = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: JSON.stringify({ agentId: "scopes", scopes: ["accounting:write", "accounting:read"] }),
+		});
+		expect(viaScopes.status).toBe(201);
+		// Ordered by the policy, not by the request.
+		expect(((await viaScopes.json()) as { scopes: string[] }).scopes).toEqual(["accounting:read", "accounting:write"]);
+
+		const viaPermissions = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: JSON.stringify({ agentId: "permissions", permissions: { onboarding: ["read", "write"] } }),
+		});
+		expect(viaPermissions.status).toBe(201);
+		expect(((await viaPermissions.json()) as { scopes: string[] }).scopes).toEqual([
+			"onboarding:read",
+			"onboarding:write",
+		]);
+
+		const listed = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
+		const listedScopes = Object.fromEntries(
+			((await listed.json()) as { keys: Array<{ agentId: string | null; scopes: string[] }> }).keys.map((key) => [
+				key.agentId,
+				key.scopes,
+			]),
+		);
+		expect(listedScopes).toEqual({
+			permissions: ["onboarding:read", "onboarding:write"],
+			scopes: ["accounting:read", "accounting:write"],
+		});
+	});
+
+	it("rejects an unknown scope with 400 instead of silently dropping it", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app, A_EMAIL);
+
+		const res = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: JSON.stringify({ agentId: "typo", scopes: ["accounting:admin"] }),
+		});
+		expect(res.status).toBe(400);
+		const body = (await res.json()) as { error: string };
+		expect(body.error).toContain('"accounting:admin"');
+		expect(body.error).toContain("accounting:read");
+
+		// Nothing was minted.
+		const list = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
+		expect(((await list.json()) as { keys: unknown[] }).keys).toHaveLength(0);
+	});
+
+	it("rejects scopes and permissions that disagree", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app, A_EMAIL);
+
+		const res = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: JSON.stringify({
+				agentId: "ambiguous",
+				scopes: ["accounting:read"],
+				permissions: { accounting: ["read", "write"] },
+			}),
+		});
+		expect(res.status).toBe(400);
+		expect(((await res.json()) as { error: string }).error).toContain("different grants");
+	});
+
+	it("rejects a body field it does not understand", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app, A_EMAIL);
+
+		const res = await app.request("/api/v1/agent-keys", {
+			method: "POST",
+			headers: authHeaders(token),
+			body: JSON.stringify({ agentId: "singular", scope: "accounting:read" }),
+		});
+		expect(res.status).toBe(400);
+		expect(((await res.json()) as { error: string }).error).toContain('"scope"');
 	});
 
 	it("keeps keys isolated between users and 404s a foreign revoke", async () => {

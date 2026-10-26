@@ -92,9 +92,11 @@ Then:
 
 The clients above use the browser sign-in and consent flow. You can also connect with a key instead, for a client that takes a header rather than a sign-in, or for your own scripts.
 
-1. Open `https://iam.excited.live/tokens` in your browser and sign in to excited.live.
-2. Choose **Mint a key**.
-3. Give the key a name you recognise, tick only the **onboarding** and **accounting** scopes, and set it to be valid for **90 days**.
+> **Key minting on production opens with the 30 October launch.** Until then use the prelive console at `https://excited-live-iam-prelive.pages.dev/tokens`. Keys minted there are prelive-only: they work against the prelive API, not `https://api.excited.live/mcp`.
+
+1. Open `https://excited-live-iam-prelive.pages.dev/tokens` in your browser and sign in to excited.live.
+2. Choose **Mint a key** and give the key a name you recognise.
+3. There is nothing to tick or set. The server issues the key with the scopes it needs — `onboarding`, `accounting:read` and `accounting:write` — and the key is valid for **90 days**.
 4. Copy the key. It starts with `elk_`.
 5. Send it as a header on every request to the server:
 
@@ -108,7 +110,7 @@ The clients above use the browser sign-in and consent flow. You can also connect
    x-api-key: elk_...
    ```
 
-Never paste a key into a chat, a support message, an issue or a screenshot: anyone who sees it can use it for as long as it is valid. To revoke a key, go back to `https://iam.excited.live/tokens` and revoke it from the same page. Revoking a key stops it immediately.
+Never paste a key into a chat, a support message, an issue or a screenshot: anyone who sees it can use it for as long as it is valid. To revoke a key, go back to the same console — `https://excited-live-iam-prelive.pages.dev/tokens` until production key minting opens with the launch — and revoke it from the same page. Revoking a key stops it immediately.
 
 ## Cursor
 

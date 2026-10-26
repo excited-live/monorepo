@@ -38,6 +38,23 @@ export const MCP_URL = read("VITE_MCP_URL", `${API_URL}/mcp`)
 /** Human label for the topbar pill: local | prelive | production. */
 export const ENV_LABEL = read("VITE_ENV_LABEL", hostEnvironment(browserHost))
 
+/**
+ * The public marketing site that carries `/docs` (landing page + docs hub).
+ *
+ * Each environment has its own landing deployment, so a prelive iam build must
+ * not send a visitor into the production docs: the two hosts are different
+ * builds and can disagree on copy (they did on #104). Prod and preview builds
+ * both resolve to `excited.live`; local dev sets `VITE_DOCS_ORIGIN` in
+ * `.env.local` (Astro's dev server is on :4321).
+ */
+export function docsOriginFor(hostname: string): string {
+	return hostEnvironment(hostname) === "prelive"
+		? "https://excited-live-landing-prelive.pages.dev"
+		: "https://excited.live"
+}
+
+export const DOCS_ORIGIN = read("VITE_DOCS_ORIGIN", docsOriginFor(browserHost))
+
 /** Better Auth base paths for the two mounts (see packages/auth). */
 export const API_AUTH_BASE_PATH = "/api/v1/auth"
 export const AS_AUTH_BASE_PATH = "/api/auth"

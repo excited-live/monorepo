@@ -11,7 +11,7 @@ import {
 	CreateLiabilityBody,
 	CreateTransferBody,
 } from "../accounting/route/accounting.schemas";
-import { apiKeyApi } from "@excited-live/auth";
+import { AGENT_KEY_RATE_LIMIT, apiKeyApi } from "@excited-live/auth";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Hono } from "hono";
 import { createApp } from "../../app";
@@ -137,11 +137,10 @@ type ToolResult = {
 };
 
 describe("/mcp", () => {
-	it("answers GET and DELETE with a fast 405 before auth, never a stream (#142)", async () => {
+	it("answers GET and DELETE with a 405 before auth, never a stream (#142)", async () => {
 		const app = configuredApp();
 
 		for (const method of ["GET", "DELETE"] as const) {
-			const started = Date.now();
 			// No credential: the method gate must come before auth resolution,
 			// so this is 405 rather than a 401 challenge.
 			const res = await app.request("/mcp", { method });
@@ -149,12 +148,10 @@ describe("/mcp", () => {
 			expect(res.headers.get("allow")).toBe("POST");
 			expect(res.headers.get("content-type") ?? "").not.toContain("text/event-stream");
 			// Reading the body proves the response ends: an idle SSE stream would
-			// hang here until the test timeout. That body read IS the real guard;
-			// the bound below is only a coarse liveness check. It was 1000ms and
-			// measured ~3.2s on loaded runs (#171 run 270, main run 272, 24 vitest
-			// files in parallel), so it is no longer a latency assertion.
-			await res.text();
-			expect(Date.now() - started).toBeLessThan(5000);
+			// hang here until the test timeout. The wall clock is deliberately not
+			// asserted — this runner shares two cores with every other package, and
+			// a 1 s bound flaked at 3.2 s under load (main, run 272).
+			expect(await res.text()).toContain("POST only");
 		}
 	});
 
@@ -218,13 +215,13 @@ describe("/mcp", () => {
 
 		const first = await rpc(app, initialize(), key);
 		expect(first.status).toBe(200);
-		expect(first.headers.get("x-ratelimit-limit")).toBe("200");
-		expect(first.headers.get("x-ratelimit-remaining")).toBe("199");
+		expect(first.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
+		expect(first.headers.get("x-ratelimit-remaining")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests - 1));
 		expect(Number(first.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
 		const second = await rpc(app, initialize(2), key);
 		expect(second.status).toBe(200);
-		expect(second.headers.get("x-ratelimit-remaining")).toBe("198");
+		expect(second.headers.get("x-ratelimit-remaining")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests - 2));
 	});
 
 	it("answers 429 with Retry-After when the key's budget is spent, never 401 (#140)", async () => {
@@ -261,11 +258,11 @@ describe("/mcp", () => {
 		const retryAfter = Number(limited.headers.get("retry-after"));
 		expect(retryAfter).toBeGreaterThan(0);
 		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
-		// A refusal carries no key row back from the plugin, so the published
-		// limit is the product default even when the key's own budget is
-		// smaller; only the 200 path can report a per-key limit (#156). That
-		// gap is pre-existing and out of scope for this red-main fix.
-		expect(limited.headers.get("x-ratelimit-limit")).toBe("200");
+		// #177: a refusal publishes the product default, not this key's own
+		// budget of 2, because verifyApiKey returns no key row on a 429. That is
+		// known wrong and tracked, so only the limit is pinned loosely; a fix
+		// should turn these two assertions into 2 and then drop this comment.
+		expect(limited.headers.get("x-ratelimit-limit")).toBe(String(AGENT_KEY_RATE_LIMIT.maxRequests));
 		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
 		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
@@ -283,7 +280,9 @@ describe("/mcp", () => {
 		// distinction an unattended agent needs.
 		expect(body.hint).toContain("do not rotate");
 		expect(body.rateLimit).toEqual({
-			limit: 200,
+			// #177: should be 2 (this key's own budget); the refusal path cannot
+			// see the row yet, so it reports the product default.
+			limit: AGENT_KEY_RATE_LIMIT.maxRequests,
 			remaining: 0,
 			reset: Number(limited.headers.get("x-ratelimit-reset")),
 		});

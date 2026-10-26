@@ -1,0 +1,39 @@
+# excited.live
+
+> A cash-flow and financial-simulation workspace for Thai small businesses; humans sign in at https://excited.live, AI agents connect over MCP with OAuth.
+
+## Canonical endpoints
+
+- MCP (Streamable HTTP): https://api.excited.live/mcp
+- OAuth protected-resource metadata: https://api.excited.live/.well-known/oauth-protected-resource
+- OAuth authorization server: https://auth.excited.live
+- OAuth discovery document: https://auth.excited.live/.well-known/oauth-authorization-server/api/auth
+- REST base: https://api.excited.live/api/v1
+- OpenAPI: https://api.excited.live/openapi.json
+
+## Connect an agent
+
+1. Add the MCP endpoint https://api.excited.live/mcp to your client as a Streamable HTTP server.
+2. Call it without credentials: it answers 401 and points to the protected-resource metadata above.
+3. Your client reads the authorization server from that metadata and opens its consent flow; the human approves at https://auth.excited.live/sign-in.
+4. Retry the call with the bearer token the client obtained.
+
+Guide: https://excited.live/docs/mcp/
+
+## Scopes
+
+`onboarding`, `accounting:read`, `accounting:write`
+
+## Tools
+
+Tool names and inputs are in the connect guide, which tracks the live registry: https://excited.live/docs/mcp/
+
+## Status
+
+Agent connect is in final testing before the 2026-10-31 launch. Pricing is not announced yet: https://excited.live/docs/pricing/
+
+## Links
+
+- Connect guide: https://excited.live/docs/mcp/
+- Pricing: https://excited.live/docs/pricing/
+- Help: https://excited.live/docs/help/

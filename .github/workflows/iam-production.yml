@@ -43,6 +43,7 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - "turbo.json"
+      - "scripts/check-iam-production-bundle.mjs"
       - ".github/workflows/iam-production.yml"
 
 concurrency:
@@ -95,72 +96,10 @@ jobs:
         run: pnpm --filter @excited-live/iam^... build && pnpm build
 
       - name: Guard the production bundle
-        working-directory: apps/iam
-        run: |
-          set -euo pipefail
-
-          # One function, used twice: once on the real artifact, once on a copy
-          # with a deliberately planted string. `annotate=quiet` keeps the
-          # expected failure from painting a red annotation on a green job.
-          guard() {
-            dir="$1"
-            label="$2"
-            annotate="${3:-error}"
-            local fail=0
-            bad() {
-              if [ "$annotate" = "error" ]; then
-                echo "::error::$label: $*"
-              else
-                echo "guard self-test (expected failure): $*"
-              fi
-              fail=1
-            }
-
-            for marker in "$IAM_API_URL" "$IAM_AUTH_SERVER_URL" "$IAM_MCP_URL"; do
-              grep -rIqF -- "$marker" "$dir" || bad "the bundle never mentions $marker"
-            done
-            [ -f "$dir/_redirects" ] || bad "dist/_redirects is missing; deep links would 404 on refresh"
-
-            for marker in \
-              'workers.dev' \
-              'prelive.excited.live' \
-              'mcp.excited.live' \
-              'ex_live_' \
-              '/api/v1/plan' \
-              '/api/v1/sim' \
-              'play.google.com'; do
-              # `|| true` matters under `set -e -o pipefail`: grep exits 1
-              # when a forbidden marker has zero hits, which is the pass case.
-              hits=$(grep -rIoF -- "$marker" "$dir" | wc -l || true)
-              if [ "$hits" -ne 0 ]; then
-                bad "$marker appears $hits time(s); zero allowed"
-              else
-                echo "zero hits: $marker"
-              fi
-            done
-            return "$fail"
-          }
-
-          echo "== real production bundle =="
-          guard dist "dist"
-
-          # Acceptance: the guard must fail on a planted workers.dev string.
-          # Append it to a copy, never to dist, so the deployable artifact is
-          # untouched even if this step is the last thing before the upload.
-          planted=/tmp/iam-planted-dist
-          rm -rf "$planted"
-          cp -a dist "$planted"
-          js=$(find "$planted/assets" -type f -name '*.js' | head -n 1)
-          if [ -z "$js" ]; then
-            echo "::error::no JS asset in the built bundle"
-            exit 1
-          fi
-          printf '\n// guard self-test\nconst _planted = "https://planted.workers.dev";\n' >> "$js"
-          if guard "$planted" "planted copy" quiet; then
-            echo "::error::guard self-test failed: a planted workers.dev string was accepted"
-            exit 1
-          fi
-          echo "Self-test passed: the guard rejects a planted workers.dev string."
+        # One implementation, shared with the Gitea PR guard. --self-test plants
+        # a workers.dev string in a throwaway copy and fails unless the guard
+        # rejects it; dist/ is never mutated.
+        run: node scripts/check-iam-production-bundle.mjs --dir apps/iam/dist --self-test
 
   # The only job that can touch Pages, and only for a manual dispatch from main
   # with confirm=PROD and dry_run=false. A PR never reaches it.
@@ -202,23 +141,7 @@ jobs:
       # guard job's workspace is gone, and `ref` may be an older sha, so the
       # deploy job proves its own build rather than trusting a different one.
       - name: Guard the production bundle
-        working-directory: apps/iam
-        run: |
-          set -euo pipefail
-          fail=0
-          for marker in "$IAM_API_URL" "$IAM_AUTH_SERVER_URL" "$IAM_MCP_URL"; do
-            grep -rIqF -- "$marker" dist || { echo "::error::the bundle never mentions $marker"; fail=1; }
-          done
-          [ -f dist/_redirects ] || { echo "::error::dist/_redirects is missing"; fail=1; }
-          for marker in 'workers.dev' 'prelive.excited.live' 'mcp.excited.live' 'ex_live_' '/api/v1/plan' '/api/v1/sim' 'play.google.com'; do
-            hits=$(grep -rIoF -- "$marker" dist | wc -l || true)
-            if [ "$hits" -ne 0 ]; then
-              echo "::error::$marker appears $hits time(s); zero allowed"
-              fail=1
-            fi
-          done
-          [ "$fail" -eq 0 ] || exit 1
-          echo "Bundle is production-clean."
+        run: node scripts/check-iam-production-bundle.mjs --dir apps/iam/dist
 
       # Idempotent provisioning, no blanket `|| true`: a 403 means the token
       # lacks Pages:Edit and must fail now, not at the upload.

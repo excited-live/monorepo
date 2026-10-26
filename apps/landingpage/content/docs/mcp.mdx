@@ -162,6 +162,9 @@ The connection request expired before you finished signing in. Go back to your c
 **The browser opens, but the client never connects.**
 This is the part still in final testing. Contact support from [Help](/docs/help#contact-support) with the client name, the time, and what you saw. One retry is enough to rule out a stale request; do not loop.
 
+**A `curl` call to `/mcp` returns `401 {"error":"unauthorized"}`.**
+The key header is missing or wrong. Send the key you minted above as `Authorization: Bearer elk_...` or, if your client cannot set that header, `x-api-key: elk_...`. The 401 body names both forms, and it is the same whether the key is missing or invalid — so check for a stray space, a revoked key, or a prelive key sent to the production API.
+
 **The client is connected but the agent has no excited.live tools.**
 Remove the connector and add it again with the same URL, then reload the client. In Claude Code, `/mcp` should list `excited` as connected.
 

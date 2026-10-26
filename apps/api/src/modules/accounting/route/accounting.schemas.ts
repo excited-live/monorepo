@@ -29,6 +29,17 @@ import {
  */
 
 const uuid = z.uuid("id must be a UUID");
+/**
+ * Optional client-supplied id on create bodies. It is the pre-launch
+ * idempotency key (#143): an agent that loses the response to a create can
+ * retry with the same id instead of guessing, and the MCP create tools answer
+ * with the stored record and `deduplicated: true` instead of a tool error.
+ */
+const createId = uuid
+	.optional()
+	.describe(
+		"Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
+	);
 const month = z.string().regex(/^\d{4}-\d{2}$/, "Expected YYYY-MM");
 const monthOrDate = z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, "Expected YYYY-MM or YYYY-MM-DD");
 const cycle = z.enum(["weekly", "monthly", "quarterly", "semi-annual", "yearly", "one_time"]);
@@ -61,7 +72,7 @@ const entityFields = {
 };
 
 export const CreateEntityBody = z.object({
-	id: uuid.optional(),
+	id: createId,
 	type: entityType.optional().describe("Only `business` can be created; the personal entity is created on first use."),
 	asOf,
 	...entityFields,
@@ -75,7 +86,7 @@ export const UpdateEntityBody = z.object({
 
 // ASSETS ------------------------------------------------------------------
 
-const assetIdentity = { id: uuid.optional(), entityId: z.string().min(1, "entityId is required") };
+const assetIdentity = { id: createId, entityId: z.string().min(1, "entityId is required") };
 const assetCommon = {
 	name: z.string().min(1, "Name is required"),
 	category: z.string().min(1, "Category is required"),
@@ -177,7 +188,7 @@ const incomeFields = {
 	details: details.optional(),
 };
 const employmentFields = z.object({ employer: z.string().optional(), title: z.string().optional() });
-const incomeIdentity = { id: uuid.optional(), entityId: z.string().min(1, "entityId is required"), asOf };
+const incomeIdentity = { id: createId, entityId: z.string().min(1, "entityId is required"), asOf };
 
 export const CreateIncomeBody = z.discriminatedUnion("kind", [
 	z.object({
@@ -251,7 +262,7 @@ const expenseFields = {
 };
 
 export const CreateExpenseBody = z.object({
-	id: uuid.optional(),
+	id: createId,
 	entityId: z.string().min(1, "entityId is required"),
 	asOf,
 	...expenseFields,
@@ -288,7 +299,7 @@ const liabilityFields = {
 	imageUrl: z.string().optional(),
 	details: details.optional(),
 };
-const liabilityIdentity = { id: uuid.optional(), entityId: z.string().min(1, "entityId is required"), asOf };
+const liabilityIdentity = { id: createId, entityId: z.string().min(1, "entityId is required"), asOf };
 
 export const CreateLiabilityBody = z.discriminatedUnion("kind", [
 	z.object({
@@ -340,7 +351,7 @@ const transferEndpoints = {
 };
 
 export const CreateTransferBody = z.object({
-	id: uuid.optional(),
+	id: createId,
 	amount: z.number().min(0),
 	date: monthOrDate,
 	cycle: z.enum(["one_time", "monthly"]).optional(),

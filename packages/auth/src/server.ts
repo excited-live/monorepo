@@ -31,6 +31,19 @@ import type { AuthDatabase, AuthMount } from "./types"
  * interchangeable.
  */
 
+/**
+ * Request budget for one agent API key.
+ *
+ * These were the @better-auth/api-key 1.7.7 defaults until #140; they are
+ * pinned here so the number the API publishes (`Retry-After`,
+ * `X-RateLimit-*`) can never drift from the number the plugin enforces.
+ * Per key, not per user or IP — a key is one agent.
+ */
+export const AGENT_KEY_RATE_LIMIT = {
+	maxRequests: 10,
+	timeWindowMs: 24 * 60 * 60 * 1000,
+} as const
+
 export interface AuthInput {
 	database: AuthDatabase
 	secret: string
@@ -132,6 +145,25 @@ export interface ApiKeyRecord {
 	createdAt: Date
 	expiresAt: Date | null
 	lastRequest: Date | null
+	/** Rate-limit row fields, written from AGENT_KEY_RATE_LIMIT on creation. */
+	rateLimitEnabled?: boolean | null
+	rateLimitMax?: number | null
+	rateLimitTimeWindow?: number | null
+	/** Requests already counted in the current window, including this one. */
+	requestCount?: number | null
+}
+
+/**
+ * Why a key verification failed.
+ *
+ * `RATE_LIMITED` is a quota/rate refusal that carries `details.tryAgainIn`
+ * (ms); `USAGE_EXCEEDED` is a lifetime quota with no refill. Both are 429s,
+ * never 401s (#140): a 401 tells a client to stop and rotate its credential.
+ */
+export interface ApiKeyVerifyError {
+	code?: string | null
+	message?: string | null
+	details?: { tryAgainIn?: number | null } | null
 }
 
 export interface ApiKeyApi {
@@ -142,9 +174,15 @@ export interface ApiKeyApi {
 			expiresIn?: number
 			permissions?: Record<string, string[]>
 			metadata?: Record<string, unknown>
+			/** Server-only budget overrides; the plugin accepts these on server calls. */
+			rateLimitEnabled?: boolean
+			rateLimitMax?: number
+			rateLimitTimeWindow?: number
 		}
 	}): Promise<ApiKeyRecord & { key: string }>
-	verifyApiKey(input: { body: { key: string } }): Promise<{ valid: boolean; key: ApiKeyRecord | null }>
+	verifyApiKey(input: {
+		body: { key: string }
+	}): Promise<{ valid: boolean; key: ApiKeyRecord | null; error?: ApiKeyVerifyError | null }>
 	listApiKeys(input: { headers: Headers }): Promise<{ apiKeys: ApiKeyRecord[]; total: number }>
 	deleteApiKey(input: { body: { keyId: string }; headers: Headers }): Promise<{ success: boolean }>
 }
@@ -197,6 +235,13 @@ export function createAuth(input: AuthInput): Auth {
 				defaultPrefix: "elk_",
 				enableMetadata: true,
 				enableSessionForAPIKeys: false,
+				// Explicit so the published budget (AGENT_KEY_RATE_LIMIT) and the
+				// enforced one are the same constant (#140).
+				rateLimit: {
+					enabled: true,
+					maxRequests: AGENT_KEY_RATE_LIMIT.maxRequests,
+					timeWindow: AGENT_KEY_RATE_LIMIT.timeWindowMs,
+				},
 			}),
 		)
 	}

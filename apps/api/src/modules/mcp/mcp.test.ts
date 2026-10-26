@@ -1,7 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CATALOG_PRESETS } from "@excited-live/accounting";
+import {
+	CreateAssetBody,
+	CreateEntityBody,
+	CreateExpenseBody,
+	CreateIncomeBody,
+	CreateLiabilityBody,
+	CreateTransferBody,
+} from "../accounting/route/accounting.schemas";
 import { apiKeyApi } from "@excited-live/auth";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Hono } from "hono";
@@ -134,6 +143,7 @@ describe("/mcp", () => {
 		expect(body.hint).toContain("x-api-key");
 	});
 
+
 	it("names both key transports in the 401 body, identical for no creds and a wrong key (#126)", async () => {
 		const app = configuredApp();
 		const post = (authorization?: string) =>
@@ -170,6 +180,63 @@ describe("/mcp", () => {
 		expect(wrongKey.headers.get("www-authenticate")).toBe(challenge);
 		// Same header set for both: the body change adds no header.
 		expect([...wrongKey.headers.keys()].sort()).toEqual([...noCreds.headers.keys()].sort());
+	});
+
+	it("advertises the key's remaining budget on a 200 (#140)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const first = await rpc(app, initialize(), key);
+		expect(first.status).toBe(200);
+		expect(first.headers.get("x-ratelimit-limit")).toBe("10");
+		expect(first.headers.get("x-ratelimit-remaining")).toBe("9");
+		expect(Number(first.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
+
+		const second = await rpc(app, initialize(2), key);
+		expect(second.status).toBe(200);
+		expect(second.headers.get("x-ratelimit-remaining")).toBe("8");
+	});
+
+	it("answers 429 with Retry-After when the key's budget is spent, never 401 (#140)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		// AGENT_KEY_RATE_LIMIT: 10 requests per key per window.
+		for (let i = 0; i < 10; i++) {
+			const ok = await rpc(app, initialize(i + 1), key);
+			expect(ok.status).toBe(200);
+		}
+
+		const limited = await rpc(app, initialize(99), key);
+		expect(limited.status).toBe(429);
+		expect(limited.headers.get("www-authenticate")).toBeNull();
+		const retryAfter = Number(limited.headers.get("retry-after"));
+		expect(retryAfter).toBeGreaterThan(0);
+		expect(retryAfter).toBeLessThanOrEqual(24 * 60 * 60);
+		expect(limited.headers.get("x-ratelimit-limit")).toBe("10");
+		expect(limited.headers.get("x-ratelimit-remaining")).toBe("0");
+		expect(Number(limited.headers.get("x-ratelimit-reset"))).toBeGreaterThan(Math.floor(Date.now() / 1000));
+
+		const body = limited.json as {
+			error: string;
+			code: string;
+			hint: string;
+			retryAfter: number;
+			rateLimit: { limit: number; remaining: number; reset: number };
+		};
+		expect(body.error).toBe("rate_limited");
+		expect(body.code).toBe("RATE_LIMITED");
+		expect(body.retryAfter).toBe(retryAfter);
+		// The body must say "wait", not "your key is wrong": this is the whole
+		// distinction an unattended agent needs.
+		expect(body.hint).toContain("do not rotate");
+		expect(body.rateLimit).toEqual({
+			limit: 10,
+			remaining: 0,
+			reset: Number(limited.headers.get("x-ratelimit-reset")),
+		});
 	});
 
 	it("initializes, lists tools and calls get_onboarding_status with a minted key", async () => {
@@ -731,5 +798,117 @@ describe("/mcp", () => {
 		const projRes = proj.json?.result as ToolResult;
 		expect(projRes.isError).toBeUndefined();
 		expect(projRes.structuredContent?.projection).toBeDefined();
+	});
+
+	it("describes the optional id as the retry key on every create body (#143)", () => {
+		// All six creates accept the client id; the three discriminated unions
+		// carry one copy per variant, so the count is 1 + 1 + 1 + 3 + 4 + 3.
+		const bodies: Array<{ shape: Record<string, unknown> }> = [
+			CreateEntityBody,
+			CreateExpenseBody,
+			CreateTransferBody,
+		];
+		for (const body of [CreateAssetBody, CreateIncomeBody, CreateLiabilityBody]) {
+			bodies.push(...body.options);
+		}
+		expect(bodies).toHaveLength(13);
+		for (const body of bodies) {
+			const id = body.shape.id as { description?: string } | undefined;
+			expect(id?.description).toContain("deduplicated: true");
+		}
+	});
+
+	it("treats a retried create with the same id as a no-op on every write (#143)", async () => {
+		const app = configuredApp();
+		const { userId } = await signIn(app);
+		// 1 + 6 x 2 + 1 requests, so this key needs more than the published
+		// 10-request budget the #140 tests pin.
+		const auth = await getTokensAuth(`${BASE_URL}/mcp`);
+		const minted = await apiKeyApi(auth!).createApiKey({
+			body: {
+				userId,
+				expiresIn: 24 * 60 * 60,
+				permissions: { onboarding: ["read", "write"], accounting: ["read", "write"] },
+				rateLimitMax: 500,
+				rateLimitTimeWindow: 60 * 60 * 1000,
+			},
+		});
+		const key = minted.key;
+
+		const call = async (name: string, args: Record<string, unknown>, id = 61) => {
+			const res = await rpc(app, { jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args } }, key);
+			expect(res.status).toBe(200);
+			return res.json?.result as ToolResult;
+		};
+
+		const entryCounts = async () => {
+			const status = await call("get_onboarding_status", {}, 62);
+			const steps = status.structuredContent?.steps as Array<{ id: string; entryCount: number }>;
+			return Object.fromEntries(steps.map((step) => [step.id, step.entryCount]));
+		};
+		const before = await entryCounts();
+
+		const replay = async (name: string, field: string, args: Record<string, unknown>): Promise<void> => {
+			const first = await call(name, args);
+			expect(first.isError).toBeUndefined();
+			const firstRecord = first.structuredContent?.[field] as { id: string; version: number };
+			expect(firstRecord.id).toBe(args.id);
+
+			const second = await call(name, args);
+			expect(second.isError).toBeUndefined();
+			expect(second.structuredContent?.deduplicated).toBe(true);
+			const secondRecord = second.structuredContent?.[field] as { id: string; version: number };
+			expect(secondRecord.id).toBe(args.id);
+			// The stored record, not a write: same version the first call created.
+			expect(secondRecord.version).toBe(firstRecord.version);
+		};
+
+		const liabilityId = randomUUID();
+		await replay("add_liability", "liability", {
+			id: liabilityId,
+			kind: "loan",
+			name: "Car Loan",
+			category: "car_loan",
+			loan: { principal: 400000, termMonths: 48, originatedOn: "2026-01-01" },
+		});
+		await replay("add_expense", "expense", {
+			id: randomUUID(),
+			name: "Netflix",
+			category: "subscription",
+			amount: 420,
+			cycle: "monthly",
+		});
+		await replay("add_income", "income", {
+			id: randomUUID(),
+			kind: "employment",
+			name: "Agoda Salary",
+			category: "salary",
+			amount: 150000,
+		});
+		await replay("add_asset", "asset", {
+			id: randomUUID(),
+			kind: "cash",
+			name: "Travel Wallet",
+			category: "cash",
+			balance: 5000,
+		});
+		await replay("create_business", "entity", { id: randomUUID(), name: "Corner Shop" });
+		await replay("create_transfer", "transfer", {
+			id: randomUUID(),
+			amount: 12000,
+			toLiabilityId: liabilityId,
+			note: "October installment",
+		});
+
+		// One record per write despite two calls: the retry created nothing.
+		const after = await entryCounts();
+		expect((after.add_liability ?? 0) - (before.add_liability ?? 0)).toBe(1);
+		expect((after.add_expense ?? 0) - (before.add_expense ?? 0)).toBe(1);
+		expect((after.add_income ?? 0) - (before.add_income ?? 0)).toBe(1);
+		expect((after.assets_wallet ?? 0) - (before.assets_wallet ?? 0)).toBe(1);
+		expect((after.add_business ?? 0) - (before.add_business ?? 0)).toBe(1);
+
+		const transfers = await call("list_transfers", {}, 63);
+		expect((transfers.structuredContent?.transfers as Array<unknown>).length).toBe(1);
 	});
 });

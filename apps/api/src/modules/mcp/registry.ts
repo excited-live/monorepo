@@ -4,7 +4,7 @@ import type { z } from "zod";
 import type { SqlDriver } from "../../db/types";
 import type { AccountingService } from "../accounting/service/accounting.service";
 import type { OnboardingStore } from "../../stores/onboarding-store";
-import { DomainError } from "../accounting/domain/errors";
+import { DomainError, DuplicateError } from "../accounting/domain/errors";
 import type { McpPrincipal } from "./mcp.auth";
 import { ONBOARDING_INSTRUCTIONS, ONBOARDING_PROMPT } from "./instructions";
 import { onboardingTools } from "./tools/onboarding.tools";
@@ -54,6 +54,40 @@ function successResult(result: unknown): CallToolResult {
 		content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
 		structuredContent: result as Record<string, unknown>,
 	};
+}
+
+/**
+ * Run a create and treat a retry with the caller's own id as success (#143).
+ *
+ * Create bodies accept an optional client-generated `id`. If a write lands but
+ * its response is lost, retrying with the same id hits the primary key and used
+ * to surface as the tool error "A record with this id already exists". For an
+ * unattended agent that is the worst case: retry risks a duplicate, stop leaves
+ * the write unconfirmed. Instead return the stored record with
+ * `deduplicated: true`, so the retry is provably a no-op.
+ *
+ * Only a duplicate of the id the caller supplied is treated as a replay. A
+ * conflict without a client id, or a read that cannot find the record, still
+ * fails as before.
+ */
+export async function createOrReuse<T>(step: {
+	id?: string;
+	key: string;
+	create: () => Promise<T>;
+	read: (id: string) => Promise<T>;
+}): Promise<Record<string, unknown>> {
+	try {
+		return { [step.key]: await step.create() };
+	} catch (error) {
+		if (!(error instanceof DuplicateError) || !step.id) throw error;
+		let stored: T;
+		try {
+			stored = await step.read(step.id);
+		} catch {
+			throw error;
+		}
+		return { [step.key]: stored, deduplicated: true };
+	}
 }
 
 /** A fresh MCP server for one request, with the onboarding tool suite registered. */

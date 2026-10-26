@@ -2,6 +2,11 @@ name: CI
 
 on:
   pull_request:
+    # labeled/unlabeled matter: a blocking label added after a green run must
+    # re-run the merge gate, otherwise a stale success stays valid on the head
+    # commit. `edited` is deliberately absent: a body edit is not gate input and
+    # would restart the full CI on the single-slot runner for nothing.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
 
@@ -50,3 +55,52 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm test
+  # Merge gate. A SEPARATE job on purpose: the `ci` job id must not change,
+  # because 'CI / ci (pull_request)' is main's only required context today.
+  # This job publishes 'CI / merge-gate (pull_request)'.
+  #
+  # The label list comes from the event payload on disk, so the check needs no
+  # API token and cannot be bypassed by the merge path forgetting to look at
+  # labels. Refusing is the default: unreadable payload, invalid JSON or no
+  # pull_request all fail the job.
+  merge-gate:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Refuse a pull request that carries a blocking label
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="${GITHUB_EVENT_PATH:-}"
+          echo "merge-gate: payload=${payload:-<unset>}"
+          if [ -z "$payload" ] || [ ! -r "$payload" ]; then
+            echo "::error::merge-gate: no readable event payload; refusing by default"
+            exit 1
+          fi
+          node - "$payload" <<'NODE'
+          const fs = require('fs');
+          const path = process.argv[2];
+          const BLOCKED = new Set(['hold', 'do-not-merge', 'wip', 'blocked']);
+          let event;
+          try {
+            event = JSON.parse(fs.readFileSync(path, 'utf8'));
+          } catch (err) {
+            console.error('::error::merge-gate: event payload is not valid JSON; refusing by default');
+            process.exit(1);
+          }
+          const pr = event && event.pull_request;
+          if (!pr) {
+            console.error('::error::merge-gate: event payload has no pull_request; refusing by default');
+            process.exit(1);
+          }
+          const labels = (pr.labels || [])
+            .map((label) => String((label && label.name) || '').trim().toLowerCase())
+            .filter(Boolean);
+          console.log(`merge-gate: action=${event.action || '?'} labels=[${labels.join(',')}]`);
+          const blocking = labels.filter((label) => BLOCKED.has(label));
+          if (blocking.length > 0) {
+            console.error(`::error::merge-gate: blocking label present: ${blocking.join(',')}`);
+            process.exit(1);
+          }
+          console.log('merge-gate: no blocking label');
+          NODE

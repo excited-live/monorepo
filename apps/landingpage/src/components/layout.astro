@@ -1,5 +1,6 @@
 ---
 import { ClientRouter } from 'astro:transitions';
+import { alternateLinks } from '@/lib/lang';
 import '../styles/global.css';
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
 	canonical?: string | false;
 	/** Ask crawlers not to index this page (404 pages). */
 	noindex?: boolean;
+	/** Emit `hreflang` for the EN/TH pair — only for pages that really carry both. */
+	bilingual?: boolean;
 }
 
 const {
@@ -25,6 +28,7 @@ const {
 	schema,
 	canonical: canonicalProp,
 	noindex = false,
+	bilingual = false,
 } = Astro.props;
 
 const site = Astro.site ?? new URL('https://excited.live');
@@ -32,6 +36,12 @@ const canonical =
 	canonicalProp === false
 		? null
 		: new URL(canonicalProp ?? Astro.url.pathname, site).href;
+const alternates = bilingual
+	? alternateLinks(
+			canonicalProp === false ? Astro.url.pathname : (canonicalProp ?? Astro.url.pathname),
+			site,
+		)
+	: [];
 const ogImageUrl = new URL(ogImage, site).href;
 
 const orgId = new URL('/#org', site).href;
@@ -71,6 +81,11 @@ const jsonLd = {
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		{canonical && <link rel="canonical" href={canonical} />}
+		{
+			alternates.map((alt) => (
+				<link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
+			))
+		}
 		{noindex && <meta name="robots" content="noindex" />}
 		<meta property="og:type" content={ogType} />
 		<meta property="og:site_name" content="excited.live" />
@@ -118,6 +133,10 @@ const jsonLd = {
 					window.gtag('event', 'page_view', {
 						page_location: location.href,
 						page_title: document.title,
+						// #197: the launch metric is the Thai /docs/mcp/ → connected
+						// rate against the English one, and until now no event said
+						// which language the session was in.
+						lang: document.documentElement.getAttribute('data-lang') ?? 'en',
 					});
 				};
 				const loadGa = () => {
@@ -144,13 +163,37 @@ const jsonLd = {
 		<script is:inline>
 			// Restore language before first paint (EN first per repo rule).
 			(() => {
-				try {
-					const saved = localStorage.getItem('exl-lang');
-					document.documentElement.dataset.lang =
-						saved === 'th' || saved === 'en' ? saved : 'en';
-				} catch {
-					document.documentElement.dataset.lang = 'en';
+				const read = () => {
+					try {
+						const saved = localStorage.getItem('exl-lang');
+						return saved === 'th' || saved === 'en' ? saved : 'en';
+					} catch {
+						return 'en';
+					}
+				};
+				// #197 R3: `?lang=` is the address of the language, so it beats the
+				// saved choice — a shared Thai link must open in Thai. Pages are
+				// static, so this script is the only place a query can take effect,
+				// and the first painted frame is already in the requested language.
+				const asked = new URLSearchParams(location.search).get('lang');
+				if (asked === 'th' || asked === 'en') {
+					try {
+						localStorage.setItem('exl-lang', asked);
+					} catch {
+						/* storage unavailable — the query still wins this page */
+					}
 				}
+				const apply = (doc) => {
+					doc.documentElement.dataset.lang = read();
+					doc.documentElement.lang = read();
+				};
+				apply(document);
+				// ClientRouter swaps in the next page's SSR <html data-lang="en">, so a
+				// visitor who chose Thai was reset to EN on every navigation. Carry the
+				// choice into the incoming document before the swap, not after it.
+				document.addEventListener('astro:before-swap', (event) => {
+					if (event.newDocument) apply(event.newDocument);
+				});
 			})();
 		</script>
 		<ClientRouter />

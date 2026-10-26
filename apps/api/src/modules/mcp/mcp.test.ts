@@ -422,6 +422,13 @@ describe("/mcp", () => {
 		expect(costAt).toBeGreaterThan(-1);
 		expect(lines[costAt + 1]).toBe(budget);
 
+		// Design's AC greps the committed line itself for both words. Pinning the
+		// slot and the full string is not enough on its own: a paraphrase in the
+		// right place must fail here, where the AC would fail it too.
+		const committed = lines[costAt + 1] ?? "";
+		expect(committed).toMatch(/budget/i);
+		expect(committed).toMatch(/do not derive/);
+
 		// The read tool a choosing model sees carries the same fact.
 		const list = await rpc(app, { jsonrpc: "2.0", id: 5, method: "tools/list" }, key);
 		const tools = (list.json?.result as { tools: Array<{ name: string; description: string }> }).tools;

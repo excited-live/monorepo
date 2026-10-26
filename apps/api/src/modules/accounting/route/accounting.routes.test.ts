@@ -258,7 +258,7 @@ describe("expenses", () => {
 				cycle: "one_time",
 				startMonth: "2026-10",
 				dayOfMonth: 24,
-				details: { checkin: "off", checkinAmount: 600, amountSource: "checkin" },
+				details: { checkin: "off", checkinAmount: 600, amountSource: "typed" },
 			},
 		});
 		expect(created.status).toBe(201);
@@ -276,7 +276,7 @@ describe("expenses", () => {
 		expect(after.details).toEqual({
 			checkin: "off",
 			checkinAmount: 600,
-			amountSource: "checkin",
+			amountSource: "typed",
 			renewalDate: "2026-10-12",
 		});
 	});

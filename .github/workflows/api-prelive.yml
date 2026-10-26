@@ -20,6 +20,7 @@ on:
       - "pnpm-lock.yaml"
       - "turbo.json"
       - "scripts/smoke-prelive.mjs"
+      - "scripts/prelive-hosts.mjs"
       - ".github/workflows/api-prelive.yml"
   workflow_dispatch:
 

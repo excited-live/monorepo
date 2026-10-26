@@ -9,7 +9,7 @@ description: "Session check. The rest of the Better Auth surface is served under
 
 `GET` `/api/v1/agent-keys`
 
-Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned.
+Keys owned by the signed-in user, each with the scopes it actually carries. The secret is never returned. Each key also carries `rateLimit`, the same budget the MCP endpoint publishes as `X-RateLimit-*`, so a client can show calls left and the reset instant without calling the key.
 
 **Responses**
 

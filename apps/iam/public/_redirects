@@ -1,8 +1,32 @@
-# SPA fallback for a direct-upload Pages project.
+# Routing for the direct-upload Pages project (#223).
 #
-# Cloudflare Pages reads routing from `_redirects` in the *uploaded* directory;
-# a `[[redirects]]` table in wrangler.toml is never installed by
-# `wrangler pages deploy`, so without this file every client route 404s on a
-# hard refresh (/data, /tokens, /sign-in). Existing files (assets, index.html)
-# are served first, so this only catches deep links.
-/*    /index.html    200
+# Cloudflare Pages reads routing from `_redirects` in the uploaded directory; a
+# `[[redirects]]` table in wrangler.toml is never installed by
+# `wrangler pages deploy`.
+#
+# The old `/*  /index.html  200` catch-all made every path a 200 shell: a
+# curl-only agent could not tell a real page from a typo, and `/keys/zzz` served
+# the app's own markup (#223). Only the routes below and the files in `dist/`
+# answer now; everything else reaches 404.html.
+#
+# Do NOT add a 200 rewrite whose destination ends in `/index.html`: Pages
+# normalises the destination to the clean URL, which then matches the rule
+# again — wrangler rejects it as an infinite loop, and the served response is a
+# 308 instead of the 200 the rule promises. The door pages are flat files
+# (`dist/tokens.html`, `dist/keys.html`, `dist/sign-in.html`) which Pages
+# already serves at `/tokens`, `/keys` and `/sign-in` with a 200, so they need
+# no rule at all.
+
+# Aliases — neither is a page of this app; kept so old links do not dead-end.
+/overview      /mcp      301
+/auth/sign-in  /sign-in  301
+
+# The SPA's remaining routes are the same document as `/`; the clean URL
+# `/tokens` etc. is a file, not a rewrite.
+/mcp           /         200
+/data          /         200
+
+# Pages already strips the trailing slash on the three file-backed door routes
+# with a 308; give the two proxied routes the same courtesy instead of a 404.
+/mcp/          /mcp      301
+/data/         /data     301

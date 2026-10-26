@@ -1,7 +1,11 @@
 ---
 title: "Connect your agent over MCP"
+titleTh: "เชื่อมต่อเอเจนต์ของคุณผ่าน MCP"
 description: "Connect Claude Code to excited.live over MCP, approve access, and set up your books with the onboard_me prompt."
+descriptionTh: "เชื่อมต่อ Claude Code กับ excited.live ผ่าน MCP อนุมัติการเข้าถึง แล้วตั้งสมุดบัญชีด้วยพรอมป์ onboard_me"
 ---
+
+<div data-lang-en>
 
 MCP (Model Context Protocol) lets your own AI agent read and update your excited.live books. You only need one server URL:
 
@@ -9,21 +13,63 @@ MCP (Model Context Protocol) lets your own AI agent read and update your excited
 https://api.excited.live/mcp
 ```
 
-เชื่อมต่อเอเจนต์ AI ของคุณกับ excited.live ผ่าน MCP ที่ https://api.excited.live/mcp แล้วให้เอเจนต์ช่วยตั้งสมุดบัญชีของคุณ
+</div>
+
+<div data-lang-th>
+
+MCP (Model Context Protocol) ให้เอเจนต์ AI ของคุณอ่านและอัปเดตสมุดบัญชี excited.live ได้ คุณต้องใช้เพียง URL ของเซิร์ฟเวอร์เดียว:
+
+```text
+https://api.excited.live/mcp
+```
+
+</div>
+
+<div data-lang-en>
 
 > MCP sign-in is in final testing; we launch on 31 Oct 2026. If your client does not connect, contact support from [Help](/docs/help#contact-support) with the client name and the time you tried.
->
-> การลงชื่อเข้าใช้ MCP อยู่ในขั้นทดสอบสุดท้าย เราจะเปิดตัวในวันที่ 31 ต.ค. 2026 หากไคลเอนต์ของคุณเชื่อมต่อไม่ได้ โปรดติดต่อฝ่ายสนับสนุนจาก [Help](/docs/help#contact-support) พร้อมชื่อไคลเอนต์และเวลาที่คุณลอง
+
+</div>
+
+<div data-lang-th>
+
+> การลงชื่อเข้าใช้ MCP อยู่ในขั้นทดสอบสุดท้าย เราจะเปิดตัวในวันที่ 31 ต.ค. 2026 หากไคลเอนต์ของคุณเชื่อมต่อไม่ได้ โปรดติดต่อฝ่ายสนับสนุนจาก[หน้าช่วยเหลือ](/docs/help#contact-support) พร้อมชื่อไคลเอนต์และเวลาที่คุณลอง
+
+</div>
+
+<div data-lang-en>
 
 <p><a class="btn-ink not-prose" href="#start-here">Set up Claude Code →</a></p>
 
+</div>
+
+<div data-lang-th>
+
+<p><a class="btn-ink not-prose" href="#start-here">ตั้งค่า Claude Code →</a></p>
+
+</div>
+
 ## Before you start
+
+<div data-lang-en>
 
 - An excited.live account. You can create one during sign-in; the connection keeps your place and returns you to the same request.
 - The browser on the same device as your AI client. Sign-in opens in the browser.
 - A few minutes for `onboard_me` after the connection is approved.
 
+</div>
+
+<div data-lang-th>
+
+- บัญชี excited.live คุณสร้างบัญชีได้ระหว่างการลงชื่อเข้าใช้ การเชื่อมต่อจะจำตำแหน่งที่คุณทำค้างไว้และพากลับมาที่คำขอเดิม
+- เบราว์เซอร์บนอุปกรณ์เดียวกับไคลเอนต์ AI ของคุณ การลงชื่อเข้าใช้จะเปิดในเบราว์เซอร์
+- เวลาสักสองสามนาทีสำหรับ `onboard_me` หลังอนุมัติการเชื่อมต่อแล้ว
+
+</div>
+
 ## What happens on first connect
+
+<div data-lang-en>
 
 The order is the same in every client:
 
@@ -37,7 +83,27 @@ The order is the same in every client:
 5. Choose **Allow**. Your client receives the connection and returns you to the chat.
 6. Start the setup with the `onboard_me` prompt. Each client section below shows how.
 
+</div>
+
+<div data-lang-th>
+
+ลำดับขั้นตอนเหมือนกันในทุกไคลเอนต์:
+
+1. ไคลเอนต์ของคุณจะเปิดหน้าลงชื่อเข้าใช้ excited.live ที่ `https://auth.excited.live/sign-in`
+2. ลงชื่อเข้าใช้ด้วยอีเมลและรหัสผ่าน หรือเลือก **Continue with Google** หากยังไม่มีบัญชี ให้เลือก **Create an account**
+3. หน้าขออนุญาตจะเปิดขึ้นพร้อมปุ่ม **Allow access to your account** โดยระบุชื่อไคลเอนต์ของคุณและบอกว่าต้องการเชื่อมต่อกับสมุดบัญชี excited.live
+4. ตรวจสอบสิทธิ์ภายใต้หัวข้อ **This lets the agent:**
+   - ช่วยตั้งสมุดบัญชีและติดตามความคืบหน้าการเริ่มต้นใช้งาน
+   - อ่านธุรกิจ สินทรัพย์ รายได้ รายจ่าย และหนี้สินของคุณ
+   - เพิ่มและแก้ไขธุรกิจ สินทรัพย์ รายได้ รายจ่าย และหนี้สินของคุณ
+5. เลือก **Allow** ไคลเอนต์จะได้รับการเชื่อมต่อและพาคุณกลับมาที่แชต
+6. เริ่มการตั้งค่าด้วยพรอมป์ `onboard_me` แต่ละหัวข้อด้านล่างแสดงวิธีสำหรับไคลเอนต์นั้น ๆ
+
+</div>
+
 ## Start here
+
+<div data-lang-en>
 
 The client we test most. Sign-in is still in final testing.
 
@@ -56,9 +122,34 @@ Then:
 
 `--scope user` makes the server available in every project. Use `--scope project` if you only want it in the current repository.
 
+</div>
+
+<div data-lang-th>
+
+ไคลเอนต์ที่เราใช้ทดสอบมากที่สุด การลงชื่อเข้าใช้ยังอยู่ในขั้นทดสอบสุดท้าย
+
+เพิ่มเซิร์ฟเวอร์จากเทอร์มินัลของคุณ:
+
+```bash
+claude mcp add --scope user --transport http excited https://api.excited.live/mcp
+```
+
+จากนั้น:
+
+1. เปิด Claude Code แล้วรัน `/mcp`
+2. เลือก `excited` แล้วยืนยันตัวตน Claude Code อาจถามตอนเรียกใช้เครื่องมือครั้งแรกแทน
+3. เบราว์เซอร์จะเปิดหน้าลงชื่อเข้าใช้และหน้าขออนุญาตของ excited.live ตามที่อธิบายไว้ข้างต้น เลือก **Allow**
+4. กลับไปที่ Claude Code หากแสดงพรอมป์ MCP เป็นคำสั่งสแลช `onboard_me` จะปรากฏเป็น `/mcp__excited__onboard_me` หากไม่แสดง ให้พิมพ์ขอ: **Use the `onboard_me` prompt and set up my excited.live account.**
+
+`--scope user` ทำให้เซิร์ฟเวอร์นี้ใช้ได้ในทุกโปรเจกต์ ใช้ `--scope project` หากต้องการให้ใช้เฉพาะในรีโปปัจจุบัน
+
+</div>
+
 ## Being verified
 
 ### Claude.ai
+
+<div data-lang-en>
 
 Not yet verified with a real connection.
 
@@ -76,7 +167,31 @@ Not yet verified with a real connection.
 
 If the connector does not appear in a new chat, remove it and add it again. The exact menu labels can change between Claude.ai releases; the URL is the part that must match.
 
+</div>
+
+<div data-lang-th>
+
+ยังไม่ได้ตรวจสอบด้วยการเชื่อมต่อจริง
+
+1. เปิด Claude.ai แล้วไปที่ **Settings → Connectors**
+2. เลือก **Add custom connector**
+3. ตั้งชื่อว่า `excited.live` แล้ววาง URL ของเซิร์ฟเวอร์:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. เพิ่มตัวเชื่อมต่อ เบราว์เซอร์จะเปิดหน้าลงชื่อเข้าใช้และหน้าขออนุญาตของ excited.live ตามที่อธิบายไว้ข้างต้น
+5. หลังจากเลือก **Allow** ให้กลับไปที่ Claude.ai แล้วเริ่มแชตใหม่
+6. พิมพ์ขอ: **Use the `onboard_me` prompt and set up my excited.live account.** หาก Claude แสดงพรอมป์ของเซิร์ฟเวอร์ คุณเลือก `onboard_me` ได้โดยตรงแทน
+
+หากตัวเชื่อมต่อไม่ปรากฏในแชตใหม่ ให้ลบแล้วเพิ่มใหม่อีกครั้ง ป้ายเมนูอาจเปลี่ยนไปตามเวอร์ชันของ Claude.ai สิ่งที่ต้องตรงคือ URL
+
+</div>
+
 ### ChatGPT
+
+<div data-lang-en>
 
 Not yet verified with a real connection.
 
@@ -92,7 +207,29 @@ Not yet verified with a real connection.
 5. After you choose **Allow**, return to ChatGPT and start a new chat with the connector enabled.
 6. Ask: **Use the `onboard_me` prompt and set up my excited.live account.** If ChatGPT lists server prompts, you can pick `onboard_me` directly instead.
 
+</div>
+
+<div data-lang-th>
+
+ยังไม่ได้ตรวจสอบด้วยการเชื่อมต่อจริง
+
+1. เปิด ChatGPT แล้วไปที่ **Settings → Apps → Advanced settings**
+2. เปิด **Developer mode**
+3. เพิ่มตัวเชื่อมต่อ MCP แบบกำหนดเองด้วย URL ของเซิร์ฟเวอร์:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. ทำการเชื่อมต่อให้เสร็จ เบราว์เซอร์จะเปิดหน้าลงชื่อเข้าใช้และหน้าขออนุญาตของ excited.live ตามที่อธิบายไว้ข้างต้น
+5. หลังจากเลือก **Allow** ให้กลับไปที่ ChatGPT แล้วเริ่มแชตใหม่โดยเปิดใช้ตัวเชื่อมต่อนี้
+6. พิมพ์ขอ: **Use the `onboard_me` prompt and set up my excited.live account.** หาก ChatGPT แสดงพรอมป์ของเซิร์ฟเวอร์ คุณเลือก `onboard_me` ได้โดยตรงแทน
+
+</div>
+
 ### Cursor
+
+<div data-lang-en>
 
 Connects with a key header, not browser sign-in. Not yet verified with a real connection.
 
@@ -117,7 +254,38 @@ Cursor connects with the key header, not with the browser sign-in flow above.
 
 A real Cursor connection has not been verified yet, so treat this section as in final testing along with the clients above.
 
+</div>
+
+<div data-lang-th>
+
+เชื่อมต่อด้วยคีย์ในเฮดเดอร์ ไม่ใช่การลงชื่อเข้าใช้ผ่านเบราว์เซอร์ ยังไม่ได้ตรวจสอบด้วยการเชื่อมต่อจริง
+
+Cursor เชื่อมต่อด้วยคีย์ในเฮดเดอร์ ไม่ผ่านขั้นตอนลงชื่อเข้าใช้ในเบราว์เซอร์ข้างต้น
+
+1. เปิด Cursor แล้วไปที่ **Settings → MCP**
+2. เพิ่มเซิร์ฟเวอร์ใหม่และตั้งค่าการเชื่อมต่อเป็น **streamable HTTP**
+3. ใช้ URL ของเซิร์ฟเวอร์:
+
+   ```text
+   https://api.excited.live/mcp
+   ```
+
+4. เพิ่มเฮดเดอร์ด้วยคีย์ที่คุณสร้างไว้ในหัวข้อ[เชื่อมต่อด้วยคีย์แทน](#connect-with-a-key-instead):
+
+   ```text
+   Authorization: Bearer elk_...
+   ```
+
+5. บันทึกเซิร์ฟเวอร์ แล้วโหลดเซิร์ฟเวอร์ MCP ใหม่หาก Cursor แจ้งให้ทำ
+6. พิมพ์ขอ: **Use the `onboard_me` prompt and set up my excited.live account.**
+
+การเชื่อมต่อ Cursor จริงยังไม่ได้ตรวจสอบ จึงควรมองหัวข้อนี้ว่าอยู่ในขั้นทดสอบสุดท้ายเช่นเดียวกับไคลเอนต์ข้างต้น
+
+</div>
+
 ## Connect with a key instead
+
+<div data-lang-en>
 
 Most clients under **Being verified** use the browser sign-in and consent flow; Cursor in that group connects with a key header. You can also connect with a key instead, for a client that takes a header rather than a sign-in, or for your own scripts.
 
@@ -141,7 +309,37 @@ Most clients under **Being verified** use the browser sign-in and consent flow; 
 
 Never paste a key into a chat, a support message, an issue or a screenshot: anyone who sees it can use it for as long as it is valid. To revoke a key, go back to the same console — `https://excited-live-iam-prelive.pages.dev/tokens` until production key minting opens with the launch — and revoke it from the same page. Revoking a key stops it immediately.
 
+</div>
+
+<div data-lang-th>
+
+ไคลเอนต์ส่วนใหญ่ในหัวข้อ **Being verified** ใช้การลงชื่อเข้าใช้และหน้าขออนุญาตผ่านเบราว์เซอร์ ส่วน Cursor ในกลุ่มนั้นเชื่อมต่อด้วยคีย์ในเฮดเดอร์ คุณยังเลือกเชื่อมต่อด้วยคีย์แทนได้ สำหรับไคลเอนต์ที่รับเฮดเดอร์แทนการลงชื่อเข้าใช้ หรือสำหรับสคริปต์ของคุณเอง
+
+> **การสร้างคีย์บนระบบจริงจะเปิดวันที่ 30 ตุลาคม ก่อนเปิดตัววันที่ 31 ตุลาคม** จนถึงตอนนั้นให้ใช้คอนโซลพรีไลฟ์ที่ `https://excited-live-iam-prelive.pages.dev/tokens` คีย์ที่สร้างจากที่นั่นใช้ได้เฉพาะพรีไลฟ์: ใช้กับ API พรีไลฟ์ ไม่ใช่ `https://api.excited.live/mcp`
+
+1. เปิด `https://excited-live-iam-prelive.pages.dev/tokens` ในเบราว์เซอร์แล้วลงชื่อเข้าใช้ excited.live
+2. เลือก **Mint a key** แล้วตั้งชื่อคีย์ที่คุณจำได้
+3. เลือกเอเจนต์ (**cursor** สำหรับ Cursor) และใส่ป้ายกำกับหากต้องการ คีย์จะถูกสร้างด้วยสิทธิ์ **onboarding** และ **accounting** เท่านั้น และมีอายุ **90 วัน** ไม่มีอย่างอื่นต้องตั้งค่า
+4. คัดลอกคีย์ คีย์จะขึ้นต้นด้วย `elk_`
+5. ส่งคีย์เป็นเฮดเดอร์ในทุกคำขอไปยังเซิร์ฟเวอร์:
+
+   ```text
+   Authorization: Bearer elk_...
+   ```
+
+   หากไคลเอนต์ของคุณตั้งเฮดเดอร์ `Authorization` ไม่ได้ ให้ส่งคีย์เดียวกันเป็น `x-api-key` แทน:
+
+   ```text
+   x-api-key: elk_...
+   ```
+
+อย่าวางคีย์ในแชต ข้อความถึงฝ่ายสนับสนุน อิสชู หรือภาพหน้าจอ เพราะใครที่เห็นคีย์จะใช้คีย์นั้นได้ตลอดอายุของมัน หากต้องการเพิกถอนคีย์ ให้กลับไปที่คอนโซลเดิม — `https://excited-live-iam-prelive.pages.dev/tokens` จนกว่าการสร้างคีย์บนระบบจริงจะเปิดพร้อมการเปิดตัว — แล้วเพิกถอนจากหน้านั้น การเพิกถอนคีย์จะหยุดการใช้งานทันที
+
+</div>
+
 ## Rate limits
+
+<div data-lang-en>
 
 Each API key can make **200 calls per key per 24 hours**. The budget belongs to the key, not to your user account or your IP address, and each key counts its own window, so there is no fixed daily reset time. `X-RateLimit-Reset` on a response is the only clock that matters.
 
@@ -149,13 +347,21 @@ Every successful response served by a key carries `X-RateLimit-Limit`, `X-RateLi
 
 A **401** means something different: the key is missing, invalid, revoked or expired. Fix it or [mint a new key](https://iam.excited.live/tokens); waiting does not help.
 
+</div>
+
+<div data-lang-th>
+
 คีย์ API แต่ละคีย์เรียกได้ **200 ครั้งต่อคีย์ต่อรอบ 24 ชั่วโมง** โควตานี้เป็นของคีย์ ไม่ใช่ของบัญชีผู้ใช้หรือ IP และแต่ละคีย์นับรอบของตัวเอง จึงไม่มีเวลารีเซ็ตตายตัวทุกวัน ค่า `X-RateLimit-Reset` ในคำตอบคือเวลาที่ใช้ได้จริง
 
-ทุกคำตอบที่สำเร็จซึ่งเรียกด้วยคีย์จะแนบ `X-RateLimit-Limit`, `X-RateLimit-Remaining` (จำนวนครั้งที่เหลือในรอบนี้) และ `X-RateLimit-Reset` (เวลา Unix epoch เป็นวินาทีที่โควตาจะรีเซ็ต) เมื่อใช้โควตาครบแล้ว เซิร์ฟเวอร์จะตอบ **HTTP 429** พร้อม `Retry-After` (จำนวนวินาทีที่ต้องรอ) หัว `X-RateLimit-*` ชุดเดียวกัน และเนื้อหา JSON ที่มี `error: "rate_limited"`, `code: "RATE_LIMITED"`, `retryAfter`, `message` ที่บอกเวลากลับมาใช้งานได้เป็น UTC และ `rateLimit` (`limit`, `remaining`, `reset`) คีย์ยังใช้ได้ตามปกติ โปรดรอตามเวลานั้นแล้วลองใหม่ ไม่ต้องสร้างคีย์ใหม่
+ทุกคำตอบที่สำเร็จซึ่งเรียกด้วยคีย์จะแนบ `X-RateLimit-Limit`, `X-RateLimit-Remaining` (จำนวนครั้งที่เหลือในรอบนี้) และ `X-RateLimit-Reset` (เวลา Unix epoch เป็นวินาทีที่โควตาจะรีเซ็ต) เมื่อใช้โควตาครบแล้ว เซิร์ฟเวอร์จะตอบ **HTTP 429** พร้อม `Retry-After` (จำนวนวินาทีที่ต้องรอ) เฮดเดอร์ `X-RateLimit-*` ชุดเดียวกัน และเนื้อหา JSON ที่มี `error: "rate_limited"`, `code: "RATE_LIMITED"`, `retryAfter`, `message` ที่บอกเวลากลับมาใช้งานได้เป็น UTC และ `rateLimit` (`limit`, `remaining`, `reset`) คีย์ยังใช้ได้ตามปกติ โปรดรอตามเวลานั้นแล้วลองใหม่ ไม่ต้องสร้างคีย์ใหม่
 
 **401** หมายถึงเรื่องอื่น: คีย์หาย ไม่ถูกต้อง ถูกเพิกถอน หรือหมดอายุ โปรดแก้ไขหรือ[สร้างคีย์ใหม่](https://iam.excited.live/tokens) การรอไม่ช่วย
 
+</div>
+
 ## Set up your books with onboard_me
+
+<div data-lang-en>
 
 `onboard_me` is a prompt published by the excited.live server. It turns the connection into a short interview:
 
@@ -168,31 +374,135 @@ A **401** means something different: the key is missing, invalid, revoked or exp
 
 If you stop halfway, the connection stays. Start the prompt again later and the agent checks your onboarding status first, so you do not repeat completed steps.
 
+</div>
+
+<div data-lang-th>
+
+`onboard_me` เป็นพรอมป์ที่เซิร์ฟเวอร์ excited.live เผยแพร่ ช่วยเปลี่ยนการเชื่อมต่อให้เป็นการสัมภาษณ์สั้น ๆ:
+
+- เอเจนต์จะถามทีละขั้น: ธุรกิจ กระเป๋าเงินและสินทรัพย์ หนี้สิน รายได้ แล้วจึงรายจ่าย
+- เอเจนต์ตอบเป็นภาษาไทยหรืออังกฤษตามภาษาที่คุณเขียน
+- สำหรับสินค้า บริการสมาชิก และอุปกรณ์ที่รู้จัก เอเจนต์จะค้นในแคตตาล็อกและเสนอค่าที่ตั้งไว้ให้ แทนการเดา
+- เอเจนต์ยืนยันแต่ละรายการกับคุณก่อนบันทึก
+- จบด้วยสรุปมูลค่าสุทธิ รายได้ต่อเดือน รายจ่ายต่อเดือน และหนี้สินของคุณ
+- คุณตรวจทานและแก้ไขทุกอย่างในแอป excited.live ได้ภายหลัง
+
+หากคุณหยุดกลางทาง การเชื่อมต่อยังอยู่ กลับมาเริ่มพรอมป์อีกครั้งภายหลังได้ เอเจนต์จะตรวจสถานะการเริ่มต้นใช้งานก่อน จึงไม่ต้องทำขั้นตอนที่เสร็จแล้วซ้ำ
+
+</div>
+
 ## Troubleshooting
 
 **The consent page says the request is invalid or has expired.**
+
+<div data-lang-en>
+
 The connection request expired before you finished signing in. Go back to your client and start the connection again.
 
+</div>
+
+<div data-lang-th>
+
+คำขอเชื่อมต่อหมดอายุก่อนที่คุณจะลงชื่อเข้าใช้เสร็จ กลับไปที่ไคลเอนต์แล้วเริ่มการเชื่อมต่อใหม่
+
+</div>
+
 **The browser opens, but the client never connects.**
+
+<div data-lang-en>
+
 This is the part still in final testing. Contact support from [Help](/docs/help#contact-support) with the client name, the time, and what you saw. One retry is enough to rule out a stale request; do not loop.
 
+</div>
+
+<div data-lang-th>
+
+ส่วนนี้ยังอยู่ในขั้นทดสอบสุดท้าย โปรดติดต่อฝ่ายสนับสนุนจาก[หน้าช่วยเหลือ](/docs/help#contact-support) พร้อมชื่อไคลเอนต์ เวลา และสิ่งที่คุณเห็น ลองใหม่หนึ่งครั้งก็พอเพื่อตัดปัญหาคำขอค้างเก่า ไม่ต้องวนซ้ำ
+
+</div>
+
 **A `curl` call to `/mcp` returns `401 {"error":"unauthorized"}`.**
+
+<div data-lang-en>
+
 The key header is missing or wrong. Send the key you minted above as `Authorization: Bearer elk_...` or, if your client cannot set that header, `x-api-key: elk_...`. The 401 body names both forms, and it is the same whether the key is missing or invalid — so check for a stray space, a revoked key, or a prelive key sent to the production API.
 
+</div>
+
+<div data-lang-th>
+
+เฮดเดอร์คีย์หายไปหรือไม่ถูกต้อง ส่งคีย์ที่คุณสร้างไว้ข้างต้นเป็น `Authorization: Bearer elk_...` หรือถ้าไคลเอนต์ตั้งเฮดเดอร์นั้นไม่ได้ ให้ใช้ `x-api-key: elk_...` เนื้อหา 401 ระบุทั้งสองรูปแบบ และเหมือนกันทั้งกรณีคีย์หายและคีย์ไม่ถูกต้อง จึงควรตรวจว่ามีช่องว่างเกิน คีย์ถูกเพิกถอน หรือส่งคีย์พรีไลฟ์ไปยัง API ระบบจริงหรือไม่
+
+</div>
+
 **The client is connected but the agent has no excited.live tools.**
+
+<div data-lang-en>
+
 Remove the connector and add it again with the same URL, then reload the client. In Claude Code, `/mcp` should list `excited` as connected.
 
+</div>
+
+<div data-lang-th>
+
+ลบตัวเชื่อมต่อแล้วเพิ่มใหม่ด้วย URL เดิม จากนั้นโหลดไคลเอนต์ใหม่ ใน Claude Code คำสั่ง `/mcp` ควรแสดง `excited` ว่าต่ออยู่
+
+</div>
+
 **I signed in with the wrong account.**
+
+<div data-lang-en>
+
 Sign out at `https://auth.excited.live/sign-in`, then start the connection again from your client.
 
+</div>
+
+<div data-lang-th>
+
+ออกจากระบบที่ `https://auth.excited.live/sign-in` แล้วเริ่มการเชื่อมต่อใหม่จากไคลเอนต์ของคุณ
+
+</div>
+
 **How do I disconnect?**
+
+<div data-lang-en>
+
 Remove the connector in your client. Your books stay in your excited.live account and are not deleted.
+
+</div>
+
+<div data-lang-th>
+
+ลบตัวเชื่อมต่อในไคลเอนต์ของคุณ สมุดบัญชีของคุณยังอยู่ในบัญชี excited.live และจะไม่ถูกลบ
+
+</div>
 
 ## Other MCP clients
 
+<div data-lang-en>
+
 Any client that supports remote MCP servers over Streamable HTTP with OAuth can use `https://api.excited.live/mcp`. The setup differs by client; use its "add remote MCP server" flow and the same URL. The three OAuth clients above are the ones being verified for launch. Cursor uses a key header instead and is also still in final testing.
+
+</div>
+
+<div data-lang-th>
+
+ไคลเอนต์ใดที่รองรับเซิร์ฟเวอร์ MCP ระยะไกลผ่าน Streamable HTTP พร้อม OAuth ใช้ `https://api.excited.live/mcp` ได้ วิธีตั้งค่าแตกต่างกันไปตามไคลเอนต์ ให้ใช้ขั้นตอน "add remote MCP server" ของไคลเอนต์นั้นและ URL เดียวกัน ไคลเอนต์ OAuth สามตัวข้างต้นคือตัวที่กำลังตรวจสอบสำหรับการเปิดตัว ส่วน Cursor ใช้คีย์ในเฮดเดอร์และยังอยู่ในขั้นทดสอบสุดท้ายเช่นกัน
+
+</div>
 
 ## Related
 
+<div data-lang-en>
+
 - [Help](/docs/help) — using the app, runway, burn and the numbers.
 - [API reference](/docs/api) — the REST API for scripts and server-side integrations.
+
+</div>
+
+<div data-lang-th>
+
+- [หน้าช่วยเหลือ](/docs/help) — การใช้แอป รันเวย์ เบิร์น และตัวเลขต่าง ๆ
+- [เอกสารอ้างอิง API](/docs/api) — REST API สำหรับสคริปต์และการเชื่อมต่อฝั่งเซิร์ฟเวอร์
+
+</div>

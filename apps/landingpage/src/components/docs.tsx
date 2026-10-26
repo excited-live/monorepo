@@ -1,11 +1,67 @@
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { DocsPage, type DocsPageProps } from 'fumadocs-ui/layouts/docs/page';
 import type { Root } from 'fumadocs-core/page-tree';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { navigate } from 'astro:transitions/client';
 import { RootProvider } from 'fumadocs-ui/provider/astro';
 import type { AstroProviderProps } from 'fumadocs-core/framework/astro';
 import SearchDialog from './search';
+
+/** The two languages the landing chrome and the docs prose share. */
+type Lang = 'en' | 'th';
+
+function readLang(): Lang {
+	if (typeof document === 'undefined') return 'en';
+	return document.documentElement.dataset.lang === 'th' ? 'th' : 'en';
+}
+
+/**
+ * Docs language switch. Same state as the landing picker (`html[data-lang]` +
+ * `localStorage['exl-lang']`), so a visitor who chose Thai on the landing keeps
+ * it here and vice versa. Purely CSS after the click: `html[data-lang='en']
+ * [data-lang-th]` is hidden, so no copy is re-rendered or re-fetched.
+ */
+function LangSwitch() {
+	const [lang, setLang] = useState<Lang>('en');
+
+	useEffect(() => {
+		setLang(readLang());
+		const observer = new MutationObserver(() => setLang(readLang()));
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-lang'],
+		});
+		return () => observer.disconnect();
+	}, []);
+
+	const choose = (next: Lang) => {
+		setLang(next);
+		document.documentElement.dataset.lang = next;
+		try {
+			localStorage.setItem('exl-lang', next);
+		} catch {
+			/* storage unavailable — the choice lasts this page */
+		}
+		window.gtag?.('event', 'lang_toggle', { lang: next, surface: 'docs' });
+	};
+
+	return (
+		<div className="docs-lang-switch" role="group" aria-label="Language">
+			{(['en', 'th'] as const).map((value) => (
+				<button
+					key={value}
+					type="button"
+					className="docs-lang-switch__btn"
+					aria-pressed={lang === value}
+					lang={value}
+					onClick={() => choose(value)}
+				>
+					{value === 'en' ? 'EN' : 'ไทย'}
+				</button>
+			))}
+		</div>
+	);
+}
 
 export function Docs({
 	tree,
@@ -59,6 +115,7 @@ export function Docs({
 							</span>
 						</span>
 					),
+					children: <LangSwitch />,
 				}}
 			>
 				<DocsPage {...page}>{children}</DocsPage>

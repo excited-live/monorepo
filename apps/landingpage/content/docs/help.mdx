@@ -1,12 +1,27 @@
 ---
 title: Help
+titleTh: "ช่วยเหลือ"
 description: Get started with the app, learn the terms, and reach support.
+descriptionTh: "เริ่มใช้แอป ทำความเข้าใจตัวเลขสำคัญ และติดต่อฝ่ายสนับสนุน"
 ---
+
+<div data-lang-en>
 
 Need a hand? This page covers the questions we get most. If you cannot find your
 answer here, [email support](#contact-support) and we will get back to you.
 
+</div>
+
+<div data-lang-th>
+
+ต้องการความช่วยเหลือไหม หน้านี้รวมคำถามที่เราเจอบ่อยที่สุด หากยังไม่พบคำตอบ
+[อีเมลถึงฝ่ายสนับสนุน](#contact-support) แล้วเราจะติดต่อกลับ
+
+</div>
+
 ## Connect your agent over MCP
+
+<div data-lang-en>
 
 excited.live works with your own AI agent over the Model Context Protocol (MCP). Add
 this server URL to your agent:
@@ -26,7 +41,33 @@ Your client will ask you to sign in to excited.live when you first connect.
 Then run the `onboard_me` prompt and your agent will interview you and fill in your
 accounts, income, expenses, assets and liabilities.
 
+</div>
+
+<div data-lang-th>
+
+excited.live ทำงานร่วมกับเอเจนต์ AI ของคุณผ่าน Model Context Protocol (MCP) เพิ่ม
+URL ของเซิร์ฟเวอร์นี้ในเอเจนต์ของคุณ:
+
+```
+https://api.excited.live/mcp
+```
+
+- **Claude Code:** `claude mcp add --scope user --transport http excited https://api.excited.live/mcp`
+- **Codex:** `codex mcp add excited --url https://api.excited.live/mcp` แล้วรัน `codex mcp login excited`
+- **Cursor:** ใน `~/.cursor/mcp.json` เพิ่ม `{"mcpServers":{"excited":{"url":"https://api.excited.live/mcp"}}}` แล้วรีสตาร์ต Cursor
+- **Claude:** เปิด Settings → Connectors → Add custom connector แล้ววาง `https://api.excited.live/mcp`
+- **ChatGPT:** เปิด Developer mode ใน Settings, Apps, Advanced settings แล้วเพิ่ม
+  ตัวเชื่อมต่อ MCP แบบกำหนดเองด้วย URL ข้างต้น
+
+ไคลเอนต์ของคุณจะขอให้ลงชื่อเข้าใช้ excited.live เมื่อเชื่อมต่อครั้งแรก
+จากนั้นรันพรอมป์ `onboard_me` เอเจนต์จะสัมภาษณ์คุณและกรอกบัญชี รายได้ รายจ่าย
+สินทรัพย์ และหนี้สินให้
+
+</div>
+
 ## Getting started with the app
+
+<div data-lang-en>
 
 1. **Add your accounts.** Start with your personal account, then add each business or
    side project. Your day job can sit on your personal account as a salary with a
@@ -41,7 +82,27 @@ accounts, income, expenses, assets and liabilities.
 Signing in is optional. Your data lives on your phone first; signing in adds cloud
 sync across devices.
 
+</div>
+
+<div data-lang-th>
+
+1. **เพิ่มบัญชีของคุณ** เริ่มจากบัญชีส่วนตัว แล้วเพิ่มแต่ละธุรกิจหรือโปรเจกต์ข้างเคียง
+   งานประจำของคุณอยู่ในบัญชีส่วนตัวในรูปเงินเดือนพร้อมวันเงินออกได้
+2. **บันทึกบิลและอุปกรณ์** เพิ่มบิลที่เกิดซ้ำ (รายสัปดาห์ รายเดือน รายไตรมาส รายปี) และ
+   อุปกรณ์ที่คุณมี แอปจะแปลงเป็นตัวเลขต่อเดือนให้คุณ
+3. **ดูรันเวย์ของคุณ** หน้าแรกแสดงความมั่งคั่งรวมและทุกบัญชี เปิดบัญชีเพื่อดูรันเวย์
+   เบิร์น และดูว่ายัง default alive อยู่หรือไม่
+4. **ย้ายเงินระหว่างบัญชี** การเอาเงินส่วนตัวเข้าไปในธุรกิจถือเป็นการลงทุน (capital
+   transfer) รันเวย์ของทั้งสองฝั่งจึงอัปเดตตาม
+
+การลงชื่อเข้าใช้เป็นทางเลือก ข้อมูลของคุณอยู่ในโทรศัพท์ก่อน การลงชื่อเข้าใช้เพิ่ม
+การซิงก์บนคลาวด์ข้ามอุปกรณ์
+
+</div>
+
 ## What the numbers mean
+
+<div data-lang-en>
 
 **Runway.** How many months your cash lasts at your current monthly net burn.
 
@@ -58,13 +119,48 @@ fully depreciated.
 **UNTIL.** On a day-job account, the days until your next payday and the months until
 your freedom buffer.
 
+</div>
+
+<div data-lang-th>
+
+**รันเวย์ (Runway)** เงินสดของคุณใช้ได้อีกกี่เดือน ด้วยอัตราเบิร์นสุทธิต่อเดือนปัจจุบัน
+
+**เบิร์น (Burn)** เงินที่คุณใช้จ่ายแต่ละเดือน: บิลที่เกิดซ้ำบวกต้นทุนอุปกรณ์ต่อเดือน
+คุณสลับระหว่างมุมมอง *smoothed* (บิลรายปีเฉลี่ยกระจาย 12 เดือน) และมุมมอง *cash*
+(นับเฉพาะบิลที่ต่ออายุจริงในเดือนนี้)
+
+**Default alive** รายได้ของคุณครอบคลุมเบิร์น รันเวย์จึงไม่หดลง
+
+**ค่าเสื่อมราคาอุปกรณ์** อุปกรณ์ถูกเฉลี่ยเท่า ๆ กันตลอดอายุการใช้งาน แล็ปท็อปราคา
+฿60,000 ที่ใช้ได้ 4 ปี จะแสดงเป็น ฿1,250 ต่อเดือน และลดลงเหลือศูนย์เมื่อค่าเสื่อม
+ตัดครบแล้ว
+
+**UNTIL** ในบัญชีงานประจำ คือจำนวนวันถึงวันเงินออกครั้งถัดไป และจำนวนเดือนถึง
+เป้าหมายอิสรภาพของคุณ
+
+</div>
+
 ## Coming next
+
+<div data-lang-en>
 
 These are in development and not in the app yet: reading Thai bank slips, a guided
 first-run setup, and an in-app mobile agent. Connecting your own AI agent over MCP
 (`https://api.excited.live/mcp`) is in final testing. [Create an account](https://auth.excited.live/sign-in?mode=signup) to try what is live today, and the [connect guide](/docs/mcp/) has the agent setup.
 
+</div>
+
+<div data-lang-th>
+
+สิ่งเหล่านี้อยู่ระหว่างพัฒนาและยังไม่มีในแอป: การอ่านสลิปโอนเงินไทย การตั้งค่าครั้งแรก
+แบบมีไกด์ และเอเจนต์มือถือในแอป การเชื่อมต่อเอเจนต์ AI ของคุณผ่าน MCP
+(`https://api.excited.live/mcp`) อยู่ในขั้นทดสอบสุดท้าย [สร้างบัญชี](https://auth.excited.live/sign-in?mode=signup) เพื่อลองใช้สิ่งที่เปิดให้ใช้แล้ววันนี้ และ[คู่มือเชื่อมต่อ](/docs/mcp/)มีวิธีตั้งค่าเอเจนต์
+
+</div>
+
 ## The web planner
+
+<div data-lang-en>
 
 The web planner is a separate, optional product. It simulates your whole life over 50
 years, including Thai tax and thousands of market scenarios, so you see a range of
@@ -73,24 +169,79 @@ outcomes instead of one number.
 **Your data stays yours.** Your saved plan is never deleted, and you can export your
 data at any time.
 
-**Not in early access yet.** The planner is not part of the early-access build. We will announce it when it ships.
+**Not at launch.** The planner is not part of the launch build. We will announce it when it ships.
 
 **Taxes.** Taxes are calculated by a dedicated engine using the rules for your
 jurisdiction and tax year, currently **Thailand, 2026**. Results are estimates, not
 guarantees. See the [Terms of Use](/docs/terms).
 
+</div>
+
+<div data-lang-th>
+
+เว็บแพลนเนอร์เป็นผลิตภัณฑ์แยกและเป็นทางเลือก มันจำลองทั้งชีวิตของคุณในระยะ 50 ปี
+รวมถึงภาษีไทยและสถานการณ์ตลาดหลายพันแบบ คุณจึงเห็นช่วงของผลลัพธ์แทนตัวเลขเดียว
+
+**ข้อมูลของคุณยังเป็นของคุณ** แผนที่บันทึกไว้จะไม่ถูกลบ และคุณส่งออกข้อมูลได้ทุกเมื่อ
+
+**ยังไม่เปิดตัว** แพลนเนอร์ไม่ใช่ส่วนหนึ่งของบิลด์เปิดตัว เราจะประกาศให้ทราบเมื่อพร้อมใช้งาน
+
+**ภาษี** ภาษีคำนวณโดยเอนจินเฉพาะตามกฎของเขตอำนาจและปีภาษีของคุณ ปัจจุบันคือ
+**ประเทศไทย ปี 2026** ผลลัพธ์เป็นการประมาณ ไม่ใช่การรับประกัน ดู[ข้อกำหนดการใช้งาน](/docs/terms)
+
+</div>
+
 ## Troubleshooting
 
-**My runway looks too short.** Check that your income is added to the right account.
+**My runway looks too short.**
+
+<div data-lang-en>
+
+Check that your income is added to the right account.
 A salary on your personal account does not count towards a business runway.
 
-**A yearly bill is missing from this month.** In the cash view only bills that renew
+</div>
+
+<div data-lang-th>
+
+ตรวจว่ารายได้ถูกเพิ่มในบัญชีที่ถูกต้อง
+เงินเดือนในบัญชีส่วนตัวไม่ถูกนับรวมในรันเวย์ของธุรกิจ
+
+</div>
+
+**A yearly bill is missing from this month.**
+
+<div data-lang-en>
+
+In the cash view only bills that renew
 this month are counted. Switch to the smoothed view to see the monthly average.
 
-**I did not get my sign-in email.** Check your spam folder, then request a new link.
+</div>
+
+<div data-lang-th>
+
+ในมุมมอง cash จะนับเฉพาะบิลที่ต่ออายุในเดือนนี้ สลับไปมุมมอง smoothed เพื่อดูค่าเฉลี่ยต่อเดือน
+
+</div>
+
+**I did not get my sign-in email.**
+
+<div data-lang-en>
+
+Check your spam folder, then request a new link.
 Give it a minute before trying again.
 
+</div>
+
+<div data-lang-th>
+
+ตรวจในโฟลเดอร์สแปม แล้วขอลิงก์ใหม่ รอสักหนึ่งนาทีก่อนลองอีกครั้ง
+
+</div>
+
 ## Contact support
+
+<div data-lang-en>
 
 Still stuck? Email **prame@fromsukong.com** with:
 
@@ -101,3 +252,18 @@ Still stuck? Email **prame@fromsukong.com** with:
 You can also open an issue on
 [GitHub](https://github.com/fromsukong/excited.live). We usually reply within a
 couple of days.
+
+</div>
+
+<div data-lang-th>
+
+ยังติดอยู่ไหม อีเมลถึง **prame@fromsukong.com** พร้อม:
+
+- อีเมลบัญชีของคุณ
+- สิ่งที่คุณกำลังพยายามทำ
+- ภาพหน้าจอถ้าสะดวก
+
+คุณเปิดอิสชูบน [GitHub](https://github.com/fromsukong/excited.live) ได้เช่นกัน
+โดยปกติเราตอบกลับภายในสองสามวัน
+
+</div>

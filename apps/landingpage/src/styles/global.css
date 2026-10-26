@@ -11,3 +11,71 @@ html > body[data-scroll-locked] {
 	margin-right: 0px !important;
 	--removed-body-scroll-bar-size: 0px !important;
 }
+
+/* ---------- docs language switch (EN · ไทย) ------------------------------- */
+
+/* Segmented control in the docs header. Two real buttons, not a dropdown: the
+   docs shell is one page with two languages, so one extra tap is cheaper than
+   opening a menu. 44 px tall targets on touch. */
+.docs-lang-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 3px;
+	border: 1px solid var(--dust, #e6e0da);
+	border-radius: 999px;
+	background: var(--lifted, #fff);
+	flex-shrink: 0;
+}
+
+.docs-lang-switch__btn {
+	appearance: none;
+	background: transparent;
+	border: 0;
+	border-radius: 999px;
+	color: var(--charcoal, #5b5651);
+	font: inherit;
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1;
+	padding: 6px 10px;
+	min-height: 28px;
+	cursor: pointer;
+}
+
+/* Touch: keep the visual pill compact but give the hit area the full 44 px. */
+@media (pointer: coarse) {
+	.docs-lang-switch__btn {
+		min-height: 38px;
+		padding: 6px 12px;
+	}
+}
+
+.docs-lang-switch__btn[aria-pressed='true'] {
+	background: var(--ink, #141413);
+	color: var(--canvas, #f3f0ee);
+}
+
+.docs-lang-switch__btn:focus-visible {
+	outline: 2px solid var(--link-blue, #1c5fd0);
+	outline-offset: 2px;
+}
+
+/* ---------- Thai prose ---------------------------------------------------- */
+
+/* Sofia Sans has no Thai glyphs; Noto Sans Thai is already in the font request
+   in layout.astro, so only the stack and the leading need changing. Thai stacks
+   vowels above and below the line, so the fumadocs 1.6 leading clips marks. */
+html[data-lang='th'] body {
+	font-family: 'Sofia Sans', 'Noto Sans Thai', ui-sans-serif, system-ui, sans-serif;
+}
+
+html[data-lang='th'] .prose :where(p, li, td, th, blockquote) {
+	line-height: 1.85;
+}
+
+/* Thai has no word spaces: keep code, URLs and identifiers LTR and unbroken. */
+html[data-lang='th'] .prose :where(code, pre, a[href^='http']) {
+	direction: ltr;
+	unicode-bidi: isolate;
+}

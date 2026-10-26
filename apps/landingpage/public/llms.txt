@@ -24,6 +24,13 @@ Guide: https://excited.live/docs/mcp/
 
 `onboarding`, `accounting:read`, `accounting:write`
 
+## Rate limits
+
+- 200 requests per API key per 24-hour window. The budget is per key, not per user or IP, and each key resets on its own clock — there is no fixed daily reset time.
+- Successful responses from an API key carry X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset (Unix epoch seconds when the window resets).
+- Over budget, the API answers HTTP 429 with Retry-After (seconds) and the same X-RateLimit-* headers; the JSON body has error "rate_limited", code "RATE_LIMITED", retryAfter, a message naming the reset instant in UTC, and rateLimit (limit, remaining, reset). The key is still valid: wait for the instant and retry, do not mint a replacement.
+- A 401 is a credential problem (missing, invalid, revoked or expired key); waiting does not help.
+
 ## Tools
 
 Tool names and inputs are in the connect guide, which tracks the live registry: https://excited.live/docs/mcp/

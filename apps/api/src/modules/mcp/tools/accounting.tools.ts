@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ValidationError } from "../../accounting/domain/errors";
 import { CreateTransferBody } from "../../accounting/route/accounting.schemas";
-import type { McpToolContext, McpToolDefinition } from "../registry";
+import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
 /**
  * Accounting MCP tool suite.
@@ -134,8 +134,12 @@ export const accountingTools: readonly McpToolDefinition[] = [
 				date,
 				fromEntityId,
 			});
-			const transfer = await ctx.accounting.createTransfer(ctx.userId, body);
-			return { transfer };
+			return createOrReuse({
+				id: body.id,
+				key: "transfer",
+				create: () => ctx.accounting.createTransfer(ctx.userId, body),
+				read: (id) => ctx.accounting.getTransfer(ctx.userId, id),
+			});
 		},
 	},
 	{

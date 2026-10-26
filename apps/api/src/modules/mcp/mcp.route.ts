@@ -6,7 +6,7 @@ import { protectedResourceMetadata } from "../../lib/oauth";
 import { createOnboardingStore } from "../../stores/onboarding-store";
 import { createSqlAccountingRepository } from "../accounting/repository/sql-accounting.repository";
 import { createAccountingService } from "../accounting/service/accounting.service";
-import { resolvePrincipal, unauthorizedResponse } from "./mcp.auth";
+import { rateLimitHeaders, rateLimitedResponse, resolvePrincipal, unauthorizedResponse } from "./mcp.auth";
 import { createMcpServer } from "./registry";
 
 /**
@@ -34,8 +34,12 @@ export function createMcpRouter(): Hono<ApiEnv> {
 	router.get("/.well-known/oauth-protected-resource/mcp", serveProtectedResourceMetadata);
 
 	router.all("/mcp", async (c) => {
-		const principal = await resolvePrincipal(c);
-		if (!principal) return unauthorizedResponse(c.req.url);
+		const resolved = await resolvePrincipal(c);
+		if (resolved.status === "unauthenticated") return unauthorizedResponse(c.req.url);
+		if (resolved.status === "rate_limited") {
+			return rateLimitedResponse(resolved.rateLimit, resolved.retryAfterSeconds);
+		}
+		const principal = resolved.principal;
 
 		const db = c.get("db");
 		const server = createMcpServer(principal, {
@@ -50,7 +54,15 @@ export function createMcpRouter(): Hono<ApiEnv> {
 		});
 
 		await server.connect(transport);
-		return transport.handleRequest(c.req.raw);
+		const response = await transport.handleRequest(c.req.raw);
+		// The key's remaining budget rides the 200s too, so an agent can back
+		// off before it is refused (#140).
+		if (resolved.rateLimit) {
+			for (const [name, value] of Object.entries(rateLimitHeaders(resolved.rateLimit))) {
+				response.headers.set(name, value);
+			}
+		}
+		return response;
 	});
 
 	return router;

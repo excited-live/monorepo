@@ -21,7 +21,7 @@ import {
 	CreateIncomeBody,
 	CreateLiabilityBody,
 } from "../../accounting/route/accounting.schemas";
-import type { McpToolContext, McpToolDefinition } from "../registry";
+import { createOrReuse, type McpToolContext, type McpToolDefinition } from "../registry";
 
 /**
  * Onboarding tool suite. Inputs reuse the REST body schemas from
@@ -196,7 +196,12 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 		async handler(ctx, raw) {
 			const body = parseBody(CreateEntityBody, { ...stripImageUrl(raw), type: "business" });
 			body.imageUrl = pickSuggestedImage(body.name, { kind: "business" });
-			return { entity: await ctx.accounting.createEntity(ctx.userId, body) };
+			return createOrReuse({
+				id: body.id,
+				key: "entity",
+				create: () => ctx.accounting.createEntity(ctx.userId, body),
+				read: (id) => ctx.accounting.getEntity(ctx.userId, id),
+			});
 		},
 	},
 	{
@@ -212,7 +217,12 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 				entityId: raw.entityId ?? (await personalEntityId(ctx)),
 			});
 			body.imageUrl = pickSuggestedImage(body.name, { kind: "asset", assetKind: body.kind });
-			return { asset: await ctx.accounting.createAsset(ctx.userId, body) };
+			return createOrReuse({
+				id: body.id,
+				key: "asset",
+				create: () => ctx.accounting.createAsset(ctx.userId, body),
+				read: (id) => ctx.accounting.getAsset(ctx.userId, id),
+			});
 		},
 	},
 	{
@@ -228,7 +238,12 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 				entityId: raw.entityId ?? (await personalEntityId(ctx)),
 			});
 			body.imageUrl = pickSuggestedImage(body.name, { kind: "liability" });
-			return { liability: await ctx.accounting.createLiability(ctx.userId, body) };
+			return createOrReuse({
+				id: body.id,
+				key: "liability",
+				create: () => ctx.accounting.createLiability(ctx.userId, body),
+				read: (id) => ctx.accounting.getLiability(ctx.userId, id),
+			});
 		},
 	},
 	{
@@ -247,7 +262,12 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 			const employer = body.kind === "employment" ? body.employment?.employer : undefined;
 			body.imageUrl =
 				(employer ? pickSuggestedImage(employer, subject) : undefined) ?? pickSuggestedImage(body.name, subject);
-			return { income: await ctx.accounting.createIncome(ctx.userId, body) };
+			return createOrReuse({
+				id: body.id,
+				key: "income",
+				create: () => ctx.accounting.createIncome(ctx.userId, body),
+				read: (id) => ctx.accounting.getIncome(ctx.userId, id),
+			});
 		},
 	},
 	{
@@ -262,7 +282,12 @@ export const onboardingTools: readonly McpToolDefinition[] = [
 				entityId: raw.entityId ?? (await personalEntityId(ctx)),
 			});
 			body.imageUrl = pickSuggestedImage(body.name, { kind: "expense" });
-			return { expense: await ctx.accounting.createExpense(ctx.userId, body) };
+			return createOrReuse({
+				id: body.id,
+				key: "expense",
+				create: () => ctx.accounting.createExpense(ctx.userId, body),
+				read: (id) => ctx.accounting.getExpense(ctx.userId, id),
+			});
 		},
 	},
 	{

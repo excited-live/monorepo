@@ -71,6 +71,14 @@ describe("api CORS allowlist: iam.excited.live (#89)", () => {
 		expect(res.headers.get("access-control-expose-headers")).toContain("set-auth-token")
 	})
 
+	it("exposes the rate-limit budget and edge request id (#140, #144)", async () => {
+		const res = await app().request("/health", { headers: { origin: "https://iam.excited.live" } }, PROD_ENV)
+		const exposed = res.headers.get("access-control-expose-headers")?.toLowerCase() ?? ""
+		for (const header of ["retry-after", "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset", "cf-ray"]) {
+			expect(exposed).toContain(header)
+		}
+	})
+
 	it("answers the real preflight with that exact origin, never *", async () => {
 		const res = await app().request(
 			"/api/v1/settings",

@@ -1819,6 +1819,7 @@
 								"type": "object",
 								"properties": {
 									"id": {
+										"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 										"type": "string",
 										"format": "uuid",
 										"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -2279,6 +2280,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -2343,6 +2345,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -2483,6 +2486,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -3130,6 +3134,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -3241,6 +3246,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -3342,6 +3348,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -3447,6 +3454,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -4182,6 +4190,7 @@
 								"type": "object",
 								"properties": {
 									"id": {
+										"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 										"type": "string",
 										"format": "uuid",
 										"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -4774,6 +4783,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -4898,6 +4908,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -5009,6 +5020,7 @@
 										"type": "object",
 										"properties": {
 											"id": {
+												"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 												"type": "string",
 												"format": "uuid",
 												"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -5648,6 +5660,7 @@
 								"type": "object",
 								"properties": {
 									"id": {
+										"description": "Optional client-generated UUID used as the record id. Repeating a create with the same id must not add a second record: the MCP create tools return the stored record with `deduplicated: true`, and the REST routes answer 409 DUPLICATE.",
 										"type": "string",
 										"format": "uuid",
 										"pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"

@@ -370,7 +370,7 @@ describe("/mcp", () => {
 				method: "tools/call",
 				params: {
 					name: "add_expense",
-					arguments: { name: "Netflix", category: "subscription", amount: 420, cycle: "monthly" },
+					arguments: { name: "Netflix", category: "entertainment", amount: 420, cycle: "monthly" },
 				},
 			},
 			key,
@@ -406,6 +406,58 @@ describe("/mcp", () => {
 		expect(statusResult.structuredContent?.method).toBe("agent");
 	});
 
+	it("publishes the expense keys with Thai labels and totals by category (#173)", async () => {
+		const app = configuredApp();
+		const { token } = await signIn(app);
+		const key = await mintKey(app, token);
+
+		const list = await rpc(app, { jsonrpc: "2.0", id: 40, method: "tools/list" }, key);
+		const tools = (list.json?.result as { tools: Array<{ name: string; description: string; inputSchema: { properties?: Record<string, { enum?: string[]; description?: string }> } }> }).tools;
+		const addExpense = tools.find((tool) => tool.name === "add_expense");
+		const category = addExpense?.inputSchema.properties?.category;
+		expect(category?.enum).toHaveLength(16);
+		expect(category?.enum).toContain("food");
+		expect(category?.description ?? "").toContain("อาหาร");
+
+		const added = await rpc(
+			app,
+			{
+				jsonrpc: "2.0",
+				id: 41,
+				method: "tools/call",
+				params: {
+					name: "add_expense",
+					arguments: { name: "ร้านอาหารตามสั่ง", category: "อาหาร", amount: 250, cycle: "one_time", startMonth: "2026-10" },
+				},
+			},
+			key,
+		);
+		const addedResult = added.json?.result as ToolResult;
+		expect(addedResult.isError).toBeUndefined();
+		expect((addedResult.structuredContent?.expense as { category: string }).category).toBe("food");
+
+		const flows = await rpc(
+			app,
+			{ jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "get_cash_flows", arguments: { month: "2026-10" } } },
+			key,
+		);
+		const payload = (flows.json?.result as ToolResult).structuredContent as {
+			items: Array<{ name: string; category?: string }>;
+			totals: { spending: number };
+			spendingByCategory: Array<{ category: string; spending: number; count: number; share: number }>;
+		};
+		expect(payload.items.find((item) => item.name === "ร้านอาหารตามสั่ง")?.category).toBe("food");
+		expect(payload.spendingByCategory.find((bucket) => bucket.category === "food")).toMatchObject({
+			spending: 250,
+			count: 1,
+			share: 1,
+		});
+		expect(payload.spendingByCategory.some((bucket) => bucket.category === "uncategorised")).toBe(true);
+		expect(payload.spendingByCategory.reduce((sum, bucket) => sum + bucket.spending, 0)).toBe(
+			payload.totals.spending,
+		);
+	});
+
 	it("stores the catalog image on a created expense", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);
@@ -419,7 +471,7 @@ describe("/mcp", () => {
 				method: "tools/call",
 				params: {
 					name: "add_expense",
-					arguments: { name: "Figma Professional", category: "subscription", amount: 450, cycle: "monthly" },
+					arguments: { name: "Figma Professional", category: "saas", amount: 450, cycle: "monthly" },
 				},
 			},
 			key,
@@ -466,7 +518,7 @@ describe("/mcp", () => {
 				method: "tools/call",
 				params: {
 					name: "add_expense",
-					arguments: { name: "Figma Professional", category: "subscription", amount: 450, imageUrl: sent },
+					arguments: { name: "Figma Professional", category: "saas", amount: 450, imageUrl: sent },
 				},
 			},
 			key,
@@ -682,7 +734,7 @@ describe("/mcp", () => {
 				jsonrpc: "2.0",
 				id: 21,
 				method: "tools/call",
-				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "entertainment", amount: 150 } },
 			},
 			limited.key,
 		);
@@ -727,7 +779,7 @@ describe("/mcp", () => {
 				jsonrpc: "2.0",
 				id: 41,
 				method: "tools/call",
-				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "entertainment", amount: 150 } },
 			},
 			created.key,
 		);
@@ -986,7 +1038,7 @@ describe("/mcp", () => {
 		await replay("add_expense", "expense", {
 			id: randomUUID(),
 			name: "Netflix",
-			category: "subscription",
+			category: "entertainment",
 			amount: 420,
 			cycle: "monthly",
 		});

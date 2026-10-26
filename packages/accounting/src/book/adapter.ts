@@ -1,3 +1,4 @@
+import { normalizeCategory } from "../categories";
 import { DEFAULT_BASELINE_MONTH } from "../ledger";
 import { daysInMonth, isCashAsset } from "../math";
 import { normalizeSnapshot } from "../normalize";
@@ -175,7 +176,8 @@ function bookExpenseToExpense(expense: BookExpense): Expense {
 		name: expense.name,
 		amount: expense.amount,
 		cycle: expense.cycle,
-		category: expense.category,
+		// Legacy free text and Thai labels read as their canonical key (#173).
+		category: normalizeCategory(expense.category),
 		nextRenewalDate: renewalDateOf(expense) ?? `${expense.startMonth}-${pad2(day)}`,
 		active: expense.active,
 		startMonth: expense.startMonth,
@@ -377,7 +379,8 @@ export function expenseToBookExpense(expense: Expense): BookExpense {
 		name: expense.name,
 		amount: expense.amount,
 		cycle: expense.cycle,
-		category: expense.category,
+		// Legacy free text and Thai labels read as their canonical key (#173).
+		category: normalizeCategory(expense.category),
 		startMonth: oneTime ? expense.nextRenewalDate.slice(0, 7) : (expense.startMonth ?? DEFAULT_BASELINE_MONTH),
 		active: expense.active,
 		...defined({

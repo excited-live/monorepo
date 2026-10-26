@@ -1334,13 +1334,46 @@
 							"moneyOut",
 							"spending"
 						]
+					},
+					"spendingByCategory": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"category": {
+									"type": "string",
+									"description": "An expense key, or \"uncategorised\" for spending without one."
+								},
+								"spending": {
+									"type": "number"
+								},
+								"count": {
+									"type": "integer",
+									"minimum": -9007199254740991,
+									"maximum": 9007199254740991,
+									"description": "Items in the bucket."
+								},
+								"share": {
+									"type": "number",
+									"description": "spending / totals.spending, 4 dp; 0 when nothing was spent."
+								}
+							},
+							"required": [
+								"category",
+								"spending",
+								"count",
+								"share"
+							]
+						},
+						"description": "Spending by expense category for the month, over the unfiltered feed. Always contains \"uncategorised\"; the buckets sum to totals.spending. Answer \"how much on X this month\" from here, never by grouping items."
 					}
 				},
 				"required": [
 					"yearMonth",
 					"entityId",
 					"items",
-					"totals"
+					"totals",
+					"spendingByCategory"
 				],
 				"description": "Cash-flow feed of one entity for one month, with totals over all items."
 			},
@@ -1403,6 +1436,10 @@
 					"spendingAmount": {
 						"type": "number",
 						"description": "The part of the amount that counts as spending."
+					},
+					"category": {
+						"description": "On an expense item, the canonical expense category (see `spendingByCategory`). On other items, the ledger flow class (revenue, salary, transfer, …).",
+						"type": "string"
 					},
 					"cashAssetId": {
 						"type": "string"
@@ -4209,8 +4246,26 @@
 										"minLength": 1
 									},
 									"category": {
+										"description": "Expense category. Accepts a key or a Thai/English label and stores the key. ai = ค่าสมาชิก AI (AI Subscriptions); capital_deploy = ลงทุนในธุรกิจ (Deploy Capital to Business); connectivity = อินเทอร์เน็ตและมือถือ (Internet & Mobile); dev_tool = เครื่องมือนักพัฒนาและ API (Developer Tools & APIs); entertainment = สมาชิกและค่าใช้จ่ายในชีวิต (Subscriptions & Living); family = ครอบครัวและค่าใช้จ่ายส่วนตัว (Family & Personal); food = อาหาร (Food & Dining); groceries = ของชำและของใช้ในบ้าน (Groceries & Household); healthcare = สุขภาพ (Healthcare & Wellness); housing = ที่อยู่อาศัยและค่าเช่า (Housing & Rent); infrastructure = โฮสติ้งและโครงสร้างพื้นฐาน (Hosting & Infrastructure); marketing = การตลาดและการขาย (Marketing & Sales); office = ออฟฟิศและพื้นที่ทำงาน (Office & Workspace); other = อื่น ๆ (Other); saas = SaaS และเครื่องมือทำงาน (SaaS & Productivity); transit = เดินทาง (Transit & Transport)",
 										"type": "string",
-										"minLength": 1
+										"enum": [
+											"ai",
+											"capital_deploy",
+											"connectivity",
+											"dev_tool",
+											"entertainment",
+											"family",
+											"food",
+											"groceries",
+											"healthcare",
+											"housing",
+											"infrastructure",
+											"marketing",
+											"office",
+											"other",
+											"saas",
+											"transit"
+										]
 									},
 									"amount": {
 										"type": "number",
@@ -4412,8 +4467,26 @@
 										"minLength": 1
 									},
 									"category": {
+										"description": "Expense category. Accepts a key or a Thai/English label and stores the key. ai = ค่าสมาชิก AI (AI Subscriptions); capital_deploy = ลงทุนในธุรกิจ (Deploy Capital to Business); connectivity = อินเทอร์เน็ตและมือถือ (Internet & Mobile); dev_tool = เครื่องมือนักพัฒนาและ API (Developer Tools & APIs); entertainment = สมาชิกและค่าใช้จ่ายในชีวิต (Subscriptions & Living); family = ครอบครัวและค่าใช้จ่ายส่วนตัว (Family & Personal); food = อาหาร (Food & Dining); groceries = ของชำและของใช้ในบ้าน (Groceries & Household); healthcare = สุขภาพ (Healthcare & Wellness); housing = ที่อยู่อาศัยและค่าเช่า (Housing & Rent); infrastructure = โฮสติ้งและโครงสร้างพื้นฐาน (Hosting & Infrastructure); marketing = การตลาดและการขาย (Marketing & Sales); office = ออฟฟิศและพื้นที่ทำงาน (Office & Workspace); other = อื่น ๆ (Other); saas = SaaS และเครื่องมือทำงาน (SaaS & Productivity); transit = เดินทาง (Transit & Transport)",
 										"type": "string",
-										"minLength": 1
+										"enum": [
+											"ai",
+											"capital_deploy",
+											"connectivity",
+											"dev_tool",
+											"entertainment",
+											"family",
+											"food",
+											"groceries",
+											"healthcare",
+											"housing",
+											"infrastructure",
+											"marketing",
+											"office",
+											"other",
+											"saas",
+											"transit"
+										]
 									},
 									"amount": {
 										"type": "number",

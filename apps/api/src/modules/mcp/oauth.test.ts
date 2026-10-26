@@ -344,7 +344,7 @@ describe("/mcp OAuth JWTs", () => {
 				jsonrpc: "2.0",
 				id: 3,
 				method: "tools/call",
-				params: { name: "add_expense", arguments: { name: "Spotify", category: "subscription", amount: 150 } },
+				params: { name: "add_expense", arguments: { name: "Spotify", category: "entertainment", amount: 150 } },
 			},
 			token,
 		)
@@ -504,7 +504,7 @@ describe("authorization-server flows", () => {
 				jsonrpc: "2.0",
 				id: 3,
 				method: "tools/call",
-				params: { name: "add_expense", arguments: { name: "Netflix", category: "subscription", amount: 420 } },
+				params: { name: "add_expense", arguments: { name: "Netflix", category: "entertainment", amount: 420 } },
 			},
 			tokens.access_token,
 		)

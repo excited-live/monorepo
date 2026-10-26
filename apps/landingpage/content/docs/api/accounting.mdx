@@ -509,7 +509,7 @@ Type: `object`
 | `entityId` | `string` | yes |  |
 | `asOf` | `string` | no | Client's current month or day. Default month for startMonth; otherwise the UTC month. |
 | `name` | `string` | yes |  |
-| `category` | `string` | yes |  |
+| `category` | `"ai"` \| `"capital_deploy"` \| `"connectivity"` \| `"dev_tool"` \| `"entertainment"` \| `"family"` \| `"food"` \| `"groceries"` \| `"healthcare"` \| `"housing"` \| `"infrastructure"` \| `"marketing"` \| `"office"` \| `"other"` \| `"saas"` \| `"transit"` | yes | Expense category. Accepts a key or a Thai/English label and stores the key. ai = ค่าสมาชิก AI (AI Subscriptions); capital_deploy = ลงทุนในธุรกิจ (Deploy Capital to Business); connectivity = อินเทอร์เน็ตและมือถือ (Internet & Mobile); dev_tool = เครื่องมือนักพัฒนาและ API (Developer Tools & APIs); entertainment = สมาชิกและค่าใช้จ่ายในชีวิต (Subscriptions & Living); family = ครอบครัวและค่าใช้จ่ายส่วนตัว (Family & Personal); food = อาหาร (Food & Dining); groceries = ของชำและของใช้ในบ้าน (Groceries & Household); healthcare = สุขภาพ (Healthcare & Wellness); housing = ที่อยู่อาศัยและค่าเช่า (Housing & Rent); infrastructure = โฮสติ้งและโครงสร้างพื้นฐาน (Hosting & Infrastructure); marketing = การตลาดและการขาย (Marketing & Sales); office = ออฟฟิศและพื้นที่ทำงาน (Office & Workspace); other = อื่น ๆ (Other); saas = SaaS และเครื่องมือทำงาน (SaaS & Productivity); transit = เดินทาง (Transit & Transport) |
 | `amount` | `number` | yes |  |
 | `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` | no |  |
 | `dayOfMonth` | `integer` | no |  |
@@ -580,7 +580,7 @@ Type: `object`
 | --- | --- | --- | --- |
 | `version` | `integer` | no | Stored version the caller last read; a mismatch returns 409. |
 | `name` | `string` | no |  |
-| `category` | `string` | no |  |
+| `category` | `"ai"` \| `"capital_deploy"` \| `"connectivity"` \| `"dev_tool"` \| `"entertainment"` \| `"family"` \| `"food"` \| `"groceries"` \| `"healthcare"` \| `"housing"` \| `"infrastructure"` \| `"marketing"` \| `"office"` \| `"other"` \| `"saas"` \| `"transit"` | no | Expense category. Accepts a key or a Thai/English label and stores the key. ai = ค่าสมาชิก AI (AI Subscriptions); capital_deploy = ลงทุนในธุรกิจ (Deploy Capital to Business); connectivity = อินเทอร์เน็ตและมือถือ (Internet & Mobile); dev_tool = เครื่องมือนักพัฒนาและ API (Developer Tools & APIs); entertainment = สมาชิกและค่าใช้จ่ายในชีวิต (Subscriptions & Living); family = ครอบครัวและค่าใช้จ่ายส่วนตัว (Family & Personal); food = อาหาร (Food & Dining); groceries = ของชำและของใช้ในบ้าน (Groceries & Household); healthcare = สุขภาพ (Healthcare & Wellness); housing = ที่อยู่อาศัยและค่าเช่า (Housing & Rent); infrastructure = โฮสติ้งและโครงสร้างพื้นฐาน (Hosting & Infrastructure); marketing = การตลาดและการขาย (Marketing & Sales); office = ออฟฟิศและพื้นที่ทำงาน (Office & Workspace); other = อื่น ๆ (Other); saas = SaaS และเครื่องมือทำงาน (SaaS & Productivity); transit = เดินทาง (Transit & Transport) |
 | `amount` | `number` | no |  |
 | `cycle` | `"weekly"` \| `"monthly"` \| `"quarterly"` \| `"semi-annual"` \| `"yearly"` \| `"one_time"` \| `null` | no |  |
 | `dayOfMonth` | `integer` \| `null` | no |  |
@@ -1284,6 +1284,11 @@ Cash-flow feed of one entity for one month, with totals over all items.
 | `totals.moneyIn` | `number` | yes | Cash in, from cash items only. |
 | `totals.moneyOut` | `number` | yes | Cash out, from cash items only. |
 | `totals.spending` | `number` | yes | Sum of spendingAmount over every item. |
+| `spendingByCategory` | `object`[] | yes | Spending by expense category for the month, over the unfiltered feed. Always contains "uncategorised"; the buckets sum to totals.spending. Answer "how much on X this month" from here, never by grouping items. |
+| `spendingByCategory[].category` | `string` | yes | An expense key, or "uncategorised" for spending without one. |
+| `spendingByCategory[].spending` | `number` | yes |  |
+| `spendingByCategory[].count` | `integer` | yes | Items in the bucket. |
+| `spendingByCategory[].share` | `number` | yes | spending / totals.spending, 4 dp; 0 when nothing was spent. |
 
 ### Projection
 
@@ -1456,6 +1461,7 @@ One dated money movement in the cash-flow feed.
 | `amount` | `number` | yes |  |
 | `isCash` | `boolean` | yes | False for card charges and depreciation: they move no cash. |
 | `spendingAmount` | `number` | yes | The part of the amount that counts as spending. |
+| `category` | `string` | no | On an expense item, the canonical expense category (see `spendingByCategory`). On other items, the ledger flow class (revenue, salary, transfer, …). |
 | `cashAssetId` | `string` | no |  |
 | `chargedToLiabilityId` | `string` | no | Revolving liability a card charge lands on. |
 | `interest` | `number` | no | Loan payments only. |

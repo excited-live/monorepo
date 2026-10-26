@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./categories";
 export * from "./math";
 export * from "./seed";
 export * from "./ledger";

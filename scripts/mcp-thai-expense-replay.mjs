@@ -25,7 +25,9 @@
  *                other (#174, Ada 15:43). Every entry carries `month` and a
  *                numeric `treasuryAfter`; `assetId` appears only on the
  *                zero-balance code. The reported treasuryAfter equals
- *                get_financial_summary's ending treasury for that month.
+ *                get_financial_summary's ending treasury for that month, and
+ *                `paidFrom` names the resolved wallet as
+ *                {assetId, name, isDefault} rather than being absent.
  *   AC5 monthly  a monthly expense still charges on its dayOfMonth
  *
  * Plus one supplement from #173's own AC:
@@ -37,6 +39,11 @@
  * Asia/Bangkok, so a 1 Nov 00:30 ICT write must land in November, not October.
  * That needs a clock override on the server; the replay proves only the
  * date round-trip on the day it runs.
+ *
+ * Deliberately not replayed: the walletless accounting refusal (#174) — a fresh
+ * signup always gets a ฿0 cash wallet, so the state `deleteAsset` leaves behind
+ * (an entity with no wallet at all) is out of reach from this transcript. That
+ * path belongs to #183's unit tests; the omission here is designed, not missed.
  *
  * Usage:
  *   node scripts/mcp-thai-expense-replay.mjs --env prelive --create-user
@@ -491,6 +498,27 @@ if (key) {
 			parts.push(`warnings[].code has no ${code} -> [${codes.join(", ")}]`)
 		}
 		if (warnings.length) parts.push(`warnings codes [${codes.join(", ")}]`)
+		// The wallet it booked against, as a shape not a name: "Personal Main
+		// Wallet" is an implementation detail, {assetId, name, isDefault} is the
+		// contract. null means a card liability funded it, which is not this write.
+		const paidFrom =
+			payload.paidFrom !== undefined ? payload.paidFrom : (payload.expense?.paidFrom ?? undefined)
+		if (paidFrom === null || typeof paidFrom !== "object" || Array.isArray(paidFrom)) {
+			ok = false
+			parts.push(`paidFrom ${JSON.stringify(paidFrom ?? null)} is not {assetId, name, isDefault}`)
+		} else {
+			const wrong = [
+				typeof paidFrom.assetId === "string" && paidFrom.assetId ? null : "assetId",
+				typeof paidFrom.name === "string" && paidFrom.name ? null : "name",
+				typeof paidFrom.isDefault === "boolean" ? null : "isDefault",
+			].filter(Boolean)
+			if (wrong.length) {
+				ok = false
+				parts.push(`paidFrom lacks ${wrong.join(", ")}`)
+			} else {
+				parts.push(`paidFrom ${paidFrom.name} (isDefault ${paidFrom.isDefault})`)
+			}
+		}
 		// Shape: every entry names its month and a numeric treasuryAfter, and only
 		// the zero-balance entry names the wallet it is about.
 		const shapeProblems = []

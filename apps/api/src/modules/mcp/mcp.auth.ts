@@ -110,20 +110,29 @@ export async function resolvePrincipal(c: Context<ApiEnv>): Promise<McpPrincipal
  * transports accept them. A fresh key was proven to answer 200 on prelive, so
  * the hint is accurate. "Scoped Keys" is the name of the minting surface in
  * both iam deployments (#91); it is not called "API keys" any more.
+ *
+ * It also spells out the resource-metadata URL for the host that was called
+ * (#126): telling a person on curl to "read the WWW-Authenticate header" is one
+ * hop less useful than the URL itself, and the URL is host-derived, so prelive
+ * and production each advertise their own.
+ *
+ * The body must stay identical for "no credentials" and "wrong key": nothing
+ * derived from the presented credential may reach it, or it becomes an oracle.
  */
 export function unauthorizedResponse(requestUrl: string): Response {
 	const origin = mcpAdvertisedOrigin(requestUrl);
+	const resourceMetadata = `${origin}/.well-known/oauth-protected-resource`;
 	return new Response(
 		JSON.stringify({
 			error: "unauthorized",
 			message: "This endpoint needs credentials.",
-			hint: "Send an API key as `Authorization: Bearer elk_…` or `x-api-key: elk_…` (mint one under Scoped Keys), or follow the OAuth resource_metadata URL from the WWW-Authenticate header.",
+			hint: `Send an API key as \`Authorization: Bearer elk_…\` or \`x-api-key: elk_…\` (mint one under Scoped Keys), or connect with browser sign-in by following ${resourceMetadata}.`,
 		}),
 		{
 			status: 401,
 			headers: {
 				"content-type": "application/json",
-				"www-authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`,
+				"www-authenticate": `Bearer resource_metadata="${resourceMetadata}"`,
 			},
 		},
 	);

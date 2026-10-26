@@ -134,6 +134,44 @@ describe("/mcp", () => {
 		expect(body.hint).toContain("x-api-key");
 	});
 
+	it("names both key transports in the 401 body, identical for no creds and a wrong key (#126)", async () => {
+		const app = configuredApp();
+		const post = (authorization?: string) =>
+			app.request("/mcp", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					accept: "application/json, text/event-stream",
+					...(authorization ? { Authorization: authorization } : {}),
+				},
+				body: JSON.stringify(initialize()),
+			});
+
+		const noCreds = await post();
+		const wrongKey = await post("Bearer elk_not-a-real-key");
+		expect(noCreds.status).toBe(401);
+		expect(wrongKey.status).toBe(401);
+
+		// Byte-equal: the body must not tell a caller whether the key existed.
+		const body = await noCreds.text();
+		expect(await wrongKey.text()).toBe(body);
+
+		const payload = JSON.parse(body) as { error: string; hint: string };
+		expect(payload.error).toBe("unauthorized");
+		expect(payload.hint).toContain("Authorization: Bearer elk_");
+		expect(payload.hint).toContain("x-api-key: elk_");
+		// The metadata URL is spelled out for the host that was called, not just
+		// pointed at through the WWW-Authenticate header.
+		expect(payload.hint).toContain("http://localhost/.well-known/oauth-protected-resource");
+
+		// The challenge is unchanged by the body, on both responses.
+		const challenge = 'Bearer resource_metadata="http://localhost/.well-known/oauth-protected-resource"';
+		expect(noCreds.headers.get("www-authenticate")).toBe(challenge);
+		expect(wrongKey.headers.get("www-authenticate")).toBe(challenge);
+		// Same header set for both: the body change adds no header.
+		expect([...wrongKey.headers.keys()].sort()).toEqual([...noCreds.headers.keys()].sort());
+	});
+
 	it("initializes, lists tools and calls get_onboarding_status with a minted key", async () => {
 		const app = configuredApp();
 		const { token } = await signIn(app);
@@ -141,6 +179,7 @@ describe("/mcp", () => {
 
 		const init = await rpc(app, initialize(), key);
 		expect(init.status).toBe(200);
+		expect(init.headers.get("www-authenticate")).toBeNull();
 		const initResult = init.json?.result as { serverInfo: { name: string }; instructions?: string };
 		expect(initResult.serverInfo.name).toBe("excited-live");
 		expect(initResult.instructions).toContain("excited.live");

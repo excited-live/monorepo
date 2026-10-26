@@ -6,6 +6,11 @@ const docs = defineCollection({
 	schema: z.object({
 		title: z.string(),
 		description: z.string().optional(),
+		/** Thai H1. The docs shell has one tree, so the sidebar stays the English
+		 * title; this only swaps the page heading a reader lands on. */
+		titleTh: z.string().optional(),
+		/** Thai standfirst under the H1, same rule as `titleTh`. */
+		descriptionTh: z.string().optional(),
 		icon: z.string().optional(),
 	}),
 });

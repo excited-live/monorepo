@@ -5,14 +5,18 @@ import { neutralTheme } from '@astryxdesign/theme-neutral/built';
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import '@astryxdesign/theme-neutral/theme.css';
+import { addressForLang } from '@/lib/lang';
 
 interface LangSelectProps {
 	variant?: 'light' | 'dark';
 }
 
+// Text-only labels (#197 R3: no flags, no country names). Kept for the Astryx
+// variant of the switch; the shipped landing uses the native menu in
+// index.astro, and both write the same `?lang=` address.
 const OPTIONS = [
-	{ value: 'en', label: '🇬🇧 English' },
-	{ value: 'th', label: '🇹🇭 ไทย' },
+	{ value: 'en', label: 'English' },
+	{ value: 'th', label: 'ไทย' },
 ];
 
 function readLang(): 'en' | 'th' {
@@ -42,10 +46,16 @@ export default function LangSelect({ variant = 'light' }: LangSelectProps) {
 		window.gtag?.('event', 'lang_toggle', { lang: nextLang });
 		if (typeof document !== 'undefined') {
 			document.documentElement.dataset.lang = nextLang;
+			document.documentElement.lang = nextLang;
 			try {
 				localStorage.setItem('exl-lang', nextLang);
 			} catch {
 				/* storage unavailable */
+			}
+			try {
+				history.replaceState(history.state, '', addressForLang(window.location.href, nextLang));
+			} catch {
+				/* sandboxed frame */
 			}
 		}
 	};

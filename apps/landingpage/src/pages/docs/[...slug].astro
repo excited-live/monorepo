@@ -19,6 +19,13 @@ const { Content, headings } = await render(page);
 const slugs = typeof Astro.params.slug === 'string' ? Astro.params.slug.split('/') : [];
 const docsPage = source.getPage(slugs)!;
 const image = getPageImageUrl(docsPage);
+// #197 R3: `hreflang` may only be claimed by a page that really carries both
+// languages. A page that declares a Thai title (`titleTh`, the field the docs
+// translation uses) has a Thai body too; anything else is English and stays
+// silent, so no page advertises a translation it does not have. Read
+// defensively because the field lands with that translation, not before it.
+const hasThai = Boolean((page.data as { titleTh?: string }).titleTh);
+const bilingual = hasThai;
 // Brand suffix, unless the title already carries the name (docs index).
 const pageTitle = page.data.title.includes('excited.live')
 	? page.data.title
@@ -31,7 +38,7 @@ const toc: TOCItemType[] = headings.map((heading) => ({
 }));
 ---
 
-<Layout title={pageTitle} description={page.data.description} ogImage={image}>
+<Layout title={pageTitle} description={page.data.description} ogImage={image} bilingual={bilingual}>
 	<Docs
 		tree={source.getPageTree()}
 		pathname={Astro.url.pathname}
@@ -39,8 +46,26 @@ const toc: TOCItemType[] = headings.map((heading) => ({
 		page={{ toc }}
 		client:load
 	>
-		<h1 class="font-semibold text-3xl">{page.data.title}</h1>
-		<p class="text-lg text-fd-muted-foreground mb-8">{page.data.description}</p>
+		<h1 class="font-semibold text-3xl">
+			{page.data.titleTh ? (
+				<>
+					<span data-lang-en>{page.data.title}</span>
+					<span data-lang-th>{page.data.titleTh}</span>
+				</>
+			) : (
+				page.data.title
+			)}
+		</h1>
+		<p class="text-lg text-fd-muted-foreground mb-8">
+			{page.data.descriptionTh && page.data.description ? (
+				<>
+					<span data-lang-en>{page.data.description}</span>
+					<span data-lang-th>{page.data.descriptionTh}</span>
+				</>
+			) : (
+				page.data.description
+			)}
+		</p>
 		<div class="prose flex-1">
 			<Content components={{ ...defaultMdxComponents }} />
 		</div>

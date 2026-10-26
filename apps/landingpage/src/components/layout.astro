@@ -1,5 +1,6 @@
 ---
 import { ClientRouter } from 'astro:transitions';
+import { alternateLinks } from '@/lib/lang';
 import '../styles/global.css';
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
 	canonical?: string | false;
 	/** Ask crawlers not to index this page (404 pages). */
 	noindex?: boolean;
+	/** Emit `hreflang` for the EN/TH pair — only for pages that really carry both. */
+	bilingual?: boolean;
 }
 
 const {
@@ -25,6 +28,7 @@ const {
 	schema,
 	canonical: canonicalProp,
 	noindex = false,
+	bilingual = false,
 } = Astro.props;
 
 const site = Astro.site ?? new URL('https://excited.live');
@@ -32,6 +36,12 @@ const canonical =
 	canonicalProp === false
 		? null
 		: new URL(canonicalProp ?? Astro.url.pathname, site).href;
+const alternates = bilingual
+	? alternateLinks(
+			canonicalProp === false ? Astro.url.pathname : (canonicalProp ?? Astro.url.pathname),
+			site,
+		)
+	: [];
 const ogImageUrl = new URL(ogImage, site).href;
 
 const orgId = new URL('/#org', site).href;
@@ -70,7 +80,19 @@ const jsonLd = {
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
+		{/*
+			One static document per page, so there is one canonical: the clean URL.
+			`?lang=th` is a rendering of that same document, advertised as the `th`
+			alternate below. A Thai self-canonical would need a second built page
+			(e.g. /th/...); a client-side rewrite of this tag is ignored by crawlers
+			that do not render JS, so it would only make the signals disagree.
+		*/}
 		{canonical && <link rel="canonical" href={canonical} />}
+		{
+			alternates.map((alt) => (
+				<link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
+			))
+		}
 		{noindex && <meta name="robots" content="noindex" />}
 		<meta property="og:type" content={ogType} />
 		<meta property="og:site_name" content="excited.live" />
@@ -118,6 +140,10 @@ const jsonLd = {
 					window.gtag('event', 'page_view', {
 						page_location: location.href,
 						page_title: document.title,
+						// #197: the launch metric is the Thai /docs/mcp/ → connected
+						// rate against the English one, and until now no event said
+						// which language the session was in.
+						lang: document.documentElement.getAttribute('data-lang') ?? 'en',
 					});
 				};
 				const loadGa = () => {
@@ -144,13 +170,99 @@ const jsonLd = {
 		<script is:inline>
 			// Restore language before first paint (EN first per repo rule).
 			(() => {
-				try {
-					const saved = localStorage.getItem('exl-lang');
-					document.documentElement.dataset.lang =
-						saved === 'th' || saved === 'en' ? saved : 'en';
-				} catch {
-					document.documentElement.dataset.lang = 'en';
-				}
+				// ClientRouter re-runs head scripts after a swap, but the document is
+				// the same, so one set of listeners is enough and must not accumulate.
+				if (window.__exlLangBooted) return;
+				window.__exlLangBooted = true;
+				const STORAGE_KEY = 'exl-lang';
+				const langFrom = (search) => {
+					const asked = new URLSearchParams(search || '').get('lang');
+					return asked === 'th' || asked === 'en' ? asked : null;
+				};
+				const read = () => {
+					try {
+						const saved = localStorage.getItem(STORAGE_KEY);
+						return saved === 'th' || saved === 'en' ? saved : 'en';
+					} catch {
+						return 'en';
+					}
+				};
+				const save = (lang) => {
+					try {
+						localStorage.setItem(STORAGE_KEY, lang);
+					} catch {
+						/* storage unavailable — the query still wins this page */
+					}
+				};
+				// #197 R1: the choice is written into the address — `?lang=th` for
+				// Thai, no `lang` param for English — with replaceState so it never
+				// adds a history entry. Pure string work so it stays cheap.
+				const addressFor = (lang) => {
+					const url = new URL(location.href);
+					if (lang === 'th') url.searchParams.set('lang', 'th');
+					else url.searchParams.delete('lang');
+					return url.pathname + url.search + url.hash;
+				};
+				const writeAddress = (lang) => {
+					if (location.protocol === 'file:') return;
+					const next = addressFor(lang);
+					const now = location.pathname + location.search + location.hash;
+					if (next === now) return;
+					try {
+						history.replaceState(history.state, '', next);
+					} catch {
+						/* sandboxed iframe — the language still applies */
+					}
+				};
+				// The switches on both surfaces call this after they set the state.
+				window.__exlWriteLangAddress = writeAddress;
+				const isBilingual = (pathname) =>
+					pathname === '/' || pathname === '/docs' || pathname.startsWith('/docs/');
+				// #197 R1: `?lang=` is the address of the language, so it beats the
+				// saved choice — a shared Thai link must open in Thai. Pages are
+				// static, so this script is the only place a query can take effect,
+				// and the first painted frame is already in the requested language.
+				const asked = langFrom(location.search);
+				if (asked) save(asked);
+				const apply = (doc, lang) => {
+					doc.documentElement.dataset.lang = lang;
+					doc.documentElement.lang = lang;
+				};
+				apply(document, asked || read());
+				// A Thai visitor who lands on the clean URL gets the address of the
+				// language they are actually reading, so copy/share is reliable.
+				writeAddress(asked || read());
+
+				// ClientRouter swaps in the next page's SSR <html data-lang="en">, so a
+				// visitor who chose Thai was reset to EN on every navigation. Carry the
+				// choice into the incoming document before the swap, not after it.
+				document.addEventListener('astro:before-swap', (event) => {
+					const to = event.to instanceof URL ? event.to : new URL(String(event.to), location.href);
+					const next = langFrom(to.search) || read();
+					if (event.newDocument) apply(event.newDocument, next);
+				});
+				// After a swap (and on back/forward) re-state the address for the page
+				// that is now on screen.
+				document.addEventListener('astro:page-load', () => writeAddress(read()));
+				// Client-side links are built from the href in the markup, which has no
+				// query. Rewrite the destination in the capture phase, before
+				// ClientRouter's own click handler reads it, so Thai survives navigation.
+				document.addEventListener(
+					'click',
+					(event) => {
+						if (event.defaultPrevented || event.button !== 0) return;
+						if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+						const target = event.target instanceof Element ? event.target.closest('a[href]') : null;
+						if (!target || target.target === '_blank' || target.hasAttribute('download')) return;
+						const url = new URL(target.href, location.href);
+						if (url.origin !== location.origin || !isBilingual(url.pathname)) return;
+						const lang = read();
+						if (lang === 'th') url.searchParams.set('lang', 'th');
+						else url.searchParams.delete('lang');
+						target.href = url.pathname + url.search + url.hash;
+					},
+					true,
+				);
 			})();
 		</script>
 		<ClientRouter />

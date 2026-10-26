@@ -65,6 +65,15 @@ export interface Expense {
 	assetId?: string;
 	/** book: income this is a cost of earning. */
 	incomeId?: string;
+	/**
+	 * book: display-only extras the engine never reads, passed through verbatim.
+	 * `renewalDate` is the recurring entry's original renewal day (it overrides
+	 * the derived `nextRenewalDate`); week-one check-ins store `checkin`
+	 * (`planned | off | way_off`), `amountSource` (`typed | guess`) and, when an
+	 * exact amount was typed, `checkinAmount`. Never drop unknown keys: they are
+	 * the only record of what the row means to the surfaces that wrote it.
+	 */
+	details?: Record<string, unknown>;
 }
 export type RecurringSubscription = Expense;
 

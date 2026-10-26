@@ -296,9 +296,12 @@ ties keep book order): `careerTitle = employment.title`,
 `stripe | bank_transfer | cash | freelance` → that; else `"other"`.
 
 **Expenses → `Expense` (`subscriptions`)**: `cycle`, `category`, `startMonth`,
-`endMonth`, `billingDay = dayOfMonth`, `nextRenewalDate = startMonth + "-" +
+`endMonth`, `billingDay = dayOfMonth`, `nextRenewalDate = details.renewalDate`
+for a recurring expense entered with one, else `startMonth + "-" +
 dd(dayOfMonth ?? 1)` (day clamped to the month length), the four link ids,
-`active`, `notes`, `imageUrl`.
+`active`, `notes`, `imageUrl`, and `details` passed through verbatim — including
+`renewalDate`, so a read → write keeps every key (a week-one check-in's
+`details.checkin`, `details.checkinAmount` and `details.amountSource` included).
 
 **Liabilities → `Liability`**: `amount`, `cycle`, `dayOfMonth`, `startMonth`,
 `endMonth`, `category`, `kind`, `paidFromAssetId`, `loan`, `revolving`,
@@ -336,6 +339,9 @@ still edits engine-shaped records): `accountToBookEntity`, `assetToBookAsset`,
   `dayOfMonth = day of nextRenewalDate`; recurring →
   `startMonth ?? DEFAULT_BASELINE_MONTH`,
   `dayOfMonth = billingDay ?? day of nextRenewalDate (when it has one)`.
+  `details` is **merged, not replaced**: the record's own keys are kept and, for
+  a recurring expense with a dated renewal, `renewalDate` is set on top. An
+  expense with no detail keys gets no `details` field at all.
 - Liability: `kind ?? "other"`, `cycle ?? "monthly"`, `startMonth ?? DEFAULT_BASELINE_MONTH`.
 - Transfer: `fromAssetId ??` the from-entity's default cash asset (`isDefault`,
   else the first cash asset); `toLiabilityId` if set, else

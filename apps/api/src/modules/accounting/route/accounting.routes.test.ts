@@ -1,5 +1,6 @@
 import { testClient } from "hono/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { expenseToBookExpense } from "@excited-live/accounting";
 import { createTestDriver } from "../../../db/testing";
 import type { SqlDriver } from "../../../db/types";
 import { createSqlAccountingRepository } from "../repository/sql-accounting.repository";
@@ -157,6 +158,92 @@ describe("expenses", () => {
 
 		const deleted = await client.expenses[":id"].$delete({ param: { id: hosting.id } });
 		expect(await deleted.json()).toEqual({ ok: true });
+	});
+
+	it("round-trips a check-in's details through create, read and a full-record edit", async () => {
+		const me = await personalId();
+
+		// One row per check-in day: a one-time expense dated that day (#102).
+		const created = await client.expenses.$post({
+			json: {
+				entityId: me,
+				name: "Food and travel - check-in",
+				category: "food",
+				amount: 600,
+				cycle: "one_time",
+				startMonth: "2026-10",
+				dayOfMonth: 24,
+				details: { checkin: "off", checkinAmount: 600 },
+			},
+		});
+		expect(created.status).toBe(201);
+		const stored = await created.json();
+		expect(stored.details).toEqual({ checkin: "off", checkinAmount: 600 });
+
+		const read = await (await client.expenses[":id"].$get({ param: { id: stored.id } })).json();
+		expect(read.details).toEqual({ checkin: "off", checkinAmount: 600 });
+
+		// An edit used to send back only `details: { renewalDate }` and erase the
+		// check-in. The adapter now merges, so the write carries both keys.
+		const editBody = expenseToBookExpense({
+			id: read.id,
+			entityId: read.entityId,
+			name: read.name,
+			amount: read.amount,
+			cycle: read.cycle,
+			category: read.category,
+			nextRenewalDate: `${read.startMonth}-24`,
+			active: read.active,
+			startMonth: read.startMonth,
+			details: read.details,
+		});
+		const patched = await client.expenses[":id"].$patch({
+			param: { id: stored.id },
+			json: { ...editBody, version: stored.version, notes: "edited" },
+		});
+		expect(patched.status).toBe(200);
+
+		const after = await (await client.expenses[":id"].$get({ param: { id: stored.id } })).json();
+		expect(after.details).toEqual({ checkin: "off", checkinAmount: 600 });
+		expect(after.notes).toBe("edited");
+	});
+
+	it("keeps a check-in on a recurring row when the adapter adds renewalDate", async () => {
+		const me = await personalId();
+
+		const created = await client.expenses.$post({
+			json: {
+				entityId: me,
+				name: "Internet",
+				category: "utilities",
+				amount: 700,
+				cycle: "monthly",
+				startMonth: "2026-10",
+				dayOfMonth: 12,
+				details: { checkin: "planned" },
+			},
+		});
+		const stored = await created.json();
+
+		const read = await (await client.expenses[":id"].$get({ param: { id: stored.id } })).json();
+		const body = expenseToBookExpense({
+			id: read.id,
+			entityId: read.entityId,
+			name: read.name,
+			amount: 750,
+			cycle: read.cycle,
+			category: read.category,
+			nextRenewalDate: "2026-10-12",
+			active: read.active,
+			startMonth: read.startMonth,
+			details: read.details,
+		});
+
+		await client.expenses[":id"].$patch({ param: { id: stored.id }, json: { ...body, version: stored.version } });
+
+		const after = await (await client.expenses[":id"].$get({ param: { id: stored.id } })).json();
+		expect(after.details).toEqual({ checkin: "planned", renewalDate: "2026-10-12" });
+		expect(after.amount).toBe(750);
 	});
 });
 

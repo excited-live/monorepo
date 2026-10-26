@@ -19,6 +19,7 @@ import { DB_FILE_ENV, resetDbCache } from "../../db";
 import { getTokensAuth, resetTokensAuthCache } from "../../lib/auth";
 import { productDate, productMonth } from "../../lib/product-time";
 import type { ApiEnv } from "../../lib/env";
+import { rateLimitedResponse } from "./mcp.auth";
 
 /**
  * /mcp round-trips. The transport is stateless and JSON-only, so each POST is
@@ -274,12 +275,19 @@ describe("/mcp", () => {
 			error: string;
 			code: string;
 			hint: string;
+			message: string;
 			retryAfter: number;
 			rateLimit: { limit: number; remaining: number; reset: number };
 		};
 		expect(body.error).toBe("rate_limited");
 		expect(body.code).toBe("RATE_LIMITED");
 		expect(body.retryAfter).toBe(retryAfter);
+		// #191: llms.txt and mcp.mdx promise the sentence names the reset
+		// instant in UTC. Parse it out and prove it is the same second the
+		// header clock carries, so the two can never disagree.
+		expect(body.message).toMatch(/resets at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/);
+		const namedInstant = body.message.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)?.[0];
+		expect(namedInstant).toBe(new Date(body.rateLimit.reset * 1000).toISOString());
 		// The body must say "wait", not "your key is wrong": this is the whole
 		// distinction an unattended agent needs.
 		expect(body.hint).toContain("do not rotate");
@@ -289,6 +297,19 @@ describe("/mcp", () => {
 			remaining: 0,
 			reset: Number(limited.headers.get("x-ratelimit-reset")),
 		});
+	});
+
+	it("claims no reset instant on a lifetime-quota 429 (#191)", async () => {
+		// `USAGE_EXCEEDED` has no `tryAgainIn`, so `principal.ts` hands the
+		// builder no retry. Rendering a time such a key never gets is exactly
+		// the false promise #191 exists to remove, so the bare sentence stays.
+		const limited = rateLimitedResponse({ limit: 200, remaining: 0, reset: Math.floor(Date.now() / 1000) });
+		expect(limited.status).toBe(429);
+		expect(limited.headers.get("retry-after")).toBeNull();
+		const body = (await limited.json()) as { message: string; retryAfter: number | null };
+		expect(body.message).toBe("This API key is over its request budget.");
+		expect(body.message).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+		expect(body.retryAfter).toBeNull();
 	});
 
 	it("initializes, lists tools and calls get_onboarding_status with a minted key", async () => {

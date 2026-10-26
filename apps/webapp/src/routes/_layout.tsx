@@ -3,12 +3,17 @@ import { Suspense } from "react"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeaders } from "@tanstack/react-start/server"
 import { mastercardTheme } from "@excited-live/design-system"
+import { Button } from "@astryxdesign/core/Button"
 import { Card } from "@astryxdesign/core/Card"
+import { Heading } from "@astryxdesign/core/Heading"
 import { Stack } from "@astryxdesign/core/Stack"
+import { Text } from "@astryxdesign/core/Text"
 import { Theme } from "@astryxdesign/core/theme"
+import { REQUEST_TIMEOUT_MS, isTimeoutError, startDeadline } from "@excited-live/http"
 import { Topbar } from "../components/Topbar"
 import { betterAuthConfigured } from "../lib/auth-config"
 import { getAuth } from "../lib/auth"
+import { useLocale } from "../lib/locale-context"
 
 /** Auth state for the topbar — resolves server-side; reports configured:false without BETTER_AUTH_SECRET. */
 const getAuthState = createServerFn({ method: "GET" }).handler(async () => {
@@ -22,12 +27,50 @@ const getAuthState = createServerFn({ method: "GET" }).handler(async () => {
 })
 
 export const Route = createFileRoute("/_layout")({
-	loader: async ({ location }) => ({
-		auth: await getAuthState(),
-		returnPathname: location.pathname + location.searchStr,
-	}),
+	loader: async ({ location, abortController }) => {
+		// The first authenticated fetch after sign-in: a client navigation runs
+		// this loader in the browser, so the session RPC is raced against the
+		// same 6 s budget as the sign-in POST. A stalled auth host surfaces as
+		// the retry card below instead of holding the sign-in spinner forever.
+		const deadline = startDeadline({ signal: abortController.signal }, REQUEST_TIMEOUT_MS)
+		try {
+			return {
+				auth: await getAuthState({ signal: deadline.signal }),
+				returnPathname: location.pathname + location.searchStr,
+			}
+		} finally {
+			deadline.cleanup()
+		}
+	},
+	errorComponent: SessionLoadError,
 	component: DashboardLayout,
 })
+
+/**
+ * Reached when the session bootstrap itself fails or expires (or a loader
+ * cancels the navigation). The retry is a full reload: it re-runs the server
+ * gate with a fresh connection and cookie state.
+ */
+function SessionLoadError({ error }: { error: unknown }) {
+	const { t } = useLocale()
+	const message = t(isTimeoutError(error) ? "auth.error.timeout" : "auth.error.generic")
+
+	return (
+		<Theme theme={mastercardTheme} mode="light">
+			<Stack className="signin-page">
+				<Card className="signin-card">
+					<Stack gap={3}>
+						<Heading level={2}>{t("auth.sessionError.title")}</Heading>
+						<Text color="secondary" role="alert">
+							{message}
+						</Text>
+						<Button label={t("action.retry")} onClick={() => window.location.reload()} />
+					</Stack>
+				</Card>
+			</Stack>
+		</Theme>
+	)
+}
 
 /**
  * Signed-in chrome: topbar plus the routed page.

@@ -17,11 +17,13 @@ import {
 	MIN_PASSWORD_LENGTH,
 	type AuthMode,
 	type SignUpErrorKind,
+	authFailureMessageKey,
 	parseAuthMode,
 	postAuthDestination,
 	signUpErrorKind,
 } from "../lib/auth-flow"
 import { useLocale } from "../lib/locale-context"
+import { AuthErrorNotice } from "../components/AuthErrorNotice"
 
 /**
  * Sign-in / create-account page (Better Auth). Replaces the hosted AuthKit
@@ -129,8 +131,8 @@ function SignInPage() {
 				return
 			}
 			await finishAuth()
-		} catch {
-			setError(t("auth.error.generic"))
+		} catch (error) {
+			setError(t(authFailureMessageKey(error)))
 		} finally {
 			setBusy(false)
 		}
@@ -161,8 +163,8 @@ function SignInPage() {
 			}
 			// Better Auth signs the new user in (session cookie) before we resume.
 			await finishAuth()
-		} catch {
-			setError(t("auth.error.generic"))
+		} catch (error) {
+			setError(t(authFailureMessageKey(error)))
 		} finally {
 			setBusy(false)
 		}
@@ -177,8 +179,8 @@ function SignInPage() {
 				returnPathname,
 			)
 			await authClient.signIn.social({ provider: "google", callbackURL: destination })
-		} catch {
-			setError(t("auth.error.generic"))
+		} catch (error) {
+			setError(t(authFailureMessageKey(error)))
 			setBusy(false)
 		}
 	}
@@ -309,11 +311,7 @@ function SignInPage() {
 								.
 							</Text>
 						) : null}
-						{error ? (
-							<Text size="sm" className="signin-error" role="alert">
-								{error}
-							</Text>
-						) : null}
+						{error ? <AuthErrorNotice message={error} /> : null}
 						<Stack gap={2}>
 							<Button
 								type="submit"

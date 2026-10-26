@@ -21,10 +21,12 @@
  * TanStack route handlers and the Pages Function).
  */
 
+import { REQUEST_TIMEOUT_MS, startDeadline } from "@excited-live/http"
+
 export type ApiMode = "mock" | "live"
 
-/** Per-attempt deadline for GET/HEAD. */
-export const READ_TIMEOUT_MS = 6_000
+/** Per-attempt deadline for GET/HEAD (one budget, shared with the auth client). */
+export const READ_TIMEOUT_MS = REQUEST_TIMEOUT_MS
 /** Backoff before retry N (index 0 = first retry), before jitter. */
 export const RETRY_DELAYS_MS: readonly number[] = [150, 400]
 /** Extra random delay (0..JITTER_MS) so dead clients do not retry in lockstep. */
@@ -66,58 +68,10 @@ export function retryDelayMs(retryIndex: number): number {
 	return base + Math.floor(Math.random() * JITTER_MS)
 }
 
-interface Deadline {
-	/** Signal handed to `fetch`; aborts on timeout or when the caller aborts. */
-	signal?: AbortSignal
-	/** True when this attempt was aborted by the deadline, not by the caller. */
-	timedOut: () => boolean
-	cleanup: () => void
-}
-
-const NO_DEADLINE: Deadline = {
-	signal: undefined,
-	timedOut: () => false,
-	cleanup: () => {},
-}
-
 /**
- * Start a fresh abort controller per attempt. `timeoutMs === null` means the
- * method is not repeatable and gets no deadline of its own; a caller-supplied
- * signal still aborts it.
+ * A fetch that never answers is aborted by the shared deadline helper; the
+ * per-attempt policy (which methods repeat, how often) stays here.
  */
-function startDeadline(init: RequestInit | undefined, timeoutMs: number | null): Deadline {
-	const caller = init?.signal ?? undefined
-	if (timeoutMs === null && caller === undefined) return NO_DEADLINE
-
-	const controller = new AbortController()
-	let timedOut = false
-	const onCallerAbort = () => controller.abort(caller?.reason)
-
-	const timer =
-		timeoutMs === null
-			? undefined
-			: setTimeout(() => {
-					timedOut = true
-					const error = new Error(`Request timed out after ${timeoutMs} ms`)
-					error.name = "TimeoutError"
-					controller.abort(error)
-				}, timeoutMs)
-
-	if (caller) {
-		if (caller.aborted) controller.abort(caller.reason)
-		else caller.addEventListener("abort", onCallerAbort, { once: true })
-	}
-
-	return {
-		signal: controller.signal,
-		timedOut: () => timedOut,
-		cleanup: () => {
-			if (timer !== undefined) clearTimeout(timer)
-			if (caller) caller.removeEventListener("abort", onCallerAbort)
-		},
-	}
-}
-
 function abortReason(signal: AbortSignal | undefined): Error {
 	const reason: unknown = signal?.reason
 	return reason instanceof Error

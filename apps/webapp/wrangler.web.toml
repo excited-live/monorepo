@@ -57,10 +57,11 @@ BACKEND_API_URL = "https://api.excited.live"
 # is enforced on the cookies mount even though apps/webapp/src/lib/auth.ts
 # passes no trustedOrigins option. It records the origins that must keep
 # working: the canonical issuer origin, the pages.dev origin that stays alive,
-# and the public site/API. app.excited.live is absent on purpose: it
-# 308-redirects to the issuer, so trusting it would be a real origin-check
-# change, not a harmless tidy-up.
-BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live"
+# the public site/API, and iam.excited.live (the no-BFF SPA, apps/iam, calls
+# this auth server directly for sign-in; #89). app.excited.live is absent on
+# purpose: it 308-redirects to the issuer, so trusting it would be a real
+# origin-check change, not a harmless tidy-up.
+BETTER_AUTH_TRUSTED_ORIGINS = "https://auth.excited.live,https://excited-live-web.pages.dev,https://excited.live,https://api.excited.live,https://iam.excited.live"
 
 # The SAME database as apps/api (top level, production): user/session/account/
 # jwks/oauth* rows are shared between the webapp (cookies mount + authorization

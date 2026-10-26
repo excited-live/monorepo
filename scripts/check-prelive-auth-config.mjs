@@ -31,6 +31,8 @@ const API_CONFIG = "apps/api/wrangler.toml"
 const PROJECT_NAME = "excited-live-prelive"
 const API_ORIGIN = "https://excited-live-api-prelive.preamza02.workers.dev"
 const WEBAPP_ORIGIN = "https://prelive.excited.live"
+/** Prelive iam (#88). It calls the prelive API and auth server cross-origin. */
+const IAM_ORIGIN = "https://excited-live-iam-prelive.pages.dev"
 const DATABASE_ID = "f7bd3f26-5296-4832-96a3-1cbb01046112"
 
 /** Text of one TOML section/table header, up to the next header. */
@@ -79,6 +81,8 @@ const pagesApiOrigin = stringValue(pagesVars, "EXCITED_API_URL")
 const pagesBackendOrigin = stringValue(pagesVars, "BACKEND_API_URL")
 const pagesDatabaseId = stringValue(pagesDb, "database_id")
 const pagesDatabaseName = stringValue(pagesDb, "database_name")
+const pagesTrusted = stringValue(pagesVars, "BETTER_AUTH_TRUSTED_ORIGINS")
+const pagesAuthCors = stringValue(pagesVars, "AUTH_CORS_ORIGINS")
 const compatibilityDate = stringValue(pagesToml, "compatibility_date")
 const compatibilityFlags = stringArray(pagesToml, "compatibility_flags")
 
@@ -94,6 +98,31 @@ expect(`${PAGES_CONFIG} [vars] BACKEND_API_URL`, pagesBackendOrigin, apiOrigin)
 expect(`${PAGES_CONFIG} D1 binding`, stringValue(pagesDb, "binding"), "DB")
 expect(`${PAGES_CONFIG} D1 database_name`, pagesDatabaseName, "excited-live-api-prelive")
 expect(`${PAGES_CONFIG} D1 database_id must equal the API's (shared sessions/JWKS)`, pagesDatabaseId, apiDatabaseId)
+// iam is a no-BFF SPA on its own origin: it calls the API and the auth server
+// directly with credentials, so both prelive allowlists must name it (#89).
+const apiPreliveTrusted = stringValue(apiPrelive, "BETTER_AUTH_TRUSTED_ORIGINS")
+if (!apiPreliveTrusted) {
+	problems.push("apps/api [env.prelive] BETTER_AUTH_TRUSTED_ORIGINS is missing")
+} else {
+	const trusted = apiPreliveTrusted.split(",").map((value) => value.trim())
+	for (const origin of [WEBAPP_ORIGIN, IAM_ORIGIN]) {
+		if (!trusted.includes(origin)) {
+			problems.push(`apps/api [env.prelive] BETTER_AUTH_TRUSTED_ORIGINS is missing ${origin}`)
+		}
+	}
+}
+for (const [label, value] of [
+	[`${PAGES_CONFIG} [vars] BETTER_AUTH_TRUSTED_ORIGINS`, pagesTrusted],
+	[`${PAGES_CONFIG} [vars] AUTH_CORS_ORIGINS`, pagesAuthCors],
+]) {
+	if (!value) {
+		problems.push(`${label} is missing`)
+		continue
+	}
+	if (!value.split(",").map((entry) => entry.trim()).includes(IAM_ORIGIN)) {
+		problems.push(`${label} is missing ${IAM_ORIGIN}`)
+	}
+}
 if (!compatibilityDate) problems.push(`${PAGES_CONFIG} compatibility_date is missing`)
 if (!compatibilityFlags?.includes("nodejs_compat")) problems.push(`${PAGES_CONFIG} compatibility_flags must include nodejs_compat`)
 
@@ -117,6 +146,8 @@ if (process.argv.includes("--json")) {
 					BETTER_AUTH_URL: { type: "plain_text", value: pagesOrigin },
 					EXCITED_API_URL: { type: "plain_text", value: pagesApiOrigin },
 					BACKEND_API_URL: { type: "plain_text", value: pagesBackendOrigin },
+					...(pagesTrusted ? { BETTER_AUTH_TRUSTED_ORIGINS: { type: "plain_text", value: pagesTrusted } } : {}),
+					...(pagesAuthCors ? { AUTH_CORS_ORIGINS: { type: "plain_text", value: pagesAuthCors } } : {}),
 				},
 				compatibility_date: compatibilityDate,
 				compatibility_flags: compatibilityFlags,

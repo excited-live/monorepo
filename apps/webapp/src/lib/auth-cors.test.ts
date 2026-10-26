@@ -21,6 +21,13 @@ describe("parseAuthCorsOrigins", () => {
 			"http://localhost:5175",
 		])
 	})
+
+	it("keeps the prelive iam origin when it is the configured value (#89)", () => {
+		const prelive = "https://excited-live-iam-prelive.pages.dev,http://localhost:5175,http://127.0.0.1:5175"
+		const parsed = parseAuthCorsOrigins(prelive)
+		expect(parsed).toContain("https://excited-live-iam-prelive.pages.dev")
+		expect(parsed).not.toContain("https://iam.excited.live")
+	})
 })
 
 describe("isAllowedOrigin", () => {

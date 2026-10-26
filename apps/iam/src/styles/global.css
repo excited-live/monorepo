@@ -1870,3 +1870,60 @@ table.data tr:last-child td {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
+
+/* ==========================================================================
+   The no-JS key door (#223).
+
+   `dist/tokens/index.html` and `dist/sign-in/index.html` carry this <main>
+   outside #root, so it must read well with no JavaScript and no React: plain
+   semantic HTML, the page's own type and colour, no app components. main.tsx
+   removes the element on mount, so with JavaScript on it is never seen twice.
+   ========================================================================== */
+#door-fallback {
+	width: min(720px, 100%);
+	margin: 0 auto;
+	padding: clamp(24px, 5vw, 64px) var(--iam-gutter) 72px;
+	color: var(--iam-ink);
+}
+
+#door-fallback h1 {
+	margin: 0 0 20px;
+	font-size: clamp(28px, 4vw, 40px);
+	line-height: 1.15;
+	letter-spacing: -0.02em;
+}
+
+#door-fallback p {
+	margin: 0 0 16px;
+	max-width: 68ch;
+}
+
+#door-fallback strong {
+	color: var(--iam-orange-text);
+}
+
+#door-fallback a {
+	color: var(--iam-orange-text);
+	text-underline-offset: 3px;
+}
+
+#door-fallback pre {
+	margin: 0 0 16px;
+	padding: 16px 18px;
+	overflow-x: auto;
+	background: var(--iam-code-bg);
+	color: var(--iam-code-ink);
+	border-radius: var(--iam-radius-md);
+	font-family: var(--iam-mono);
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+#door-fallback code {
+	font-family: var(--iam-mono);
+	font-size: 0.92em;
+}
+
+#door-fallback pre code {
+	font-size: inherit;
+}

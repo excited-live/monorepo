@@ -65,6 +65,21 @@ const tokensRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([homeRoute, mcpRoute, dataRoute, signInRoute, tokensRoute])
 
+/**
+ * #223 — the no-JS key door.
+ *
+ * `/keys` is served from a byte-identical copy of `/tokens` (not a 301, so a
+ * curl-only client that does not follow redirects still gets the facts). When
+ * JavaScript does run, land on the canonical route so the Scoped Keys tab is
+ * the active one. The server-rendered fallback sits outside `#root` and React
+ * does not own it, so drop it before the first render.
+ */
+if (window.location.pathname === "/keys" || window.location.pathname === "/keys/") {
+	window.history.replaceState(null, "", `/tokens${window.location.search}${window.location.hash}`)
+}
+
+document.getElementById("door-fallback")?.remove()
+
 export const router = createRouter({
 	routeTree,
 	defaultPreload: "intent",

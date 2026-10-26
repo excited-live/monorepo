@@ -1,0 +1,11 @@
+# `/tokens.md` and `/keys.md` are the no-JS mirrors of the key door (#223).
+#
+# Pages cannot be relied on to infer markdown from these paths, and a curl-only
+# agent that receives `text/html` has nothing it knows how to read. Pin the
+# type on each file rather than on a splat, so a future `.md` elsewhere is a
+# deliberate choice.
+/tokens.md
+	Content-Type: text/markdown; charset=utf-8
+
+/keys.md
+	Content-Type: text/markdown; charset=utf-8

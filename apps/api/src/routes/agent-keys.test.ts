@@ -111,6 +111,7 @@ describe("api/v1/agent-keys", () => {
 				createdAt: string;
 				lastRequest: string | null;
 				scopes: string[];
+				rateLimit: { limit: number; remaining: number; reset: number | null } | null;
 			}>;
 		};
 		expect(listed.keys).toHaveLength(1);
@@ -118,7 +119,37 @@ describe("api/v1/agent-keys", () => {
 		expect(listed.keys[0]?.agentId).toBe("claude-code");
 		expect(listed.keys[0]?.createdAt).toBeTruthy();
 		expect(listed.keys[0]?.scopes).toEqual(["onboarding", "accounting:read", "accounting:write"]);
+		// #156: a fresh key reports a whole budget and no window yet — the
+		// window starts at its first call, so there is no reset instant to show.
+		expect(listed.keys[0]?.rateLimit).toEqual({ limit: 10, remaining: 10, reset: null });
 		expect(JSON.stringify(listed)).not.toContain(key.key);
+
+		// A call through /mcp spends one of those calls; the list must show the
+		// same snapshot the MCP headers publish, not a second counter (#156).
+		const call = await app.request("/mcp", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				accept: "application/json, text/event-stream",
+				Authorization: `Bearer ${key.key}`,
+			},
+			body: JSON.stringify({
+				jsonrpc: "2.0",
+				id: 1,
+				method: "initialize",
+				params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } },
+			}),
+		});
+		expect(call.status).toBe(200);
+		expect(call.headers.get("x-ratelimit-remaining")).toBe("9");
+
+		const afterCall = await app.request("/api/v1/agent-keys", { headers: authHeaders(token) });
+		const afterCallData = (await afterCall.json()) as {
+			keys: Array<{ rateLimit: { limit: number; remaining: number; reset: number | null } | null }>;
+		};
+		expect(afterCallData.keys[0]?.rateLimit?.limit).toBe(10);
+		expect(afterCallData.keys[0]?.rateLimit?.remaining).toBe(9);
+		expect(afterCallData.keys[0]?.rateLimit?.reset).toBe(Number(call.headers.get("x-ratelimit-reset")));
 
 		const revoked = await app.request(`/api/v1/agent-keys/${key.id}`, {
 			method: "DELETE",

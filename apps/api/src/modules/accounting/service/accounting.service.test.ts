@@ -818,6 +818,9 @@ describe("#173 — one expense vocabulary", () => {
 		const updated = await service.updateExpense(USER, id, { amount: 130 });
 		expect(updated.category).toBe("other");
 		expect(updated.amount).toBe(130);
+	});
+});
+
 describe("asOf day for one-time expenses (#172)", () => {
 	it("books a same-day receipt on that day in both read paths", async () => {
 		const me = await personalEntity();

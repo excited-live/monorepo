@@ -60,6 +60,7 @@ import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { URL, URLSearchParams } from "node:url"
+import { PRELIVE_API_ORIGIN } from "./prelive-hosts.mjs"
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const webappRequire = createRequire(path.join(repoRoot, "apps/webapp/package.json"))
@@ -73,14 +74,16 @@ const webappRequire = createRequire(path.join(repoRoot, "apps/webapp/package.jso
  * the advertised origin fails.
  *
  * Assumption this preset makes explicit: the authorization server must allow
- * the resource it advertises. On 26 Oct the prelive AS only allowed the
- * workers.dev resource (apps/webapp/wrangler.prelive.toml EXCITED_API_URL), so
- * the default run reports `invalid_target` until that config names the same
- * origin — the gate naming the break, not a sign-up failure.
+ * the resource it advertises. That broke on 26 Oct (the AS only allowed the
+ * workers.dev resource, apps/webapp/wrangler.prelive.toml EXCITED_API_URL) and
+ * was fixed by #123, which bound the AS to PRELIVE_API_ORIGIN. The hostname
+ * comes from scripts/prelive-hosts.mjs so a rename cannot leave this gate on a
+ * stale origin — the gate names the break instead of reporting a sign-up
+ * failure.
  */
 const PRESETS = {
 	prelive: {
-		mcp: "https://prelive.api.excited.live/mcp",
+		mcp: `${PRELIVE_API_ORIGIN}/mcp`,
 	},
 	prod: {
 		mcp: "https://api.excited.live/mcp",
